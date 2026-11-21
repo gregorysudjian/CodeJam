@@ -8,6 +8,7 @@ import {
   encodePose,
   ghostPoseAt,
   isBetter,
+  ghostKey,
   levelFingerprint,
   neutralPose,
   parseGhost,
@@ -107,6 +108,12 @@ describe('level fingerprint', () => {
     const held = level();
     held.waves[1]!.spawns[0]!.holdSec = 2;
     expect(levelFingerprint(held)).not.toBe(base);
+  });
+
+  it('ghostKey keeps camera and keyboard ghosts apart', () => {
+    expect(ghostKey(level(), 'pose')).not.toBe(ghostKey(level(), 'keyboard'));
+    expect(ghostKey(level(), 'pose')).toBe(ghostKey(level(), 'pose'));
+    expect(ghostKey(level(), 'pose').startsWith(levelFingerprint(level()))).toBe(true);
   });
 
   it('ignores what does not change the level: seed and workout labels', () => {

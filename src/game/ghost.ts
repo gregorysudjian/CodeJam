@@ -133,6 +133,14 @@ export function levelFingerprint(level: Level): string {
   return fnv1a(text, 0x811c9dc5) + fnv1a(text, 0x01000193);
 }
 
+/**
+ * Where a ghost is stored: the level plus the input it was played with, so camera players race
+ * camera ghosts. A keyboard run has no webcam lag and would be an unbeatable ghost for bodies.
+ */
+export function ghostKey(level: Level, input: 'pose' | 'keyboard'): string {
+  return `${levelFingerprint(level)}.${input}`;
+}
+
 function fnv1a(text: string, basis: number): string {
   let h = basis >>> 0;
   for (let i = 0; i < text.length; i++) {

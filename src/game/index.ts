@@ -5,7 +5,7 @@ import {
   createGhostRecorder,
   finishOutcome,
   ghostPoseAt,
-  levelFingerprint,
+  ghostKey,
   neutralPose,
   type GhostResult,
 } from './ghost';
@@ -56,7 +56,8 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     ghostResetDone = true; // once per page load, or every round would wipe the previous ghost
     ghostStore?.clear();
   }
-  const fingerprint = levelFingerprint(level);
+  // One ghost per level and input (the input at the start of the round): see ghostKey.
+  const fingerprint = ghostKey(level, input.kind);
   const ghost = ghostStore?.load(fingerprint) ?? null;
   const recorder = ghostStore ? createGhostRecorder() : null;
   const ghostPose = neutralPose(); // reused every frame
