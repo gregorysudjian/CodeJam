@@ -86,16 +86,33 @@ function forEachFrame(
   } else clip.frames.forEach((f, i) => emit(i, f.t));
 }
 
+/** Match the recording setup in variants.test.ts and judge.test.ts for incoming clips. */
+function standingReference(name: string) {
+  if (name.startsWith('extra/')) return name;
+  if (name.startsWith('greg/')) return 'greg/standing';
+  if (name.startsWith('near/')) {
+    const shared = [
+      'standing',
+      'sidestep',
+      'jump',
+      'squat',
+      'armsUp',
+      'reach',
+      'mixed',
+      'leaveFrame',
+      'pauseX',
+    ];
+    return shared.includes(name.slice('near/'.length)) ? 'near/standing' : name;
+  }
+  return ['armsUp', 'reach', 'mixed'].includes(name) ? name : 'standing';
+}
 function play(name: string, v: Variant): Event[] {
   const clip = loadClip(name);
-  const group = name.includes('/') ? name.slice(0, name.lastIndexOf('/') + 1) : '';
-  const self = ['armsUp', 'reach', 'mixed'].includes(name);
+  const reference = standingReference(name);
+  const self = reference === name && !name.endsWith('standing');
   const transform = v.transform ?? identity;
-  const calibration = calibrateFromClip(
-    self ? clip : loadClip(group + 'standing'),
-    self ? 300 : 1000,
-    'floor',
-    (b) => transform(b, 0),
+  const calibration = calibrateFromClip(loadClip(reference), self ? 300 : 1000, 'floor', (b) =>
+    transform(b, 0),
   );
   const det = createDetector(calibration);
   const gesture = createGestureDetector();
@@ -115,6 +132,16 @@ function play(name: string, v: Variant): Event[] {
   }
   return result;
 }
+
+test.each([
+  ['extra/reach-8-greg', 'extra/reach-8-greg'],
+  ['extra/standing-0-greg', 'extra/standing-0-greg'],
+  ['near/pauseX-armsOut', 'near/pauseX-armsOut'],
+  ['near/passerby', 'near/passerby'],
+  ['near/reach', 'near/standing'],
+])('uses the recorded standing reference for %s', (clip, reference) => {
+  expect(standingReference(clip)).toBe(reference);
+});
 function reflect(type: Event['type']) {
   return type === 'reachLeft' ? 'reachRight' : type === 'reachRight' ? 'reachLeft' : type;
 }
