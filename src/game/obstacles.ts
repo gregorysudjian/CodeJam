@@ -162,17 +162,32 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
   function buildBeam(): ObstacleView {
     const root = new THREE.Group();
     const top = T.BEAM_HEIGHT;
-    const span = new THREE.Group(); // scaled along z by the hold length
-    const slab = neonBox(1, 1, 1);
-    slab.scale.set(W + 0.6, 0.45, 1);
-    slab.position.set(0, top + 0.225, -0.5);
+    // Front: a solid slab. A long (held) beam continues as an open frame of rails and
+    // ribs, so the camera, which sits above the beam, still sees the runner underneath.
+    const slab = neonBox(W + 0.6, 0.45, T.BEAM_MIN_DEPTH);
+    slab.position.set(0, top + 0.225, -T.BEAM_MIN_DEPTH / 2);
+    const lip = glowBox(W + 0.6, 0.07, 0.07);
+    lip.position.set(0, top, 0.02);
+    root.add(slab, lip);
+
+    const span = new THREE.Group(); // unit length along -z, scaled by the hold length
     const plate = floorPlate();
     plate.scale.set(W, 1, 1);
     plate.position.z = -0.5;
-    span.add(slab, plate);
-    const lip = glowBox(W + 0.6, 0.07, 0.07);
-    lip.position.set(0, top, 0.02);
-    root.add(span, lip);
+    span.add(plate);
+    for (const s of [-1, 1]) {
+      const rail = glowBox(0.08, 0.08, 1);
+      rail.position.set(s * (W / 2 + 0.3), top + 0.2, -0.5);
+      span.add(rail);
+    }
+    root.add(span);
+    const ribs = Array.from({ length: T.BEAM_MAX_RIBS }, () => {
+      const rib = glowBox(W + 0.6, 0.06, 0.06);
+      rib.position.y = top + 0.2;
+      root.add(rib);
+      return rib;
+    });
+
     const backPosts: THREE.Object3D[] = [];
     for (const s of [-1, 1]) {
       const front = neonBox(0.2, top, 0.2);
@@ -183,8 +198,15 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       root.add(front, back);
     }
     return simpleView('beam', root, (_spawn, length) => {
+      const long = length > T.BEAM_MIN_DEPTH;
       const depth = Math.max(T.BEAM_MIN_DEPTH, length);
+      span.visible = long;
       span.scale.z = depth;
+      const ribCount = long ? Math.min(T.BEAM_MAX_RIBS, Math.floor(depth / T.BEAM_RIB_SPACING)) : 0;
+      ribs.forEach((rib, i) => {
+        rib.visible = i < ribCount;
+        rib.position.z = -((i + 1) * depth) / (ribCount + 1);
+      });
       for (const p of backPosts) p.position.z = -depth;
     });
   }
