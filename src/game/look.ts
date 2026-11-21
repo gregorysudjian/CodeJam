@@ -52,6 +52,9 @@ export const OUTRO_TO = 0.55; // intro progress it swings back to: 1 is the chas
 // ...looking at this point above the runner (x follows it), so the runner stands centred and
 // low in the frame, under the end banner.
 export const OUTRO_LOOK = { y: 2.6, z: -0.5 };
+// The FINISH arch's posts and floor line, times NEON_BOOST. At 0.7 they bloomed into a white
+// glare that hid the runner as it crossed the line.
+export const FINISH_GLOW = 0.4;
 
 /* ── Reduced motion (scene.ts) ── */
 // A milestone brightens the lane lines and horizon; with prefers-reduced-motion, this much of it.
