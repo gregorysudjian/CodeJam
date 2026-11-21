@@ -163,9 +163,9 @@ A fresh read of every file in `src/game`, `src/input` and `src/workout`. Found a
 Then, smaller additions:
 - The race chip pops when the lead over the ghost changes.
 - The 2D fallback shows the same move icons as 3D.
-- `?debug=timing` adds a combined table over all rounds, for the camera session with A.
+- `?debug=timing` adds a combined table over all rounds and a `lagSec` column, for the camera session with A.
 
-Rechecked: `npm run check` on main + `p1-workout` + `p2-game` (201 tests pass). In the real app, a demo round driven by keyboard on the game's own clock scored 4,750, 100 %, best streak 23, every move inside its window (timing probe), no console errors. The ghost worked across two rounds (above). Not tested: a real GPU and a real webcam.
+Rechecked after Greg's PRs #13 and #20 (the select screen's camera/keyboard switch): `npm run check` on main + `p1-workout` + `p2-game` (209 tests pass). Also rechecked: treadmill rounds (perfect 9 crates + 10 orbs, 0 hits, in 3D and 2D). In the real app, a demo round driven by keyboard on the game's own clock scored 4,750, 100 %, best streak 23, every move inside its window (timing probe), no console errors. The ghost worked across two rounds (above). Not tested: a real GPU and a real webcam.
 
 ### Phase 0 + 1 status (Sat ~4:30 AM)
 
