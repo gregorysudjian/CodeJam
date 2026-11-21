@@ -50,7 +50,8 @@ export function createStore(): DataStore {
     saveProfile: (patch) => active.saveProfile(patch),
     saveSession: (summary) => active.saveSession(summary),
     listSessions: (limit) => active.listSessions(limit),
-    getLeaderboard: (workout, mode, limit) => active.getLeaderboard(workout, mode, limit),
+    getLeaderboard: (workout, mode, durationSec, limit) =>
+      active.getLeaderboard(workout, mode, durationSec, limit),
     getCoachAdvice: (session) => active.getCoachAdvice(session),
     // Forget the guest in both stores and give Supabase another chance for the next player
     // (the switch to the local store only lasts for one guest).

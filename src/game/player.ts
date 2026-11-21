@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { InputState } from '@/contracts';
 import { jumpHeight, leanFor, newPose, runnerPose, strideHz, type PoseInput } from './runnerPose';
 import { neon } from './scene';
+import * as L from './look';
 import * as T from './tuning';
 
 /**
@@ -46,12 +47,12 @@ export function createPlayer(opts: { ghost?: boolean } = {}): Player {
   if (ghost) body.scale.setScalar(T.GHOST_SCALE);
 
   const glass = (): Partial<THREE.MeshStandardMaterialParameters> =>
-    ghost ? { transparent: true, opacity: T.GHOST_OPACITY, depthWrite: false } : {};
+    ghost ? { transparent: true, opacity: L.GHOST_OPACITY, depthWrite: false } : {};
   const suitMat = new THREE.MeshStandardMaterial({
-    color: ghost ? T.GHOST_COLOR : 0xd9e1ec,
+    color: ghost ? L.GHOST_COLOR : 0xd9e1ec,
     roughness: 0.35,
     metalness: 0.15,
-    emissive: new THREE.Color(ghost ? T.GHOST_COLOR : T.COLOR_HIT),
+    emissive: new THREE.Color(ghost ? L.GHOST_COLOR : T.COLOR_HIT),
     emissiveIntensity: ghost ? 0.25 : 0,
     ...glass(),
   });
@@ -59,8 +60,8 @@ export function createPlayer(opts: { ghost?: boolean } = {}): Player {
     ? suitMat
     : new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.5, metalness: 0.4 });
   const limeMat = new THREE.MeshBasicMaterial({
-    color: neon(ghost ? T.GHOST_ACCENT : T.COLOR_LIME),
-    ...(ghost ? { transparent: true, opacity: T.GHOST_ACCENT_OPACITY, depthWrite: false } : {}),
+    color: neon(ghost ? L.GHOST_ACCENT : T.COLOR_LIME),
+    ...(ghost ? { transparent: true, opacity: L.GHOST_ACCENT_OPACITY, depthWrite: false } : {}),
   });
   const mesh = (geo: THREE.BufferGeometry, mat: THREE.Material, y = 0): THREE.Mesh => {
     const m = new THREE.Mesh(geo, mat);
@@ -139,9 +140,9 @@ export function createPlayer(opts: { ghost?: boolean } = {}): Player {
   // Ground ring and soft shadow stay on the floor while the body jumps.
   const ground = new THREE.Group();
   const ringMat = new THREE.MeshBasicMaterial({
-    color: neon(ghost ? T.GHOST_ACCENT : T.COLOR_LIME, T.NEON_BOOST * 0.7),
+    color: neon(ghost ? L.GHOST_ACCENT : T.COLOR_LIME, T.NEON_BOOST * 0.7),
     transparent: true,
-    opacity: ghost ? T.GHOST_ACCENT_OPACITY : 0.9,
+    opacity: ghost ? L.GHOST_ACCENT_OPACITY : 0.9,
     depthWrite: !ghost,
   });
   const ringBase = ringMat.color.clone();

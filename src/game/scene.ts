@@ -290,15 +290,21 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   const pylonH = 17;
   const pylonX = halfTrack + 2.4;
   const pylonMat = new THREE.MeshLambertMaterial({ color: 0x101a2a });
-  const accentAMat = new THREE.MeshBasicMaterial({ color: neon(T.MOVE_COLOR.sidestep, 0.9) });
-  const accentBMat = new THREE.MeshBasicMaterial({ color: neon(T.MOVE_COLOR.armsUp, 0.9) });
+  // Each zone's scenery keeps its own zone's colours (look.ts), never blended at the camera:
+  // blended, the tunnel's rings came in pink (the city's crate-magenta) as the tunnel approached.
+  const fixedMat = (hex: number): THREE.MeshBasicMaterial =>
+    new THREE.MeshBasicMaterial({ color: neon(hex, 0.9) });
+  const bridgeSteelMat = fixedMat(L.ZONE_LOOK.bridge.accentA);
+  const railMat = fixedMat(L.ZONE_LOOK.bridge.accentB);
+  const tunnelRingMat = fixedMat(L.ZONE_LOOK.tunnel.accentB);
+  const tunnelStripMat = fixedMat(L.ZONE_LOOK.tunnel.accentA);
   const pylons = instanced(boxGeo, pylonMat, pylonCount);
-  const pylonStrips = instanced(boxGeo, accentAMat, pylonCount);
+  const pylonStrips = instanced(boxGeo, bridgeSteelMat, pylonCount);
   const cablesPerPylon = 6; // three each way, on one side
-  const cables = instanced(boxGeo, accentAMat, pylonCount * cablesPerPylon);
+  const cables = instanced(boxGeo, bridgeSteelMat, pylonCount * cablesPerPylon);
   const railPosts = Math.ceil(span / T.BRIDGE_RAIL_SPACING);
   const posts = instanced(boxGeo, pylonMat, railPosts * 2);
-  const rails = instanced(boxGeo, accentBMat, railPosts * 2);
+  const rails = instanced(boxGeo, railMat, railPosts * 2);
   const glintCount = 70;
   const glintMat = new THREE.MeshBasicMaterial({
     color: new THREE.Color(T.MOVE_COLOR.sidestep).multiplyScalar(0.5),
@@ -322,9 +328,9 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   const tunnelCount = Math.ceil(span / T.TUNNEL_SEGMENT);
   const tunnelMat = new THREE.MeshBasicMaterial({ color: 0x0d0a18 });
   const tunnelWalls = instanced(boxGeo, tunnelMat, tunnelCount * 3);
-  const ringPosts = instanced(boxGeo, accentBMat, tunnelCount * 2);
-  const ringBars = instanced(boxGeo, accentBMat, tunnelCount);
-  const tunnelStrips = instanced(boxGeo, accentAMat, tunnelCount * 4);
+  const ringPosts = instanced(boxGeo, tunnelRingMat, tunnelCount * 2);
+  const ringBars = instanced(boxGeo, tunnelRingMat, tunnelCount);
+  const tunnelStrips = instanced(boxGeo, tunnelStripMat, tunnelCount * 4);
 
   /* Particles: drifting motes (city), sparks (tunnel), stars (bridge), gold (finale). */
   const glowTex = glowTexture();
@@ -500,10 +506,8 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       blend((l) => l.floor, floorMat.color);
       blend((l) => l.accentA, tmp);
       capMat.color.copy(tmp).multiplyScalar(0.85);
-      accentAMat.color.copy(tmp).multiplyScalar(0.9);
       blend((l) => l.accentB, tmp);
       capMat2.color.copy(tmp).multiplyScalar(0.85);
-      accentBMat.color.copy(tmp).multiplyScalar(0.9);
       blend((l) => l.arch, tmp);
       archMat.color.copy(tmp).multiplyScalar(T.NEON_BOOST * 0.4);
       blend((l) => l.particle, pMat.color);

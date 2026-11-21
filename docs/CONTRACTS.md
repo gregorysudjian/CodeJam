@@ -196,6 +196,7 @@ export interface LeaderboardEntry {
   score: number;
   workout: WorkoutId;
   mode: PlayMode;
+  durationSec: number; // one board per round length: a long round always outscores a short one
   at: number;
 }
 
@@ -215,7 +216,12 @@ export interface DataStore {
   saveProfile(patch: Partial<Omit<Profile, 'id'>>): Promise<Profile>;
   saveSession(summary: SessionSummary): Promise<SavedSession>; // never rejects; queues when offline
   listSessions(limit?: number): Promise<SavedSession[]>; // newest first
-  getLeaderboard(workout: WorkoutId, mode: PlayMode, limit?: number): Promise<LeaderboardEntry[]>;
+  getLeaderboard(
+    workout: WorkoutId,
+    mode: PlayMode,
+    durationSec: number,
+    limit?: number,
+  ): Promise<LeaderboardEntry[]>;
   getCoachAdvice(session: SavedSession): Promise<CoachAdvice>; // never rejects; falls back to rules
   signOut(): Promise<void>; // forgets the current guest; the next signInGuest creates a new user
 }
@@ -251,7 +257,7 @@ Two tables and one view, in `supabase/migrations/`. Column names are snake_case 
 | --- | --- |
 | `profiles` | `id uuid` primary key referencing `auth.users`, `display_name text`, `goal text`, `level text`, `weight_kg numeric` nullable, `weekly_goal_min int` default 60, `created_at timestamptz` |
 | `sessions` | `id uuid` primary key, `user_id uuid` referencing `profiles`, `workout text`, `mode text`, `duration_sec int`, `active_sec numeric`, `difficulty numeric`, `seed int`, `score int`, `best_streak int`, `cleared int`, `hit int`, `accuracy numeric`, `kcal numeric`, `reps jsonb`, `missed jsonb`, `created_at timestamptz` |
-| `leaderboard` (view) | `display_name`, `workout`, `mode`, `score`, `created_at`: each user's best score per workout and mode |
+| `leaderboard` (view) | `display_name`, `workout`, `mode`, `score`, `created_at`, `duration_sec`: each user's best score per workout, mode and round length (`0003_leaderboard_duration.sql`) |
 
 Row-level security, enabled on both tables:
 
@@ -260,7 +266,7 @@ Row-level security, enabled on both tables:
 - `leaderboard`: readable by any signed-in user. It is the only way one user sees anything about another, and it carries no reps, calories or weight. It works **because** it is a plain view: Postgres views run with the owner's rights by default, so it reads every user's best score even though `sessions` RLS hides other users' rows. Keep it that way:
   - **Never add `security_invoker = true`** to this view. That makes it obey `sessions` RLS, and every player then sees only their own scores. Supabase's Security Advisor flags it as "Security Definer View"; for this view that finding is expected and stays.
   - Grant access explicitly in the migration: `revoke all on public.leaderboard from public, anon;` then `grant select on public.leaderboard to authenticated;`. Guests sign in anonymously, which still uses the `authenticated` role.
-  - It selects only `display_name`, `workout`, `mode`, `score` and `created_at`. Adding a column is a contract change.
+  - It selects only `display_name`, `workout`, `mode`, `score`, `created_at` and `duration_sec`. Adding a column is a contract change.
 
 Add check constraints for the enum-like text columns and for sane ranges (`score >= 0`, `duration_sec` between 10 and 600).
 

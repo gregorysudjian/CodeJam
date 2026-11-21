@@ -177,6 +177,7 @@ export interface LeaderboardEntry {
   score: number;
   workout: WorkoutId;
   mode: PlayMode;
+  durationSec: number; // one board per round length: a long round always outscores a short one
   at: number;
 }
 
@@ -196,7 +197,12 @@ export interface DataStore {
   saveProfile(patch: Partial<Omit<Profile, 'id'>>): Promise<Profile>;
   saveSession(summary: SessionSummary): Promise<SavedSession>; // never rejects; queues when offline
   listSessions(limit?: number): Promise<SavedSession[]>; // newest first
-  getLeaderboard(workout: WorkoutId, mode: PlayMode, limit?: number): Promise<LeaderboardEntry[]>;
+  getLeaderboard(
+    workout: WorkoutId,
+    mode: PlayMode,
+    durationSec: number,
+    limit?: number,
+  ): Promise<LeaderboardEntry[]>;
   getCoachAdvice(session: SavedSession): Promise<CoachAdvice>; // never rejects; falls back to rules
   signOut(): Promise<void>; // forgets the current guest; the next signInGuest creates a new user
 }

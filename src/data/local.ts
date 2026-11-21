@@ -98,17 +98,25 @@ export function createLocalStore(kv: KeyValue | null = browserStorage()): DataSt
     async listSessions(limit = 50) {
       return sessions().slice(0, limit);
     },
-    async getLeaderboard(workout, mode, limit = 10) {
+    async getLeaderboard(workout, mode, durationSec, limit = 10) {
+      // Every local session is the one saved player's, and the board keeps a player's best only
+      // (like the Supabase view), so it holds at most one row (QA Q16).
       const name = profile()?.displayName ?? 'You';
       return sessions()
-        .filter((s) => s.config.workout === workout && s.config.mode === mode)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, limit)
+        .filter(
+          (s) =>
+            s.config.workout === workout &&
+            s.config.mode === mode &&
+            s.config.durationSec === durationSec,
+        )
+        .sort((a, b) => b.score - a.score || a.at - b.at)
+        .slice(0, Math.min(1, limit))
         .map<LeaderboardEntry>((s) => ({
           displayName: name,
           score: s.score,
           workout,
           mode,
+          durationSec,
           at: s.at,
         }));
     },

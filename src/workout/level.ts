@@ -59,11 +59,19 @@ export function completeConfig(config: SessionConfig): Required<SessionConfig> {
   };
 }
 
-/** The mix for this config: treadmill keeps only crates and orbs, low impact drops hurdles. */
+/**
+ * The mix for this config: treadmill keeps only crates and orbs. Low impact drops hurdles and
+ * gives their share to the gentle moves (T.LOW_IMPACT_SHARE), not to squats and presses.
+ */
 export function mixFor(config: Required<SessionConfig>): [ObstacleKind, number][] {
   const allowed: ObstacleKind[] =
     config.mode === 'treadmill' ? ['crate', 'orb'] : ['block', 'hurdle', 'beam', 'crate', 'orb'];
-  const mix = T.MIX[config.workout];
+  const mix = { ...T.MIX[config.workout] };
+  if (config.lowImpact && allowed.includes('hurdle')) {
+    for (const [kind, part] of Object.entries(T.LOW_IMPACT_SHARE) as [ObstacleKind, number][])
+      mix[kind] += mix.hurdle * part;
+    mix.hurdle = 0;
+  }
   const entries = allowed
     .filter((k) => !(config.lowImpact && k === 'hurdle'))
     .map((k): [ObstacleKind, number] => [k, mix[k]]);
@@ -112,9 +120,13 @@ export function generateLevel(config: SessionConfig): Level {
   const reachableLanes = (): Lane[] =>
     LANES.filter((l) => maybe.every((p) => Math.abs(l - p) <= 1));
 
-  const holdFor = (kind: 'beam' | 'crate', warmup: boolean): number => {
+  // Holds belong to the build and the peak: none in the warm-up, and none in the cool-down,
+  // which eases off and ends the round on something a first-time player clears. The same random
+  // numbers are drawn either way, so a level without a cool-down hold is exactly as it was.
+  const holdFor = (kind: 'beam' | 'crate', warmup: boolean, t: number): number => {
     if (warmup || rand() >= T.HOLD_CHANCE[workout][kind]) return 0;
-    return Math.round(lerp(T.HOLD_MIN_SEC, holdMax, rand()) * 10) / 10;
+    const sec = Math.round(lerp(T.HOLD_MIN_SEC, holdMax, rand()) * 10) / 10;
+    return t >= T.PEAK_END * dur ? 0 : sec;
   };
 
   const orbSpawn = (lane: Lane): Spawn => ({
@@ -149,6 +161,7 @@ export function generateLevel(config: SessionConfig): Level {
       if (t < T.WARMUP_END * dur) t = Math.max(t, prevEnd + T.MIN_GAP_WARMUP_SEC);
     }
     if (kind === 'hurdle') t = Math.max(t, lastBeamEnd + T.MIN_GAP_BEAM_TO_HURDLE_SEC);
+    if (kind === 'beam') t = Math.max(t, lastBeamEnd + T.MIN_GAP_SQUAT_TO_SQUAT_SEC);
     t = round2(t);
 
     // Spawns.
@@ -175,7 +188,7 @@ export function generateLevel(config: SessionConfig): Level {
       }
       spawns.push(orbSpawn(lane));
     } else {
-      if (kind === 'beam' || kind === 'crate') hold = holdFor(kind, warmup);
+      if (kind === 'beam' || kind === 'crate') hold = holdFor(kind, warmup, t);
       const spawn: Spawn = { kind, lanes: [...LANES], requires: REQUIRES[kind] };
       if (hold > 0) spawn.holdSec = hold;
       spawns.push(spawn);

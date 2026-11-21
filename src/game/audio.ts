@@ -1,6 +1,9 @@
 import type { MoveType } from '@/contracts';
 import { createMusic, type Music } from './music';
+import * as L from './look';
 import * as T from './tuning';
+
+const S = L.SFX; // each effect's level (look.ts)
 
 /**
  * Game sound effects, synthesised with Web Audio: no files to download, no package.
@@ -89,7 +92,14 @@ export function createGameAudio(): GameAudio {
   }
   const master = ctx.createGain();
   master.gain.value = T.AUDIO_VOLUME;
-  master.connect(ctx.destination);
+  // A limiter on the master bus: a pile-up of effects and music never clips (look.ts LIMITER).
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = L.LIMITER.thresholdDb;
+  limiter.knee.value = L.LIMITER.kneeDb;
+  limiter.ratio.value = L.LIMITER.ratio;
+  limiter.attack.value = L.LIMITER.attackSec;
+  limiter.release.value = L.LIMITER.releaseSec;
+  master.connect(limiter).connect(ctx.destination);
 
   // One second of white noise, reused by every noisy sound.
   const noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
@@ -168,48 +178,50 @@ export function createGameAudio(): GameAudio {
     cue(move) {
       play(() => {
         const f = hz(NOTE[move]);
-        tone('sine', f, f, 0, 0.09, 0.25);
-        tone('sine', f, f, 0.12, 0.09, 0.18);
+        tone('sine', f, f, 0, 0.09, S.cue);
+        tone('sine', f, f, 0.12, 0.09, S.cue * 0.72);
       });
     },
     cleared(move) {
       play(() => {
         const f = hz(NOTE[move] + 12);
-        tone('triangle', f, f * 1.5, 0, 0.16, 0.35);
-        tone('sine', f * 2, f * 2, 0.06, 0.12, 0.12);
+        tone('triangle', f, f * 1.5, 0, 0.16, S.cleared);
+        tone('sine', f * 2, f * 2, 0.06, 0.12, S.cleared * 0.34);
       });
     },
     collected() {
       play(() => {
-        [0, 4, 7, 12].forEach((s, i) => tone('sine', hz(24 + s), hz(24 + s), i * 0.045, 0.14, 0.2));
+        [0, 4, 7, 12].forEach((s, i) =>
+          tone('sine', hz(24 + s), hz(24 + s), i * 0.045, 0.14, S.collected),
+        );
       });
     },
     smash() {
       play(() => {
-        burst('bandpass', 1800, 0.25, 0.6);
-        tone('square', 220, 60, 0, 0.18, 0.12);
+        burst('bandpass', 1800, 0.25, S.smash);
+        tone('square', 220, 60, 0, 0.18, S.smash * 0.2);
       });
     },
     hit() {
       play(() => {
-        burst('lowpass', 500, 0.3, 0.8);
-        tone('sawtooth', 160, 45, 0, 0.32, 0.3);
+        burst('lowpass', 500, 0.3, S.hit);
+        tone('sawtooth', 160, 45, 0, 0.32, S.hit * 0.38);
         beat?.duck();
       });
     },
     count(n) {
       play(() => {
         if (n > 0) {
-          tone('triangle', hz(12), hz(12), 0, 0.16, 0.35);
+          tone('triangle', hz(12), hz(12), 0, 0.16, S.count);
         } else {
-          tone('triangle', hz(24), hz(24), 0, 0.35, 0.4);
-          tone('sine', hz(19), hz(19), 0, 0.35, 0.2);
+          tone('triangle', hz(24), hz(24), 0, 0.35, S.go);
+          tone('sine', hz(19), hz(19), 0, 0.35, S.go * 0.5);
         }
       });
     },
     perfect() {
       play(() => {
-        tone('sine', hz(31), hz(36), 0.04, 0.1, 0.12);
+        tone('sine', hz(31), hz(36), 0.04, 0.1, S.perfect);
       });
     },
     music,
@@ -219,7 +231,7 @@ export function createGameAudio(): GameAudio {
       if (now - (lastSaw.get(move) ?? -1) < T.SAW_MIN_GAP_SEC) return;
       lastSaw.set(move, now);
       play(() => {
-        const q = T.SAW_VOLUME;
+        const q = S.saw;
         if (move === 'step') burst('bandpass', 900, 0.12, 0.35 * q);
         else if (move === 'hop') tone('sine', 300, 700, 0, 0.12, 0.35 * q);
         else if (move === 'duck') tone('sine', 240, 110, 0, 0.14, 0.4 * q);
@@ -230,7 +242,7 @@ export function createGameAudio(): GameAudio {
       play(() => {
         const root = 12 + tier * 2;
         [0, 4, 7, 12, 16].forEach((st, i) =>
-          tone('triangle', hz(root + st), hz(root + st), i * 0.06, 0.18, 0.28),
+          tone('triangle', hz(root + st), hz(root + st), i * 0.06, 0.18, S.levelUp),
         );
       });
     },
@@ -238,10 +250,10 @@ export function createGameAudio(): GameAudio {
       play(() => {
         beat?.stop();
         [0, 4, 7].forEach((st, i) =>
-          tone('triangle', hz(12 + st), hz(12 + st), i * 0.12, 0.2, 0.3),
+          tone('triangle', hz(12 + st), hz(12 + st), i * 0.12, 0.2, S.finish * 0.86),
         );
-        tone('triangle', hz(24), hz(24), 0.36, 0.6, 0.35);
-        tone('sine', hz(12), hz(12), 0.36, 0.6, 0.2);
+        tone('triangle', hz(24), hz(24), 0.36, 0.6, S.finish);
+        tone('sine', hz(12), hz(12), 0.36, 0.6, S.finish * 0.57);
       });
     },
     dispose() {
