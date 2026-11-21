@@ -111,3 +111,14 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > goes to the results screen with what was played so far (or back to workout select if a short
 > round should not be saved)? Your call on saving. Please keep it a button/key, not a body gesture:
 > a "quit" gesture would be too easy to trigger by accident mid-round. Pose needs no change.
+
+## 12. Start with the camera, not the keyboard (found testing, Sat ~4 PM)
+
+> `App.tsx` starts with `useState<InputKind>('keyboard')`, so unless the player picks **Camera**
+> on the select screen (or presses K), the whole round runs on the keyboard: no calibration, no
+> camera preview, and the X and the moves do nothing. Abdo fell into this while testing, and a
+> judge would too, in a game you play with your body. Suggestion: start with `'pose'` when a
+> camera exists (the existing fallback to the keyboard on a camera error stays), or at least
+> remember the last choice in localStorage. Also: if the camera falls back to the keyboard, make
+> the reason visible on the select screen (another tab holding the camera is a common cause on
+> Windows). Pose needs no change.
