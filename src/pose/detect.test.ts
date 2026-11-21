@@ -175,6 +175,20 @@ describe('squat', () => {
     expect(types(r.events)).toEqual(['jump']);
   });
 
+  test('crouch then jump at 15 FPS: the frame past the high line is already slow, still a jump', () => {
+    // Greg's crouch-and-jump every other frame: the last fast frame is just under the after-squat
+    // line, the next one is past it but near the top of the jump (slow). Hip heights in T.
+    const det = standingDetector();
+    const at = (dy: number, t: number) => det.update(pose({ dy: dy * T }), t);
+    const events: MoveEvent[] = [];
+    let t = 0;
+    for (let i = 0; i < 10; i++) events.push(...at(0.5, (t += 66))); // squat, 0.66 s
+    events.push(...at(-1.38, (t += 66))); // smoothed to 0.44 T above standing, rising fast
+    events.push(...at(-0.5, (t += 66))); // smoothed 0.47 T, rising only ~0.45 T/s
+    for (let i = 0; i < 10; i++) events.push(...at(-0.5, (t += 66)));
+    expect(types(events)).toEqual(['jump']);
+  });
+
   test('standing up out of a squat, even overshooting, is not a jump', () => {
     const det = standingDetector();
     let r = run(det, pose({ dy: 0.8 * T }), 20, 0);
@@ -302,6 +316,16 @@ describe('tracking', () => {
     r = run(det, pose({ dx: 0.7 * W }), 5, r.t);
     expect(det.state.lane).toBe(1);
     expect(r.events).toEqual([]);
+  });
+
+  test('a one-frame flicker keeps the smoothing: the next frame is smoothed, not raw', () => {
+    const det = standingDetector();
+    let r = run(det, pose(), 10, 0);
+    r = run(det, pose({ vis: 0.3 }), 1, r.t);
+    run(det, pose({ left: 'up' }), 1, r.t);
+    // Raw would be 0.7 T above the nose (arm up at once); smoothed from -1.25 it is about halfway.
+    expect(det.readout.leftArmT).toBeLessThan(0);
+    expect(det.state.leftArmUp).toBe(false);
   });
 
   test('lost after the lost time with no body, regained after the regained time', () => {

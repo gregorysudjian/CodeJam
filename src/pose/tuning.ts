@@ -32,6 +32,12 @@ export const DRAW_MIN_VISIBILITY = 0.5;
 export const DRAW_LINE_WIDTH = 4;
 export const DRAW_POINT_RADIUS = 4;
 
+/**
+ * A gap between two frames with the body this long or longer (it was away) restarts smoothing,
+ * and no speed or drift is measured across it. Shorter gaps (a visibility flicker) keep both.
+ */
+export const GAP_RESET_MS = 500;
+
 /** FPS counter window. */
 export const FPS_WINDOW_MS = 1000;
 
@@ -111,6 +117,13 @@ export const DETECTION_DEFAULTS = Object.freeze({
    */
   JUMP_AFTER_SQUAT_MS: 400,
   JUMP_AFTER_SQUAT_ON_T: 0.45,
+  /**
+   * That higher line sits near the top of a crouch-and-jump, where the hips slow down: at 15 FPS
+   * the frame past it can be slow (Greg: 0.66 T/s). So for it, a fast rise up to this long before
+   * crossing counts too. Not for the normal line: rising onto the toes in a reach (~0.15 T) would
+   * then be a jump.
+   */
+  JUMP_AFTER_SQUAT_SPEED_WINDOW_MS: 150,
 
   /** Squat: hip centre below standing height. `ducking` turns on at once (beams need it). */
   SQUAT_ON_T: 0.3,
