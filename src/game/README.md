@@ -70,8 +70,11 @@ See the bottom of this file (kept up to date per phase).
 - Real webcam input. Tested only with the keyboard and a scripted input.
 - Long-term WebGL memory over many rounds.
 
+### Phase 2 so far (`p1-game`)
+- **Sound** (`audio.ts`): Web Audio synthesis, so no files and no package. Each move has its own pitch for the cue, plus sounds for clear, orb collect, crate smash and hit. Mute with `?mute=1` or localStorage `game.muted = '1'`. Chrome only lets audio start after a click on the page; the app's "Start round" click counts. Headless tests ran silent because nothing was clicked, and the game carried on fine.
+- **Low graphics**: no bloom, pixel ratio 1, no skyline. Turns on by itself when a round runs under 45 fps over 3 s (checked: the software renderer at 19 fps switched). `?gfx=low` forces it on, `?gfx=high` keeps full graphics (also localStorage `game.gfx`). D could put a toggle on the select screen that writes `game.gfx`.
+
 **Next (Phase 2)**
-- Sound effects and a music loop in `public/game/`.
+- Music loop (optional; sound effects are done).
 - Hit vignette; speed lines at peak intensity.
-- Low-graphics toggle.
 - Tune `SPEED_*` and the cue lead in front of the camera with A.
