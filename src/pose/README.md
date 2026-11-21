@@ -1,57 +1,56 @@
 # src/pose — Vision (owner A)
 
-## MORNING REPORT (last update: Sat 07:13 — refreshed through the night)
+## MORNING REPORT (last update: Sat 07:14 — refreshed through the night)
 
-**State:** Phase 1 (real detection), most of Phase 2 (robustness) and Phase 3 (treadmill input) are
-done and pushed to `abdo-1`. `npm run check` passes: **205 tests**. Nothing was pushed to `main`.
+**TL;DR:** the real pose input is done on `abdo-1` (Phase 1, most of Phase 2, Phase 3 treadmill),
+205 tests pass, and it runs end to end inside `main`'s real app (calibration → tutorial → play) on
+your replayed clips. Nothing touched `main`. It has **not** met a real camera since Phase 0.
 
-**Integration with `main` (verified, nothing merged):** in a throwaway worktree of `origin/main`
-(PR #19) with this `src/pose` copied in, `main`'s full `npm run check` passes (220 tests incl. the
-team's), and the real app with a stubbed camera works: K switches to pose, START opens Greg's
-calibration screen showing our live status message ("Step in front of the camera…"), the video is
-mirrored and fills the frame, D shows the overlay (27 FPS GPU), Esc and K back to keyboard: no errors.
+**Do this first (≈20 min):**
+1. **10-minute camera check:** `HANDOFF.md` §6 (FPS, calibration, 10 of each move with the new move
+   tally, no false moves, crouch-and-jump, treadmill). Tune with the D overlay's sliders if needed.
+2. **Send Greg** `NEEDS.md` items 1 (ready `DevPose.tsx` for `?dev=pose`) and 2 (who mirrors the video).
+3. **Decide the merge:** `main` has moved (PR #19, new packages). Merge `origin/main` into `abdo-1`,
+   `npm install`, `npm run check`, then open the PR with the text in `HANDOFF.md` §8.
 
-**End to end in `main`'s real app (verified, nothing merged):** with the camera stubbed and only the
-MediaPipe model swapped for a replay of your clips, the full flow ran: K → START → calibration done
-from your standing frames → "try each move" ticked sidestep, jump, squat, arms up, reach left, reach
-right **while the video was off the page** → play screen received moves, timer ran, score went up.
-Treadmill too (clips scaled to ~1.2 m): shoulder calibration, tutorial reach left / right / arms up,
-orbs collected in play, lane stays 0, bouncing gave no moves. No console errors in either run.
+**Evidence (no camera; nothing merged):**
+- In a throwaway copy of `origin/main` with this `src/pose`: `main`'s `npm run check` passes (236
+  tests), Greg's calibration screen shows our live messages, D shows the overlay, `?dev=pose` works
+  with the `DevPose.tsx` from NEEDS.md, React StrictMode leaves exactly one camera track.
+- Full flow with only the model swapped for your clips: calibration done → "try each move" ticked all
+  six moves **while the video was off the page** → play received moves, timer ran, score rose.
+  Treadmill (clips scaled to ~1.2 m): calibrated, tutorial passed, orbs collected, bouncing gave no
+  moves. No console errors.
 
-**What works (tested on your recorded clips, no camera needed)**
-- `createPoseInput()` is real: camera, MediaPipe, `calibrate()` with status messages, smoothing,
-  lane (hysteresis), jump, squat, arms up, reach left/right, `tracking`, move events, `drawSkeleton`.
-- Every clip gives the right moves, and so do 11 synthetic variants of every clip (shorter/taller,
-  closer/farther, ±0.5–1% jitter, ±3° camera tilt, 20–40% dropped frames, and all of these at once)
-  with the same timing (±100–250 ms).
-- Zero moves standing still. Standing up out of a squat, even springing onto the toes: no jump (a
-  test proves the guard is what prevents it). Squats up to 4× slower count. Stepping back quickly
-  is not a jump. Stepping closer re-baselines. Long overhead holds do not distort W/T.
+**What works (tested on your clips + synthetic variants)**
+- `createPoseInput()` per the contract: camera, MediaPipe, `calibrate()` with status messages,
+  smoothing, lane (hysteresis), jump, squat, arms up, reach left/right, `tracking`, move events,
+  `drawSkeleton` (handles the app's object-cover crop).
+- Every clip gives the right moves; so do 11 variants of every clip (shorter/taller, closer/farther,
+  ±0.5–1% jitter, ±3° tilt, 20–40% dropped frames, all at once), at the same times (±100–250 ms).
+- No moves standing still or with hands resting on the head. Standing up from a squat, even onto the
+  toes: no jump. Crouch-then-jump: a jump. Squats 4× faster or slower count. Stepping back quickly
+  is not a jump; stepping closer re-baselines.
 - Background people: largest, nearest body wins; bodies far from the player's size are ignored.
-- Treadmill mode: shoulder calibration at 1–1.5 m, arms only, bouncing gives nothing; floor unchanged.
-- **D** toggles the overlay: live values vs thresholds, sliders, Reset, Copy, and **threshold lines
-  drawn on the video** (lane, stand, squat, jump, arm-up).
+- Treadmill: shoulder calibration at 1–1.5 m, arms only; floor results unchanged.
+- **D** overlay: live values vs thresholds, 12 sliders, Reset, Copy, threshold lines on the video.
+  `?dev=pose` adds calibrate buttons, a **move tally** and the clip recorder.
 
-**Bugs found and fixed overnight (most by tests or the stubbed camera)**
-1. Camera stayed on after React StrictMode start/stop/start (leaked stream).
-2. **Pose froze for good if the app took the video off the page** (it pauses and never resumes).
-   This would have hit every new player: on `main`, calibrate → "try each move" tutorial → play,
-   and the tutorial screen shows no camera, so the video leaves the page right after calibration.
-3. Baseline never adapted after stepping ~20% closer; stepping back quickly could fire a jump.
-4. **A crouch before a jump (20% deeper than yours) became a squat and the jump was lost.** Now the
-   squat rep needs 250 ms down, and after a squat a jump just has to rise higher (0.45 T).
-5. Overhead holds shrank W and T; lane hysteresis bug leaving a side lane; GPU error stopped the loop;
-   unhandled rejection when the camera failed inside `calibrate()`; a throwing `onMove` listener
-   corrupted tracking.
+**Bugs found and fixed overnight**
+1. **Pose froze for good when a screen took the video off the page** — on `main` that is every first
+   round (calibrate → tutorial has no camera view → play). Fixed and verified end to end.
+2. **Crouch-then-jump lost the jump** (crouch counted as a squat, then the jump was blocked).
+3. Camera stayed on after React StrictMode start/stop/start.
+4. Baseline stuck after stepping closer; quick step back fired a jump; overhead holds shrank W/T.
+5. Smaller ones: lane hysteresis leaving a side lane; a GPU error stopped the loop; a throwing game
+   listener or UI callback corrupted tracking; a bigger stranger in front hid the player;
+   calibration restarted on every one-frame flicker; unhandled rejection on camera failure.
 
-**New on `?dev=pose`:** a move tally (do 10, read 10), threshold lines on the video.
+**Also new:** MediaPipe JS loads only when pose starts (main bundle 407 → 254 kB); `STATION.md` (demo
+setup, keys, symptom → fix table); small-room switch `CALIBRATION_FEET_IN_VIEW`.
 
-**Also new:** MediaPipe's JS now loads only when pose starts (main bundle 407 → 254 kB); `STATION.md` (demo setup, keys, symptom → fix table); a small-room switch if the feet
-cannot be in view (`CALIBRATION_FEET_IN_VIEW`); arm-up line 0.4 T so hands resting on the head are
-not "arms up"; a verified `DevPose.tsx` for Greg (NEEDS.md 1); a ready PR description (HANDOFF §8).
-
-**Decisions:** `DECISIONS.md` (30). **For Greg:** `NEEDS.md` (7 copy-paste messages).
-**New session:** `HANDOFF.md`. **Real-camera checklist:** `HANDOFF.md` §6 (10 min).
+**Pointers:** decisions `DECISIONS.md` (30) · messages for Greg `NEEDS.md` (7) · new session
+`HANDOFF.md` (starter prompt in §9) · demo `STATION.md`.
 
 ## How to use it
 
