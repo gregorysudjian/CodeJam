@@ -8,35 +8,48 @@ import {
   L_ANKLE,
   L_HIP,
   L_KNEE,
+  L_SHOULDER,
   measureBody,
   NOSE,
   R_ANKLE,
   R_HIP,
   R_KNEE,
+  R_SHOULDER,
 } from './detect';
 import {
   CALIBRATION_EDGE_MARGIN,
   CALIBRATION_FEET_IN_VIEW,
   CALIBRATION_GRACE_MS,
   CALIBRATION_HOLD_MS,
+  CALIBRATION_JUMP_ROOM_T,
   CALIBRATION_MIN_T_FRAME,
   CALIBRATION_MIN_VISIBILITY,
   CALIBRATION_MIN_W_FRAME,
   CALIBRATION_STILL_SCALE,
   CALIBRATION_STILL_T,
   CALIBRATION_STILL_T_TREADMILL,
+  CALIBRATION_SQUAT_ROOM_T,
   TREADMILL_T_PER_W_PX,
 } from './tuning';
 
 /** Text the UI shows as is. */
 export const CALIBRATION_MESSAGES: Record<PlayMode, Record<CalibrationStatus['step'], string>> = {
-  floor: {
-    noBody: 'Step in front of the camera so it can see your whole body.',
-    tooFar: 'Come a little closer to the camera.',
-    tooClose: 'Step back until your head and feet are both in view.',
-    holdStill: 'Stand tall with your arms down and hold still…',
-    done: 'Calibrated. Get ready!',
-  },
+  floor: CALIBRATION_FEET_IN_VIEW
+    ? {
+        noBody: 'Step in front of the camera so it can see your whole body.',
+        tooFar: 'Come a little closer to the camera.',
+        tooClose: 'Step back until your head and feet are both in view.',
+        holdStill: 'Stand tall with your arms down and hold still…',
+        done: 'Calibrated. Get ready!',
+      }
+    : {
+        noBody: 'Stand about 1.5 m from the screen, with your head and knees in view.',
+        tooFar: 'Come closer: about 1.5 m from the screen, head and knees in view.',
+        tooClose:
+          'Step back a little: about 1.5 m, with room above your head and your knees in view.',
+        holdStill: 'Stand tall with your arms down and hold still…',
+        done: 'Calibrated. Get ready!',
+      },
   treadmill: {
     noBody: 'Stand in front of the camera so it can see your head and shoulders.',
     tooFar: 'Come closer: about 1 to 1.5 m from the screen.',
@@ -119,6 +132,12 @@ export function createCalibrator(
         ? [pose[NOSE], pose[L_ANKLE], pose[R_ANKLE]]
         : [pose[NOSE], pose[L_KNEE], pose[R_KNEE]];
       if (!ends.every((p) => visible(p) && inFrameY(p))) return 'tooClose';
+      // Room for the moves: the shoulders must stay in frame at the top of a jump and the hips at
+      // the bottom of a squat (in raw y; T is in y units).
+      const shoulderY = (pose[L_SHOULDER].y + pose[R_SHOULDER].y) / 2;
+      const hipY = (pose[L_HIP].y + pose[R_HIP].y) / 2;
+      if (shoulderY - CALIBRATION_JUMP_ROOM_T * m.T < 0) return 'tooClose';
+      if (hipY + CALIBRATION_SQUAT_ROOM_T * m.T > 1) return 'tooClose';
     } else {
       if (m.W < CALIBRATION_MIN_W_FRAME) return 'tooFar';
       if (!visible(pose[NOSE]) || !inFrameY(pose[NOSE])) return 'tooClose';

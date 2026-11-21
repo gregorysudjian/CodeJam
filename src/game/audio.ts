@@ -1,4 +1,5 @@
 import type { MoveType } from '@/contracts';
+import { createMusic, type Music } from './music';
 import * as T from './tuning';
 
 /**
@@ -18,6 +19,12 @@ export interface GameAudio {
   saw(move: 'step' | 'hop' | 'duck' | 'raise'): void;
   /** The streak reached a new tier (5, 10, 20). */
   levelUp(tier: number): void;
+  /** Intro countdown: 3, 2, 1, then 0 for GO. */
+  count(n: number): void;
+  /** A PERFECT clear: a short bright sparkle on top of the clear sound. */
+  perfect(): void;
+  /** The beat (music.ts): start or fade it out, and feed it the round's state every frame. */
+  music: Pick<Music, 'start' | 'stop' | 'update'>;
   finish(): void;
   dispose(): void;
 }
@@ -43,6 +50,19 @@ function isMuted(): boolean {
   }
 }
 
+/** `?music=off` or localStorage 'game.music' = 'off': effects only. */
+function musicOff(): boolean {
+  try {
+    return (
+      (new URLSearchParams(window.location.search).get('music') ??
+        window.localStorage.getItem('game.music')) === 'off'
+    );
+  } catch {
+    return false;
+  }
+}
+
+const noMusic: GameAudio['music'] = { start() {}, stop() {}, update() {} };
 const silent: GameAudio = {
   resume() {},
   cue() {},
@@ -52,6 +72,9 @@ const silent: GameAudio = {
   hit() {},
   saw() {},
   levelUp() {},
+  count() {},
+  perfect() {},
+  music: noMusic,
   finish() {},
   dispose() {},
 };
@@ -120,6 +143,23 @@ export function createGameAudio(): GameAudio {
       // a sound must never break the game loop
     }
   };
+  const musicGain = ctx.createGain();
+  musicGain.connect(master);
+  const beat = musicOff() ? null : createMusic(ctx, musicGain, noise);
+  const music: GameAudio['music'] = beat
+    ? {
+        start: () => play(() => beat.start()),
+        stop: () => play(() => beat.stop()),
+        update: (s) => {
+          if (ctx.state !== 'running') return;
+          try {
+            beat.update(s);
+          } catch {
+            // never break the game loop
+          }
+        },
+      }
+    : noMusic;
 
   return {
     resume() {
@@ -154,8 +194,25 @@ export function createGameAudio(): GameAudio {
       play(() => {
         burst('lowpass', 500, 0.3, 0.8);
         tone('sawtooth', 160, 45, 0, 0.32, 0.3);
+        beat?.duck();
       });
     },
+    count(n) {
+      play(() => {
+        if (n > 0) {
+          tone('triangle', hz(12), hz(12), 0, 0.16, 0.35);
+        } else {
+          tone('triangle', hz(24), hz(24), 0, 0.35, 0.4);
+          tone('sine', hz(19), hz(19), 0, 0.35, 0.2);
+        }
+      });
+    },
+    perfect() {
+      play(() => {
+        tone('sine', hz(31), hz(36), 0.04, 0.1, 0.12);
+      });
+    },
+    music,
     saw(move) {
       // Rate-limited so a jittery camera cannot turn it into a buzz.
       const now = ctx.currentTime;
@@ -179,6 +236,7 @@ export function createGameAudio(): GameAudio {
     },
     finish() {
       play(() => {
+        beat?.stop();
         [0, 4, 7].forEach((st, i) =>
           tone('triangle', hz(12 + st), hz(12 + st), i * 0.12, 0.2, 0.3),
         );

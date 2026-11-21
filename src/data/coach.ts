@@ -18,8 +18,9 @@ const WORKOUT_NAMES: Record<WorkoutId, string> = {
 };
 
 const TIPS: Record<MoveType, string> = {
-  sidestep: 'Step wide and early: move as soon as the wall is announced, not when it arrives.',
-  jump: 'Jump a beat earlier than feels natural. Your body is slower than a keypress.',
+  sidestep:
+    'Step wide and early: change lane as soon as the block is announced, not when it arrives.',
+  jump: 'Jump a beat earlier than feels natural, as the hurdle comes close, and land softly.',
   squat: 'Drop your hips like sitting on a chair and hold until the beam has passed.',
   armsUp: 'Push both hands fully above your head and keep them there through the crate.',
   reachLeft: 'Reach your left arm high and out to the side, above head height.',

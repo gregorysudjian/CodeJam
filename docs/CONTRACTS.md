@@ -68,11 +68,16 @@ export interface CalibrationStatus {
   message: string; // text the UI shows as is
 }
 
+export type Gesture = 'pause'; // arms crossed in an X in front of the chest, held 1 s
+
 export interface PoseInputSource extends InputSource {
   readonly kind: 'pose';
-  readonly video: HTMLVideoElement; // the UI mirrors it with CSS scaleX(-1)
+  readonly video: HTMLVideoElement; // already mirrored by the pose module; never flip it again
   calibrate(mode: PlayMode, onStatus: (s: CalibrationStatus) => void): Promise<void>;
   drawSkeleton(ctx: CanvasRenderingContext2D): void; // for the preview and debug overlay
+  // Once per hold (uncross before it can fire again); never during the six moves.
+  // Optional until src/pose implements it. The app pauses or resumes the round on 'pause'.
+  onGesture?(cb: (g: Gesture) => void): () => void;
 }
 
 // src/pose/index.ts      export function createPoseInput(): PoseInputSource

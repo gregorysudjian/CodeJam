@@ -93,8 +93,14 @@ describe('treadmill calibration', () => {
     expect(calibrateStanding('treadmill', up).step).toBe('tooClose');
   });
 
-  test('floor mode at 1.2 m says tooClose (feet out of frame)', () => {
+  test('floor mode at 1.2 m says tooClose (no room for a squat)', () => {
     expect(calibrateStanding('floor', near).step).toBe('tooClose');
+  });
+
+  test('floor mode at about 1.5 m (head to knees, feet out of frame) calibrates', () => {
+    const { step, result } = calibrateStanding('floor', scaleAbout(0.5, 0.87, 1.45));
+    expect(step).toBe('done');
+    expect(result!.T).toBeGreaterThan(0.27);
   });
 });
 

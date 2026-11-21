@@ -1,5 +1,7 @@
 import type { Level, Spawn } from '@/contracts';
 import type { Item } from './core';
+import { comboLabel, GRADE_LABEL, type Grade } from './feedback';
+import { countdownAt } from './intro';
 import { OUTCOME_LABEL, raceLabel, racePulse, type GhostOutcome, type GhostPose } from './ghost';
 import { GLYPH, paintGlyph } from './glyph';
 import type { Verdict } from './judge';
@@ -34,6 +36,8 @@ export function create2DView(
   let raceShown: number | null = null;
   let raceChangedT = Infinity; // seconds since the lead last changed (chip pop)
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  let gradeShown: Grade | null = null;
+  let gradeT = Infinity;
 
   const colorOf = (item: Item): string => {
     const v = verdicts.get(item);
@@ -41,7 +45,7 @@ export function create2DView(
   };
 
   return {
-    frame({ elapsed, visDt, realDt, state, phase, ghost, race }) {
+    frame({ elapsed, visDt, realDt, state, phase, streak, intro, ghost, race }) {
       if (!ctx) return;
       const dpr = Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
       const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
@@ -163,6 +167,38 @@ export function create2DView(
         ctx.textBaseline = 'middle';
         ctx.fillText(text, w / 2, cy + ch * 0.03);
       }
+      // Countdown, timing grade, combo: the same words as in 3D, as plain text.
+      const label = (s: string, color: number, x: number, y: number, size: number): void => {
+        ctx.font = `italic 800 ${Math.round(size)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineWidth = size * 0.12;
+        ctx.strokeStyle = 'rgba(7, 9, 13, 0.85)';
+        ctx.strokeText(s, x, y);
+        ctx.fillStyle = css(color);
+        ctx.fillText(s, x, y);
+      };
+      const count = countdownAt(intro);
+      if (count) label(count, count === 'GO' ? T.COLOR_LIME : 0xf4f7fb, w / 2, h * 0.45, h * 0.16);
+      const runner = project(playerMotion.x, 0, 0);
+      gradeT += realDt;
+      if (gradeShown && gradeT < T.GRADE_SEC) {
+        ctx.globalAlpha = Math.min(1, (1 - gradeT / T.GRADE_SEC) * 3);
+        const side = playerMotion.x > 0.1 ? -1 : 1;
+        const g = GRADE_LABEL[gradeShown];
+        label(g.text, g.color, runner.x + side * laneW * 0.8, runner.y - laneW * 0.9, h * 0.055);
+        ctx.globalAlpha = 1;
+      }
+      const combo = phase === 'running' || phase === 'paused' ? comboLabel(streak) : null;
+      if (combo)
+        label(
+          combo,
+          T.MOVE_COLOR.squat,
+          runner.x,
+          Math.min(h * 0.97, runner.y + h * 0.04),
+          h * 0.035,
+        );
+
       if (outcome) {
         const { text, color } = OUTCOME_LABEL[outcome];
         const bw = Math.min(w * 0.6, h * 1.1);
@@ -228,9 +264,14 @@ export function create2DView(
       }
     },
     engage() {},
-    verdict(item, v) {
+    verdict(item, v, grade) {
       verdicts.set(item, v);
+      if (grade) {
+        gradeShown = grade;
+        gradeT = 0;
+      } else if (v === 'hit') gradeT = Infinity;
     },
+    milestone() {},
     setQuality() {},
     showGhostOutcome(o) {
       outcome ??= o;
