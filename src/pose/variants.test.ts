@@ -26,6 +26,16 @@ const roll = (deg: number) => (pose: Point[]) => {
 
 const jitterAll = jitter(0.005, 11);
 
+/**
+ * One frame in fifteen (~0.5 s) where MediaPipe is unsure of the left hip (visibility under the
+ * line). Not more often: regaining tracking needs 0.3 s without a gap, on purpose (a body coming
+ * back at the frame edge flickers; tolerating that gave Greg's leaveFrame a false squat).
+ */
+const hipFlicker = (pose: Point[], t = 0) =>
+  Math.round(t / 33) % 15 === 14
+    ? pose.map((p, i) => (i === 23 ? { ...p, visibility: 0.3 } : p))
+    : pose;
+
 /** Clip → replay options for the plain recording. Session 2 clips calibrate on their own start. */
 const CLIPS: Record<string, ReplayOptions> = {
   standing: { upToMs: 5500 },
@@ -45,7 +55,7 @@ const CLIPS: Record<string, ReplayOptions> = {
   'greg/armsUp': { calibrate: 'greg/standing' },
   'greg/reach': { calibrate: 'greg/standing' },
   'greg/leaveFrame': { calibrate: 'greg/standing' },
-  'greg/mixed': { calibrate: 'greg/standing' },
+  'greg/mixed': { calibrate: 'greg/standing', upToMs: 6300 }, // walks to the laptop after 6.3 s
 };
 
 const VARIANTS: Record<string, { opts: ReplayOptions; slackMs: number }> = {
@@ -72,6 +82,11 @@ const VARIANTS: Record<string, { opts: ReplayOptions; slackMs: number }> = {
     slackMs: 250,
   },
   '40% dropped frames (~17 FPS)': { opts: { dropFraction: 0.4 }, slackMs: 250 },
+  // Pose plus the 3D game on a slow laptop: every other frame, evenly (~15 FPS).
+  // Greg's double raise (arm dips just under the down line between) reads as one raise at 15 FPS,
+  // so that reach fires ~0.2 s earlier.
+  '15 FPS steady': { opts: { everyNth: 2 }, slackMs: 250 },
+  'hip visibility flicker (1 frame in 15)': { opts: { transform: hipFlicker }, slackMs: 100 },
 };
 
 const kinds = (events: MoveEvent[]) => events.map((e) => e.type);
@@ -124,6 +139,8 @@ const MAY_MISS = new Set([
   '40% dropped frames (~17 FPS)|greg/reach',
   '40% dropped frames (~17 FPS)|greg/mixed',
   'all at once: taller, ±0.5% jitter, 2° tilt, 30% dropped|greg/reach',
+  // Greg holds a quick reach ~0.3 s; a flicker on its first frame leaves < ARM_SETTLE_MS.
+  'hip visibility flicker (1 frame in 15)|greg/reach',
 ]);
 
 /** True if `sub` can be read in order inside `seq` (only drops, no additions or swaps). */

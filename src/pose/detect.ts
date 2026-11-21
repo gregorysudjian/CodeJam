@@ -1,7 +1,7 @@
 // Owner: A. Pure move detection: landmarks in, InputState and move events out.
 // No DOM and no MediaPipe here, so it runs in Vitest on recorded clips.
 import type { InputState, Lane, MoveEvent, MoveType, PlayMode } from '@/contracts';
-import { DETECTION as K, PICK_DISTANCE_WEIGHT } from './tuning';
+import { DETECTION as K, GAP_RESET_MS, PICK_DISTANCE_WEIGHT } from './tuning';
 
 /** The fields of a MediaPipe NormalizedLandmark that detection uses (raw, unmirrored x). */
 export interface Point {
@@ -147,6 +147,7 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
   let airborneUntil = -Infinity;
   let jumpAllowedAt = -Infinity; // cooldown after a jump
   let highJumpUntil = -Infinity; // after a squat ends, a jump must rise higher until then
+  let fastRiseAt = -Infinity; // last frame the centre rose faster than the jump speed
   let duckSince = 0;
   let squatCounted = false;
   let squatPendingAt = -1; // a short squat ended here; it counts unless a jump follows
@@ -180,12 +181,12 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
     const present = isPresent(pose);
     updateTracking(present, t);
     if (state.airborne && t >= airborneUntil) state.airborne = false;
-    if (!present) {
-      smooth.clear(); // restart smoothing from fresh values when the body comes back
-      return events;
-    }
+    if (!present) return events;
 
-    // Smooth only the landmarks we use, in player coordinates.
+    // Smooth only the landmarks we use, in player coordinates. After a long gap (the body was
+    // away) restart from fresh values; a one-frame visibility flicker keeps the smoothing, or the
+    // next frame would be raw and jolt the arms and hips.
+    if (!(t - lastT < GAP_RESET_MS)) smooth.clear();
     const a = K.SMOOTHING_ALPHA;
     for (const i of USED) {
       const src = pose[i];
@@ -203,7 +204,7 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
     const c = floor ? hips : shoulders;
 
     const dt = (t - lastT) / 1000;
-    const fresh = dt > 0 && dt < 0.5; // no speed or drift across gaps
+    const fresh = dt > 0 && dt * 1000 < GAP_RESET_MS; // no speed or drift across gaps
     const upSpeed = fresh ? (lastY - c.y) / T / dt : 0; // T per second, + = up
     lastT = t;
     lastY = c.y;
@@ -239,15 +240,15 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
       }
 
       // Jump: above standing height and still rising; fixed airtime, then a cooldown. Right after
-      // a squat it must rise higher, so standing back up is not a jump.
-      const jumpLine = t < highJumpUntil ? K.JUMP_AFTER_SQUAT_ON_T : K.JUMP_ON_T;
-      if (
-        !state.airborne &&
-        !state.ducking &&
-        t >= jumpAllowedAt &&
-        -drop > jumpLine &&
-        upSpeed > K.JUMP_MIN_UP_SPEED_T
-      ) {
+      // a squat it must rise higher, so standing back up is not a jump; that line is near the top
+      // of the jump, so a fast rise just before crossing it counts too (low FPS).
+      const fastRise = upSpeed > K.JUMP_MIN_UP_SPEED_T;
+      if (fastRise) fastRiseAt = t;
+      const afterSquat = t < highJumpUntil;
+      const jumpLine = afterSquat ? K.JUMP_AFTER_SQUAT_ON_T : K.JUMP_ON_T;
+      const rising =
+        fastRise || (afterSquat && t - fastRiseAt <= K.JUMP_AFTER_SQUAT_SPEED_WINDOW_MS);
+      if (!state.airborne && !state.ducking && t >= jumpAllowedAt && -drop > jumpLine && rising) {
         state.airborne = true;
         airborneUntil = t + K.AIRBORNE_MS;
         jumpAllowedAt = airborneUntil + K.JUMP_COOLDOWN_MS;

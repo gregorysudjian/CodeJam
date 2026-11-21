@@ -2,7 +2,7 @@
 
 Changes outside `src/pose/` that A cannot make. Each item is a copy-paste message for D (Greg).
 
-## 1. Wire `?dev=pose` to the debug view (src/app/DevPose.tsx)
+## 1. ✅ Done (Greg, PR #28) — Wire `?dev=pose` to the debug view (src/app/DevPose.tsx)
 
 > Hi Greg, the pose debug page is ready on `abdo-1` (calibrate buttons, live overlay with sliders,
 > move tally, clip recorder). `mountPoseDebug` is now exported from `src/pose/index.ts`, as you

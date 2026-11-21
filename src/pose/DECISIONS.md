@@ -120,3 +120,17 @@ or the named file.
     crouch. Greg's pre-jump crouch (0.46 s, 0.55 T) and his real quick squat (0.51 s, 0.64 T) can't
     be told apart by depth or time, only by what follows. Replaces the 250 ms rule of 25; the
     "2× deeper crouch" variant no longer adds a squat. State timing for the game is unchanged.
+37. **Crouch-and-jump at low FPS** (`JUMP_AFTER_SQUAT_SPEED_WINDOW_MS = 150`). A self-check at a
+    steady 15 FPS (pose plus the 3D game on a slow laptop) turned Greg's crouch-and-jump into a
+    squat: the last fast frame was just under the raised after-squat line (0.45 T), the next one
+    past it but near the top of the jump (0.66 T/s). For that line only, a fast rise up to 150 ms
+    before crossing counts. Tried and rejected: the same window for the normal line (rising onto the
+    toes in a reach, ~0.15 T, became a jump under jitter) and frame-time-scaled smoothing (changed
+    30 FPS behaviour and the pinned state timing the game's leads use). New variant: "15 FPS steady".
+38. **A one-frame visibility flicker keeps the smoothing** (`GAP_RESET_MS = 500`). Before, any
+    frame with a core landmark under the visibility line cleared the smoothing, so the next frame
+    was raw: arms jolted by ~0.6 T and cost one of Greg's quick reaches. Smoothing now restarts
+    only after a gap of 0.5 s, the same gap after which speed and drift were already not measured.
+    Tried and rejected: letting short gaps not restart the 0.3 s tracking regain count. On Greg's
+    real `leaveFrame` it regained tracking while he was half out at the frame edge (a false squat
+    and extra sidesteps), so the strict regain stays. New variant: "hip visibility flicker".

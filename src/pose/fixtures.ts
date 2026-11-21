@@ -58,6 +58,8 @@ export interface ReplayOptions {
   transform?: PoseTransform;
   /** Fraction of frames to drop at random (camera hiccups). */
   dropFraction?: number;
+  /** Keeps only every n-th frame (a steady lower FPS, e.g. 2 = half the clip's rate). */
+  everyNth?: number;
   /** Plays the clip this many times slower (2 = half speed). */
   timeScale?: number;
   /** Keeps feeding the last frame this long after the clip, so pending decisions can finish. */
@@ -104,6 +106,7 @@ export function replay(name: string, opts: ReplayOptions = {}): Replay {
     mode = 'floor',
     transform = (p) => p,
     dropFraction = 0,
+    everyNth = 1,
     timeScale = 1,
     holdLastMs = 0,
     fromMs = 0,
@@ -121,9 +124,10 @@ export function replay(name: string, opts: ReplayOptions = {}): Replay {
   let wasTracking = det.state.tracking;
   let last: { x: number; y: number } | null = null;
   let wrongPicks = 0;
-  for (const f of rec.frames) {
+  for (const [n, f] of rec.frames.entries()) {
     if (f.t > upToMs) break;
     if (f.t < fromMs) continue;
+    if (n % everyNth !== 0) continue;
     if (dropFraction > 0 && drop() < dropFraction) continue;
     let pose = f.pose ? transform(toPoints(f.pose), f.t) : null;
     if (pose && others) {

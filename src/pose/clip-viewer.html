@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pose Clip Viewer</title>
+<style>
+  :root { --bg:#111; --panel:#1c1c1c; --text:#eee; --muted:#999; --accent:#00ffaa; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  p { color: var(--muted); margin: 0 0 12px; }
+  #drop { border: 2px dashed #444; border-radius: 8px; padding: 14px; text-align: center; color: var(--muted); margin-bottom: 12px; }
+  #drop.over { border-color: var(--accent); color: var(--text); }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin: 8px 0; }
+  select, button, input[type=range] { font: inherit; }
+  select, button { background: var(--panel); color: var(--text); border: 1px solid #444; border-radius: 6px; padding: 6px 10px; }
+  button { cursor: pointer; }
+  #scrub { flex: 1; min-width: 200px; }
+  canvas { width: 100%; background: #000; border-radius: 8px; display:block; }
+  #info { font-family: ui-monospace, monospace; color: var(--muted); white-space: pre; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Pose clip viewer</h1>
+  <p>Drop clip .json files here (or pick them). Mirrored, as the player sees themselves. Everything stays in this browser.</p>
+  <div id="drop">Drop files here, or <input type="file" id="pick" accept=".json" multiple></div>
+  <div class="row">
+    <select id="clips"></select>
+    <button id="play">▶ Play</button>
+    <select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+    <label><input type="checkbox" id="loop" checked> loop</label>
+  </div>
+  <div class="row"><input type="range" id="scrub" min="0" max="0" value="0"></div>
+  <canvas id="c" width="640" height="480"></canvas>
+  <div id="info">No clip loaded.</div>
+</main>
+<script>
+const CONN = [[0,1],[1,2],[2,3],[3,7],[0,4],[4,5],[5,6],[6,8],[9,10],[11,12],[11,13],[13,15],[15,17],[15,19],[15,21],[17,19],[12,14],[14,16],[16,18],[16,20],[16,22],[18,20],[11,23],[12,24],[23,24],[23,25],[24,26],[25,27],[26,28],[27,29],[28,30],[29,31],[30,32],[27,31],[28,32]];
+const clips = [];
+let cur = null, i = 0, playing = false, startWall = 0, startT = 0;
+const $ = (id) => document.getElementById(id);
+const ctx = $('c').getContext('2d');
+
+async function addFiles(files) {
+  for (const f of files) {
+    try {
+      const rec = JSON.parse(await f.text());
+      if (!rec.frames) throw new Error('not a clip');
+      clips.push({ name: f.name, rec });
+      const o = document.createElement('option');
+      o.value = clips.length - 1; o.textContent = `${f.name} (${rec.label}, ${(rec.frames.at(-1).t / 1000).toFixed(1)} s)`;
+      $('clips').append(o);
+    } catch (e) { alert(`${f.name}: ${e.message}`); }
+  }
+  if (!cur && clips.length) select(0);
+}
+function select(k) {
+  cur = clips[k].rec; i = 0; $('clips').value = k;
+  $('c').width = cur.video.width; $('c').height = cur.video.height;
+  $('scrub').max = cur.frames.length - 1; draw();
+}
+function draw() {
+  const { width: w, height: h } = $('c');
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
+  if (!cur) return;
+  const f = cur.frames[i];
+  $('scrub').value = i;
+  const P = (p) => [(1 - p[0]) * w, p[1] * h];
+  if (f.pose) {
+    ctx.lineWidth = 4; ctx.lineCap = 'round';
+    for (const [a, b] of CONN) {
+      const pa = f.pose[a], pb = f.pose[b];
+      ctx.strokeStyle = pa[3] >= 0.5 && pb[3] >= 0.5 ? 'rgba(0,255,170,0.9)' : 'rgba(255,255,255,0.25)';
+      ctx.beginPath(); ctx.moveTo(...P(pa)); ctx.lineTo(...P(pb)); ctx.stroke();
+    }
+    for (const p of f.pose) {
+      ctx.fillStyle = p[3] >= 0.5 ? '#ff3b6b' : 'rgba(255,255,255,0.25)';
+      ctx.beginPath(); ctx.arc(...P(p), 4, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {
+    ctx.fillStyle = '#888'; ctx.font = '20px system-ui'; ctx.fillText('no body in this frame', 20, 40);
+  }
+  const vis = f.pose ? Math.min(...[11, 12, 23, 24].map((k) => f.pose[k][3])).toFixed(2) : '-';
+  $('info').textContent = `${cur.label}   frame ${i + 1}/${cur.frames.length}   t ${(f.t / 1000).toFixed(2)} s   min core visibility ${vis}`;
+}
+function tick() {
+  if (!playing || !cur) return;
+  const target = startT + (performance.now() - startWall) * +$('speed').value;
+  while (i < cur.frames.length - 1 && cur.frames[i + 1].t <= target) i++;
+  if (i >= cur.frames.length - 1) {
+    if ($('loop').checked) { i = 0; startT = 0; startWall = performance.now(); }
+    else { setPlaying(false); }
+  }
+  draw();
+  requestAnimationFrame(tick);
+}
+function setPlaying(on) {
+  playing = on && !!cur; $('play').textContent = playing ? '⏸ Pause' : '▶ Play';
+  if (playing) { startT = cur.frames[i].t; startWall = performance.now(); requestAnimationFrame(tick); }
+}
+$('play').onclick = () => setPlaying(!playing);
+$('speed').onchange = () => playing && setPlaying(true);
+$('clips').onchange = (e) => { setPlaying(false); select(+e.target.value); };
+$('scrub').oninput = (e) => { i = +e.target.value; if (playing) setPlaying(true); draw(); };
+$('pick').onchange = (e) => addFiles(e.target.files);
+const drop = $('drop');
+drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); };
+document.onkeydown = (e) => {
+  if (!cur) return;
+  if (e.code === 'Space') { e.preventDefault(); setPlaying(!playing); }
+  if (e.code === 'ArrowRight') { setPlaying(false); i = Math.min(i + 1, cur.frames.length - 1); draw(); }
+  if (e.code === 'ArrowLeft') { setPlaying(false); i = Math.max(i - 1, 0); draw(); }
+};
+draw();
+</script>
+</body>
+</html>

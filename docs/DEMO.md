@@ -36,7 +36,7 @@ Before the pitch, the Player's account should already hold a few real sessions f
 - Open the app with `?demo=1`: every round is the fixed 45 s demo level (seed 41492), and the select screen preselects it.
 
 **Ghost runner.** Players race their best run of the same level. Ghosts live in the browser, so:
-- **One ghost per origin.** Ghosts are stored per URL: rehearse on the exact URL the demo uses (`http://localhost:3000`), or there is no ghost.
+- **One ghost per origin.** Ghosts are stored per URL: rehearse on the exact URL the demo uses (`http://localhost:5173/?demo=1` on Patrick's Mac), or there is no ghost.
 - **Low impact is a different level** (same seed, no hurdles) with its own ghost. Rehearse it once if judges will get it.
 - **One ghost per input.** Rehearse with the camera, since judges play with their body. A round where the Operator pressed K is never stored.
 
@@ -53,10 +53,9 @@ Decide these in advance so nobody improvises in front of judges.
 ## Station checklist (Sunday 8:00 AM)
 
 - Demo laptop on power, brightness at maximum, notifications off, sleep disabled
-- Chrome only. **The demo runs on the laptop, not the Vercel URL:** `git pull`, then `npx vercel dev` and open `http://localhost:3000/?demo=1`. It serves the app and the coach endpoint without deploying (the Vercel Hobby deploy limit can't block it). `ANTHROPIC_API_KEY` goes in `.env.local` (never `VITE_`, never committed); `npm run dev` or `npm run preview` have no coach endpoint, so the card would be rules
-- Camera permission granted on `localhost:3000`
-- A camera rehearsal round of the demo level on `localhost:3000` (also low impact), so the ghost is there
-- One round played at the station, and `/api/coach` returned 200 in the network tab (the coach card says AI, not rules)
+- **Demo laptop: Patrick's Mac** (best FPS; the camera tuning was done on it). Chrome only. `git pull` on `main`, `.env.local` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (never committed), `npm run dev`, open `http://localhost:5173/?demo=1`. No deploy needed, so the Vercel limit can't block it
+- The coach card is the rule-based coach (no Claude key for now)
+- Camera permission granted on `localhost:5173`; a camera rehearsal round of the demo level there (also low impact), so the ghost is there
 - The Vercel URL is only for the QR code and people playing on their own devices; check it shows the latest `main`
 - Supabase anonymous sign-in rate limit raised (Auth → Rate Limits), and a fresh guest sign-in tested on the venue wifi
 - Laptop about 1 m high with the screen tilted back, facing a wall rather than the crowd
@@ -88,7 +87,7 @@ No architecture slide in this version. Rehearse it with a timer at least twice.
 - Ask the organisers: is there a stage or a table, how far can the player stand from the laptop (2.2 m plus 2 m clear is the plan), and how long is setup between finalists
 - Lighting: stage lights behind or above the player can break tracking. Test at the real spot if you are allowed to
 - Projector: plug in the HDMI during a test round and check the frame rate and that Chrome stays full screen
-- Wifi on stage: Supabase and the Claude coach need it; without it, use `?store=local`
+- Wifi on stage: Supabase (saving, leaderboard) needs it; without it, use `?store=local`
 - Not enough room: demo the Arms workout or treadmill mode at 1 to 1.5 m. Keyboard (`K`) stays the last resort; say so openly if used
 
 ### If there is also an expo table
