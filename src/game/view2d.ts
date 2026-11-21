@@ -13,7 +13,8 @@ import type { GameView } from './view3d';
  * events and HUD still work.
  */
 const css = (hex: number): string => `#${hex.toString(16).padStart(6, '0')}`;
-const NEAR = 6; // perspective: scale = NEAR / (NEAR + z)
+const NEAR = 16; // perspective: scale = NEAR / (NEAR + z); larger is flatter
+const RUNNER_SCALE = 0.75; // the runner is drawn smaller so it never hides the track
 
 export function create2DView(
   canvas: HTMLCanvasElement,
@@ -45,7 +46,7 @@ export function create2DView(
       }
       const horizon = h * 0.32;
       const groundY = h * 0.92;
-      const laneW = Math.min(w / 3.4, h * 0.45);
+      const laneW = Math.min(w / 4, h * 0.32);
       const unit = laneW / T.LANE_WIDTH; // pixels per world unit at the player
       const project = (x: number, y: number, z: number) => {
         const s = NEAR / (NEAR + Math.max(-NEAR * 0.8, z));
@@ -98,15 +99,15 @@ export function create2DView(
       crouch +=
         ((state.ducking ? T.CROUCH_SCALE : 1) - crouch) * (1 - Math.exp(-T.CROUCH_RATE * visDt));
       const feet = project(playerX, lift, 0);
-      const top = project(playerX, lift + 1.9 * crouch, 0);
-      const r = T.PLAYER_RADIUS * unit;
+      const top = project(playerX, lift + 1.9 * crouch * RUNNER_SCALE, 0);
+      const r = T.PLAYER_RADIUS * unit * RUNNER_SCALE;
       ctx.fillStyle = '#d9e1ec';
       ctx.beginPath();
       ctx.roundRect(feet.x - r, top.y, r * 2, feet.y - top.y, r);
       ctx.fill();
       ctx.strokeStyle = css(T.COLOR_LIME);
       ctx.lineWidth = r * 0.35;
-      const shoulder = project(playerX, lift + 1.4 * crouch, 0).y;
+      const shoulder = project(playerX, lift + 1.4 * crouch * RUNNER_SCALE, 0).y;
       for (const [side, up] of [
         [-1, state.leftArmUp],
         [1, state.rightArmUp],
