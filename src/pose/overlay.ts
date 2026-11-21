@@ -46,8 +46,8 @@ export function overlayText(s: EngineSnapshot): string {
     if (d.mode === 'floor') {
       lines.push(
         `side   ${f(r.offsetW)} W   (lane on ±${f(K.LANE_ON_W)}, off ±${f(K.LANE_OFF_W)})`,
-        `drop   ${f(r.dropT)} T   (squat > ${f(K.SQUAT_ON_T)}, up < ${f(K.SQUAT_OFF_T)}; jump < -${f(K.JUMP_ON_T)})`,
-        `rise   ${f(r.upSpeedT, 1)} T/s (jump > ${f(K.JUMP_MIN_UP_SPEED_T, 1)})`,
+        `drop   ${f(r.dropT)} T   (squat > ${f(K.SQUAT_ON_T)} for ${K.SQUAT_CONFIRM_MS} ms, up < ${f(K.SQUAT_OFF_T)})`,
+        `jump   rise > ${f(K.JUMP_ON_T)} T (${f(K.JUMP_AFTER_SQUAT_ON_T)} T just after a squat), speed ${f(r.upSpeedT, 1)} > ${f(K.JUMP_MIN_UP_SPEED_T, 1)} T/s`,
       );
     }
     lines.push(

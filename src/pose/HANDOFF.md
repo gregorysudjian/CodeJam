@@ -81,6 +81,8 @@ still; size gate 40%; `MAX_POSES = 1`; pose handles D, app handles R; video kept
    `JUMP_AFTER_SQUAT_ON_T` (0.45) a little; never below ~0.3 (standing up onto the toes).
 8. Background people with `MAX_POSES = 1`: MediaPipe may lock onto someone else; the size gate stops
    tracking a much smaller/larger person, but a same-size person beside you could be picked.
+9. The `squat` **event** fires 250 ms after the hips cross the line (the `ducking` state is instant,
+   so beams are unaffected); the rep counter and tutorial see it a moment later.
 
 ## 6. Needs real-camera test (about 10 minutes)
 
