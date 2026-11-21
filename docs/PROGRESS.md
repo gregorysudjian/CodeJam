@@ -1,26 +1,25 @@
 # Progress (Greg: D + C)
 
-## Status (Saturday about 1:15 PM)
+## Status (Saturday about 2 PM)
 
 **First 3 things for Greg**
-1. **Get Patrick and Abdo to open their PRs, and to merge `main` into their branches first** (that brings in `vercel.json`, which stops their pushes from using up Vercel's daily deploy quota). Patrick also fixes the 3 slow tests in `src/workout/level.test.ts`. Abdo's `createPoseInput()` is real now; his branch tracked Greg's body this morning.
-2. **Check the live site has redeployed.** Vercel's Hobby cap (100 deployments per 24 h) was hit at 12:38: #20, #21 and #22 are merged but **not live**; the live site is #13. Once the cap clears, the next push to `main` deploys everything. If nothing has gone out by tonight, redeploy `main` from the Vercel dashboard.
-3. **Add `ANTHROPIC_API_KEY` in Vercel** (still missing). The rate limit is live, so it's safe. Then play one round and check the coach card says AI.
+1. **Abdo: open the `abdo-1` PR** (merge `main` into it first). It is the last missing piece: body control. Greg's clips are on `greg-clips` for his tests.
+2. **Add `ANTHROPIC_API_KEY` in Vercel** (still missing). Then play one round and check the coach card says AI.
+3. **Ask the Lovable Claude to move the HUD cue word** off the centre of the screen (Requests below): "SQUAT" covers the beam it announces.
 
-**On `main` (5643424):** everything from last night, plus #13 (Lovable UI pass), #20 (camera/keyboard switch on the select screen), #21 (offline fixes), #22 (Vercel deploys `main` only).
+**Live:** https://codejam-jet.vercel.app deploys again (the Vercel cap cleared). It has Patrick's 3D game and level generator (#24, #25), the camera/keyboard switch (#20) and the offline fixes (#21). Body control arrives with `abdo-1`.
 
-**Tested today:** `npm run check` green (67 tests) for each PR. Browser: the switch starts the camera and falls back with the error dialog when there is none; a full keyboard pass over every screen with no console errors; a wifi-drop drill against live Supabase (offline mid-round → results and rules coach at once, round queued; back online → uploaded within 4 s, row checked and deleted).
+**Tested today:** each PR with `npm run check` green (213 tests on `main` now). Patrick's PRs: reviewed against the contracts, checked merged in order, one scripted round in the app (3D at about 100 FPS here, tutorial, pause, results, Play again, no console errors). Everyone merged together, including `abdo-1`: 432 tests green, demo round at 49 FPS.
 
-**Not tested (needs hardware or a person):** the switch with a real webcam; pose and the 3D game together on the demo laptop; a real Claude answer.
+**Not tested (needs hardware or a person):** a real webcam through the app; pose and 3D together on the demo laptop; a real Claude answer.
 
 **Open problems, ranked by demo risk**
-1. Patrick's 3D game and Abdo's body control aren't on `main` (no PRs). **Patrick, Abdo**
-2. The live site is behind `main` until the Vercel cap clears. **Greg** (check)
-3. Patrick's 3 slow tests turn `check` red after his merge. **Patrick**
-4. No Claude key, so the coach is always rules. **Greg**
-5. `?dev=pose` and the `?demo=1` preset wait for Abdo's and Patrick's merges. **Greg**, right after
+1. Body control isn't on `main` until `abdo-1` merges. **Abdo**
+2. The HUD cue word covers the obstacle it announces. **Lovable UI**
+3. No Claude key, so the coach is always rules. **Greg**
+4. `?dev=pose` waits for `abdo-1` (the change is ready). **Greg**, right after
 
-**Next for me:** review Patrick's and Abdo's PRs as they open (order `p1-workout` → `p2-game` → `abdo-1`), then wire `?dev=pose` and the demo preset.
+**Next for me:** review `abdo-1` when it opens, then wire `?dev=pose`.
 
 ## Log
 
@@ -98,12 +97,21 @@
 - Branches based on an older `main` still preview until they merge `main`.
 - Skipped: preloading the pose model on the landing screen. The model files and loader are only on `abdo-1`, and his loader already shares one model per page; worth measuring after his merge.
 
+### #24, #25 Patrick's workout and game (merged)
+- Reviewed both against the contracts and AGENTS.md: only his folders, no contract, package or config change, no cross-module imports. `main` + #24: 107 tests; + #25: 213 tests; build OK. His slow tests are fixed (all workout tests in about 0.3 s).
+- Checked `src/input`'s new key handling against the tutorial: it only gates `preventDefault` on a running round; moves still reach every listener, so the tutorial still ticks.
+
+### Demo preset and DEMO.md
+- `?demo=1` preselects `DEMO_CONFIG` (Full body, floor, 45 s) on the select screen, so the screen matches the level the workout module plays.
+- DEMO.md: Patrick's ghost-runner notes (one ghost per origin, per low-impact setting, and per input) and a station checklist line to rehearse on each tab.
+
 ## Requests
 
 _For things outside my folders: src/ui (Lovable Claude), src/pose (Abdo), src/game, src/input and src/workout (Patrick), packages, keys._
 
-- **Patrick and Abdo:** merge `main` into your branches before pushing again (`vercel.json` stops branch previews, which used up the deploy quota), then open your PRs. Patrick: fix the 3 slow tests in `src/workout/level.test.ts` first.
-- **Abdo:** optional, after merging: preload the pose model while the player is on the landing screen, if it makes calibration start faster on the demo laptop.
+- **Abdo:** merge `main` into `abdo-1`, then open the PR. Optional, after merging: preload the pose model on the landing screen if calibration starts slowly on the demo laptop. Look at Greg's clips on `greg-clips` (armsUp gives an extra reachRight; a squat before the jump in mixed).
+- **Lovable UI (Patrick's request 7):** the HUD cue word ("SQUAT" with its countdown ring, `hud-cue` at `top-[40%]` in `GameHud`) sits where the announced obstacle approaches and covers it and the free-lane chevron. Move it to the top band between score and timer, or make it much more transparent.
+- **Patrick (optional):** a low-graphics switch was requested; the select screen's slot now holds the camera switch and the auto quality ladder plus `?gfx=low` already cover it, so I'm leaving it out unless the demo laptop needs it.
 
 ## Needs Greg
 

@@ -33,6 +33,12 @@ Before the pitch, the Player's account should already hold a few real sessions f
 - Use the 45-second preset with a fixed `seed`, so the round is the same every time and the Player knows it.
 - It should show each move at least twice, end on a streak, and avoid the hardest combos.
 - For a judge's turn, use the same preset with the low-impact toggle offered up front.
+- Open the app with `?demo=1`: every round is the fixed 45 s demo level (seed 41492), and the select screen preselects it.
+
+**Ghost runner.** Players race their best run of the same level. Ghosts live in the browser, so:
+- **One ghost per origin.** The Vercel tab and the localhost backup tab each need their own rehearsal round, or the backup has no ghost.
+- **Low impact is a different level** (same seed, no hurdles) with its own ghost. Rehearse it once if judges will get it.
+- **One ghost per input.** Rehearse with the camera, since judges play with their body. A round where the Operator pressed K is never stored.
 
 ## Fallback ladder
 
@@ -49,6 +55,7 @@ Decide these in advance so nobody improvises in front of judges.
 - Demo laptop on power, brightness at maximum, notifications off, sleep disabled
 - Chrome only. The app open on the **Vercel URL**, because only Vercel serves the coach endpoint: under `npm run preview` every coach call silently becomes the rule-based coach
 - A second tab with `npm run preview` on localhost, opened with `?store=local`, as the offline backup. Camera permission granted on both origins
+- A camera rehearsal round of the demo level on each tab (Vercel and localhost; also low impact), so the ghost is there
 - One round played on the Vercel URL at the station, and `/api/coach` returned 200 in the network tab (the coach card came from Claude, not the rules)
 - Supabase anonymous sign-in rate limit raised (Auth → Rate Limits), and a fresh guest sign-in tested on the venue wifi
 - Laptop about 1 m high with the screen tilted back, facing a wall rather than the crowd
