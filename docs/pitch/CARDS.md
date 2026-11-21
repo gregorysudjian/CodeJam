@@ -96,4 +96,3 @@ The video never leaves the laptop.
 - **Words per card** (counted, at about 150 words a minute = 2.5 words a second): judges 1 · 16 words in 20 s, 2 · 20 in 15 s, 3 · 10 in the ~5 s between START and GO (calibration, then the 3 s fly-in), 5 · 24 in 28 s, 6 · 26 in 30 s, 7 · 11 in 15 s. Popular Vote 1 · 15 in 12 s, 3 · 21 in 31 s, 4 · 12 in 15 s, 5 · 8 in 10 s. Every card fits its slot. The round cards (judges 4, Popular Vote 2) are short calls spread over 45 s of play, not a speech.
 - **Never say "raise both arms" on the results screen** with the camera: both arms up starts the next round after 1.5 s.
 - **Card 6** is the only technical beat; if a judge asks more, hand to the Tech lead (DEMO.md "Likely judge questions").
-- **The QR** on the close slide must come from the live site (`https://codejam-jet.vercel.app/?kiosk=1`), not from the demo Mac: there it points to localhost (QA Q18).
