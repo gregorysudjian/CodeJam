@@ -228,6 +228,18 @@ describe('jump', () => {
     expect(types(still.events)).not.toContain('jump');
   });
 
+  test('with both arms up, the hips rising 0.2 T is not a jump; a real jump still is', () => {
+    // An overhead press lifts the hips; noise pushed that over the normal line (0.15 T).
+    const det = standingDetector();
+    let r = run(det, pose(), 10, 0);
+    r = run(det, pose({ left: 'up', right: 'up' }), 10, r.t);
+    r = run(det, pose({ left: 'up', right: 'up', dy: -0.2 * T }), 3, r.t);
+    expect(types(r.events)).not.toContain('jump');
+    expect(det.state.leftArmUp && det.state.rightArmUp).toBe(true);
+    r = run(det, pose({ left: 'up', right: 'up', dy: -0.5 * T }), 3, r.t);
+    expect(types(r.events)).toEqual(['jump']);
+  });
+
   test('arms swinging up during a jump do not fire armsUp', () => {
     const det = standingDetector();
     let r = run(det, pose(), 10, 0);

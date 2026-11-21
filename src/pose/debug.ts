@@ -16,6 +16,7 @@ const CLIP_LABELS = [
   'reach',
   'leaveFrame',
   'mixed',
+  'pauseX',
 ];
 
 const BUTTON_CSS =
@@ -88,6 +89,7 @@ export function mountPoseDebug(container: HTMLElement): () => void {
   // Move tally for the Phase 1 check ("each move 10 out of 10"): do 10 of a move, read the count.
   const MOVES: MoveType[] = ['sidestep', 'jump', 'squat', 'armsUp', 'reachLeft', 'reachRight'];
   const counts = new Map<MoveType, number>(MOVES.map((m) => [m, 0]));
+  let pauses = 0;
   const tally = document.createElement('div');
   tally.style.cssText =
     'padding:8px 10px;border-radius:6px;background:rgba(0,0,0,0.8);font:14px/1.6 monospace;white-space:pre';
@@ -95,19 +97,25 @@ export function mountPoseDebug(container: HTMLElement): () => void {
   const showTally = () => {
     tallyText.textContent =
       'MOVE TALLY (do 10 of each, expect 10)\n' +
-      MOVES.map((m) => `${m.padEnd(11)} ${String(counts.get(m)).padStart(3)}`).join('\n');
+      MOVES.map((m) => `${m.padEnd(11)} ${String(counts.get(m)).padStart(3)}`).join('\n') +
+      `\n${'pause X'.padEnd(11)} ${String(pauses).padStart(3)}`;
   };
   const reset = document.createElement('button');
   reset.textContent = 'Reset tally';
   reset.style.cssText = BUTTON_CSS + ';margin-top:6px;border:1px solid #888';
   reset.onclick = () => {
     MOVES.forEach((m) => counts.set(m, 0));
+    pauses = 0;
     showTally();
   };
   tally.append(tallyText, reset);
   showTally();
   const offMove = source.onMove((e) => {
     counts.set(e.type, (counts.get(e.type) ?? 0) + 1);
+    showTally();
+  });
+  const offGesture = source.onGesture(() => {
+    pauses++;
     showTally();
   });
 
@@ -160,6 +168,7 @@ export function mountPoseDebug(container: HTMLElement): () => void {
 
   return () => {
     offMove();
+    offGesture();
     offFrame();
     source.stop();
     overlay.hide();
