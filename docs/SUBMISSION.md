@@ -106,11 +106,11 @@ Real captures at 1920×1080 from `main` (bb17780 and bff0541), in [docs/submissi
 | [02-select](submission/02-select.jpg) | Workout select | Four workouts, floor/treadmill, 45/90/180 s, Low impact, Camera/Keyboard |
 | [03-tutorial](submission/03-tutorial.jpg) | "Try each move" | First of six moves (keyboard hint) |
 | [04-zone-city](submission/04-zone-city.jpg) | Play, city | Crate wall, ARMS UP cue, "EVEN VS GHOST" |
-| [05-zone-tunnel](submission/05-zone-tunnel.jpg) | Play, tunnel | Ghost runner beside the player, PERFECT, "+4 VS GHOST" |
-| [06-zone-bridge](submission/06-zone-bridge.jpg) | Play, bridge | Cable bridge, ghost in another lane, 13 combo |
+| [05-zone-tunnel](submission/05-zone-tunnel.jpg) | Play, tunnel | Silver ghost runner ("YOUR BEST") beside the player, PERFECT, "+4 VS GHOST" chip bottom right |
+| [06-zone-bridge](submission/06-zone-bridge.jpg) | Play, bridge | Cable bridge, ghost in another lane, 13 combo, "+7 VS GHOST" |
 | [07-zone-finale](submission/07-zone-finale.jpg) | Play, finale | Dusk sky, PERFECT, 21 combo, "+8 VS GHOST" |
 | [08-perfect](submission/08-perfect.jpg) | Play, tunnel | PERFECT and +200 right after a clear |
-| [09-milestone](submission/09-milestone.jpg) | Play, finale | "20 COMBO!" banner (the REACH cue sits just above it, QA Q15), shockwave ring, PERFECT, +150 ORB |
+| [09-milestone](submission/09-milestone.jpg) | Play, finale | "20 COMBO!" banner at bottom centre (clear of the REACH cue since #46), PERFECT, +150 ORB |
 | [10-results](submission/10-results.jpg) | Results | 4,750 at 100%, grade S, reps per move, coach card (RULES) with NEXT UP |
 | [11-dashboard](submission/11-dashboard.jpg) | Dashboard | Weekly ring, day streak, 7-day chart, reps by move, coach's pick |
 | [12-leaderboard](submission/12-leaderboard.jpg) | Leaderboard | Podium with filters |
