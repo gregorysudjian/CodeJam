@@ -126,6 +126,8 @@ the player didn't make, does it change when a state turns on, is every number in
 demo breakers, or for the lag proposal; otherwise a digest under 10 lines about hourly. Grade
 yourself hourly in §10.
 
+**Sat ~7 PM (Greg):** lag study decided, change nothing (DECISIONS 45 stands). The drift fix (b14c176) is on main untested on a real camera: judge A's `● drift` clip **first**; any false squat or lost tracking → fix or revert b14c176 at once and tell Greg. Referees are ready: `judge.test.ts` holds the expected outcome of every judge clip (drop `pose-<label>-*.json` into `fixtures/near/<label>.json`; the arms-out X goes to `near/pauseX-armsOut.json`), and `variants.test.ts` › extra clips takes Greg's 9 as `fixtures/extra/<label>-<count>-greg.json` (`leaveFrame-greg`, `mixed-greg` take no count; ≥ 8 in 10, never more, nothing else, pauseX exact). Codex's `bb495aa` (engine.ts: calibration rejects at once when stopped during the camera prompt) reviewed and accepted; it reaches main through Greg.
+
 **Waiting on A's camera session** (the 17-step list in the conversation; recorder buttons exist in
 `debug.ts`): app check, `pauseX` arms out, `xLow`, `xTouch`, `xOverhead`, `drift`, `fidget`,
 `handsOnHead`, `lowReach`, `turnStep`, `squatArmsOut`, `lagSidestep/Jump/Squat/ArmsUp/Reach`.
