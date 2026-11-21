@@ -67,7 +67,8 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
   const L = T.LANE_WIDTH;
   const W = 3 * L;
   const palettes = {} as Record<ColorKey, Palette>;
-  for (const k of Object.keys(T.MOVE_COLOR) as ColorKey[]) palettes[k] = makePalette(T.MOVE_COLOR[k]);
+  for (const k of Object.keys(T.MOVE_COLOR) as ColorKey[])
+    palettes[k] = makePalette(T.MOVE_COLOR[k]);
   const hitPalette = makePalette(T.COLOR_HIT);
 
   /* Shared geometry. */
@@ -110,7 +111,8 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
   const applyPalette = (root: THREE.Object3D, p: Palette): void => {
     root.traverse((o) => {
       const role = o.userData.role as Role | undefined;
-      if (role && (o instanceof THREE.Mesh || o instanceof THREE.LineSegments)) o.material = p[role];
+      if (role && (o instanceof THREE.Mesh || o instanceof THREE.LineSegments))
+        o.material = p[role];
     });
   };
 
@@ -220,7 +222,12 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       new THREE.Vector3(-L * 0.4, h * 0.4, 0.41),
       new THREE.Vector3(L * 0.4, -h * 0.4, 0.41),
     ]);
-    const pieces: { obj: THREE.Group; home: THREE.Vector3; vel: THREE.Vector3; spin: THREE.Vector3 }[] = [];
+    const pieces: {
+      obj: THREE.Group;
+      home: THREE.Vector3;
+      vel: THREE.Vector3;
+      spin: THREE.Vector3;
+    }[] = [];
     for (let row = 0; row < 2; row++) {
       for (let lane = -1; lane <= 1; lane++) {
         const obj = neonBox(L * 0.92, h - 0.08, 0.8);
@@ -283,7 +290,9 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
   function buildOrb(): ObstacleView {
     const root = new THREE.Group();
     const coreGeo = new THREE.IcosahedronGeometry(T.ORB_RADIUS, 1);
-    const shellEdges = new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(T.ORB_RADIUS * 1.55, 0));
+    const shellEdges = new THREE.EdgesGeometry(
+      new THREE.IcosahedronGeometry(T.ORB_RADIUS * 1.55, 0),
+    );
     const haloGeo = new THREE.TorusGeometry(T.ORB_RADIUS * 2, 0.03, 6, 40);
     const pillarGeo = new THREE.CylinderGeometry(0.035, 0.035, 1, 6);
     const orbs = [-1, 0, 1].map((lane) => {
@@ -359,7 +368,13 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     crate: buildCrate,
     orb: buildOrb,
   };
-  const free: Record<ObstacleKind, ObstacleView[]> = { block: [], hurdle: [], beam: [], crate: [], orb: [] };
+  const free: Record<ObstacleKind, ObstacleView[]> = {
+    block: [],
+    hurdle: [],
+    beam: [],
+    crate: [],
+    orb: [],
+  };
   // Warm the pool so the first waves never build geometry mid-round.
   for (const kind of Object.keys(builders) as ObstacleKind[]) {
     for (let i = 0; i < T.POOL_WARM; i++) free[kind].push(builders[kind]());

@@ -9,6 +9,12 @@ export const CUE_LEAD_SEC = 2.0; // 'cue' fires this long before a wave arrives
 /* ── Loop ── */
 export const MAX_DT_SEC = 0.05; // clamp: a stall or background tab never skips a window
 export const MAX_PIXEL_RATIO = 2;
+// Low graphics turns on by itself when the round runs below AUTO_LOW_GFX_FPS, averaged over
+// AUTO_LOW_GFX_WINDOW_SEC after the first AUTO_LOW_GFX_SKIP_SEC. `?gfx=low` forces it on,
+// `?gfx=high` keeps it off (also localStorage 'game.gfx').
+export const AUTO_LOW_GFX_FPS = 45;
+export const AUTO_LOW_GFX_WINDOW_SEC = 3;
+export const AUTO_LOW_GFX_SKIP_SEC = 1;
 
 /* ── Speed and distance (world units: 1 ≈ 1 m) ── */
 export const SPEED_MIN = 12; // units per second at intensity 0
@@ -88,3 +94,7 @@ export const SMASH_SEC = 0.7; // crate fragments / orb collect animation
 export const BURST_SEC = 0.45;
 export const BURST_POOL = 10;
 export const POOL_WARM = 4; // views of each kind built up front
+
+/* ── Sound ── */
+export const AUDIO_VOLUME = 0.35;
+export const AUDIO_BASE_HZ = 392; // G4; each move is a fixed interval above or below

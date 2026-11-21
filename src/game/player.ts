@@ -34,7 +34,11 @@ export function createPlayer(): Player {
     emissive: new THREE.Color(T.COLOR_HIT),
     emissiveIntensity: 0,
   });
-  const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.5, metalness: 0.4 });
+  const darkMat = new THREE.MeshStandardMaterial({
+    color: 0x1a2230,
+    roughness: 0.5,
+    metalness: 0.4,
+  });
   const limeMat = new THREE.MeshBasicMaterial({ color: neon(T.COLOR_LIME) });
 
   const torso = new THREE.Mesh(new THREE.CapsuleGeometry(R, L, 6, 18), suitMat);
@@ -82,13 +86,22 @@ export function createPlayer(): Player {
   const ground = new THREE.Group();
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(0.55, 0.64, 40),
-    new THREE.MeshBasicMaterial({ color: neon(T.COLOR_LIME, T.NEON_BOOST * 0.7), transparent: true, opacity: 0.9 }),
+    new THREE.MeshBasicMaterial({
+      color: neon(T.COLOR_LIME, T.NEON_BOOST * 0.7),
+      transparent: true,
+      opacity: 0.9,
+    }),
   );
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.02;
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.55, 32),
-    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false }),
+    new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+    }),
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.015;

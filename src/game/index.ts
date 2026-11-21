@@ -1,4 +1,5 @@
 import type { Game, GameEvent, InputSource, InputState, Level, Wave } from '@/contracts';
+import { createGameAudio } from './audio';
 import { createJudge, requirementMet, type Judge } from './judge';
 import { createObstacles, type ObstacleView } from './obstacles';
 import { createPlayer } from './player';
@@ -25,6 +26,14 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   const player = createPlayer();
   stage.scene.add(player.root);
   const obstacles = createObstacles(stage.scene);
+  const audio = createGameAudio();
+
+  // Graphics: '?gfx=low' forces low, '?gfx=high' keeps full, otherwise drop to low on a slow frame rate.
+  const gfx = readGfxSetting();
+  if (gfx === 'low') stage.setLowGraphics(true);
+  let autoGfx = gfx === 'auto';
+  let fpsFrames = 0;
+  let fpsTime = 0;
 
   const listeners = new Set<(e: GameEvent) => void>();
   const emit = (e: GameEvent): void => {
@@ -48,6 +57,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   let nextCue = 0;
   let nextSpawn = 0;
   const active: Active[] = [];
+  const engagedCrates = new WeakSet<Judge>(); // crates already smashed (one sound each)
 
   /** Bring objects into view as they come within VIEW_DISTANCE. */
   function spawnAhead(distance: number): void {
@@ -74,6 +84,10 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         elapsed <= judge.t + T.WINDOW_AFTER_SEC &&
         requirementMet(judge.spawn, mode, state)
       ) {
+        if (judge.spawn.kind === 'crate' && !engagedCrates.has(judge)) {
+          engagedCrates.add(judge);
+          audio.smash();
+        }
         view.engage(); // smash on contact; a long crate is still judged to the end of its hold
       }
       const v = judge.sample(elapsed, state);
@@ -83,14 +97,18 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       if (v === 'cleared') {
         view.engage();
         obstacles.burst(player.x, spawn.requires);
+        if (spawn.kind === 'crate' && !engagedCrates.has(judge)) audio.smash();
+        audio.cleared(spawn.requires);
         emit({ type: 'cleared', spawn, t: now });
       } else if (v === 'collected') {
         view.engage();
         obstacles.burst(player.x, spawn.requires);
+        audio.collected();
         emit({ type: 'collected', spawn, t: now });
       } else if (v === 'hit') {
         player.flashHit();
         stage.shake();
+        audio.hit();
         emit({ type: 'hit', spawn, t: now });
       }
       // 'missed' orbs fire no event (contract).
@@ -101,6 +119,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     if (destroyed) return;
     raf = requestAnimationFrame(frame);
     const dt = Math.min(Math.max(0, (now - last) / 1000), T.MAX_DT_SEC);
+    const prevFrame = last;
     last = now;
 
     const state = input.getState(); // polled once per frame
@@ -116,10 +135,28 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     }
 
     const running = started && !finished && pauseReason === null;
+    if (running && autoGfx) {
+      // Measure with the real frame time, not the clamped one.
+      fpsTime += (now - prevFrame) / 1000;
+      fpsFrames++;
+      if (fpsTime > T.AUTO_LOW_GFX_SKIP_SEC + T.AUTO_LOW_GFX_WINDOW_SEC) {
+        const fps = fpsFrames / fpsTime;
+        if (fps < T.AUTO_LOW_GFX_FPS) {
+          stage.setLowGraphics(true);
+          autoGfx = false;
+          console.info(`[game] ${fps.toFixed(0)} fps: switched to low graphics`);
+        }
+        fpsTime = T.AUTO_LOW_GFX_SKIP_SEC; // start a fresh window
+        fpsFrames = 0;
+      } else if (fpsTime < T.AUTO_LOW_GFX_SKIP_SEC) {
+        fpsFrames = 0; // ignore start-up frames
+      }
+    }
     if (running) {
       elapsed = Math.min(durationSec, elapsed + dt);
       while (nextCue < waves.length && waves[nextCue]!.t - elapsed <= T.CUE_LEAD_SEC) {
         const wave = waves[nextCue++]!;
+        if (wave.spawns[0]) audio.cue(wave.spawns[0].requires);
         emit({ type: 'cue', wave, inSec: Math.max(0, wave.t - elapsed) });
       }
       judgeAll(now, state);
@@ -158,6 +195,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       if (started || destroyed) return;
       started = true;
       last = performance.now();
+      audio.resume();
     },
     pause() {
       if (!started || finished || pauseReason) return;
@@ -174,6 +212,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       destroyed = true;
       cancelAnimationFrame(raf);
       listeners.clear();
+      audio.dispose();
       stage.dispose();
     },
     getElapsedSec: () => elapsed,
@@ -184,4 +223,15 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       };
     },
   };
+}
+
+function readGfxSetting(): 'low' | 'high' | 'auto' {
+  try {
+    const v =
+      new URLSearchParams(window.location.search).get('gfx') ??
+      window.localStorage.getItem('game.gfx');
+    return v === 'low' || v === 'high' ? v : 'auto';
+  } catch {
+    return 'auto';
+  }
 }

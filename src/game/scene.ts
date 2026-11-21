@@ -16,6 +16,8 @@ export interface Stage {
   /** Scroll the world to `distance` and place the camera behind `playerX`. */
   update(distance: number, playerX: number, dt: number): void;
   shake(): void;
+  /** Low graphics: no bloom, pixel ratio 1, no skyline. For weak laptops. */
+  setLowGraphics(on: boolean): void;
   render(): void;
   dispose(): void;
 }
@@ -56,7 +58,11 @@ function glowTexture(): THREE.CanvasTexture {
 const wrap = (x: number, m: number): number => ((x % m) + m) % m;
 
 export function createStage(canvas: HTMLCanvasElement): Stage {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !T.BLOOM_ENABLED, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: !T.BLOOM_ENABLED,
+    powerPreference: 'high-performance',
+  });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO));
   renderer.setClearColor(T.COLOR_BG, 1);
 
@@ -91,7 +97,12 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   // The track itself is a slightly lit strip over the grid.
   const trackStrip = new THREE.Mesh(
     new THREE.PlaneGeometry(3 * T.LANE_WIDTH, T.TRACK_LENGTH),
-    new THREE.MeshBasicMaterial({ color: T.COLOR_TRACK, transparent: true, opacity: 0.55, depthWrite: false }),
+    new THREE.MeshBasicMaterial({
+      color: T.COLOR_TRACK,
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+    }),
   );
   trackStrip.rotation.x = -Math.PI / 2;
   trackStrip.position.set(0, 0.004, floor.position.z);
@@ -119,7 +130,11 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   const postGeo = new THREE.BoxGeometry(0.1, T.ARCH_HEIGHT, 0.1);
   const barGeo = new THREE.BoxGeometry(archHalf * 2 + 0.1, 0.1, 0.1);
   const archMat = new THREE.MeshBasicMaterial({ color: neon(T.COLOR_LIME, T.NEON_BOOST * 0.4) });
-  const archDimMat = new THREE.MeshStandardMaterial({ color: 0x141b26, roughness: 0.6, metalness: 0.4 });
+  const archDimMat = new THREE.MeshStandardMaterial({
+    color: 0x141b26,
+    roughness: 0.6,
+    metalness: 0.4,
+  });
   const plinthGeo = new THREE.BoxGeometry(0.7, 0.5, 0.7);
   const arches: THREE.Group[] = [];
   for (let i = 0; i < T.ARCH_COUNT; i++) {
@@ -142,10 +157,18 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   const towerCount = T.TOWER_COUNT;
   const towerSpan = T.TRACK_LENGTH;
   const towerGeo = new THREE.BoxGeometry(1, 1, 1);
-  const towerMat = new THREE.MeshStandardMaterial({ color: 0x0e1420, roughness: 0.8, metalness: 0.2 });
+  const towerMat = new THREE.MeshStandardMaterial({
+    color: 0x0e1420,
+    roughness: 0.8,
+    metalness: 0.2,
+  });
   const capGeo = new THREE.BoxGeometry(1.04, 0.12, 1.04);
-  const capMat = new THREE.MeshBasicMaterial({ color: neon(T.MOVE_COLOR.sidestep, T.NEON_BOOST * 0.5) });
-  const capMat2 = new THREE.MeshBasicMaterial({ color: neon(T.MOVE_COLOR.armsUp, T.NEON_BOOST * 0.5) });
+  const capMat = new THREE.MeshBasicMaterial({
+    color: neon(T.MOVE_COLOR.sidestep, T.NEON_BOOST * 0.5),
+  });
+  const capMat2 = new THREE.MeshBasicMaterial({
+    color: neon(T.MOVE_COLOR.armsUp, T.NEON_BOOST * 0.5),
+  });
   const towers = new THREE.InstancedMesh(towerGeo, towerMat, towerCount);
   const capsA = new THREE.InstancedMesh(capGeo, capMat, towerCount);
   const capsB = new THREE.InstancedMesh(capGeo, capMat2, towerCount);
@@ -189,16 +212,22 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   if (T.BLOOM_ENABLED) {
     composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-    bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), T.BLOOM_STRENGTH, T.BLOOM_RADIUS, T.BLOOM_THRESHOLD);
+    bloom = new UnrealBloomPass(
+      new THREE.Vector2(256, 256),
+      T.BLOOM_STRENGTH,
+      T.BLOOM_RADIUS,
+      T.BLOOM_THRESHOLD,
+    );
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
   }
 
+  let low = false;
   const resize = (): void => {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     if (w === 0 || h === 0) return;
-    const pr = Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
+    const pr = low ? 1 : Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
     renderer.setPixelRatio(pr);
     renderer.setSize(w, h, false);
     composer?.setPixelRatio(pr);
@@ -261,14 +290,24 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     shake() {
       if (!reduceMotion) shakeAmount = T.SHAKE_AMPLITUDE;
     },
+    setLowGraphics(on) {
+      if (on === low) return;
+      low = on;
+      for (const m of [towers, capsA, capsB]) m.visible = !on;
+      resize();
+    },
     render() {
-      if (composer) composer.render();
+      if (composer && !low) composer.render();
       else renderer.render(scene, camera);
     },
     dispose() {
       ro.disconnect();
       scene.traverse((o) => {
-        if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments || o instanceof THREE.InstancedMesh) {
+        if (
+          o instanceof THREE.Mesh ||
+          o instanceof THREE.LineSegments ||
+          o instanceof THREE.InstancedMesh
+        ) {
           o.geometry.dispose();
           const mats: THREE.Material[] = Array.isArray(o.material) ? o.material : [o.material];
           for (const m of mats) {
