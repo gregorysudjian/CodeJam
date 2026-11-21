@@ -160,7 +160,11 @@ export function mountPoseDebug(container: HTMLElement): () => void {
 
   source
     .start()
-    .then(() => (status.textContent = 'Camera on. Press "calibrate floor" and stand still.'))
+    .then(
+      () =>
+        (status.textContent =
+          'Camera on. Stand about 1.5 m back (head and knees in view),\nthen press "calibrate floor" and hold still.'),
+    )
     .catch((err: unknown) => {
       console.error('[pose] debug view failed to start', err);
       status.textContent = `Error: ${err instanceof Error ? err.message : String(err)}`;
