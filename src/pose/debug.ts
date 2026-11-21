@@ -1,7 +1,7 @@
 // Owner: A. The ?dev=pose page: the real pose input with its camera, skeleton, debug overlay
 // (always shown), calibration buttons and the clip recorder for test fixtures.
 // Plain DOM, no React, so nothing re-renders per frame (AGENTS.md rule 6).
-import type { PlayMode } from '@/contracts';
+import type { MoveType, PlayMode } from '@/contracts';
 import { createPoseEngine } from './engine';
 import { downloadRecording, type RecordedFrame, toRecordedPose } from './recording';
 import { RECORD_COUNTDOWN_MS, RECORD_DURATION_MS } from './tuning';
@@ -85,10 +85,39 @@ export function mountPoseDebug(container: HTMLElement): () => void {
   });
   bar.append(...recButtons);
 
+  // Move tally for the Phase 1 check ("each move 10 out of 10"): do 10 of a move, read the count.
+  const MOVES: MoveType[] = ['sidestep', 'jump', 'squat', 'armsUp', 'reachLeft', 'reachRight'];
+  const counts = new Map<MoveType, number>(MOVES.map((m) => [m, 0]));
+  const tally = document.createElement('div');
+  tally.style.cssText =
+    'padding:8px 10px;border-radius:6px;background:rgba(0,0,0,0.8);font:14px/1.6 monospace;white-space:pre';
+  const tallyText = document.createElement('div');
+  const showTally = () => {
+    tallyText.textContent =
+      'MOVE TALLY (do 10 of each, expect 10)\n' +
+      MOVES.map((m) => `${m.padEnd(11)} ${String(counts.get(m)).padStart(3)}`).join('\n');
+  };
+  const reset = document.createElement('button');
+  reset.textContent = 'Reset tally';
+  reset.style.cssText = BUTTON_CSS + ';margin-top:6px;border:1px solid #888';
+  reset.onclick = () => {
+    MOVES.forEach((m) => counts.set(m, 0));
+    showTally();
+  };
+  tally.append(tallyText, reset);
+  showTally();
+  const offMove = source.onMove((e) => {
+    counts.set(e.type, (counts.get(e.type) ?? 0) + 1);
+    showTally();
+  });
+
+  const side = document.createElement('div');
+  side.style.cssText = 'display:flex;flex-direction:column;gap:12px';
   stage.append(video, canvas, status, bar);
-  page.append(stage);
+  page.append(stage, side);
   container.append(page);
-  overlay.show(page);
+  overlay.show(side);
+  side.append(tally);
 
   const offFrame = engine.onFrame(() => {
     if (ctx) {
@@ -125,6 +154,7 @@ export function mountPoseDebug(container: HTMLElement): () => void {
     });
 
   return () => {
+    offMove();
     offFrame();
     source.stop();
     overlay.hide();
