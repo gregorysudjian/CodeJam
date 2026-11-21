@@ -1,4 +1,5 @@
 import type { InputState, Lane, Level } from '@/contracts';
+import { GHOST_ACCENT } from './look';
 import * as T from './tuning';
 
 /**
@@ -39,7 +40,8 @@ export type GhostOutcome = 'beaten' | 'lost' | 'tie' | 'saved';
 export function raceLabel(lead: number): { text: string; color: number } {
   if (lead > 0) return { text: `+${lead} VS GHOST`, color: T.COLOR_LIME };
   if (lead < 0) return { text: `\u2212${-lead} VS GHOST`, color: T.MOVE_COLOR.armsUp };
-  return { text: 'EVEN VS GHOST', color: T.GHOST_ACCENT };
+  // The ghost's own silver (look.ts), not the blocks' cyan.
+  return { text: 'EVEN VS GHOST', color: GHOST_ACCENT };
 }
 
 /**
@@ -55,8 +57,8 @@ export function racePulse(sinceChange: number): number {
 export const OUTCOME_LABEL: Record<GhostOutcome, { text: string; color: number }> = {
   beaten: { text: 'GHOST BEATEN', color: T.COLOR_LIME },
   lost: { text: 'GHOST WINS', color: T.MOVE_COLOR.armsUp },
-  tie: { text: 'TIE', color: T.GHOST_ACCENT },
-  saved: { text: 'GHOST SAVED', color: T.GHOST_ACCENT },
+  tie: { text: 'TIE', color: GHOST_ACCENT },
+  saved: { text: 'GHOST SAVED', color: GHOST_ACCENT },
 };
 
 /* ── Encoding: 6 bits per sample, exactly one base64 character ── */

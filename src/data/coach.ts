@@ -93,10 +93,15 @@ export function ruleBasedAdvice(
       : difficulty < base
         ? 'easing off a little'
         : 'keeping the same level';
+  // Praise only what earned it: a judge who stood still all round is not told "Nice work".
+  const [opener, closer] =
+    latest.accuracy >= ACCURACY_RAISE_ABOVE
+      ? ['Nice work', 'That was a strong round.']
+      : latest.accuracy >= ACCURACY_LOWER_BELOW
+        ? ['Good round', 'Every round makes the next one easier.']
+        : ['Round done', 'Start each move as soon as its cue appears, and the points follow.'];
   return {
-    recap: `Nice work, ${name}: ${latest.score} points at ${pct}% accuracy, with a best streak of ${latest.bestStreak}. ${
-      pct >= 85 ? 'That was a strong round.' : 'Every round makes the next one easier.'
-    }`,
+    recap: `${opener}, ${name}: ${latest.score} points at ${pct}% accuracy, with a best streak of ${latest.bestStreak}. ${closer}`,
     tip: worst ? TIPS[worst] : 'Clean round! Try a longer session to build endurance.',
     next: { workout, mode, durationSec, difficulty },
     reason: `You have played ${WORKOUT_NAMES[workout]} the least this week, so we are ${trend}.`,

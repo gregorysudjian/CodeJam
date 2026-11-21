@@ -1,4 +1,4 @@
-# Handoff: Patrick's game, input and workout (Sat Nov 21, about 4:30 PM)
+# Handoff: Patrick's game, input and workout (Sat Nov 21, about 6 PM)
 
 For the next AI session working with Patrick. Read this, then `AGENTS.md`, then `docs/CONTRACTS.md`. Hard code freeze: **Sunday 12:00 PM Montreal**.
 
@@ -14,15 +14,15 @@ A webcam fitness runner for CodeJam 16. The player's body steers a 3-lane runner
 
 ## Rules that bite
 
-- Edit only Patrick's three folders. Never edit `src/contracts`, `package.json`, the lockfile or config. Ask before adding a package. If something outside is needed, write a request for Greg or Abdo.
+- Edit only Patrick's three folders. Since #46 the second laptop owns the look and sound files: `look.ts`, `overlay.ts`, `view2d.ts`, `scene.ts`, `audio.ts`, `music.ts`. This laptop keeps timing, levels, latency and scoring. Touch the other side's files only after Patrick has messaged Greg. Never edit `src/contracts`, `package.json`, the lockfile or config. Ask before adding a package. If something outside is needed, write a request for Greg or Abdo.
 - `npm run check` (types, lint, tests, build) must pass before any commit or push. Check its real exit code: write the output to a file, then test the code. Never pipe it through `grep`.
-- Commit small, with clear messages. Push only to `p5-game`. Only `main` deploys, and deploys are rationed, so there is **one PR at the end**.
+- Commit small, with clear messages. Push only to `p5-game`, then tell Patrick "ready": Greg opens and merges the PR (`gh` is not logged in on this Mac). Only `main` deploys, and deploys are rationed, so batch follow-ups into one small PR.
 - Work in **`~/CodeJam`**, a clean clone outside iCloud. It has a gitignored `.env.local` (Supabase URL and anon key); never commit it. `/Users/patrick/Desktop/CodeJam` is in iCloud: never switch branches there, it creates "name 2" copies. `src/game/hygiene.test.ts` fails on them.
 - Every tunable number lives in a `tuning.ts`. Pose data never leaves the device.
 
 ## Where the branches are
 
-- **`p5-game` is the active branch:** `main` (merged in up to #45, 753 tests pass) plus:
+- **`p5-game` is the active branch.** It was merged into `main` as **#47** (757 tests). It now equals `main` plus docs, and the camera-session follow-up goes on it. What #47 brought:
   - `?debug=timing` hit report: after each round, each hit or missed orb with a cause (late or early by X s, not seen, hold dropped, let go), plus a `VISUAL_LEAD_SEC.pose = { … }` line to paste into `tuning.ts`;
   - a ghost status line at each round start, and graphics that start at the level an earlier round reached;
   - the quality ladder's first step at 3 s, before the first obstacle;
@@ -32,7 +32,7 @@ A webcam fitness runner for CodeJam 16. The player's body steers a 3-lane runner
   - `src/workout/README.md`: the leaderboard-fairness numbers (longer rounds always win), which led to Greg's fix in #45 (one board per round length; **no scoring change without his OK**), and a physical-load audit.
 - **`p3-game` is superseded.** It holds a parallel version of the game-feel polish that `main` already has from another session. Do not merge it.
 - `main` already has the game-feel pass (PR #38): runner rig, city / tunnel / bridge world, PERFECT / GOOD / LATE, music, three looks per obstacle, intro.
-- **`p6-look`** lives only on Patrick's second laptop (look and sound: ghost readability, hit effects, the banners vs the HUD cue, QA Q15). It waits for `p5-game` to merge, so don't touch those visuals here.
+- **`p6-look`** (the second laptop) was merged as #46: ghost restyle, banners bottom centre, race chip bottom right (QA Q15 fixed, checked in Chrome), sound mix in `look.ts`.
 
 ## What is left, in order
 
@@ -58,14 +58,14 @@ A webcam fitness runner for CodeJam 16. The player's body steers a 3-lane runner
    - **Tiring combos:** tune `src/workout/tuning.ts`. Keep `src/workout/demo.test.ts` passing.
      - Changing the generator or `DEMO_SEED` makes new levels. That invalidates ghosts, and Greg's `docs/DEMO.md` names the seed: tell Greg.
    - Then `npm run check`, commit, and push `p5-game`.
-3. **Ghost rehearsals, last** (Patrick):
-   - Play the demo level once in normal and once in low impact, with the camera, on exactly `http://localhost:5173/?demo=1`.
+3. **Ghost rehearsals, right after the camera session** (Patrick). A ghost depends only on the level, so look, sound or lead changes don't invalidate it. Only a demo-level change would, and that is pinned.
+   - Play the demo level once in normal and once in low impact, with the camera, in his normal Chrome (not a test profile) on exactly `http://localhost:5173/?demo=1`.
    - Ghosts live in that origin's browser storage, so the port and host must not change.
    - Each round start logs `[game] ghost: racing …`.
-4. **The PR:** `p5-game` into `main`, before the freeze.
-   - It must include the FPS he measured (game and pose) and what was tested with the camera.
-   - Merge `main` in first if it moved; it merged cleanly so far.
-   - Greg merges it.
+4. **The follow-up PR** (the pasted leads and lags, any tuning, docs), before 10 AM Sunday.
+   - Merge `main` in first if it moved, run `npm run check`, push `p5-game`, and tell Patrick "ready".
+   - The description must include the FPS he measured (game and pose) and what was tested with the camera.
+   - Greg opens and merges it.
 
 ## How to check your work
 
@@ -77,5 +77,6 @@ A webcam fitness runner for CodeJam 16. The player's body steers a 3-lane runner
   - Down held: squat;
   - W held: both arms;
   - Q or E held: one arm.
-- Scripted rounds of the demo level should give 16 cleared, 7 collected, 0 hits when played perfectly.
+- Scripted rounds of the demo level should give 16 cleared, 7 collected, 0 hits when played perfectly (4,750 points, best streak 23).
+- Browser edge cases and cold-start numbers (Sat ~6 PM): `src/game/README.md`, the table after "Checked after merging #45 and #46".
 - More detail: `src/game/README.md` (camera session plan, latency compensation, ghost), `src/workout/README.md`, `src/pose/HANDOFF.md` (Abdo's side).
