@@ -58,7 +58,11 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     ghostStore?.clear();
   }
   // One ghost per level and input (the input at the start of the round): see ghostKey.
-  const fingerprint = ghostKey(level, input.kind);
+  const startKind = input.kind;
+  const fingerprint = ghostKey(level, startKind);
+  // K switched the input during the round: neither camera nor keyboard play, so the run is
+  // never stored as a ghost (a half-keyboard run would be unbeatable for camera players).
+  let mixedInput = false;
   const ghost = ghostStore?.load(fingerprint) ?? null;
   const recorder = ghostStore ? createGhostRecorder() : null;
   const ghostPose = neutralPose(); // reused every frame
@@ -81,21 +85,22 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         result: { ...result },
         savedAt: Date.now(),
       };
-      const saved = ghostStore.saveIfBetter(run);
+      const saved = !mixedInput && ghostStore.saveIfBetter(run);
       const outcome = finishOutcome(ghost?.result ?? null, result, saved);
       if (outcome) view?.showGhostOutcome(outcome);
       const told = (r: GhostResult) => `${r.cleared + r.collected} cleared, ${r.hit} hits`;
       console.info(
         `[game] ghost: ${outcome ?? 'not saved'}. This run ${told(result)}` +
           (ghost ? `; ghost ${told(ghost.result)}` : '') +
-          (saved && ghost ? '. New ghost saved.' : ''),
+          (saved && ghost ? '. New ghost saved.' : '') +
+          (mixedInput ? '. Input switched mid-round: not stored as a ghost.' : ''),
       );
     }
     if (probe) {
       const report = probe.report();
       (window as unknown as { __gameTiming?: unknown }).__gameTiming = report;
       console.info(
-        `[game] move timing, input: ${input.kind} (negative = early; window -0.35..+0.15 s)`,
+        `[game] move timing, input: ${mixedInput ? 'switched mid-round (do not use this table)' : input.kind} (negative = early; window -0.35..+0.15 s)`,
       );
       console.table(report);
     }
@@ -130,6 +135,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     last = now;
     const state = input.getState(); // polled once per frame
     currentState = state;
+    if (!core.finished() && input.kind !== startKind) mixedInput = true;
     core.step(realDt, state, now);
     race?.syncTo(core.elapsed());
     if (recorder && core.started() && !core.finished() && core.pauseReason() === null)
