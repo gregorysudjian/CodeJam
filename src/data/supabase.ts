@@ -281,8 +281,8 @@ export function createSupabaseStore(
     async getLeaderboard(workout, mode, durationSec, limit = 10) {
       const key = KEYS.board(workout, mode, durationSec);
       try {
-        // The leaderboard is for signed-in players only (CONTRACTS.md); before sign-in, use the cache.
-        if (!(await userId())) return readJson<LeaderboardEntry[]>(kv, key, []);
+        // Also before sign-in: migration 0005 lets anon read the view (a visitor who scans the QR
+        // code is not signed in). Until it is applied, that read is refused and the cache answers.
         const { data, error } = await withTimeout(
           sb
             .from('leaderboard')

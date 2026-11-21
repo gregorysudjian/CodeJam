@@ -193,12 +193,18 @@ results.push(other.ok && other.rows.length === 0);
 console.log(
   `${other.ok && other.rows.length === 0 ? 'PASS' : 'FAIL'} B sees none of A's sessions (${other.rows?.length})`,
 );
+// 0005 opens the board (and only the board) to visitors who are not signed in.
+const anonBoard = await as('anon', null, 'select * from public.leaderboard');
+expect('anon reads leaderboard', anonBoard, last >= 5 ? 'ok' : 'denied');
+if (anonBoard.ok)
+  console.log('     anon sees columns:', Object.keys(anonBoard.rows[0] ?? {}).join(', '));
+expect('anon reads sessions', await as('anon', null, 'select * from public.sessions'), 'denied');
+expect('anon reads profiles', await as('anon', null, 'select * from public.profiles'), 'denied');
 expect(
-  'anon reads leaderboard',
-  await as('anon', null, 'select * from public.leaderboard'),
+  'anon writes the board',
+  await as('anon', null, `update public.leaderboard set score = 1`),
   'denied',
 );
-expect('anon reads sessions', await as('anon', null, 'select * from public.sessions'), 'denied');
 expect(
   'authenticated calls the trigger fn',
   await as('authenticated', A, 'select public.sessions_clamp_created_at()'),

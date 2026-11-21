@@ -45,6 +45,40 @@ with 100 guests a collision is likely, and today a failed profile insert drops t
 local store with no explanation. Fixing it needs a client retry with a suffix. Proposed for later
 if time allows; judges see names only on the board.
 
+## Live site end to end (Saturday 6:15 PM, headless Chrome 1280×800, keyboard)
+
+Players: `QA-j2-e2e6`, `QA-j2-off1`, `QA-j2-fast3g`, `QA-j2-slow3g`, plus probe guests
+`QA-j2-e2e2` to `e2e5` (no rounds). **One guest kept its default name** (`Guest-NNNN`, user id
+starting `17c6592d`, no rounds): include it in the cleanup.
+
+| Check | Result |
+| --- | --- |
+| First visit, guest sign-in, profile | OK: signup 200, profile insert 201, name patch 200 |
+| A 45 s round saved | OK: one `POST sessions` 201, results show rank (#3), personal best, coach card |
+| Coach | `/api/coach` 503 "coach not configured" in about 0.4 s; the rules card shows at once |
+| Dashboard | OK: round, reps, minutes, coach's pick |
+| Leaderboard per round length | OK: 45 s board with both test players and "YOU"; 90 s and 180 s switch |
+| Returning player (reload) | OK: "Continue as QA-J2-OFF1", landing shows today's top 3 |
+| `?kiosk=1` | OK: board, "Beat 1,800 to take the crown"; the game tab still offers its own player |
+| Two browsers, two players | OK: both on the same 45 s board |
+| Network cut mid-round, back after results | OK: offline banner; queue 1; on reconnect one `POST` 201, queue 0, no duplicate |
+| **F1: Leaderboard before sign-in** | **Empty: "Be the first on the board" over a full board, and no top 3 on the landing.** The store only read the board when signed in. Every QR visitor sees this. Fix: PR j2-board (migration 0005 + store). |
+
+**Slow network** (Chrome presets, cold, then reload):
+
+| | First load | Reload | Guest sign-in | Profile save | Start to tutorial |
+| --- | --- | --- | --- | --- | --- |
+| Fast 3G | 2.7 s, 253 KB | 1.2 s | 2.4 s | 1.6 s | 1.0 s (game chunk prefetched on select) |
+| Slow 3G | 9.3 s | 4.2 s | 6.4 s | 4.4 s | 0.5 s |
+
+**Caching** (`curl -D -`): everything, hashed `/assets/*` included, is served with
+`Cache-Control: public, max-age=0, must-revalidate`. A second visit revalidates each file (304, one
+round trip each). The camera path downloads the model (5.0 MB compressed) and the WASM (4.0 MB),
+and revalidates them on every visit. Recommended `vercel.json` headers (Greg's Claude):
+`/assets/(.*)` → `public, max-age=31536000, immutable` (file names are content hashes);
+`/models/(.*)` and `/mediapipe/(.*)` → `public, max-age=86400, stale-while-revalidate=604800`
+(fixed names, so not immutable).
+
 ## Self-grade
 
 - **Saturday 6:30 PM.** A visitor could have put 999,999 on any board from DevTools in two
