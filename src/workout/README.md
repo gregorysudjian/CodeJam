@@ -69,6 +69,26 @@ The board (`public.leaderboard`, `supabase/migrations/0001_init.sql`) keeps each
 
 Saved sessions keep their scores, and nothing in the formula changes. Until then: on the demo laptop, play only 45 s rounds, so the board compares like with like.
 
+## Physical load: what an unwarmed judge in jeans gets
+
+From the generator, 30 seeds per row. "Big moves" are squats, jumps and crates.
+
+| Workout (floor unless noted), difficulty 0.5 → 1 | Squats / min | Jumps / min | Crates / min | Held s / min | Longest hold | Most big moves in 10 s |
+| --- | --- | --- | --- | --- | --- | --- |
+| Legs | 8.6–9.7 → 9.9–11.2 | 8.6–8.8 → 9.9–10.0 | ~1.5 | 5.5–6.1 → 7.5–8.6 | 2.3 → 3.0 s | 7 → 8 |
+| Full body | 5.0–6.1 → 6.0–7.1 | 5.8–6.4 → 6.9–7.5 | ~6 → 7 | 2.4–2.7 → 4.0 | 2.3 → 3.0 s | 7 → 8 |
+| Arms | ~1.7 | ~1.7 | 10–11 → 12–13 | 1.4–2.2 → 2.2–3.1 | 2.3 → 3.0 s | 6 → 8 |
+| Shoulders | ~1.6 | ~1.5 | 11–12 → 12.5–13.5 | 6.7–6.9 → 8.9–9.4 | 2.3 → 3.0 s | 6 → 7 |
+| Treadmill (arms, shoulders, full body) | 0 | 0 | 14–15 → 16–18 | 2.2–8.0 → 3.2–10.8 | 2.3 → 3.0 s | 5 → 7 |
+
+Low impact: no jumps; squats and crates as above. The ranges are over 45, 90 and 180 s.
+
+**Flags:**
+- **Legs is the hardest by far:** 6–7 squats and 6–7 jumps in 45 s, up to 8 big moves in a 10 s stretch. The results screen suggests it as "play this next", so a judge may well get it.
+- **Squats came back to back.** Pairs at the 1.1 s minimum gap happened up to 10 times in a 180 s Legs round, and a few times in Full body. **Fixed:** `MIN_GAP_SQUAT_TO_SQUAT_SEC` (1.8 s from the end of one squat to the next), a fairness test over every level, and **both demo levels unchanged**. `demo.test.ts` now pins them, so any generator change that alters them fails loudly.
+- **Shoulders and the treadmill keep the arms overhead for long:** up to 10 s of holds a minute at difficulty 1. That is their purpose, so it's left as is. For judges, prefer the demo level (Full body, 45 s, low impact on offer).
+- **Not changed:** the Legs mix and the hold lengths. Lowering them would change what Legs is; tell me if you want a gentler Legs for judges.
+
 ## Settled: crates with `holdSec`
 
 A crate with `holdSec` is judged like a held beam: both arms must go up inside `[t − 0.35, t + 0.15]`, then stay up until `t + holdSec`. A drop longer than 0.3 s is a hit. The game smashes the crate front on contact and shows magenta rails for the hold. Proposed wording for the crate row in the CONTRACTS.md collision table: "both arms up (for the whole `holdSec` if set, with 0.3 s of grace)".

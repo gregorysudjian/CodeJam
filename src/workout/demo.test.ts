@@ -61,6 +61,30 @@ describe('demo preset', () => {
   });
 });
 
+const DEMO_SIGNATURE =
+  '4 block, 6.22 orb, 8.43 crate, 10.57 hurdle, 12.69 beam(1.6), 16.24 block, 18.29 beam(1), 21.25 block+21.25 orb, 22.93 beam, 24.74 orb, 26.44 block, 28.09 orb, 29.66 block, 31.11 hurdle, 32.76 orb, 34.36 crate, 36 hurdle, 37.66 block+37.66 orb, 39.09 orb, 40.85 crate, 42.74 crate';
+const DEMO_LOW_SIGNATURE =
+  '4 block, 6.22 orb, 8.43 crate, 10.57 block, 12.53 beam, 14.44 beam, 16.55 block, 18.34 orb, 20.11 beam, 22 orb, 23.76 block, 25.47 orb, 27.09 block, 28.59 beam, 30.34 orb, 31.95 crate, 33.46 orb, 34.91 block, 36.39 orb, 38.08 orb, 39.75 crate, 41.36 crate, 43.27 block+43.27 orb';
+
+/** The demo level as a readable signature: "t kind(hold)" per spawn. */
+const signature = (level: Level): string =>
+  level.waves
+    .map((w) =>
+      w.spawns.map((s) => `${w.t} ${s.kind}${s.holdSec ? `(${s.holdSec})` : ''}`).join('+'),
+    )
+    .join(', ');
+
+describe('the demo levels are pinned (the Player rehearses them; ghosts and DEMO.md depend on them)', () => {
+  // If a generator change makes these fail, the demo level changed: tell Patrick and Greg
+  // (ghosts must be rehearsed again, docs/DEMO.md names the seed), then update the strings.
+  it('normal', () => {
+    expect(signature(generateLevel(DEMO_CONFIG))).toBe(DEMO_SIGNATURE);
+  });
+  it('low impact', () => {
+    expect(signature(generateLevel({ ...DEMO_CONFIG, lowImpact: true }))).toBe(DEMO_LOW_SIGNATURE);
+  });
+});
+
 describe('?demo=1', () => {
   afterEach(() => {
     vi.unstubAllGlobals();

@@ -161,6 +161,7 @@ export function generateLevel(config: SessionConfig): Level {
       if (t < T.WARMUP_END * dur) t = Math.max(t, prevEnd + T.MIN_GAP_WARMUP_SEC);
     }
     if (kind === 'hurdle') t = Math.max(t, lastBeamEnd + T.MIN_GAP_BEAM_TO_HURDLE_SEC);
+    if (kind === 'beam') t = Math.max(t, lastBeamEnd + T.MIN_GAP_SQUAT_TO_SQUAT_SEC);
     t = round2(t);
 
     // Spawns.

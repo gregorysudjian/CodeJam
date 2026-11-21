@@ -142,6 +142,26 @@ describe('fairness rules (CONTRACTS.md "Level rules"), every workout × mode × 
   );
 
   it(
+    'a breath between two squats: 1.8 s from the end of one (its hold included) to the next',
+    () => {
+      const problems: string[] = [];
+      for (const level of allLevels()) {
+        let lastEnd = -Infinity;
+        for (const w of level.waves) {
+          if (!w.spawns.some((s) => s.kind === 'beam')) continue;
+          if (w.t - lastEnd < T.MIN_GAP_SQUAT_TO_SQUAT_SEC - EPS)
+            problems.push(
+              `${label(level)} @${w.t}: squat ${(w.t - lastEnd).toFixed(2)} s after the last`,
+            );
+          lastEnd = w.t + holdOf(w);
+        }
+      }
+      expect(problems).toEqual([]);
+    },
+    SWEEP_TIMEOUT_MS,
+  );
+
+  it(
     'treadmill has only crates and orbs; low impact has no hurdles',
     () => {
       const problems: string[] = [];
