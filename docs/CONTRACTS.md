@@ -212,12 +212,17 @@ export interface DataStore {
   listSessions(limit?: number): Promise<SavedSession[]>; // newest first
   getLeaderboard(workout: WorkoutId, mode: PlayMode, limit?: number): Promise<LeaderboardEntry[]>;
   getCoachAdvice(session: SavedSession): Promise<CoachAdvice>; // never rejects; falls back to rules
+  signOut(): Promise<void>; // forgets the current guest; the next signInGuest creates a new user
 }
 
 // src/data/index.ts      export function createStore(): DataStore
 //                        Returns the Supabase store, or the local store when the URL has
 //                        ?store=local or the Supabase environment variables are missing.
 ```
+
+### signOut (added Saturday, approved by the team)
+
+"New guest" on the landing screen must start a new player instead of reusing the saved one. `signOut()` never rejects. The Supabase store first tries to send queued sessions, then signs out locally (works offline) and clears its cached profile, sessions and queue; the local store clears its saved player and sessions. The app calls it for "New guest"; "Continue as …" keeps the saved player.
 
 ## Guest profile defaults (C)
 
@@ -259,9 +264,9 @@ Add check constraints for the enum-like text columns and for sane ranges (`score
 `POST /api/coach`, in `api/coach.ts`.
 
 - **Request:** header `Authorization: Bearer <Supabase access token>`, body `{ "sessionId": "<uuid>" }`.
-- **Steps:** reject without a valid token (401). Create a Supabase client that carries the user's token, so row-level security applies on the server too and no service key is needed. Load the profile and the last ten sessions. Ask Claude for JSON matching `CoachAdvice`, with plain `fetch` to the Messages API (no SDK), aborted after 7 seconds. Validate it: known workout, `durationSec` one of 45, 90, 180, `difficulty` clamped to 0 to 1, text lengths capped. Return it with `source: 'ai'`.
+- **Steps:** reject without a valid token (401). Create a Supabase client that carries the user's token, so row-level security applies on the server too and no service key is needed. Load the profile and the last ten sessions. Ask Claude for JSON matching `CoachAdvice` through the official `@anthropic-ai/sdk` (structured output with a JSON schema, server-side refusal fallback), with a 7-second timeout and no retries. Validate it: known workout, `durationSec` one of 45, 90, 180, `difficulty` clamped to 0 to 1, text lengths capped. Return it with `source: 'ai'`.
 - **Response:** 200 with `CoachAdvice`, or an error status. The client waits at most 8 seconds, then calls the rule-based coach.
-- **Limits:** a small fast model, a low `max_tokens` (about 400), and a spend limit on the product's API key. No per-user rate limit: Vercel functions keep no state between calls and the schema has no table for one.
+- **Limits:** at most **one call per user per 10 s**. Right after the token check the endpoint calls `claim_coach_slot(10)` (migration `0002_coach_rate_limit.sql`: a `coach_calls` table with RLS and no policies, plus an atomic security-definer function). It answers 429 with `Retry-After: 10` when refused, and 503 (fail closed, no Claude call) if the check errors. Plus `claude-opus-5-5` at `effort: "low"`, `max_tokens` 2000, and a spend limit on the product's API key.
 - **Where it runs:** only on Vercel (production, a preview deployment, or `vercel dev`). The client calls the relative path `/api/coach`. `npm run dev` and `npm run preview` do not serve `/api`, so there every coach call falls back to the rules. This is why the demo runs from the Vercel URL (DEMO.md).
 - **Prompt rules:** general fitness encouragement only, no medical or diet advice, no comments on the body, plain friendly language, and the numbers must come from the data provided.
 
@@ -278,7 +283,7 @@ Body input arrives late and people move slowly, so an object is judged over a wi
 | `block` | `lane` is not in `lanes` | `hit` |
 | `hurdle` | `airborne` | `hit` |
 | `beam` | `ducking` (for the whole `holdSec` if set, with 0.3 s of grace) | `hit` |
-| `crate` | both arms up | `hit` |
+| `crate` | both arms up (for the whole `holdSec` if set, with 0.3 s of grace) | `hit` |
 | `orb`, floor mode | `lane` is in `lanes` and either arm is up | nothing, it is just missed |
 | `orb`, treadmill mode | lane `-1` needs the left arm, `+1` the right arm, `0` both | nothing |
 

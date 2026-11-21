@@ -1,106 +1,56 @@
-// Owner: B. Real keyboard input (the permanent fallback for the camera).
-// Mapping from docs/CONTRACTS.md: arrows change lane, Up/Space jump, Down held squat,
-// W held both arms, Q/E held left/right arm. Global keys (K, R, D, Esc) belong to src/app.
-import type { InputSource, InputState, Lane, MoveEvent } from '@/contracts';
+import type { InputSource } from '@/contracts';
+import { createKeyboardController } from './keyboard';
 
-const AIRBORNE_MS = 450;
-
+/** Keyboard stand-in for the camera. Same interface as the pose input. */
 export function createKeyboardInput(): InputSource {
-  const state: InputState = {
-    tracking: true,
-    lane: 0,
-    ducking: false,
-    airborne: false,
-    leftArmUp: false,
-    rightArmUp: false,
-  };
-  const listeners = new Set<(e: MoveEvent) => void>();
-  let landTimer: ReturnType<typeof setTimeout> | undefined;
+  const ctl = createKeyboardController(() => performance.now());
+  let listening = false;
 
-  const emit = (type: MoveEvent['type']) => {
-    const e: MoveEvent = { type, t: performance.now() };
-    listeners.forEach((cb) => cb(e));
-  };
+  const isTyping = (target: EventTarget | null): boolean =>
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 
-  const setLane = (lane: number) => {
-    const next = Math.max(-1, Math.min(1, lane)) as Lane;
-    if (next !== state.lane) {
-      state.lane = next;
-      emit('sidestep');
-    }
+  const onKeyDown = (e: KeyboardEvent): void => {
+    if (e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
+    // The app keeps this input started on every screen. Only during a round (the game marks
+    // <body data-game="running">) are the keys consumed, so Space jumps instead of pressing a
+    // focused HUD button. Elsewhere the browser keeps its own behaviour: Space presses the
+    // focused button, arrows scroll the dashboard (WCAG 2.1.1).
+    if (ctl.keyDown(e.code, e.repeat) && isRoundRunning()) e.preventDefault();
   };
-
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (e.repeat) return;
-    switch (e.code) {
-      case 'ArrowLeft':
-        setLane(state.lane - 1);
-        break;
-      case 'ArrowRight':
-        setLane(state.lane + 1);
-        break;
-      case 'ArrowUp':
-      case 'Space':
-        if (!state.airborne) {
-          state.airborne = true;
-          emit('jump');
-          landTimer = setTimeout(() => (state.airborne = false), AIRBORNE_MS);
-        }
-        break;
-      case 'ArrowDown':
-        state.ducking = true;
-        emit('squat');
-        break;
-      case 'KeyW':
-        state.leftArmUp = state.rightArmUp = true;
-        emit('armsUp');
-        break;
-      case 'KeyQ':
-        state.leftArmUp = true;
-        emit('reachLeft');
-        break;
-      case 'KeyE':
-        state.rightArmUp = true;
-        emit('reachRight');
-        break;
-      default:
-        return;
-    }
-    e.preventDefault();
-  };
-
-  const onKeyUp = (e: KeyboardEvent) => {
-    switch (e.code) {
-      case 'ArrowDown':
-        state.ducking = false;
-        break;
-      case 'KeyW':
-        state.leftArmUp = state.rightArmUp = false;
-        break;
-      case 'KeyQ':
-        state.leftArmUp = false;
-        break;
-      case 'KeyE':
-        state.rightArmUp = false;
-        break;
-    }
+  const onKeyUp = (e: KeyboardEvent): void => ctl.keyUp(e.code);
+  const onBlur = (): void => ctl.releaseAll();
+  const onVisibility = (): void => {
+    if (document.hidden) ctl.releaseAll();
   };
 
   return {
     kind: 'keyboard',
-    async start() {
-      window.addEventListener('keydown', onKeyDown);
-      window.addEventListener('keyup', onKeyUp);
+    start() {
+      if (!listening) {
+        listening = true;
+        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('keyup', onKeyUp);
+        window.addEventListener('blur', onBlur);
+        document.addEventListener('visibilitychange', onVisibility);
+      }
+      return Promise.resolve();
     },
     stop() {
+      if (!listening) return;
+      listening = false;
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
-      clearTimeout(landTimer);
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVisibility);
+      ctl.reset();
     },
-    getState: () => ({ ...state }),
-    onMove(cb) {
-      listeners.add(cb);
-      return () => listeners.delete(cb);
-    },
+    getState: () => ctl.getState(),
+    onMove: (cb) => ctl.onMove(cb),
   };
+}
+
+/** Set by src/game while a round runs (not paused, not finished); see src/game/index.ts. */
+function isRoundRunning(): boolean {
+  return document.body?.dataset.game === 'running';
 }
