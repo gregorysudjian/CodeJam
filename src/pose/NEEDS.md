@@ -102,3 +102,12 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 >   "About 1.5 m back. Head and knees in view."
 > - `docs/DEMO.md`: the tape mark "2.2 m away" (and "2.2 m plus 2 m clear" in the organiser
 >   questions) → about 1.5 m.
+
+## 11. A way to end the round from the pause menu (found testing the X, Sat ~4 PM)
+
+> The X works in the app: it opens the pause menu. But that menu only has RESUME (GameHud ~line
+> 295–302), and Esc toggles pause/resume, so a player or the station operator who wants to stop
+> has to reload the page. Could the pause menu get an **"End round"** button (key hint **Q**) that
+> goes to the results screen with what was played so far (or back to workout select if a short
+> round should not be saved)? Your call on saving. Please keep it a button/key, not a body gesture:
+> a "quit" gesture would be too easy to trigger by accident mid-round. Pose needs no change.
