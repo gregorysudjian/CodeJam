@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createQualityGovernor, type Quality } from './quality';
+import { createFrameStats, createQualityGovernor, type Quality } from './quality';
 import {
   QUALITY_MIN_FPS,
   QUALITY_PANIC_FPS,
@@ -99,5 +99,26 @@ describe('quality governor', () => {
     expect(fixedHigh.level).toBe(0);
     const fixedLow = createQualityGovernor(2, false, 2);
     expect(fixedLow.level).toBe(2);
+  });
+});
+
+describe('frame stats', () => {
+  it('reports the average and the slow tail', () => {
+    const s = createFrameStats();
+    expect(s.summary()).toBeNull();
+    for (let i = 0; i < 95; i++) s.sample(1 / 60);
+    for (let i = 0; i < 5; i++) s.sample(0.05); // 5 % of frames at 20 fps
+    const r = s.summary()!;
+    expect(r.frames).toBe(100);
+    expect(r.avgFps).toBeGreaterThan(50);
+    expect(r.avgFps).toBeLessThan(60);
+    expect(r.p95Ms).toBe(17); // 95 % of frames take at most 17 ms
+  });
+
+  it('a hidden tab counts as one capped frame, not a collapse', () => {
+    const s = createFrameStats();
+    for (let i = 0; i < 600; i++) s.sample(1 / 60);
+    s.sample(30);
+    expect(s.summary()!.avgFps).toBeGreaterThan(55);
   });
 });

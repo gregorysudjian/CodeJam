@@ -17,7 +17,12 @@ export interface CoreHooks {
   cue?(wave: Wave): void;
   /** First frame a crate's move is seen inside its window (smash it, even if it is held). */
   engage?(item: Item): void;
-  verdict?(item: Item, v: Verdict): void;
+  /**
+   * `offset`: game seconds from the object's time t to the first frame its move was seen inside
+   * the window (negative = early), for the timing grade (feedback.ts); null for a hit or a miss.
+   * For a held object this is when the hold started, not when it ended.
+   */
+  verdict?(item: Item, v: Verdict, offset: number | null): void;
 }
 
 export type PauseReason = 'user' | 'trackingLost';
@@ -56,6 +61,7 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
     wave.spawns.map((spawn) => ({ wave, spawn, judge: createJudge(spawn, wave.t, mode) })),
   );
   const engaged = new WeakSet<Item>();
+  const firstSeen = new WeakMap<Item, number>(); // game time the move was first seen in the window
   const listeners = new Set<(e: GameEvent) => void>();
   const emit = (e: GameEvent): void => {
     for (const cb of [...listeners]) {
@@ -90,21 +96,24 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
       if (judge.t - T.WINDOW_BEFORE_SEC > elapsed) break; // items are in time order
       if (judge.verdict !== 'pending') continue;
       if (
-        spawn.kind === 'crate' &&
+        !firstSeen.has(item) &&
         elapsed <= judge.t + T.WINDOW_AFTER_SEC &&
         requirementMet(spawn, mode, state)
       ) {
-        engage(item);
+        firstSeen.set(item, elapsed);
+        if (spawn.kind === 'crate') engage(item);
       }
       const v = judge.sample(elapsed, state);
       if (!v) continue;
+      let offset: number | null = null;
       if (v === 'cleared' || v === 'collected') {
         engage(item);
         streak++;
+        offset = (firstSeen.get(item) ?? elapsed) - judge.t;
       } else if (v === 'hit') {
         streak = 0;
       }
-      hooks.verdict?.(item, v);
+      hooks.verdict?.(item, v, offset);
       if (v === 'cleared') emit({ type: 'cleared', spawn, t: nowMs });
       else if (v === 'collected') emit({ type: 'collected', spawn, t: nowMs });
       else if (v === 'hit') emit({ type: 'hit', spawn, t: nowMs });
