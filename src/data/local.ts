@@ -104,5 +104,13 @@ export function createLocalStore(kv: KeyValue | null = browserStorage()): DataSt
     async getCoachAdvice() {
       return ruleBasedAdvice(profile(), sessions());
     },
+    async signOut() {
+      try {
+        kv?.removeItem(KEYS.profile);
+        kv?.removeItem(KEYS.sessions);
+      } catch {
+        // Storage blocked: nothing was saved, so nothing to forget.
+      }
+    },
   };
 }

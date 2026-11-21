@@ -268,6 +268,24 @@ export function createSupabaseStore(
         clearTimeout(timer);
       }
     },
+
+    // Never rejects. Sends queued sessions first (they belong to the guest who is leaving), then
+    // signs out locally, which needs no network, and forgets everything cached for that guest.
+    async signOut() {
+      await flush();
+      try {
+        await sb.auth.signOut({ scope: 'local' });
+      } catch {
+        // Session storage already gone; nothing to sign out of.
+      }
+      for (const key of [KEYS.profile, KEYS.sessions, KEYS.queue]) {
+        try {
+          kv?.removeItem(key);
+        } catch {
+          // Storage blocked.
+        }
+      }
+    },
   };
   return store;
 }
