@@ -1,7 +1,7 @@
 // Runs pose calibration and shows CalibrationScreen with live status, video and skeleton.
 import { useEffect, useRef, useState } from 'react';
 import type { CalibrationStatus, PlayMode, PoseInputSource } from '@/contracts';
-import { CalibrationScreen } from '@/ui/screens';
+import { CalibrationScreen } from '@/ui/screens/CalibrationScreen';
 import { SkeletonSlot, VideoSlot } from './slots';
 
 const START: CalibrationStatus = { step: 'noBody', progress: 0, message: 'Starting the camera…' };
