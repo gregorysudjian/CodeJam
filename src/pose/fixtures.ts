@@ -4,6 +4,7 @@
 import type { MoveEvent, PlayMode } from '@/contracts';
 import { measureForMode } from './calibration';
 import { type Calibration, createDetector, type Point, pickBody, toPlayerX, mid } from './detect';
+import { createGestureDetector, type Gesture } from './gesture';
 import type { Recording } from './recording';
 
 const clips = import.meta.glob<Recording>('./fixtures/**/*.json', {
@@ -97,6 +98,8 @@ export interface Replay {
   tracking: [number, boolean][];
   /** How often pickBody chose a body other than the real player (index 0). */
   wrongPicks: number;
+  /** Pause gestures (the held X), with their times. */
+  gestures: { type: Gesture; t: number }[];
 }
 
 export function replay(name: string, opts: ReplayOptions = {}): Replay {
@@ -118,6 +121,13 @@ export function replay(name: string, opts: ReplayOptions = {}): Replay {
       ? calibrateFromClip(rec, 300, mode, transform)
       : calibrateFromClip(loadClip(calibrate), 1000, mode, transform);
   const det = createDetector(cal, mode);
+  const gesture = createGestureDetector();
+  const gestures: { type: Gesture; t: number }[] = [];
+  const step = (pose: Point[] | null, t: number) => {
+    events.push(...det.update(pose, t));
+    const g = gesture.update(pose, t, det.state, det.readout);
+    if (g) gestures.push({ type: g, t });
+  };
   const drop = rng(7);
   const events: MoveEvent[] = [];
   const tracking: [number, boolean][] = [];
@@ -139,7 +149,7 @@ export function replay(name: string, opts: ReplayOptions = {}): Replay {
       last = { x: toPlayerX(s.x), y: s.y };
     }
     const t = f.t * timeScale;
-    events.push(...det.update(pose, t));
+    step(pose, t);
     if (det.state.tracking !== wasTracking) {
       wasTracking = det.state.tracking;
       tracking.push([t, wasTracking]);
@@ -149,8 +159,8 @@ export function replay(name: string, opts: ReplayOptions = {}): Replay {
   if (holdLastMs > 0 && lastFrame?.pose) {
     const end = lastFrame.t * timeScale;
     for (let t = end + 33; t <= end + holdLastMs; t += 33) {
-      events.push(...det.update(transform(toPoints(lastFrame.pose), lastFrame.t), t));
+      step(transform(toPoints(lastFrame.pose), lastFrame.t), t);
     }
   }
-  return { events, tracking, wrongPicks };
+  return { events, tracking, wrongPicks, gestures };
 }

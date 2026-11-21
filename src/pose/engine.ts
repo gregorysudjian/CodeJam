@@ -3,12 +3,21 @@
 // ?dev=pose page uses the rest. Video and landmarks never leave the device (AGENTS.md rule 5).
 import type { CalibrationStatus, MoveEvent, PlayMode, PoseInputSource } from '@/contracts';
 import { attachStream, cameraErrorMessage, getCameraStream, stopStream } from './camera';
+import type { Gesture } from './gesture';
 import type { Calibration, Detector, Point } from './detect';
 import { type Delegate, getLandmarker, type Landmarker } from './landmarker';
 import { createOverlay, type Overlay } from './overlay';
 import { createSession, NEUTRAL_STATE } from './session';
 import { drawGuides, drawPose, guides } from './skeleton';
 import { CAMERA_STALL_MS, FPS_WINDOW_MS, WATCHDOG_INTERVAL_MS, WATCHDOG_STALE_MS } from './tuning';
+
+/**
+ * The pose input plus the pause gesture. Matches the contract's optional
+ * `onGesture?(cb: (g: Gesture) => void): () => void` (added by D), so it fits once that lands.
+ */
+export type PoseSource = PoseInputSource & {
+  onGesture(cb: (g: Gesture) => void): () => void;
+};
 
 /** Everything the debug overlay shows. */
 export interface EngineSnapshot {
@@ -22,10 +31,12 @@ export interface EngineSnapshot {
   detector: Detector | null;
   bodies: number;
   events: MoveEvent[];
+  /** How far a pause X hold is, 0 to 1. */
+  gesture: number;
 }
 
 export interface PoseEngine {
-  source: PoseInputSource;
+  source: PoseSource;
   /** The player's latest raw landmarks (unmirrored), or null. For the recorder. */
   latestPose(): Point[] | null;
   /** Called after each processed frame (debug page). Returns unsubscribe. */
@@ -73,6 +84,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     detector: session.detector,
     bodies: session.bodies,
     events: session.recent,
+    gesture: session.gestureProgress,
   }));
 
   const cameraInfo = () => {
@@ -208,7 +220,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     session.cancel('The camera was stopped.');
   }
 
-  const source: PoseInputSource = {
+  const source: PoseSource = {
     kind: 'pose',
     video,
     start,
@@ -216,6 +228,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     // A stopped camera means nobody is tracked, whatever the last frame said.
     getState: () => (running ? session.getState() : { ...NEUTRAL_STATE }),
     onMove: (cb) => session.onMove(cb),
+    onGesture: (cb) => session.onGesture(cb),
     async calibrate(mode, onStatus) {
       const done = session.calibrate(mode, onStatus);
       if (!running) {

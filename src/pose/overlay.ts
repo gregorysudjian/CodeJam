@@ -59,6 +59,7 @@ export function overlayText(s: EngineSnapshot): string {
     );
   }
   if (s.events.length) lines.push(`moves  ${s.events.map((e) => e.type).join(' · ')}`);
+  if (s.gesture > 0) lines.push(`pause X  ${Math.round(s.gesture * 100)}%`);
   return lines.join('\n');
 }
 

@@ -7,7 +7,8 @@ For the demo laptop and anyone running the station. Chrome only.
 1. **Laptop** on a level table (a tilted camera of 6° or more can count a squat when someone walks
    off to the side), screen tilted so the camera sees the floor in front of it. Plugged in (battery
    saver lowers FPS).
-2. **Distance:** floor mode about **2–2.5 m** back, head and feet in view (tape a floor mark).
+2. **Distance:** floor mode about **1.5 m** back, head and knees in view, with room above the head
+   (tape a floor mark). Closer than ~1.2 m, calibration says "step back" (no room to squat or jump).
    Treadmill mode **1–1.5 m**, head and shoulders in view.
 3. **Light:** light on the player's face and body, not behind them (no window behind the player).
    A dark room drops the webcam to ~15–25 FPS; a desk lamp pointed at the player helps most.
@@ -26,12 +27,13 @@ For the demo laptop and anyone running the station. Chrome only.
 | **D** | Pose debug overlay: live values, thresholds, sliders, lines on the video |
 | **K** | Switch to keyboard input (the fallback if the camera misbehaves) |
 | **Esc** | Pause |
+| **X** (gesture) | Player crosses the forearms in front of the chest for 1 s: pause; again: resume (once Greg wires `onGesture`) |
 
 ## Symptoms → fix
 
 | Symptom | First try | Then (slider in the D overlay, or `tuning.ts`) |
 | --- | --- | --- |
-| Calibration stuck on "step back" (feet cut off) | Step back / tilt the screen | `CALIBRATION_FEET_IN_VIEW = false` (knees enough) |
+| Calibration stuck on "step back" | Step back to ~1.5 m; tilt the screen so there is room above the head and the knees show | `CALIBRATION_SQUAT_ROOM_T` / `CALIBRATION_JUMP_ROOM_T` lower (risk: tracking drops in deep squats or high jumps) |
 | Calibration stuck on "come closer" | Step forward | `CALIBRATION_MIN_T_FRAME` lower (0.15 → 0.12) |
 | Sidesteps not counted | Bigger step; press R | `LANE_ON_W` lower (0.55 → 0.45) |
 | Lane changes by itself | Press R on the mark | `LANE_ON_W` higher, `LANE_OFF_W` higher |

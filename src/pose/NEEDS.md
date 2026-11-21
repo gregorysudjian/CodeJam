@@ -79,3 +79,26 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > deeper than the squat line now turns `airborne` on ~0.17 s later (it must rise 0.45 T, so standing
 > up out of a squat is never a jump); normal jumps are unchanged. If your `?debug=timing` shows
 > late hurdles for deep-crouch jumpers, I can lower `JUMP_AFTER_SQUAT_ON_T` (not below ~0.3 T).
+
+## 9. Pause gesture (the X): ready to wire
+
+> Hi Greg, `createPoseInput()` now returns the contract's `PoseInputSource` plus
+> `onGesture(cb: (g: 'pause') => void): () => void` (type `PoseSource`, exported from `@/pose`),
+> exactly the signature you are adding as optional to the contract. Forearms crossed in an X in
+> front of the chest, held 1 s, fires `'pause'` once; the player must uncross before it fires
+> again, so X pauses and the next X resumes. It never fires while airborne, in a squat or with an
+> arm up, and it fired 0 times in 960 noisy replays of every clip (yours too). Once
+> `onGesture?` is in `src/contracts`: `const off = pose.onGesture?.(() => togglePause())`, and
+> unsubscribe on unmount. It also works on the paused game (the camera keeps tracking), and the D
+> overlay shows `pause X  NN%` while a hold is building.
+
+## 10. Calibration is head to knees now (about 1.5 m): two texts to update
+
+> Floor calibration no longer needs the feet (`CALIBRATION_FEET_IN_VIEW = false`): players stand
+> about 1.5 m back with head and knees in view, and the pose messages say so. It still checks
+> there is room for a jump above the shoulders and a squat below the hips, so 1.2 m is the closest.
+> Two texts outside `src/pose` still say the old distance:
+> - `src/ui/screens/CalibrationScreen.tsx` line ~343: "About 2 m back. Whole body in view." →
+>   "About 1.5 m back. Head and knees in view."
+> - `docs/DEMO.md`: the tape mark "2.2 m away" (and "2.2 m plus 2 m clear" in the organiser
+>   questions) → about 1.5 m.

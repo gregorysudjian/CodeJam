@@ -55,14 +55,14 @@ describe('calibrator', () => {
     expect(done).toBeLessThan(CALIBRATION_HOLD_MS + 200);
   });
 
-  test('a lasting problem (feet out for 0.4 s) restarts the hold and says why', () => {
+  test('a lasting problem (knees out for 0.4 s) restarts the hold and says why', () => {
     const cal = createCalibrator('floor');
     const steps: string[] = [];
     let done = -1;
     standing.forEach((p, i) => {
       const t = i * 33;
       const out = t > 900 && t < 1300;
-      const pose = out ? p.map((q, k) => (k === 27 || k === 28 ? { ...q, y: 1.03 } : q)) : p;
+      const pose = out ? p.map((q, k) => (k === 25 || k === 26 ? { ...q, y: 1.03 } : q)) : p;
       const u = cal.update(pose, t);
       steps.push(u.status.step);
       if (done < 0 && u.result) done = t;
@@ -93,10 +93,10 @@ describe('calibrator', () => {
     }
   });
 
-  test('feet cut off: tooClose, unless the small-room switch only asks for the knees', () => {
+  test('feet cut off: fine by default (head to knees); tooClose with the feet switch on', () => {
     const down = standing.map((p) => p.map((q) => ({ ...q, y: q.y + 0.06 })));
-    const strict = createCalibrator('floor');
-    const relaxed = createCalibrator('floor', 4 / 3, false);
+    const strict = createCalibrator('floor', 4 / 3, true);
+    const relaxed = createCalibrator('floor');
     let strictStep = '';
     let relaxedDone = false;
     down.forEach((p, i) => {
@@ -105,6 +105,24 @@ describe('calibrator', () => {
     });
     expect(strictStep).toBe('tooClose');
     expect(relaxedDone).toBe(true);
+  });
+
+  test('no room below the hips for a squat (body low in the frame): tooClose', () => {
+    // Knees still in view, but a deep squat would take the hips out of the frame.
+    const low = standing.map((p) => p.map((q) => ({ ...q, y: q.y + 0.15 })));
+    const cal = createCalibrator('floor');
+    let step = '';
+    low.forEach((p, i) => (step = cal.update(p, i * 33).status.step));
+    expect(step).toBe('tooClose');
+  });
+
+  test('no room above the shoulders for a jump (body high in the frame): tooClose', () => {
+    const high = standing.map((p) => p.map((q) => ({ ...q, y: q.y - 0.36 })));
+    const cal = createCalibrator('floor');
+    let step = '';
+    high.forEach((p, i) => (step = cal.update(p, i * 33).status.step));
+    expect(high[0][0].y).toBeGreaterThan(0); // the head is still in view
+    expect(step).toBe('tooClose');
   });
 
   test('low visibility counts as no body', () => {

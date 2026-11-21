@@ -38,6 +38,25 @@ export const DRAW_POINT_RADIUS = 4;
  */
 export const GAP_RESET_MS = 500;
 
+/*
+ * Pause gesture (gesture.ts): forearms crossed in an X in front of the chest, held. Distances in
+ * the calibrated W (x) and T (y), like the moves.
+ */
+/** The wrists must be past each other by this much (hands just touching or clapping is not an X). */
+export const GESTURE_CROSS_W = 0.2;
+/**
+ * Chest height: both wrists between this far above the shoulders (still under the nose, so it
+ * never overlaps arms up) and this far below them (above the hips: arms hanging are not an X).
+ */
+export const GESTURE_ABOVE_SHOULDER_T = 0.3;
+export const GESTURE_BELOW_SHOULDER_T = 0.7;
+/** Both wrists within this distance of the body's centre line (in front of the chest). */
+export const GESTURE_NEAR_CENTRE_W = 1.2;
+/** Held this long, the X fires once; then the arms must uncross before it can fire again. */
+export const GESTURE_HOLD_MS = 1000;
+/** A break shorter than this (a flicker, a wobble) neither restarts the hold nor counts as uncrossed. */
+export const GESTURE_GRACE_MS = 200;
+
 /** FPS counter window. */
 export const FPS_WINDOW_MS = 1000;
 
@@ -73,10 +92,19 @@ export const CALIBRATION_MIN_T_FRAME = 0.15;
 /** Treadmill mode: too far when W is under this fraction of the frame width. */
 export const CALIBRATION_MIN_W_FRAME = 0.12;
 /**
- * Floor calibration wants the head and feet in view (CONTRACTS.md). If the venue room is too small
- * to get the feet in frame, set false: then head and knees are enough (detection uses the hips).
+ * Floor calibration: false = head to knees in view (about 1.5 m), true = head to feet (2–2.5 m).
+ * Detection uses the hips, not the feet; players backing up to show their feet could not read the
+ * screen any more, so the knees are enough.
  */
-export const CALIBRATION_FEET_IN_VIEW = true;
+export const CALIBRATION_FEET_IN_VIEW = false;
+/**
+ * Floor calibration also needs room in the frame for the moves, in T: above the shoulders for a
+ * jump (A's shoulders rose 0.68 T, Greg's 0.45 T) and below the hips for a squat (A's hips dropped
+ * 1.03 T, Greg's 0.68 T), or tracking drops mid-move. This, not the knees, sets the closest
+ * distance (about 1.2 m).
+ */
+export const CALIBRATION_JUMP_ROOM_T = 0.7;
+export const CALIBRATION_SQUAT_ROOM_T = 1.0;
 /** A landmark counts as in frame inside this margin (fraction of the frame). */
 export const CALIBRATION_EDGE_MARGIN = 0;
 /** A problem shorter than this (a flicker) pauses the hold instead of restarting it. */
