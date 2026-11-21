@@ -8,7 +8,7 @@ import { type Delegate, getLandmarker, type Landmarker } from './landmarker';
 import { createOverlay, type Overlay } from './overlay';
 import { createSession } from './session';
 import { drawGuides, drawPose, guides } from './skeleton';
-import { FPS_WINDOW_MS } from './tuning';
+import { FPS_WINDOW_MS, WATCHDOG_INTERVAL_MS, WATCHDOG_STALE_MS } from './tuning';
 
 /** Everything the debug overlay shows. */
 export interface EngineSnapshot {
@@ -52,6 +52,9 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   let stream: MediaStream | null = null;
   let landmarker: Landmarker | null = null;
   let frameHandle = 0;
+  let watchdog = 0;
+  let lastProcessedAt = 0;
+  let lastMediaTime = -1;
   const frameListeners = new Set<() => void>();
 
   let fps = 0;
@@ -73,9 +76,13 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3;
 
   let errorLogged = false;
-  const onVideoFrame = () => {
-    if (!running || !landmarker) return;
+  /** Runs the model on the current video frame, once per new frame (deduplicated by video time). */
+  const processFrame = () => {
+    if (!running || !landmarker || video.readyState < 2) return;
+    if (video.currentTime === lastMediaTime) return;
+    lastMediaTime = video.currentTime;
     const t = performance.now();
+    lastProcessedAt = t;
     try {
       session.frame(landmarker.detect(video), t, aspect());
     } catch (err) {
@@ -92,8 +99,25 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     }
     overlay.update();
     frameListeners.forEach((cb) => cb());
-    // requestVideoFrameCallback fires once per new camera frame, never twice on the same image.
+  };
+
+  // requestVideoFrameCallback fires once per new camera frame. It stops while the video is not
+  // on the page (the app moves it between screens), so a watchdog takes over then (below).
+  const onVideoFrame = () => {
+    if (!running) return;
+    processFrame();
     frameHandle = video.requestVideoFrameCallback(onVideoFrame);
+  };
+
+  // Removing a <video> from the page pauses it, and it stays paused when put back: the input
+  // would freeze mid-round. Keep it playing, and process frames on a timer while rVFC is quiet.
+  const onPause = () => {
+    if (running) video.play().catch(() => {});
+  };
+  const onWatchdog = () => {
+    if (!running) return;
+    if (video.paused) onPause();
+    if (performance.now() - lastProcessedAt > WATCHDOG_STALE_MS) processFrame();
   };
 
   const onKey = (e: KeyboardEvent) => {
@@ -132,6 +156,9 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
       frames = 0;
       windowStart = performance.now();
       if (keys) window.addEventListener('keydown', onKey);
+      video.addEventListener('pause', onPause);
+      watchdog = window.setInterval(onWatchdog, WATCHDOG_INTERVAL_MS);
+      lastProcessedAt = performance.now();
       frameHandle = video.requestVideoFrameCallback(onVideoFrame);
     };
     const p: Promise<void> = run().finally(() => {
@@ -146,6 +173,8 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     starting = null;
     if (running) video.cancelVideoFrameCallback(frameHandle);
     running = false;
+    window.clearInterval(watchdog);
+    video.removeEventListener('pause', onPause);
     stopStream(video, stream);
     stream = null;
     window.removeEventListener('keydown', onKey);

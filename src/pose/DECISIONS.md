@@ -58,3 +58,8 @@ or the named file.
     fails inside `calibrate()`, the pending calibration is dropped without an unhandled rejection.
 23. **The treadmill torso estimate uses the live video aspect** (passed each frame), not the aspect at
     `calibrate()` time, which can be before the camera runs.
+24. **The pose video keeps playing when the app takes it off the page.** Verified in Chromium: removing
+    a `<video>` pauses it, it stays paused when put back, and `requestVideoFrameCallback` stops, so
+    pose input froze for good. The engine now resumes it on `pause` while running, and a 30 ms
+    watchdog processes frames when rVFC has been quiet for 100 ms (deduplicated by video time).
+    After the fix: 30 FPS attached, detached, re-attached and moved; 0 after `stop()`.

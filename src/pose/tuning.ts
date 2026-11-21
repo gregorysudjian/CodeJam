@@ -35,6 +35,13 @@ export const DRAW_POINT_RADIUS = 4;
 /** FPS counter window. */
 export const FPS_WINDOW_MS = 1000;
 
+/**
+ * Frame watchdog: while the video is off the page, requestVideoFrameCallback stops firing; every
+ * interval, if no frame was processed for the stale time, a frame is processed on the timer.
+ */
+export const WATCHDOG_INTERVAL_MS = 30;
+export const WATCHDOG_STALE_MS = 100;
+
 /** Debug overlay text refresh interval (not every frame). */
 export const OVERLAY_REFRESH_MS = 150;
 /** Moves the overlay lists. */
