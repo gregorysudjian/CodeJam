@@ -133,9 +133,10 @@ Judging, events and the contract are unchanged; only where objects are drawn mov
 **Tuning with the camera (`?debug=timing`, `timing.ts`).** Play a round with pose input and the browser console open. At the end the game prints one row per move:
 - when the move was first seen relative to its judging time (median, negative = early);
 - the share inside the judging window;
-- the current lead, and the lead that would put the median in the middle of the window.
+- the current lead, and the lead that would put the median in the middle of the window;
+- `lagSec` (median + lead): the whole webcam lag, if the player moved as the object reached the runner.
 
-Objects the player did not have to move for are skipped (already standing in the free lane). From the second round on (no page reload in between, "play again" is fine), a second table combines every round of this page load with the same input. Rounds where K was pressed are left out. The demo level has only 2 to 5 of each move, so copy the combined table's `suggestedLeadSec` into `VISUAL_LEAD_SEC.pose` after two or three rounds. The same reports are in `window.__gameTiming` (last round) and `window.__gameTimingAll` (combined). Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
+Objects the player did not have to move for are skipped (already standing in the free lane). From the second round on (no page reload in between, "play again" is fine), a second table combines every round of this page load with the same input. Rounds where K was pressed are left out. The demo level has only 2 to 5 of each move, so copy the combined table's `suggestedLeadSec` into `VISUAL_LEAD_SEC.pose` after two or three rounds. The same reports are in `window.__gameTiming` (last round) and `window.__gameTimingAll` (combined). `latency.test.ts` checks the leads against the lags measured on A's clips. If you lower a lead below what those need, it fails: put the session's `lagSec` values in its `DETECTOR_LAG_SEC` and set its `CAMERA_SEC` to 0. Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
 
 ## Placement (`timeline.ts`, pure, tested)
 

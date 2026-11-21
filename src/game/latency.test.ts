@@ -7,6 +7,9 @@ import { VISUAL_LEAD_SEC } from './tuning';
  * Webcam lag per move, measured on A's recorded clips (src/pose/fixtures on abdo-1): from the
  * first raw-landmark movement to the detector's state change, worst rep. Camera capture and
  * the model add about CAMERA_SEC on top; that part is not in the clips' timestamps.
+ * After a camera session with ?debug=timing, its `lagSec` column is the whole lag, camera
+ * included. If you lower a lead below what these numbers need, put those values here and set
+ * CAMERA_SEC to 0.
  */
 const DETECTOR_LAG_SEC: Record<MoveType, number> = {
   jump: 0.078,

@@ -18,6 +18,8 @@ export interface MoveTiming {
   inWindowShare: number; // 0 to 1
   leadSec: number; // current VISUAL_LEAD_SEC
   suggestedLeadSec: number;
+  /** Median + lead: the webcam lag, if the player moved as the object reached the runner. */
+  lagSec: number;
 }
 
 /** When each move was seen relative to its judging time (seconds, negative = early), by move. */
@@ -95,6 +97,7 @@ export function summarizeTiming(
         inWindowShare: round2(inWindow / offsets.length),
         leadSec: leads[move],
         suggestedLeadSec: round2(suggested),
+        lagSec: round2(median + leads[move]),
       };
     });
 }

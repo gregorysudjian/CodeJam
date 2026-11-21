@@ -75,6 +75,7 @@ describe('timing probe', () => {
     );
     expect(jump!.inWindowShare).toBe(1);
     expect(jump!.suggestedLeadSec).toBeCloseTo(0.1, 1);
+    expect(jump!.lagSec).toBeCloseTo(0, 1); // seen 0.1 s early with a 0.1 s lead: no lag
   });
 
   it('skips objects the player did not have to move for', () => {
