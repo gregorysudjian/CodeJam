@@ -29,6 +29,9 @@ _Last refresh: Sat 07:29 (overnight autonomous session). Read this first in a ne
 - **End to end:** `main`'s full flow (calibrate → tutorial with the video off-page → play) ran on
   replayed clips with only the model swapped, in floor and treadmill mode (see §6 "Testing without
   a camera"). Phase 3's "treadmill round playable" holds on replayed data.
+- **Whole team:** scratch merge of `main` + `p1-workout` + `p2-game` + `abdo-1`: no conflicts,
+  403 tests (with `--testTimeout=120000` for Patrick's slow ones), build OK, a full round of the real
+  3D game ran on replayed pose with no errors.
 - **Integration:** verified against `origin/main` PR #19 in a scratch worktree (never merged): `main`'s
   check passes with this `src/pose` (236 tests incl. the DevPose snippet from NEEDS.md 1), the real
   calibration screen and `?dev=pose` work with a stubbed camera, StrictMode leaves one camera track.

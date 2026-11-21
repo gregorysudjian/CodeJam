@@ -19,6 +19,11 @@ your replayed clips. Nothing touched `main`. It has **not** met a real camera si
    `public/models` or `public/mediapipe`.
 
 **Evidence (no camera; nothing merged):**
+- **The whole team's code together:** a scratch merge of `main` + Patrick's `p1-workout` + `p2-game`
+  (the real 3D game) + `abdo-1` (detached, no branch, not pushed) has no conflicts, passes typecheck,
+  lint, all **403 tests** (Patrick's 3 slow tests need a longer timeout, as Greg's audit says) and the
+  build. A full 45 s `?demo=1` round of the real 3D game ran on your replayed moves: tutorial passed,
+  hits scored, round complete, results and coach card shown. No console errors.
 - In a throwaway copy of `origin/main` with this `src/pose`: `main`'s `npm run check` passes (236
   tests), Greg's calibration screen shows our live messages, D shows the overlay, `?dev=pose` works
   with the `DevPose.tsx` from NEEDS.md, React StrictMode leaves exactly one camera track.
