@@ -16,6 +16,20 @@ import type {
   WorkoutId,
   WorkoutInfo,
 } from '@/contracts';
+import {
+  DEFAULT_DIFFICULTY,
+  DEFAULT_WEIGHT_KG,
+  END_MARGIN_SEC,
+  FIRST_WAVE_SEC,
+  MET_FLOOR,
+  MET_TREADMILL,
+  MULTIPLIER_STREAKS,
+  POINTS_CLEARED,
+  POINTS_ORB,
+  WAVE_GAP_SEC,
+} from './tuning';
+
+export { DEMO_CONFIG, DEMO_SEED } from './tuning';
 
 export const WORKOUTS: Record<WorkoutId, WorkoutInfo> = {
   legs: {
@@ -90,7 +104,7 @@ function spawnFor(kind: ObstacleKind, rand: () => number, freeLane: Lane): Spawn
 export function generateLevel(config: SessionConfig): Level {
   const full: SessionConfig = {
     ...config,
-    difficulty: config.difficulty ?? 0.5,
+    difficulty: config.difficulty ?? DEFAULT_DIFFICULTY,
     lowImpact: config.lowImpact ?? false,
     seed: config.seed ?? Math.floor(Math.random() * 2 ** 31),
   };
@@ -101,7 +115,7 @@ export function generateLevel(config: SessionConfig): Level {
 
   const waves: Wave[] = [];
   let freeLane: Lane = 0;
-  for (let t = 4; t < full.durationSec - 1; t += 2.2) {
+  for (let t = FIRST_WAVE_SEC; t < full.durationSec - END_MARGIN_SEC; t += WAVE_GAP_SEC) {
     const kind = kinds[Math.floor(rand() * kinds.length)];
     if (kind === 'block') {
       const step = Math.floor(rand() * 3) - 1;
@@ -112,13 +126,11 @@ export function generateLevel(config: SessionConfig): Level {
   return { config: full, waves };
 }
 
-const MET: Record<WorkoutId, number> = { legs: 8, fullBody: 8, arms: 6, shoulders: 6 };
-
 export function createSessionTracker(
   config: SessionConfig,
   opts?: { weightKg?: number },
 ): SessionTracker {
-  const weightKg = opts?.weightKg ?? 70;
+  const weightKg = opts?.weightKg ?? DEFAULT_WEIGHT_KG;
   const reps = { ...ZERO_REPS };
   const missed = { ...ZERO_REPS };
   let score = 0;
@@ -128,9 +140,9 @@ export function createSessionTracker(
   let hit = 0;
   const startedAt = performance.now();
 
-  const multiplier = () => (streak >= 20 ? 4 : streak >= 10 ? 3 : streak >= 5 ? 2 : 1);
+  const multiplier = () => 1 + MULTIPLIER_STREAKS.filter((s) => streak >= s).length;
   const kcal = (activeSec: number) => {
-    const met = config.mode === 'treadmill' ? 9 : MET[config.workout];
+    const met = config.mode === 'treadmill' ? MET_TREADMILL : MET_FLOOR[config.workout];
     return ((met * 3.5 * weightKg) / 200) * (activeSec / 60);
   };
   const live = (activeSec: number): LiveStats => ({
@@ -144,7 +156,7 @@ export function createSessionTracker(
   return {
     handleGameEvent(e: GameEvent) {
       if (e.type === 'cleared' || e.type === 'collected') {
-        score += (e.type === 'collected' ? 50 : 100) * multiplier();
+        score += (e.type === 'collected' ? POINTS_ORB : POINTS_CLEARED) * multiplier();
         streak += 1;
         bestStreak = Math.max(bestStreak, streak);
         if (e.type === 'cleared') cleared += 1;
