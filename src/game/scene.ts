@@ -811,7 +811,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
     },
     milestone() {
       shockT = 0;
-      flash = 1;
+      flash = reduceMotion ? L.REDUCED_FLASH : 1; // lanes and horizon brighten less
       if (!reduceMotion) punch = 4;
     },
     setQuality(q) {

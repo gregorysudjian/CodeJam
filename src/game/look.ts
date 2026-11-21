@@ -53,6 +53,10 @@ export const OUTRO_TO = 0.55; // intro progress it swings back to: 1 is the chas
 // low in the frame, under the end banner.
 export const OUTRO_LOOK = { y: 2.6, z: -0.5 };
 
+/* ── Reduced motion (scene.ts) ── */
+// A milestone brightens the lane lines and horizon; with prefers-reduced-motion, this much of it.
+export const REDUCED_FLASH = 0.4;
+
 /* ── Ghost runner (player.ts, view3d.ts) ── */
 // Silver glass with white accents: never the player's lime, and never a move colour (the old
 // cyan was the blocks'), so it reads as a runner, not an obstacle.
