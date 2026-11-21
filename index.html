@@ -4,7 +4,24 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CodeJam Fitness</title>
+    <title>Neon Arena · Webcam fitness game</title>
+    <meta
+      name="description"
+      content="A workout you play with your body: sidestep, jump, squat and raise your arms to run an obstacle course, tracked by your webcam on your own device."
+    />
+    <meta name="theme-color" content="#07090d" />
+    <meta property="og:title" content="Neon Arena · Webcam fitness game" />
+    <meta
+      property="og:description"
+      content="Your body is the controller. Pose tracking runs on your laptop; your video never leaves it."
+    />
+    <!-- Dark before the app's CSS loads (under npm run dev it arrives with the scripts), so no white flash. -->
+    <style>
+      html,
+      body {
+        background: #07090d;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

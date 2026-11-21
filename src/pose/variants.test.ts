@@ -314,3 +314,12 @@ describe('extra clips named <move>-<count>', () => {
     expect(got).toHaveLength(Number(count));
   });
 });
+
+test('an overhead press with ±1% landmark noise is never a jump (Patrick, 20 seeds)', () => {
+  // Raising both arms lifts the hips 0.10–0.16 T; with noise that crossed the jump line (seeds
+  // 1010, 1313, 1919 jumped mid-press). Calibrated on the clip's own start, as in his replay.
+  for (let k = 1; k <= 20; k++) {
+    const r = replay('greg/armsUp', { calibrate: 'self', transform: jitter(0.01, 101 * k) });
+    expect(kinds(r.events).filter((x) => x === 'jump')).toEqual([]);
+  }
+});

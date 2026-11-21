@@ -78,7 +78,7 @@ engine.ts      getState() (game polls), onMove, drawSkeleton (skeleton.ts), D �
 
 ## 4. Decisions
 
-`src/pose/DECISIONS.md` (38 entries, each with its reason). The ones that matter most:
+`src/pose/DECISIONS.md` (39 entries, each with its reason). The ones that matter most:
 
 - Lane line 0.55 / 0.3 W.
 - **Arm up 0.3 T** above the nose (kept: Patrick's game latency leads were tuned on it; 0.4 added
@@ -161,13 +161,14 @@ gives JSON to put into `DETECTION_DEFAULTS`.
 
 ## 8. Next tasks (priority, PLAN.md phase)
 
-1. Finish §6 steps 4–8 on the real camera, ideally in the full app (Phase 1 done-check).
-2. Teammate check, 8/10 (Phase 1 done-check). Save clips as `fixtures/extra/` tests.
-3. Answer review comments on PR #27. Greg merges.
-4. After the merge: play full rounds with pose plus the 3D game on the demo laptop and measure
-   combined FPS (Phase 2). If it is under 20, try the game's low graphics (`?gfx=low`).
-5. Patrick's `?debug=timing`: play 2–3 pose rounds and share the report with him, so the game's
-   pose leads match real lag (Phase 2).
+1. **On call for Patrick (Sat ~2:45 PM).** Patrick owns the camera session, FPS and camera tuning
+   on his Mac (the demo laptop); A does not run it or tune for camera quality. If his session
+   shows detection itself is wrong (a move missed, or seen when not done), he sends the case and A
+   fixes it in `src/pose`, keeping the pinned state timing test green.
+2. (done) Patrick's false jump during an overhead press: DECISIONS 39.
+3. Finish §6 steps 4–7 on the real camera (Phase 1 done-check), if Patrick's session doesn't cover it.
+4. Teammate check, 8/10 (Phase 1 done-check). Save clips as `fixtures/extra/` tests.
+5. (done) PR #27 merged via #30; NEEDS 1, 2, 5, 6, 7 done by Greg (#28, #31).
 6. Measure `MAX_POSES = 2` FPS; keep it if ≥ 25 with the game (Phase 2, background people).
 7. Phase 4: venue-lighting test, `STATION.md` setup at the venue.
 
