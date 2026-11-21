@@ -115,6 +115,9 @@ The pose model is pre-trained by Google, and Supabase hosts the database and sig
 **What is in your backend, and why does the tracking not run there?**
 Postgres with row-level security for profiles and sessions, anonymous sign-in, a leaderboard view that exposes only each player's best (name, score, date) per workout, mode and round length, and a serverless coach endpoint. The endpoint checks the player's token, reads their history under the same row-level security, limits each player to one call per 10 s, and asks Claude for structured JSON. No Claude key is configured for the demo, so the card shows our rule-based coach; adding the key switches the endpoint on. Tracking stays on the device on purpose: a round trip to a server would add lag you can feel in a game, and it would mean uploading video of people exercising.
 
+**Does anything leave the laptop?**
+The video and the body landmarks never do: tracking runs in the browser, and the model and its WASM are served by our own app. The server gets only the round's numbers (score, reps, accuracy) and the profile the player typed. Honest detail if pressed: Google's MediaPipe library sends anonymous usage metrics (library version, inference counts and timings). We decoded those payloads: no images, frames or landmarks (`src/pose/ROBUSTNESS.md`).
+
 **Where is the AI?**
 On screen today: the pose model, and a rule-based coach (the card's badge says RULES). The Claude path is built and tested up to the API call (token check, rate limit, answer validation), but has not answered with a real key. Say this plainly rather than let a judge find the RULES badge.
 
