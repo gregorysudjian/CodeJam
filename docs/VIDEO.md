@@ -9,7 +9,7 @@ Fallback ladder step 4 (DEMO.md): if the app won't run on stage, play the video 
 **Before you press record**
 - Demo Mac set up as in OPERATOR.md: `http://localhost:5173/?demo=1`, Camera on the switch, the Player's account ("Continue as …"), tape mark at about 1.5 m.
 - One camera round already played on this URL, so the ghost runner is there (DEMO.md "Ghost runner").
-- A second tab open at **`https://codejam-jet.vercel.app/?kiosk=1`** (the live site: its QR points to the live URL; the localhost kiosk's QR would encode `http://localhost:5173`, a dead link on a phone, QA Q18). It shows the demo Mac's rounds only if the Mac's `.env.local` uses the same Supabase project as the live site: check that one rehearsal round appears on it. Reload it just before the take (it also refreshes every 15 s on its own).
+- A second tab open at `http://localhost:5173/?kiosk=1`. Reload it just before the take (it also refreshes every 15 s on its own).
 - Laptop brightness at maximum, volume at about 70 %, notifications off.
 - **Phone:** landscape, 1080p 30 fps, on a tripod or a steady hand, about 2.5–3 m back and to one side, so the Player's whole body and the laptop screen are both in frame. Lock exposure on the laptop screen (on iPhone: press and hold on the screen, "AE/AF Lock") so the screen isn't blown out.
 - Do two takes; keep the better one.

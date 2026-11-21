@@ -4,9 +4,9 @@
 
 Branches are pushed with the PR text in the first commit message (`git log --reverse main..<branch>`).
 
-**Q18 (demo risk, Greg):** on the demo Mac every QR code in the app (landing, kiosk) points to `http://localhost:5173`, a dead link on a phone. Until it's fixed, show QR codes only from the live site (`https://codejam-jet.vercel.app/?kiosk=1`).
+No decision is waiting. Q19, Q20 and the copy table (C1–C10) are with Jiscar 1, who owns `src/ui`.
 
-## Status (Sat 17:07, `main` at 7be4281)
+## Status (Sat 17:07, `main` at 7be4281; re-swept on 26692ca)
 
 `docs/qa/sweep/sweep.mjs` on 7be4281: **105 checks passed, 0 failed** (35 per size at 1366×768, 1920×1080, 1280×720): every screen, a scripted perfect demo round (4,750), no console errors, no horizontal scroll. `npm run check`: 762 tests, none skipped. Only Q12 is open, by choice: the kiosk is the QR screen.
 
@@ -29,7 +29,7 @@ Branches are pushed with the PR text in the first commit message (`git log --rev
 | Q15 | visible | HUD cue word overprinted the "N COMBO!" banner and the VS GHOST chip | Patrick (#46) | **fixed**, verified |
 | Q16 | minor | Local store leaderboard listed every round, not each player's best | Greg | **fixed**, verified |
 | Q17 | minor | The kiosk could save a player called "Leaderboard" (two routes) | Greg | **fixed**, verified (both routes) |
-| Q18 | visible | On localhost the QR codes encode `http://localhost:5173` | Greg | **new** |
+| Q18 | visible | On localhost the QR codes encoded `http://localhost:5173` | Greg | **fixed**, verified |
 | Q19 | visible | At 125–150 % display scaling or browser zoom, the select screen is 1,100 px tall: START and the Camera switch need scrolling | `src/ui` | **new** |
 | Q20 | minor | At 125–150 %, the leaderboard podium and the kiosk QR are below the fold | `src/ui` | **new** |
 | A1 | visible | Results: "RAISE BOTH ARMS TO PLAY AGAIN" was 20 px | `src/ui` | **fixed** (code; camera-only screen) |
@@ -43,12 +43,6 @@ Branches are pushed with the PR text in the first commit message (`git log --rev
 
 ## Open findings
 
-### Q18 (new, demo risk). The QR codes point to localhost on the demo Mac
-- **Steps:** on the demo Mac, open `http://localhost:5173/?demo=1` (landing) or `http://localhost:5173/?kiosk=1`, and scan the "Play on your laptop" QR with a phone.
-- **Expected:** the live site, `https://codejam-jet.vercel.app`.
-- **Saw:** the landing prints `http://localhost:5173` under its QR, and the kiosk's QR encodes the same value ([q18-kiosk-qr-localhost.jpg](qa/q18-kiosk-qr-localhost.jpg)). On a phone that is a dead link. The demo runs on localhost (DEMO.md), so every QR shown from the demo Mac at the table or on stage is affected. The live site's own kiosk is fine (its origin is the live URL).
-- **Cause:** `src/app/App.tsx:69` `const publicUrl = window.location.origin;`, used for both QR codes and the printed URL.
-- **Owner:** Greg (`src/app/App.tsx`). **Fix:** a `PUBLIC_URL = 'https://codejam-jet.vercel.app'` in `src/app/tuning.ts`, used when `location.hostname` is `localhost` or `127.0.0.1` (keep the origin otherwise, so preview deployments still point to themselves). **Until then:** take QR codes only from `https://codejam-jet.vercel.app/?kiosk=1` or a printout (OPERATOR.md, VIDEO.md and the close slide already say so).
 ### Q19 (new). Select screen at 125–150 % scaling: two rows of tall cards, START off screen
 - **Why it matters:** Windows laptops default to 125–150 % display scaling, and browser zoom does the same. Both shrink the CSS viewport: 1366×768 at 125 % is 1093×614 CSS px, at 150 % 911×512; a 1280×720 projector at 125 % is 1024×576.
 - **Steps:** `SIZES=1093x614@1.25,911x512@1.5,1024x576@1.25,853x480@1.5 node docs/qa/sweep/sweep.mjs` (or Chrome at 1366×768 with Ctrl + "+" to 125 %) → Play as guest → Skip.
@@ -76,7 +70,7 @@ Every visible string and accessible label, read in flow order as a first-time ju
 | C5 | Select, settings row | LOW IMPACT (switch, no explanation) | LOW IMPACT, with the description "No jumps" | `src/ui` (`WorkoutSelectScreen.tsx:326`, `description` prop of the toggle) |
 | C6 | Dashboard, chart header | Pace 8.6 min / day | Goal pace 8.6 min / day (it is the weekly goal ÷ 7, not the player's pace) | `src/ui` (`DashboardCharts.tsx:75`) |
 | C7 | Pause, key hints | K keyboard / camera · R recalibrate · D debug | K camera ↔ keyboard · R recalibrate (drop D: it's for the team) | `src/ui` (`GameHud.tsx`, the hint list) |
-| C8 | Landing, kiosk | PLAY ON YOUR LAPTOP + `http://localhost:5173` | the live URL (Q18) | Greg (`src/app/App.tsx:69`) |
+| C8 | Landing, kiosk | PLAY ON YOUR LAPTOP + `http://localhost:5173` | the live URL: **done** with Q18 (#53) | Greg (`src/app/App.tsx`) |
 | C9 | Select, Camera/Keyboard switch (screen reader) | aria-label "Control" | "Input: camera or keyboard" | Greg (`src/app/InputSwitch.tsx:23`) |
 | C10 | Dashboard, day dots (screen reader) | "MON, no round" | "Monday, no round" (some screen readers read "MON" as a word; minor) | `src/ui` (`DashboardScreen.tsx`, the day-streak dots) |
 
@@ -95,6 +89,7 @@ Checked and fine: the camera dialog ("No camera found… or play with the keyboa
 - **Q11:** dashboard says "1 DAY" and "1 round · Best …".
 - **Q13:** the `mapping-edges` test runs and passes.
 - **Q15** (231dc4a, #46): at 1366×768 and 1920×1080 the cue stays in the top band, "5/10/20 COMBO!" appears at bottom centre and the "VS GHOST" chip at bottom right; nothing overlaps at any of the three milestones ([1366 at 5](qa/q15-fixed-1366.jpg), [1920 at 10](qa/q15-fixed-1920.jpg)). Old evidence kept: [before, 1366](qa/q15-cue-over-banner-1366.jpg).
+- **Q18** (26692ca, #53): on `http://localhost:5173` the landing prints `https://codejam-jet.vercel.app` under its QR, and both QR codes (landing, kiosk) use the same value (`App.tsx` `publicUrl`: the live site on localhost, the page's own origin elsewhere). Before: [q18-kiosk-qr-localhost.jpg](qa/q18-kiosk-qr-localhost.jpg). The workarounds in OPERATOR.md, VIDEO.md, SLIDES.md and CARDS.md are removed. Not tested: scanning with a phone.
 - **Q16** (ba46d74): a local profile with three 45 s rounds (best 4,750) shows "Sam" once on the landing top list, the leaderboard and `?kiosk=1`.
 - **Q14** (7be4281): a keyboard round → Esc: PAUSED, RESUME, END ROUND and the key hints; no "Cross your arms to resume" ([paused-1366.jpg](qa/paused-1366.jpg)). The camera-side hint (48 px, white, only with `cameraSlot`) is read from code: no camera here.
 - **Q17** (7be4281), both routes: (1) fresh browser → `?kiosk=1&store=local` → landing still "PLAY AS GUEST", no `codejam.local.profile` saved. (2) A dev server with an unreachable Supabase URL (`http://127.0.0.1:9`, set only in that process, no real project): the kiosk's sign-in fails ("Guest sign-in failed; using the local store for this visit") → landing still "PLAY AS GUEST", nothing saved. Route 1 is now a sweep check.
@@ -156,3 +151,4 @@ Open suggestions: preload the pose model on the landing page for live-URL visito
 | 17:29 | New deliverables: VIDEO.md (`q-video`), slides (`q-slides`), Q18 (`q-qr`) | Fallback video recorded (67 s, 1920×1080, verified by playback; not in git). Architecture slide arrows checked in code. Found Q18: QR codes on localhost point to localhost. #50 (pose only) needs no keyboard re-sweep |
 | 17:33 | Scaling sweep (`q-zoom`) | The sweep takes `SIZES=WxH@scale`; at 1093×614@1.25, 911×512@1.5, 1024×576@1.25, 853×480@1.5: 34/35 each (select doesn't fit, Q19), 1536×864@1.25: 35/35. Q20 from the shots. Not tested: calibration screen (camera) |
 | 17:36 | Copy pass (`q-copy`) | Every rendered string in flow order; 10 proposals (C1–C10) for Greg's Claude; README's move table gets the in-app names |
+| 17:53 | Final sweep 26692ca (`q-final`) | Sweep 105/105; Q18 verified fixed (QR shows the live URL on localhost); QR workaround text removed from OPERATOR, VIDEO, SLIDES, CARDS. Q19, Q20, C1–C10 with Jiscar 1. Not tested: camera, Supabase, sound, phone scan |
