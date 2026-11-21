@@ -91,7 +91,9 @@ still; size gate 40%; `MAX_POSES = 1`; pose handles D, app handles R; video kept
 Setup: `npm run dev`, Chrome, open `http://localhost:5173/?dev=pose`, paste the console snippet from
 README "How to use it". Stand at playing distance (feet in view).
 
-1. **FPS:** overlay top line. Expect ≥ 25 FPS and `GPU`. If < 25, tell the session.
+1. **FPS:** overlay top line. Expect ≥ 25 FPS and `GPU`. If < 25, look at the second line: if the
+   camera's own fps is also low, it is the camera (add light); if the camera says ~30, it is the
+   model (check `GPU`, close other tabs). Note both numbers.
 2. **Calibration:** click `⟳ calibrate floor`, walk back. Expect `tooClose` while your feet are cut
    off, then `holdStill` climbing to 100%, then "Calibrated". Step far back first: expect `tooFar`.
    If the room is too small to get your feet in view, set `CALIBRATION_FEET_IN_VIEW = false` in
