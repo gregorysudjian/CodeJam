@@ -73,4 +73,7 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > the moments `airborne`, `ducking`, `lane` and the arm states turn on in my clips are the same as
 > when you measured (±1 frame), and a test in `src/pose/variants.test.ts` now pins them. One
 > difference: the `squat` *event* now fires 250 ms after `ducking` turns on (a crouch before a jump
-> is not a squat); collisions use `ducking`, so judging is unaffected.
+> is not a squat); collisions use `ducking`, so judging is unaffected. And a jump out of a crouch
+> deeper than the squat line now turns `airborne` on ~0.17 s later (it must rise 0.45 T, so standing
+> up out of a squat is never a jump); normal jumps are unchanged. If your `?debug=timing` shows
+> late hurdles for deep-crouch jumpers, I can lower `JUMP_AFTER_SQUAT_ON_T` (not below ~0.3 T).
