@@ -87,6 +87,8 @@ README "How to use it". Stand at playing distance (feet in view).
 1. **FPS:** overlay top line. Expect ≥ 25 FPS and `GPU`. If < 25, tell the session.
 2. **Calibration:** click `⟳ calibrate floor`, walk back. Expect `tooClose` while your feet are cut
    off, then `holdStill` climbing to 100%, then "Calibrated". Step far back first: expect `tooFar`.
+   If the room is too small to get your feet in view, set `CALIBRATION_FEET_IN_VIEW = false` in
+   `tuning.ts` (head and knees are then enough; detection uses the hips).
 3. **Moves, 10 each:** press `Reset tally` (right panel), do 10 sidesteps (right, back, left,
    back… each lane change counts), then read the tally; repeat for jump, squat, both arms up, left
    arm only, right arm only. Expect 10/10 each, nothing counted under the other moves. With the

@@ -61,6 +61,11 @@ export const CALIBRATION_STILL_SCALE = 0.15;
 export const CALIBRATION_MIN_T_FRAME = 0.15;
 /** Treadmill mode: too far when W is under this fraction of the frame width. */
 export const CALIBRATION_MIN_W_FRAME = 0.12;
+/**
+ * Floor calibration wants the head and feet in view (CONTRACTS.md). If the venue room is too small
+ * to get the feet in frame, set false: then head and knees are enough (detection uses the hips).
+ */
+export const CALIBRATION_FEET_IN_VIEW = true;
 /** A landmark counts as in frame inside this margin (fraction of the frame). */
 export const CALIBRATION_EDGE_MARGIN = 0;
 /** Visibility a landmark needs to count during calibration. */

@@ -73,3 +73,6 @@ or the named file.
 26. **Arm "up" line raised from 0.3 T to 0.4 T above the nose,** so hands resting on top of the head
     (wrists ~0.25–0.3 T above the nose, common between sets) are not `armsUp`. A's real raises peak at
     0.65–0.75 T in every clip, so a lower raise (0.5 T) still counts. Unverified on a real camera.
+27. **`CALIBRATION_FEET_IN_VIEW` switch (default true, as the contract says).** A's feet were at 0.97
+    of the frame height at home; a smaller venue room could leave calibration stuck on `tooClose`
+    although detection only needs the hips. Setting it to false asks for head and knees only.

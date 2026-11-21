@@ -7,13 +7,16 @@ import {
   coreLandmarks,
   L_ANKLE,
   L_HIP,
+  L_KNEE,
   measureBody,
   NOSE,
   R_ANKLE,
   R_HIP,
+  R_KNEE,
 } from './detect';
 import {
   CALIBRATION_EDGE_MARGIN,
+  CALIBRATION_FEET_IN_VIEW,
   CALIBRATION_HOLD_MS,
   CALIBRATION_MIN_T_FRAME,
   CALIBRATION_MIN_VISIBILITY,
@@ -79,6 +82,7 @@ export function measureForMode(pose: Point[], mode: PlayMode, aspect: number): C
 export function createCalibrator(
   mode: PlayMode,
   aspect: number | (() => number) = 4 / 3,
+  feetInView = CALIBRATION_FEET_IN_VIEW,
 ): Calibrator {
   const getAspect = typeof aspect === 'function' ? aspect : () => aspect;
   const msg = CALIBRATION_MESSAGES[mode];
@@ -111,7 +115,11 @@ export function createCalibrator(
         resetHold();
         return { status: status('tooFar') };
       }
-      const ends = [pose[NOSE], pose[L_ANKLE], pose[R_ANKLE]];
+      // Head and feet in view (contract). In a small room, CALIBRATION_FEET_IN_VIEW = false
+      // asks only for the knees: detection itself uses the hips.
+      const ends = feetInView
+        ? [pose[NOSE], pose[L_ANKLE], pose[R_ANKLE]]
+        : [pose[NOSE], pose[L_KNEE], pose[R_KNEE]];
       if (!ends.every((p) => visible(p) && inFrameY(p))) {
         resetHold();
         return { status: status('tooClose') };

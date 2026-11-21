@@ -50,6 +50,20 @@ describe('calibrator', () => {
     }
   });
 
+  test('feet cut off: tooClose, unless the small-room switch only asks for the knees', () => {
+    const down = standing.map((p) => p.map((q) => ({ ...q, y: q.y + 0.06 })));
+    const strict = createCalibrator('floor');
+    const relaxed = createCalibrator('floor', 4 / 3, false);
+    let strictStep = '';
+    let relaxedDone = false;
+    down.forEach((p, i) => {
+      strictStep = strict.update(p, i * 33).status.step;
+      if (relaxed.update(p, i * 33).result) relaxedDone = true;
+    });
+    expect(strictStep).toBe('tooClose');
+    expect(relaxedDone).toBe(true);
+  });
+
   test('low visibility counts as no body', () => {
     const cal = createCalibrator('floor');
     const dim = standing[0].map((p) => ({ ...p, visibility: 0.2 }));
