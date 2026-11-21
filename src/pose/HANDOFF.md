@@ -78,7 +78,7 @@ engine.ts      getState() (game polls), onMove, drawSkeleton (skeleton.ts), D �
 
 ## 4. Decisions
 
-`src/pose/DECISIONS.md` (39 entries, each with its reason). The ones that matter most:
+`src/pose/DECISIONS.md` (41 entries, each with its reason). The ones that matter most:
 
 - Lane line 0.55 / 0.3 W.
 - **Arm up 0.3 T** above the nose (kept: Patrick's game latency leads were tuned on it; 0.4 added
@@ -121,7 +121,7 @@ engine.ts      getState() (game polls), onMove, drawSkeleton (skeleton.ts), D �
    const { mountPoseDebug } = await import('/src/pose/index.ts');
    mountPoseDebug(host);
    ```
-4. Allow the camera, close DevTools, and stand at playing distance with your feet in view.
+4. Allow the camera, close DevTools, and stand at playing distance (about 1.5 m, head and knees in view).
 
 **Checklist**
 1. ✅ (done Sat 1:30 PM) **FPS:** the overlay shows ≥ 25 FPS and GPU; line 2 shows the camera's own fps.
@@ -166,6 +166,8 @@ gives JSON to put into `DETECTION_DEFAULTS`.
    shows detection itself is wrong (a move missed, or seen when not done), he sends the case and A
    fixes it in `src/pose`, keeping the pinned state timing test green.
 2. (done) Patrick's false jump during an overhead press: DECISIONS 39.
+   (done, PR pending) Head-to-knees calibration at ~1.5 m (DECISIONS 40) and the pause X gesture
+   (`gesture.ts`, `onGesture`, DECISIONS 41; NEEDS 9–10 for Greg). Record a real X with `● pauseX`.
 3. Finish §6 steps 4–7 on the real camera (Phase 1 done-check), if Patrick's session doesn't cover it.
 4. Teammate check, 8/10 (Phase 1 done-check). Save clips as `fixtures/extra/` tests.
 5. (done) PR #27 merged via #30; NEEDS 1, 2, 5, 6, 7 done by Greg (#28, #31).

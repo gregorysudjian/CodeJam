@@ -105,11 +105,11 @@ describe('calibrate()', () => {
     expect(new Set(statuses)).toEqual(new Set(['tooFar']));
   });
 
-  test('feet cut off at the bottom: tooClose', () => {
+  test('knees cut off at the bottom: tooClose', () => {
     const s = createSession();
     const statuses: string[] = [];
     void s.calibrate('floor', (st) => statuses.push(st.step));
-    const down: Transform = (p) => p.map((q) => ({ ...q, y: q.y + 0.08 }));
+    const down: Transform = (p) => p.map((q) => ({ ...q, y: q.y + 0.2 }));
     feed(s, 'standing', 0, { transform: down, upToMs: 3000 });
     expect(new Set(statuses)).toEqual(new Set(['tooClose']));
   });
@@ -244,5 +244,27 @@ describe('people in the background', () => {
     const bg = scaleAbout(0.5, 0.5, 0.55)(toPoints(loadClip('standing').frames[10].pose!));
     for (let k = 0; k < 40; k++) s.frame([bg], t + k * 33);
     expect(s.getState().tracking).toBe(false);
+  });
+});
+
+describe('pause gesture', () => {
+  test('onGesture: crossing the forearms for 1.5 s after calibrating gives one pause', async () => {
+    const s = createSession();
+    const { t } = await calibrateOnStanding(s);
+    const got: string[] = [];
+    const moves: MoveEvent[] = [];
+    s.onGesture((g) => got.push(g));
+    s.onMove((e) => moves.push(e));
+    const cross: Transform = (p) => {
+      const out = p.map((q) => ({ ...q }));
+      const sy = (p[11].y + p[12].y) / 2;
+      const T = (p[23].y + p[24].y) / 2 - sy;
+      out[15] = { ...out[15], x: p[12].x, y: sy + 0.3 * T };
+      out[16] = { ...out[16], x: p[11].x, y: sy + 0.3 * T };
+      return out;
+    };
+    feed(s, 'standing', t, { transform: cross, upToMs: 1500 });
+    expect(got).toEqual(['pause']);
+    expect(moves).toEqual([]);
   });
 });

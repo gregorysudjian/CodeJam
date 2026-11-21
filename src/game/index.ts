@@ -1,6 +1,7 @@
 import type { Game, InputSource, Level } from '@/contracts';
 import { createGameAudio } from './audio';
 import { createCore, feverTier, movesSeen } from './core';
+import { comboMilestone, gradeFor } from './feedback';
 import {
   createGhostRecorder,
   finishOutcome,
@@ -11,7 +12,7 @@ import {
 } from './ghost';
 import { createGhostRace, raceLead } from './ghostRace';
 import { browserStorage, createGhostStore } from './ghostStore';
-import { createQualityGovernor, type Quality } from './quality';
+import { createFrameStats, createQualityGovernor, type Quality } from './quality';
 import { createLeadBlend } from './timeline';
 import { createTimingProbe, mergeTiming, summarizeTiming, type TimingSamples } from './timing';
 import * as T from './tuning';
@@ -27,6 +28,7 @@ import { create3DView, type GameView, type Phase } from './view3d';
 export function createGame(canvas: HTMLCanvasElement, level: Level, input: InputSource): Game {
   const audio = createGameAudio();
   let view: GameView | null = null;
+  let lastStreak = 0; // for combo milestones
   // Read on every use: the app's input can switch between keyboard and camera mid-round (K).
   const leads: T.Leads = () => T.VISUAL_LEAD_SEC[input.kind];
   // What objects are drawn (and cued) with: `leads` followed at a limited rate (createLeadBlend).
@@ -42,12 +44,19 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         if (item.spawn.kind === 'crate') audio.smash();
         view?.engage(item);
       },
-      verdict: (item, v) => {
+      verdict: (item, v, offset) => {
         if (v === 'cleared') audio.cleared(item.spawn.requires);
         else if (v === 'collected') audio.collected();
         else if (v === 'hit') audio.hit();
         if (v === 'cleared' || v === 'collected' || v === 'hit') result[v]++;
-        view?.verdict(item, v);
+        // Timing grade (feedback.ts): judged against the input in use, since the camera lags.
+        const grade = offset === null ? null : gradeFor(offset, input.kind);
+        if (grade === 'perfect') audio.perfect();
+        view?.verdict(item, v, grade);
+        const streak = core.streak();
+        const milestone = comboMilestone(lastStreak, streak);
+        lastStreak = streak;
+        if (milestone !== null) view?.milestone(milestone);
       },
     },
     shownLeads.get,
@@ -78,6 +87,16 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   core.onEvent((e) => {
     if (e.type !== 'finished') return;
     audio.finish();
+    // Frame rate while the round ran, for checking the 45 fps target on the demo laptop.
+    const fps = frameStats.summary();
+    if (fps) {
+      (window as unknown as { __gameFps?: unknown }).__gameFps = fps;
+      console.info(
+        `[game] frame rate this round: average ${fps.avgFps.toFixed(1)} fps, ` +
+          `slowest 5% of frames ${fps.p95Ms.toFixed(1)} ms (${(1000 / fps.p95Ms).toFixed(0)} fps), ` +
+          `${fps.frames} frames, graphics quality ${quality.level}`,
+      );
+    }
     if (ghostStore && recorder) {
       recorder.sample(core.elapsed(), currentState); // the last tick
       const run = {
@@ -130,6 +149,16 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   const startQuality: Quality = gfx === 'low' ? 2 : gfx === 'medium' ? 1 : 0;
   if (startQuality > 0) view.setQuality(startQuality);
   const quality = createQualityGovernor(startQuality, gfx === 'auto', window.devicePixelRatio || 1);
+  const frameStats = createFrameStats();
+  // Intro (intro.ts): start() counts 3, 2, 1 while the camera flies in, then starts the clock.
+  // Seconds since it began, still counting into the round for GO; -1 before start(). ?intro=off
+  const introOn = readFlag('intro') !== 'off';
+  let introT = -1;
+  const beginRound = (): void => {
+    if (core.started()) return;
+    core.start();
+    audio.count(0);
+  };
 
   let destroyed = false;
   let last = performance.now();
@@ -153,6 +182,15 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     last = now;
     const state = input.getState(); // polled once per frame
     currentState = state;
+    if (introT >= 0 && introT < T.INTRO_SEC + T.INTRO_GO_SEC) {
+      const before = introT;
+      introT += Math.min(realDt, T.MAX_DT_SEC);
+      if (!core.started()) {
+        if (introT >= T.INTRO_SEC) beginRound();
+        else if (Math.ceil(T.INTRO_SEC - introT) < Math.ceil(T.INTRO_SEC - before))
+          audio.count(Math.ceil(T.INTRO_SEC - introT));
+      }
+    }
     if (!core.finished() && input.kind !== startKind) mixedInput = true;
     if (core.pauseReason() === null) shownLeads.step(leads(), Math.min(realDt, T.MAX_DT_SEC));
     core.step(realDt, state, now);
@@ -163,6 +201,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       probe.sample(core.elapsed(), state);
 
     const running = core.started() && !core.finished() && core.pauseReason() === null;
+    if (running) frameStats.sample(realDt);
     const stepped = quality.sample(realDt, running);
     if (stepped !== null) {
       view!.setQuality(stepped);
@@ -175,16 +214,28 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         ? 'paused'
         : core.started()
           ? 'running'
-          : 'idle';
-    markRunning(phase === 'running');
+          : introT >= 0
+            ? 'intro'
+            : 'idle';
+    // The keyboard works during the intro too, so the player can try a move before GO.
+    markRunning(phase === 'running' || phase === 'intro');
     // Confirm each detected move with a quiet sound, also before the start, so the player
     // hears that the camera follows them. Silent while paused or after the finish.
-    if (phase === 'idle' || phase === 'running')
+    if (phase === 'idle' || phase === 'intro' || phase === 'running')
       for (const m of movesSeen(prevState, state)) audio.saw(m);
     prevState = state;
     const tier = feverTier(core.streak());
     if (tier > lastTier) audio.levelUp(tier);
     lastTier = tier;
+    // The beat plays while the round runs, fades on a pause and stops at the finish.
+    if (phase === 'running') audio.music.start();
+    else audio.music.stop();
+    const { durationSec } = level.config;
+    audio.music.update({
+      progress: durationSec > 0 ? core.elapsed() / durationSec : 0,
+      tier,
+      finale: core.elapsed() >= durationSec - T.FINALE_SEC,
+    });
 
     // Everything freezes while paused; before start the runner copies the player in place.
     const visDt = phase === 'paused' ? 0 : Math.min(realDt, T.MAX_DT_SEC);
@@ -196,6 +247,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         state,
         phase,
         streak: core.streak(),
+        intro: introT,
         ghost: ghost ? ghostPoseAt(ghost.samples, ghost.hz, core.elapsed(), ghostPose) : null,
         race: race && phase !== 'finished' ? raceLead(result, race.ghost) : null,
       });
@@ -207,6 +259,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         frame() {},
         engage() {},
         verdict() {},
+        milestone() {},
         setQuality() {},
         showGhostOutcome() {},
         dispose() {},
@@ -217,12 +270,25 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
 
   return {
     start() {
-      if (core.started() || destroyed) return;
-      core.start();
+      if (core.started() || introT >= 0 || destroyed) return;
       last = performance.now();
       audio.resume();
+      if (introOn) {
+        introT = 0;
+        audio.count(3);
+      } else {
+        introT = T.INTRO_SEC + T.INTRO_GO_SEC; // no countdown, no GO
+        beginRound();
+      }
     },
-    pause: () => core.pause(),
+    pause() {
+      // Esc during the countdown skips it into a paused round, so pause always pauses.
+      if (introT >= 0 && !core.started()) {
+        introT = T.INTRO_SEC + T.INTRO_GO_SEC;
+        core.start();
+      }
+      core.pause();
+    },
     resume: () => core.resume(),
     destroy() {
       if (destroyed) return;
