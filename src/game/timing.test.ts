@@ -5,7 +5,6 @@ import {
   createTimingProbe,
   describeSpawn,
   explainMiss,
-  frameStats,
   leadsToPaste,
   mergeTiming,
   summarizeTiming,
@@ -209,16 +208,5 @@ describe('camera-session helpers', () => {
     expect(describeSpawn({ kind: 'orb', lanes: [1], requires: 'reachRight' })).toBe(
       'orb (reachRight, lane 1)',
     );
-  });
-
-  it('frameStats: median and slowest-5 % frame rate, worst frame', () => {
-    const frames = [...Array<number>(95).fill(1 / 60), ...Array<number>(5).fill(1 / 20)];
-    expect(frameStats(frames)).toEqual({
-      frames: 100,
-      medianFps: 60,
-      slowFps: 20,
-      worstFrameMs: 50,
-    });
-    expect(frameStats([])).toMatchObject({ frames: 0 });
   });
 });

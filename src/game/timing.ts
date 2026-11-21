@@ -207,28 +207,6 @@ export function leadsToPaste(rows: readonly MoveTiming[], current: T.LeadTable):
   return `{ ${order.map((m) => `${m}: ${next[m]}`).join(', ')} }`;
 }
 
-/** Frame-rate summary of a round: real seconds per frame while it ran. */
-export interface FrameStats {
-  frames: number;
-  medianFps: number;
-  /** The frame rate the slowest 5 % of frames fell under. */
-  slowFps: number;
-  worstFrameMs: number;
-}
-
-export function frameStats(frameSecs: readonly number[]): FrameStats {
-  if (frameSecs.length === 0) return { frames: 0, medianFps: 0, slowFps: 0, worstFrameMs: 0 };
-  const sorted = [...frameSecs].sort((a, b) => a - b);
-  const at = (q: number): number =>
-    sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]!;
-  return {
-    frames: sorted.length,
-    medianFps: Math.round(1 / at(0.5)),
-    slowFps: Math.round(1 / at(0.95)),
-    worstFrameMs: Math.round(sorted[sorted.length - 1]! * 1000),
-  };
-}
-
 /** For the hit report: "beam (squat, held 1.6 s)", "block (sidestep, free lane 1)". */
 export function describeSpawn(s: Spawn): string {
   const free = ([-1, 0, 1] as Lane[]).find((l) => !s.lanes.includes(l));
