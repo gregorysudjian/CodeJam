@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 const ALIASES: Record<string, string> = { esc: "escape", return: "enter", space: " ", spacebar: " " };
 
@@ -20,7 +20,9 @@ function isActivatable(el: EventTarget | null): boolean {
 /** Window keydown hotkey (e.g. "Enter", "ESC", "S"). Ignored while typing; Enter/Space are left to a focused control. */
 export function useHotkey(key: string, handler: () => void, enabled = true): void {
   const ref = useRef(handler);
-  ref.current = handler;
+  useLayoutEffect(() => {
+    ref.current = handler;
+  }, [handler]);
 
   useEffect(() => {
     if (!enabled) return;
