@@ -155,6 +155,7 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
   let armGesture: 'none' | 'settling' | 'fired' = 'none';
   let oneArmSince = 0;
   let resizeSince = -1; // the body has looked resized (a distance change) since then
+  let resizeX = 0; // ... standing here (sideways travel restarts the wait)
   const core = coreLandmarks(mode);
 
   const isPresent = (pose: Point[] | null): pose is Point[] => {
@@ -339,9 +340,13 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
     // move the lane lines under a player standing in a side lane.
     const kW = Math.abs(p(L_SHOULDER).x - p(R_SHOULDER).x) / W;
     const kT = Math.abs(hips.y - shoulders.y) / T;
+    // Only for a tracked body that is not travelling sideways: someone walking into or across the
+    // frame shrinks and grows as they turn (Codex, greg/leaveFrame at 10 FPS), a judge stepping
+    // toward the screen does not move sideways.
     const resized =
       floor &&
       fresh &&
+      state.tracking &&
       state.lane === 0 &&
       !state.airborne &&
       !state.leftArmUp &&
@@ -353,11 +358,16 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
       Math.abs(Math.log(kT)) >= Math.log(1 + K.RESCALE_MIN) &&
       Math.abs(kT / kW - 1) <= K.RESCALE_SHAPE_TOL;
     if (!resized) resizeSince = -1;
-    else if (resizeSince < 0) resizeSince = t;
+    else if (resizeSince < 0 || Math.abs(c.x - resizeX) > K.RESCALE_MAX_SHIFT_W * W) {
+      resizeSince = t; // (re)start the confirm window here
+      resizeX = c.x;
+    }
     if (resized && t - resizeSince >= K.RESCALE_CONFIRM_MS) {
       resizeSince = -1;
-      W *= kW;
-      T *= kT;
+      // One factor for both, so a later step back still has W and T change by the same ratio.
+      const k = Math.sqrt(kW * kT);
+      W *= k;
+      T *= k;
       standY = c.y;
       still = { y: c.y, since: t };
       if (state.ducking) {

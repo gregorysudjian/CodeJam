@@ -258,3 +258,18 @@ or the named file.
     behind, near and far, while A stands still); if the model switches bodies in that clip, the
     continuity check comes back as a candidate with the clip as its test. Codex's `test.fails`
     cases stay as they are.
+48. **The drift re-baseline (44) no longer fires for a body walking into or across the frame.**
+    Codex (`a2-pose-robust`, matrix at irregular 10 FPS): `greg/leaveFrame` gave 2 extra sidesteps
+    (5.25 s, 6.2 s). Trace: Greg re-enters smaller and turned (W 0.65–0.76×, T 0.70–0.82×) while
+    his hips slide from x 0.33 to 0.47; tracking returns at 4.05 s and the re-baseline fired 0.1 s
+    later with uneven bases (W 0.71, T 0.82). Once he faced the camera his real size read as 1.34×
+    W but only 1.17× T, so the same-ratio check never undid it and lanes were judged in a W 25%
+    too small. A real path (someone walking back in mid-round), not contrived; 30 FPS only missed
+    it by timing. Fix, three conditions: (1) only while tracked; (2) no sideways travel of more
+    than `RESCALE_MAX_SHIFT_W` = 0.25 W during the 300 ms wait, else it restarts (a judge stepping
+    toward the screen barely moves sideways; walking in or across does); (3) W and T scale by one
+    shared factor √(kW·kT), so a later step back still reads as the same ratio. Evidence: new test
+    in `drift.test.ts` red before, green after; the 32 drift cases still pass; across 149 replays
+    (every real clip, 2 calibrations, 30/15/10 FPS) the only change is those two false sidesteps
+    gone. Codex's matrix passes against this tree (875 + 17 expected failures); its known entries
+    `extra sidestep 155/184` for `fps 10|greg/leaveFrame` can be removed.

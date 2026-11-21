@@ -5,7 +5,8 @@
 import { describe, expect, test } from 'vitest';
 import type { MoveEvent } from '@/contracts';
 import type { Point } from './detect';
-import { jitter, loadClip, scaleAbout, toPoints } from './fixtures';
+import { createDetector } from './detect';
+import { calibrateFromClip, jitter, loadClip, rng, scaleAbout, toPoints } from './fixtures';
 import { createSession } from './session';
 
 const smoothstep = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
@@ -128,5 +129,26 @@ describe('a different body is still not the player', () => {
     const stranger = scaleAbout(0.5, 0.5, 1.8)(toPoints(stand[10].pose!));
     for (let k = 0; k < 60; k++) s.frame([stranger], (t += FRAME_MS));
     expect(s.getState().tracking).toBe(false);
+  });
+});
+
+describe('walking into or across the frame is not a distance change', () => {
+  test('Greg walking back in at an irregular 10 FPS (Codex): no lane change from a re-baseline', () => {
+    // He re-enters smaller and turned (W 0.65–0.76×) while sliding sideways, then faces the camera.
+    // Before the fix the size was re-baselined 0.1 s after tracking came back, so his real size
+    // read as 1.34× and lanes fired at 5.25 s and 6.2 s. Only the real step at 6.8 s may count.
+    const clip = loadClip('greg/leaveFrame');
+    const det = createDetector(calibrateFromClip(loadClip('greg/standing'), 1000));
+    const random = rng(16);
+    const last = clip.frames.length - 1;
+    const moves: number[] = [];
+    let i = 0;
+    for (let t = clip.frames[0].t; t <= clip.frames[last].t; t += 100 * (0.8 + 0.4 * random())) {
+      while (i < last && Math.abs(clip.frames[i + 1].t - t) <= Math.abs(clip.frames[i].t - t)) i++;
+      const f = clip.frames[i];
+      const events = det.update(f.pose ? toPoints(f.pose) : null, t);
+      if (events.length && t > 4000) moves.push(Math.round(t));
+    }
+    expect(moves.filter((t) => t < 6500)).toEqual([]);
   });
 });
