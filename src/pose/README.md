@@ -1,9 +1,9 @@
 # src/pose — Vision (owner A)
 
-## MORNING REPORT (last update: Sat 07:00 — refreshed through the night)
+## MORNING REPORT (last update: Sat 07:12 — refreshed through the night)
 
 **State:** Phase 1 (real detection), most of Phase 2 (robustness) and Phase 3 (treadmill input) are
-done and pushed to `abdo-1`. `npm run check` passes: **177 tests**. Nothing was pushed to `main`.
+done and pushed to `abdo-1`. `npm run check` passes: **205 tests**. Nothing was pushed to `main`.
 
 **Integration with `main` (verified, nothing merged):** in a throwaway worktree of `origin/main`
 (PR #19) with this `src/pose` copied in, `main`'s full `npm run check` passes (220 tests incl. the
@@ -21,8 +21,9 @@ orbs collected in play, lane stays 0, bouncing gave no moves. No console errors 
 **What works (tested on your recorded clips, no camera needed)**
 - `createPoseInput()` is real: camera, MediaPipe, `calibrate()` with status messages, smoothing,
   lane (hysteresis), jump, squat, arms up, reach left/right, `tracking`, move events, `drawSkeleton`.
-- Every clip gives the right moves, and so do 8 synthetic variants of every clip (shorter/taller,
-  closer/farther, ±0.5–1% jitter, 20–40% dropped frames) with the same timing (±100–250 ms).
+- Every clip gives the right moves, and so do 11 synthetic variants of every clip (shorter/taller,
+  closer/farther, ±0.5–1% jitter, ±3° camera tilt, 20–40% dropped frames, and all of these at once)
+  with the same timing (±100–250 ms).
 - Zero moves standing still. Standing up out of a squat, even springing onto the toes: no jump (a
   test proves the guard is what prevents it). Squats up to 4× slower count. Stepping back quickly
   is not a jump. Stepping closer re-baselines. Long overhead holds do not distort W/T.
@@ -49,7 +50,7 @@ orbs collected in play, lane stays 0, bouncing gave no moves. No console errors 
 cannot be in view (`CALIBRATION_FEET_IN_VIEW`); arm-up line 0.4 T so hands resting on the head are
 not "arms up"; a verified `DevPose.tsx` for Greg (NEEDS.md 1); a ready PR description (HANDOFF §8).
 
-**Decisions:** `DECISIONS.md` (27). **For Greg:** `NEEDS.md` (7 copy-paste messages).
+**Decisions:** `DECISIONS.md` (29). **For Greg:** `NEEDS.md` (7 copy-paste messages).
 **New session:** `HANDOFF.md`. **Real-camera checklist:** `HANDOFF.md` §6 (10 min).
 
 ## How to use it
