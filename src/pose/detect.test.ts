@@ -229,11 +229,11 @@ describe('arms', () => {
     expect(det.state.leftArmUp && det.state.rightArmUp).toBe(true); // the state still shows both up
   });
 
-  test('hands resting on top of the head (wrists ~0.3 T above the nose) are not arms up', () => {
+  test('hands resting at forehead height (wrists ~0.2 T above the nose) are not arms up', () => {
     const det = standingDetector();
     const resting = pose();
-    resting[15] = { ...resting[15], y: 0.41 - 0.3 * T };
-    resting[16] = { ...resting[16], y: 0.41 - 0.3 * T };
+    resting[15] = { ...resting[15], y: 0.41 - 0.2 * T };
+    resting[16] = { ...resting[16], y: 0.41 - 0.2 * T };
     const r = run(det, resting, 60, 0); // 2 s
     expect(r.events).toEqual([]);
     expect(det.state.leftArmUp || det.state.rightArmUp).toBe(false);

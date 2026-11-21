@@ -2,8 +2,16 @@
 // landmark jitter, dropped frames): each must give the same moves at about the same times.
 import { describe, expect, test } from 'vitest';
 import type { MoveEvent } from '@/contracts';
-import type { Point } from './detect';
-import { jitter, replay, type ReplayOptions, scaleAbout } from './fixtures';
+import { createDetector, type Point } from './detect';
+import {
+  calibrateFromClip,
+  jitter,
+  loadClip,
+  replay,
+  type ReplayOptions,
+  scaleAbout,
+  toPoints,
+} from './fixtures';
 import { DETECTION, resetDetectionTuning } from './tuning';
 
 /** A camera rolled by `deg` degrees (laptop on an uneven table), about the frame centre, in pixels. */
@@ -148,5 +156,48 @@ describe('jumps with a deeper crouch first (countermovement), on the real jump c
 describe('faster squats (the real squat clip sped up)', () => {
   test.each([0.5, 0.33, 0.25])('%s× the time: both squats count, no jumps', (timeScale) => {
     expect(kinds(replay('squat', { timeScale }).events)).toEqual(['squat', 'squat']);
+  });
+});
+
+/*
+ * State timing on the clips. Patrick tuned the game's pose latency leads (VISUAL_LEAD_SEC in
+ * src/game on p2-game) on this detector's lag. If a threshold change moves these onsets, update
+ * those leads (or the change) — the game would otherwise judge pose moves late.
+ */
+describe('when states turn on (the game pose latency leads depend on it)', () => {
+  const onsets = (
+    clip: string,
+    opts: ReplayOptions,
+    key: 'airborne' | 'ducking' | 'leftArmUp' | 'rightArmUp' | 'lane',
+  ) => {
+    const rec = loadClip(clip);
+    const det = createDetector(
+      opts.calibrate === 'self'
+        ? calibrateFromClip(rec, 300)
+        : calibrateFromClip(loadClip('standing'), 1000),
+    );
+    const out: number[] = [];
+    let prev: unknown = det.state[key];
+    for (const f of rec.frames) {
+      if (opts.upToMs !== undefined && f.t > opts.upToMs) break;
+      det.update(f.pose ? toPoints(f.pose) : null, f.t);
+      const now = det.state[key];
+      if (now && now !== prev) out.push(f.t);
+      prev = now;
+    }
+    return out;
+  };
+  const FRAME = 35;
+  test.each([
+    ['armsUp', { calibrate: 'self' }, 'leftArmUp', [537, 2910, 5134]],
+    ['reach', { calibrate: 'self' }, 'leftArmUp', [1166, 3681]],
+    ['reach', { calibrate: 'self' }, 'rightArmUp', [6112]],
+    ['jump', { upToMs: 7200 }, 'airborne', [169, 1840, 3756, 5671]],
+    ['squat', {}, 'ducking', [29, 4156]],
+    ['sidestep', {}, 'lane', [405, 3534, 6247]],
+  ] as const)('%s: %s turns on at the tuned times (±1 frame)', (clip, opts, key, times) => {
+    const got = onsets(clip, opts as ReplayOptions, key);
+    expect(got).toHaveLength(times.length);
+    got.forEach((t, i) => expect(Math.abs(t - times[i])).toBeLessThanOrEqual(FRAME));
   });
 });

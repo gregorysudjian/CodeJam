@@ -73,7 +73,7 @@ or the named file.
     rep event waits. Crouches last 0.13–0.31 s below the line; A's squats 0.8–2.6 s, and squats
     sped up 4× still count. Standing up onto the toes rises ≤ ~0.25 T; real jumps 0.55–0.73 T.
     Cost: a jump out of a deep crouch registers ~0.17 s later (normal jumps are unchanged).
-26. **Arm "up" line raised from 0.3 T to 0.4 T above the nose,** so hands resting on top of the head
+26. **(Reverted by 33.) Arm "up" line raised from 0.3 T to 0.4 T above the nose,** so hands resting on top of the head
     (wrists ~0.25–0.3 T above the nose, common between sets) are not `armsUp`. A's real raises peak at
     0.65–0.75 T in every clip, so a lower raise (0.5 T) still counts. Unverified on a real camera.
 27. **`CALIBRATION_FEET_IN_VIEW` switch (default true, as the contract says).** A's feet were at 0.97
@@ -99,3 +99,9 @@ or the named file.
 32. **Treadmill calibration tolerates jogging** (`CALIBRATION_STILL_T_TREADMILL = 0.4` T of centre
     movement; size must still hold within 15%). With the floor rule (0.1 T), a player already jogging
     (shoulders bob ±0.1 T) never finished calibrating. Floor mode is unchanged (tested).
+33. **Arm-up line back to 0.3 T (reverts 26).** Patrick's game draws pose objects early by measured
+    detector lag (`VISUAL_LEAD_SEC`, src/game on `p2-game`), tuned on 0.3 T. At 0.4 T the arm state
+    turns on 33–102 ms later (mean 70 ms; 0.35 T: 40 ms), which would push on-sight reactions past
+    the judging window's +0.15 s for crates and orbs. A missed crate hurts more than an extra rep
+    counted when someone rests their hands on their head. A test now pins when each state turns
+    on in the clips (±1 frame), so a future threshold change cannot silently desync the game.

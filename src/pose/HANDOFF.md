@@ -22,7 +22,7 @@ _Last refresh: Sat 07:29 (overnight autonomous session). Read this first in a ne
   - Nothing is half-written in code. Not done: "raise both arms to start" (app-side, NEEDS.md 5),
     station setup notes (Phase 4), real-camera tuning (needs A).
 - **Last commit:** see `git log -1`.
-- **`npm run check`:** passes (212 tests). Use its exit code; a `| grep` can hide a failure.
+- **`npm run check`:** passes (218 tests). Use its exit code; a `| grep` can hide a failure.
   A clean checkout of `origin/abdo-1` + `npm ci` + `npm run check` passes too (nothing local needed).
   Mutation sweep: each of the 23 `DETECTION` thresholds and the calibration / body-picking constants
   set to an extreme breaks at least one test (only the overlay's list length is cosmetic).
@@ -70,8 +70,8 @@ engine.ts      getState() (game polls), onMove listeners, drawSkeleton (skeleton
 
 ## 4. Decisions
 
-All in `src/pose/DECISIONS.md` (32, with reasons). The big ones: lane 0.55/0.3 W; arm up 0.4 T above
-the nose, "down" back near the nose (press reps); arms ignored mid-jump; squat rep after 250 ms down,
+All in `src/pose/DECISIONS.md` (33, with reasons). The big ones: lane 0.55/0.3 W; arm up 0.3 T above
+the nose (kept for the game's latency leads), "down" back near the nose (press reps); arms ignored mid-jump; squat rep after 250 ms down,
 and a raised jump line (0.45 T) for 0.4 s after a squat instead of a block (crouch-then-jump works);
 jump speed > 1.0 T/s; tracking lost when hips leave the frame; baselines drift only when
 still; size gate 40%; `MAX_POSES = 1`; pose handles D, app handles R; video kept playing off-page.
@@ -113,8 +113,9 @@ README "How to use it". Stand at playing distance (feet in view).
    back… each lane change counts), then read the tally; repeat for jump, squat, both arms up, left
    arm only, right arm only. Expect 10/10 each, nothing counted under the other moves. With the
    overlay on, the coloured lines show the lane, squat, jump and arm-up thresholds on the video.
-4. **No false moves:** stand still 20 s, shuffle a little, scratch your head, rest both hands on top
-   of your head. Expect nothing. (If arm raises are missed instead, lower `ARM_UP_ABOVE_NOSE_T`.)
+4. **No false moves:** stand still 20 s, shuffle a little, scratch your head. Expect nothing. Then
+   rest both hands on top of your head: this may count as arms up (known trade-off, DECISIONS 33;
+   raising the line adds arm lag the game would need to absorb).
 5. **Squat then stand up fast onto your toes:** expect `squat` only, no `jump`. Then **crouch deep
    and jump**: expect `jump` (and no `squat` unless you paused at the bottom). Then **10 fast squats**
    (no pause): expect 10.
@@ -185,7 +186,7 @@ Replaces the src/pose stub with the real pose input (CONTRACTS.md, unchanged int
   screen takes it off the page
 - ?dev=pose: mountPoseDebug exported from src/pose (see src/pose/NEEDS.md 1 for DevPose.tsx)
 - Thresholds tuned from recorded clips: src/pose/DECISIONS.md; station notes: src/pose/STATION.md
-- 212 tests on recorded landmark clips and synthetic variants; npm run check passes
+- 218 tests on recorded landmark clips and synthetic variants; npm run check passes
 
 Only src/pose/, public/models/, public/mediapipe/ changed. No new packages or env vars.
 

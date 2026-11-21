@@ -118,7 +118,9 @@ export const DETECTION_DEFAULTS = Object.freeze({
   SQUAT_CONFIRM_MS: 250,
 
   /** Arms: wrist height above the nose, in T (contract: up above nose, down below shoulder). */
-  ARM_UP_ABOVE_NOSE_T: 0.4,
+  // Keep at 0.3: the game's pose latency leads (src/game VISUAL_LEAD_SEC on p2-game) were tuned on
+  // it. 0.4 would ignore hands resting on the head but adds ~70 ms of arm lag (DECISIONS.md 33).
+  ARM_UP_ABOVE_NOSE_T: 0.3,
   ARM_DOWN_ABOVE_NOSE_T: 0.05,
   /** One arm up must stay alone this long to count as a reach, not the start of armsUp. */
   ARM_SETTLE_MS: 250,

@@ -3,7 +3,7 @@
 ## MORNING REPORT (last update: Sat 07:29 — refreshed through the night)
 
 **TL;DR:** the real pose input is done on `abdo-1` (Phase 1, most of Phase 2, Phase 3 treadmill),
-212 tests pass, and it runs end to end inside `main`'s real app (calibration → tutorial → play) on
+218 tests pass, and it runs end to end inside `main`'s real app (calibration → tutorial → play) on
 your replayed clips. Nothing touched `main`. It has **not** met a real camera since Phase 0.
 
 **Do this first (≈20 min):**
@@ -43,8 +43,7 @@ behaviour.
   `drawSkeleton` (handles the app's object-cover crop).
 - Every clip gives the right moves; so do 11 variants of every clip (shorter/taller, closer/farther,
   ±0.5–1% jitter, ±3° tilt, 20–40% dropped frames, all at once), at the same times (±100–250 ms).
-- No moves standing still or with hands resting on the head. Standing up from a squat, even onto the
-  toes: no jump. Crouch-then-jump: a jump. Squats 4× faster or slower count. Stepping back quickly
+- No moves standing still. Standing up from a squat, even onto the toes: no jump. Crouch-then-jump: a jump. Squats 4× faster or slower count. Stepping back quickly
   is not a jump; stepping closer re-baselines.
 - Background people: largest, nearest body wins; bodies far from the player's size are ignored.
 - Treadmill: shoulder calibration at 1–1.5 m (works while already jogging), arms only; floor results
@@ -63,10 +62,14 @@ behaviour.
    calibration restarted on every one-frame flicker; unhandled rejection on camera failure; an
    unplugged or stalled camera kept `tracking: true` with a frozen pose.
 
+**Kept in sync with Patrick's game:** his pose latency leads were tuned on this detector's lag. A
+change of mine tonight (arm line 0.4 T) would have added ~70 ms of arm lag, so it was reverted, and
+a test now pins when each state turns on in your clips. Jump, squat and lane timing never changed.
+
 **Also new:** MediaPipe JS loads only when pose starts (main bundle 407 → 254 kB); `STATION.md` (demo
 setup, keys, symptom → fix table); small-room switch `CALIBRATION_FEET_IN_VIEW`.
 
-**Pointers:** decisions `DECISIONS.md` (32) · messages for Greg `NEEDS.md` (7) · new session
+**Pointers:** decisions `DECISIONS.md` (33) · messages for Greg `NEEDS.md` (7) · new session
 `HANDOFF.md` (starter prompt in §9) · demo `STATION.md`.
 
 ## How to use it
