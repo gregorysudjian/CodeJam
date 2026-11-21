@@ -1,4 +1,4 @@
-# Handoff: Patrick's game, input and workout (Sat Nov 21, about 6 PM)
+# Handoff: Patrick's game, input and workout (Sat Nov 21, about 7 PM)
 
 For the next AI session working with Patrick. Read this, then `AGENTS.md`, then `docs/CONTRACTS.md`. Hard code freeze: **Sunday 12:00 PM Montreal**.
 
@@ -44,6 +44,7 @@ A webcam fitness runner for CodeJam 16. The player's body steers a 3-lane runner
    - **Latency leads:** 2–3 rounds. After each, the console prints the two lines to paste (leads and lags), over all camera rounds so far; from the second round, also a combined table.
    - **Holds and fair attempts:** the hit table after each round says why each hit happened.
    - **Body rounds:** 3 with the body, plus 1 in low impact. Note unfair or tiring combos.
+   - **#50 (A's closer play):** in one round, step about 50 cm closer mid-round. It should keep playing.
    - **Greg's #31 checks:**
      - On results, wait 2 s, then raise both arms: a new round starts.
      - Press K mid-round with the keyboard: calibration messages appear, then play continues with the body.
@@ -67,6 +68,8 @@ A webcam fitness runner for CodeJam 16. The player's body steers a 3-lane runner
    - The description must include the FPS he measured (game and pose) and what was tested with the camera.
    - Greg opens and merges it.
 
+5. **Sunday morning:** the list at the top of `src/game/README.md` ("Sunday morning, before the judges"): `git pull`, `node src/game/e2e/run.mjs --quick`, then the printed ghost check in the normal Chrome.
+
 ## How to check your work
 
 - `npm run check` must pass.
@@ -78,5 +81,6 @@ A webcam fitness runner for CodeJam 16. The player's body steers a 3-lane runner
   - W held: both arms;
   - Q or E held: one arm.
 - Scripted rounds of the demo level should give 16 cleared, 7 collected, 0 hits when played perfectly (4,750 points, best streak 23).
+- Real rounds in Chrome: `node src/game/e2e/run.mjs` (`--quick` for 3 minutes); see "End-to-end rounds" in `src/game/README.md`.
 - Browser edge cases and cold-start numbers (Sat ~6 PM): `src/game/README.md`, the table after "Checked after merging #45 and #46".
 - More detail: `src/game/README.md` (camera session plan, latency compensation, ghost), `src/workout/README.md`, `src/pose/HANDOFF.md` (Abdo's side).
