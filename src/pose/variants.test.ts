@@ -69,10 +69,12 @@ describe.each(Object.entries(VARIANTS))('%s', (_name, { opts, slackMs }) => {
 
 describe('squat edge cases on the real squat clip', () => {
   /** A springy stand-up: hips pushed above standing height for 300 ms right after each rise. */
-  const springUp = (lift: number) => (pose: Point[], t: number) =>
-    (t > 2250 && t < 2550) || (t > 6850 && t < 7150)
-      ? pose.map((p) => ({ ...p, y: p.y - lift }))
-      : pose;
+  const springUp =
+    (lift: number) =>
+    (pose: Point[], t = 0) =>
+      (t > 2250 && t < 2550) || (t > 6850 && t < 7150)
+        ? pose.map((p) => ({ ...p, y: p.y - lift }))
+        : pose;
 
   test.each([0.03, 0.05, 0.08])(
     'standing up out of a squat onto the toes (+%s of the frame) is not a jump',

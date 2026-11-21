@@ -33,7 +33,7 @@ export function rng(seed: number): () => number {
 }
 
 /** Changes one frame's pose; `t` is the frame time in the original clip (ms). */
-export type PoseTransform = (pose: Point[], t: number) => Point[];
+export type PoseTransform = (pose: Point[], t?: number) => Point[];
 
 /** Scales the body about a fixed point: about the feet = taller/shorter, about the centre = closer/farther. */
 export const scaleAbout =
