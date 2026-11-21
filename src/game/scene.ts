@@ -30,11 +30,11 @@ export interface Stage {
   setQuality(q: Quality): void;
   /**
    * Compiles every shader the round can need, now, also for objects still hidden (pooled
-   * obstacles, speed lines, the finish arch, the end banner). Each would otherwise stall the
-   * frame it first shows: measured 60-80 ms at streak 10, as the finish arch comes into view
-   * and at the finish (software GL). Two variants each: bloom renders into a target (linear
-   * output), quality 2 straight to the screen (sRGB output), so a step down to 2 mid-round
-   * does not recompile everything at once on the very laptop that is struggling.
+   * obstacles, speed lines, the finish arch, the end banner). They would otherwise compile
+   * mid-round, in the frame they first show: 4 programs on the demo level (at streak 10, as the
+   * finish arch comes into view, at the finish). Two variants each: bloom renders into a target
+   * (linear output), quality 2 straight to the screen (sRGB output), so a step down to 2 does
+   * not recompile every material at once (9 programs) on a laptop that is already struggling.
    */
   precompile(): void;
   render(): void;
