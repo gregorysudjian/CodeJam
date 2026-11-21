@@ -228,6 +228,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
       return done;
     },
     drawSkeleton(ctx) {
+      if (!running) return; // no stale skeleton after the camera stops
       const pose = session.player;
       if (pose) drawPose(ctx, pose, video.videoWidth, video.videoHeight);
       const d = session.detector;
