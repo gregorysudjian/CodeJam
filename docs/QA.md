@@ -10,6 +10,7 @@
    - https://github.com/gregorysudjian/CodeJam/compare/main...q-a11y?expand=1 (stacked on `q-qa`)
    - https://github.com/gregorysudjian/CodeJam/compare/main...q-perf?expand=1 (stacked on `q-a11y`; **merging only this one brings all three QA.md commits**)
    - https://github.com/gregorysudjian/CodeJam/compare/main...q-tests?expand=1 (new test files only)
+   Branches that got a second commit (merging `main`, updates) won't pre-fill the description: the PR text is the **first** commit's message on each branch (`git log --reverse main..<branch>`).
 2. **Decide Q10:** should the local store mark rounds `synced: true`? Today every `?store=local` round says "NOT SYNCED" and the offline banner promises a sync that never happens.
 3. **Tell the Lovable UI Claude** about Q1, Q3, Q4 and Q5 (all `src/ui`). Q1 matters if the demo laptop ever runs at 1280×720 on a projector.
 
@@ -219,3 +220,5 @@ _For each owner, from the findings above._
 | 15:13 | 6. Tests (`q-tests`, from `main` 82b3622) | 6 new files, 61 tests: 59 pass, 2 skipped bugs (Q2, Q13). Check: 625 passed, 2 skipped |
 | 15:30 | 7. Performance (`q-perf`, stacked on `q-a11y`) | Landing 280 KB, LCP 0.6 to 1.8 s, no blocking; pose files about 9 MB brotli on the live site. Lighthouse panel not run (needs a person) |
 | 15:35 | 8. Loop | `main` moved to 4e7db85 (#33, #36, #38: game feel, X pause gesture, 1.5 m calibration). Q2 still open there. Next: merge `main` into my branches, update README, pitch and submission, re-run the sweep |
+| 15:50 | 8. Loop: branches | Merged `main` into `q-readme`, `q-pitch`, `q-submission`, `q-tests` (no conflicts). README, pitch and submission now say 1.5 m, 3-2-1 intro, X pause gesture, zones, beat, PERFECT/GOOD/LATE. `q-tests` on new `main`: 693 passed, 2 skipped |
+| 15:55 | 8. Loop: re-sweep on 4e7db85 | Full flow at 1366×768 and 1280×720 with the new game: rounds complete, no console errors. `src/ui` unchanged since the sweep, so Q1, Q3 to Q6, Q11, Q12, A1, A3 still stand; Q2 still in the code (`engine.ts:178`); A2, Q7 to Q10, Q13 unchanged. Q6 seen again: "ARMS UP" covers the crates |
