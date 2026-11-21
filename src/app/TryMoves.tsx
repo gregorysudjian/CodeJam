@@ -67,15 +67,18 @@ export function TryMoves({
       }
     >
       <div className="flex flex-col items-center gap-6 py-6 text-center">
-        <p className="text-sm uppercase tracking-[0.2em] text-text-muted">
+        {/* Sized to read from the floor mark, about 1.5 m away (QA A2). */}
+        <p className="text-title uppercase tracking-[0.2em] text-text-muted">
           Try each move · {step + 1} / {moves.length}
         </p>
         <MoveFigure pose={move} color={color} animate size={260} />
-        <h2 className="font-display-italic text-display-sm" style={{ color }}>
+        <h2 className="font-display-italic text-display-md" style={{ color }}>
           {MOVE_LABELS[move]}
           {done.includes(move) ? ' ✓' : ''}
         </h2>
-        <p className="text-body text-text-muted">{moveHint(move, input.kind)}</p>
+        <p className="font-display-italic text-display-sm text-text">
+          {moveHint(move, input.kind)}
+        </p>
       </div>
     </Screen>
   );

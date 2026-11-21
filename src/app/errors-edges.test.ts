@@ -36,11 +36,9 @@ describe('classifyCameraError: edge cases', () => {
     }
   });
 
-  // BUG (docs/QA.md Q2): src/pose/engine.ts rethrows the camera error as
-  // `new Error(readableMessage, { cause: domException })`, so the app only ever sees name 'Error'
-  // and every camera failure shows the generic "Camera did not start". Seen in Chrome with no
-  // camera (NotFoundError). Fix in src/app/errors.ts: also read `err.cause`'s name. Unskip then.
-  it.skip('looks through a wrapped error to its cause (as the pose module throws it)', () => {
+  // docs/QA.md Q2 (fixed): src/pose/engine.ts rethrows the camera error as
+  // `new Error(readableMessage, { cause: domException })`; classifyCameraError reads the cause.
+  it('looks through a wrapped error to its cause (as the pose module throws it)', () => {
     const wrap = (name: string) =>
       new Error('readable message', { cause: new DOMException('raw', name) });
     expect(classifyCameraError(wrap('NotAllowedError')).kind).toBe('denied');

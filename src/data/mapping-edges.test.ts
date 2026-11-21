@@ -65,12 +65,9 @@ describe('sessionToRow: edge cases', () => {
     expect(sessionToRow({ ...saved, accuracy: 1 }, 'u').accuracy).toBe(1);
   });
 
-  // RISK (docs/QA.md Q13): NaN passes straight through, and JSON turns it into null, which the
-  // NOT NULL columns reject. The offline queue sends every pending round in ONE upsert
-  // (src/data/supabase.ts sendQueue), so one such row would keep every queued round off the server
-  // forever. Today's tracker never produces NaN, so this is latent. Fix: map non-finite numbers
-  // to 0 in sessionToRow (the `num` helper already exists). Unskip then.
-  it.skip('never sends NaN to the not-null numeric columns', () => {
+  // docs/QA.md Q13 (fixed): a NaN would become null in JSON and the NOT NULL column would reject
+  // the whole queued upsert (one call for every pending round), so sessionToRow sends 0.
+  it('never sends NaN to the not-null numeric columns', () => {
     const row = sessionToRow(
       { ...saved, score: NaN, accuracy: NaN, kcal: NaN, activeSec: NaN },
       'u',

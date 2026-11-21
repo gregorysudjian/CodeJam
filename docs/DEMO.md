@@ -61,6 +61,7 @@ Decide these in advance so nobody improvises in front of judges.
 - Demo laptop on power, brightness at maximum, notifications off, sleep disabled
 - **Demo laptop: Patrick's Mac** (best FPS; the camera tuning was done on it). Chrome only. `git pull` on `main`, `.env.local` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (never committed), `npm run dev`, open `http://localhost:5173/?demo=1`. No deploy needed, so the Vercel limit can't block it
 - The coach card is the rule-based coach (no Claude key for now)
+- Operator: on the select screen, after clicking a control with the mouse, Enter re-presses that control instead of starting. Click START (or press Enter only after Tab moves focus away)
 - Camera permission granted on `localhost:5173`; a camera rehearsal round of the demo level there (also low impact), so the ghost is there
 - The Vercel URL is only for the QR code and people playing on their own devices; check it shows the latest `main`
 - Supabase anonymous sign-in rate limit raised (Auth → Rate Limits), and a fresh guest sign-in tested on the venue wifi

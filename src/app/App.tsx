@@ -206,6 +206,11 @@ function MainApp() {
     [inputKind, afterSetup],
   );
 
+  // Fetch the game (Three.js) while the player picks a workout, so Start is instant (QA perf 1).
+  useEffect(() => {
+    if (screen === 'select') void import('./PlayScreen');
+  }, [screen]);
+
   const openDashboard = useCallback(async () => {
     setScreen('dashboard');
     setSessions(await store.listSessions(50));
@@ -489,7 +494,11 @@ function MainApp() {
         />
       )}
       {!online && (
-        <OfflineBanner onUseKeyboard={inputKind === 'pose' ? switchToKeyboard : undefined} />
+        <OfflineBanner
+          onUseKeyboard={inputKind === 'pose' ? switchToKeyboard : undefined}
+          placement={screen === 'play' ? 'bottom' : 'top'}
+          syncs={store.kind === 'supabase'}
+        />
       )}
       {notice && (
         <div
