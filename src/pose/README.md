@@ -11,7 +11,9 @@ your replayed clips. Nothing touched `main`. It has **not** met a real camera si
    tally, no false moves, crouch-and-jump, treadmill). Tune with the D overlay's sliders if needed.
 2. **Send Greg** `NEEDS.md` items 1 (ready `DevPose.tsx` for `?dev=pose`) and 2 (who mirrors the video).
 3. **Decide the merge:** `main` has moved (PR #19, new packages). Merge `origin/main` into `abdo-1`,
-   `npm install`, `npm run check`, then open the PR with the text in `HANDOFF.md` §8.
+   `npm install`, `npm run check`, then open the PR with the text in `HANDOFF.md` §8. A dry run
+   (`git merge-tree`, nothing changed) shows **no conflicts**: `main` never touched `src/pose`,
+   `public/models` or `public/mediapipe`.
 
 **Evidence (no camera; nothing merged):**
 - In a throwaway copy of `origin/main` with this `src/pose`: `main`'s `npm run check` passes (236

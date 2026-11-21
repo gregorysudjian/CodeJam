@@ -141,7 +141,8 @@ mid-round K switch calibrates silently.
 1. Run §6 with A at the camera; tune `tuning.ts` from the overlay (Phase 1 done-check).
 2. Teammate test, 8/10 (Phase 1 done-check).
 3. Merge `abdo-1` via PR when Greg asks (PLAN.md §7 merge order C, B, A, D). Before that, A decides
-   whether to merge `origin/main` into `abdo-1` and re-run `npm run check`.
+   whether to merge `origin/main` into `abdo-1` (dry run at 07:15: no conflicts) and then runs
+   `npm install` and `npm run check`.
 4. Measure `MAX_POSES = 2` FPS; keep it if ≥ 25 (Phase 2 "ignore background people").
 5. Phase 4: demo-conditions test (venue light, people behind), station setup notes.
 
