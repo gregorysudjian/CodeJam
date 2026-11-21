@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat 07:29 (overnight autonomous session). Read this first in a new conversation._
+_Last refresh: Sat 07:40 (overnight autonomous session). Read this first in a new conversation._
 
 ## 1. Context
 
