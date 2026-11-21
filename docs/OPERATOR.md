@@ -29,7 +29,7 @@ You stand at the laptop, start rounds, and fix problems. You never speak. Chrome
 
 | Key | Where | Does |
 | --- | --- | --- |
-| **Esc** | play | Pause / resume |
+| **Esc** | play | Pause / resume. The pause screen's **END ROUND** leaves without saving |
 | **X gesture** | play, camera | Player crosses forearms at chest height for 1 s: pause; again: resume |
 | **R** | play, camera | Recalibrate: player stands on the mark and holds still |
 | **K** | anywhere | Switch camera ↔ keyboard without restarting the round |
