@@ -38,12 +38,29 @@ A frame longer than 0.25 s (a hidden tab, a hitch) counts as 0.25 s, so switchin
 
 **Failure handling:** if WebGL can't start, the 2D view takes over, with the same move icons (tested in a Chrome with the GPU disabled). If drawing throws mid-round, the game logs it and keeps running without drawing, so events, the HUD and the results still work.
 
+## Sunday morning, before the judges
+
+On the demo Mac, in `~/CodeJam`, once `main` is final:
+1. `git pull`. `git log -1` should show Greg's last merge.
+2. `node src/game/e2e/run.mjs --quick` (about 3 minutes; the full set takes about 15 without `--quick`). It plays the demo level, its low-impact version and END ROUND at 0:01 in a Chrome window with a keyboard autopilot, and exits 0 when every check passes (details in "End-to-end rounds" below). It runs its own dev server on port 5174 and a throwaway Chrome profile, so it never touches the ghosts or the saved player on `localhost:5173`. Leave the window alone while it runs.
+3. It ends by printing a one-line check for the Player's camera ghosts. Open `http://localhost:5173/?demo=1` in the normal Chrome (start `npm run dev -- --strictPort` first), paste the line in the console: both lines should say `camera ghost`, with the rehearsal's result.
+4. From 10 AM: crash or unplayable fixes only.
+
+## End-to-end rounds (`e2e/`)
+
+`node src/game/e2e/run.mjs` plays real rounds in Chrome and checks how each ends. It needs Node 22+ and Chrome, and no npm package (plain DevTools protocol, like `docs/qa/sweep/`, which covers the app flow; this covers the game). Options: `--quick`, `--only '<case>'`, `--headless` (frame rates are then not meaningful), `--url http://localhost:5173/` (use a running dev server).
+
+- **Cases:** the demo level (must score 4,750 with 0 hits) and its low-impact version; END ROUND from the pause screen at 0:01 (nothing saved, back on the select screen); every floor workout in low impact and every treadmill workout, perfect (0 hits); standing still; mashing keys; Esc 9 times, then once more (paused, then running); K mid-round to the camera and back.
+- **Every case:** the level played matches the pick (workout, mode, 45 s, low impact), the round saves exactly once (END ROUND: never), no console errors. Ghost lines (`[game] ghost: …`) are printed for the demo rounds. Other rounds print their seed. A click, real key, lost focus or hidden tab during a round is printed with its time; when a round fails, that is the first suspect. A protocol call with no reply fails its round after 20 s, and a round after 4 minutes, so the run never hangs.
+- **How it plays:** `autopilot.js` does what `core.test.ts`'s perfect player does, with real key events. It reads the level from React's fiber tree (the select screen picks a random seed except on the demo) and starts its clock `INTRO_SEC` after `<body data-game="running">` turns on. So it needs the dev server, not `npm run preview`.
+- **The camera** is Chrome's fake device (a test pattern), so the real webcam never turns on; the K case only checks that switching to it and back keeps the round alive.
+
 ## Camera session: the next steps
 
-Everything here needs the webcam, the demo laptop and a body; the game prints what you need. Branch `p5-game` (main with the game-feel pass, plus this report), one PR at the end.
+Everything here needs the webcam, the demo laptop and a body; the game prints what you need. Branch `p5-game` (merged as #47; it follows `main`). The results go in one small follow-up PR: push `p5-game`, then tell Greg "ready".
 
 **Set-up.** Patrick's Mac is the demo laptop, and the demo runs on plain `npm run dev` (no coach key, so the coach card is the rule-based one).
-- **Folder:** use a clone outside iCloud, e.g. `~/CodeJam`; a branch switch in the iCloud Desktop folder makes "name 2" copies. It needs `p5-game` until that is merged. Its `.env.local` holds the Supabase URL and anon key from D's message (gitignored, never committed), so rounds save and the leaderboard works.
+- **Folder:** use a clone outside iCloud, e.g. `~/CodeJam`; a branch switch in the iCloud Desktop folder makes "name 2" copies. Its `.env.local` holds the Supabase URL and anon key from D's message (gitignored, never committed), so rounds save and the leaderboard works.
 - **Start it:** `npm run dev -- --strictPort`. If port 5173 is taken, Vite would move to 5174 without asking: a different origin, so no ghosts and no saved settings. With `--strictPort` it stops with an error instead.
 - **URL:** always exactly `http://localhost:5173`, never `127.0.0.1`. For the session, open `/?demo=1&debug=timing` with the console open and pick Camera on the select screen. **D** shows A's pose overlay with its FPS.
 
@@ -76,11 +93,12 @@ Do the steps in this order: the frame rate changes the webcam lag, and the ghost
    - The tight spot is the start of a squat: about 0.39 s of lag against a 0.3 s lead leaves about 0.06 s of slack. Greg's slowest recorded squat would be about 0.02 s late, so watch for `late` squats. The combined table will probably suggest about 0.35 s.
 4. **Three body rounds, normal and low impact.**
    - Note any combo that feels unfair or tiring. The hit report gives its time.
+   - In one of them, step about 50 cm closer to the screen mid-round (A's closer-play change, #50). The round should keep playing, without a tracking-lost pause.
    - Low impact already gives the hurdles' share to sidesteps and reaches, and no level has holds in its cool-down (`src/workout/README.md`).
    - `npm run check` keeps `demo.test.ts` honest after any change.
-5. **Ghost rehearsals, last**, on the demo set-up, after the last change to the level generator.
-   - A ghost belongs to one exact level, and the generator changes on this branch already made a new low-impact demo level. Changing the latency leads or the look keeps ghosts valid.
-   - On exactly `http://localhost:5173/?demo=1` with the camera, play the demo level once in normal and once in low impact. Extra flags like `&debug=timing` don't matter; the origin does.
+5. **Ghost rehearsals, right after this session.**
+   - A ghost belongs to one exact level, and both demo levels are pinned (`demo.test.ts`). Changing the latency leads, the look or the sound keeps ghosts valid.
+   - In the normal Chrome (not a test profile), on exactly `http://localhost:5173/?demo=1` with the camera, play the demo level once in normal and once in low impact. Extra flags like `&debug=timing` don't matter; the origin does.
    - Each round start prints `[game] ghost: racing …` or `none yet …`.
 
 **Send me** the console output (the tables are copyable) if you'd like me to update the numbers and tests.
