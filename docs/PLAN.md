@@ -39,7 +39,7 @@ Four decisions keep this safe to build in one day:
 | Pose | `@mediapipe/tasks-vision` Pose Landmarker (lite model, GPU delegate) | 33 body landmarks at 30+ FPS on the device, nothing to train |
 | Auth and database | Supabase: anonymous sign-in, Postgres, row-level security | A real relational database and auth in an hour instead of a day |
 | Server code | Vercel serverless functions in `api/` (TypeScript) | Deployed by `git push` with the frontend; keeps the Claude key off the client |
-| AI | Claude API, a small fast model, called only from `api/` | Cheap, quick, and you already have credits |
+| AI | Claude API (`claude-opus-5-5` at low effort, through `@anthropic-ai/sdk`), called only from `api/` | Cheap, quick, and you already have credits |
 | Tests | Vitest, for workout logic and server validation | Pure functions, cheap to test |
 | Hosting | Vercel for the demo and for voters, plus `npm run preview` on the demo laptop as the offline backup | Only Vercel serves `/api/coach`; the local copy covers a wifi failure, with the rule-based coach |
 
@@ -161,7 +161,7 @@ Each phase has four tasks in separate folders, built against the contracts with 
 
 **Together, 30 minutes, one screen, D drives:**
 
-1. Scaffold with `npm create vite@latest` (React + TypeScript template, which already ships ESLint), add Tailwind and shadcn/ui, install `three`, `@types/three`, `@mediapipe/tasks-vision`, `@supabase/supabase-js`, `recharts`, `qrcode.react` (Phase 3 QR code), `vitest`, `@types/node` (for `api/`) and Prettier. Keep the template's ESLint config and give `api/**` Node globals. The coach endpoint calls the Claude API with plain `fetch`, so there is no Anthropic SDK. Add `.gitattributes` with `* text=auto eol=lf`. This is the full planned package list; anything else still goes through D (AGENTS.md rule 4).
+1. Scaffold with `npm create vite@latest` (React + TypeScript template, which already ships ESLint), add Tailwind and shadcn/ui, install `three`, `@types/three`, `@mediapipe/tasks-vision`, `@supabase/supabase-js`, `recharts`, `qrcode.react` (Phase 3 QR code), `vitest`, `@types/node` (for `api/`) and Prettier. Keep the template's ESLint config and give `api/**` Node globals. The coach endpoint uses `@anthropic-ai/sdk` (added later by D). Add `.gitattributes` with `* text=auto eol=lf`. This is the full planned package list; anything else still goes through D (AGENTS.md rule 4).
 2. Paste the code from CONTRACTS.md into `src/contracts/index.ts`. Read it together, take 10 minutes of objections, then freeze it.
 3. Commit a stub `index.ts` in each module folder that satisfies the contract, so everything compiles from the first minute.
 4. Create the Supabase project and the Vercel project. In Supabase, enable anonymous sign-ins and raise Auth → Rate Limits → anonymous sign-ins from the default 30 per hour per IP to about 1000: everyone on the venue wifi shares one IP, and Popular Vote players scanning the QR code would hit the default. Commit `.env.example`; share the real values in the group chat and keep them in `.env.local`, which is git-ignored.
