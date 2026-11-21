@@ -34,12 +34,21 @@ export interface Replay {
 }
 
 /**
- * Replays a clip. Calibration comes from the standing clip recorded in the same session,
- * like the real app, because move clips can start mid-move.
+ * Replays a clip. Calibration comes from standing.json (first session, same spot), like the
+ * real app, because those clips can start mid-move. Clips from a later session at a different
+ * spot use 'self': the first 300 ms of the clip, where the player stands still.
  */
-export function replay(name: string, upToMs = Infinity, calibrationClip = 'standing'): Replay {
+export function replay(
+  name: string,
+  upToMs = Infinity,
+  calibrate: 'standing' | 'self' = 'standing',
+): Replay {
   const rec = loadClip(name);
-  const det = createDetector(calibrateFromClip(loadClip(calibrationClip), 1000));
+  const cal =
+    calibrate === 'self'
+      ? calibrateFromClip(rec, 300)
+      : calibrateFromClip(loadClip('standing'), 1000);
+  const det = createDetector(cal);
   const events: MoveEvent[] = [];
   const tracking: [number, boolean][] = [];
   let wasTracking = det.state.tracking;

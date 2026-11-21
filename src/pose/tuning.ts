@@ -46,7 +46,13 @@ export const JUMP_BLOCK_AFTER_SQUAT_MS = 400;
 export const SQUAT_ON_T = 0.3;
 export const SQUAT_OFF_T = 0.15;
 
-/** Arms: one arm up must stay alone this long to count as a reach, not the start of armsUp. */
+/**
+ * Arms, measured as wrist height above the nose in T. Contract: up above the nose, down below
+ * the shoulder; A's clips showed presses back only to shoulder height, so down is near the nose.
+ */
+export const ARM_UP_ABOVE_NOSE_T = 0.3;
+export const ARM_DOWN_ABOVE_NOSE_T = 0.05;
+/** One arm up must stay alone this long to count as a reach, not the start of armsUp. */
 export const ARM_SETTLE_MS = 250;
 
 /** Tracking: shoulders and hips below this visibility, or hips outside the frame, count as missing. */

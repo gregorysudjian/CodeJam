@@ -173,13 +173,21 @@ describe('arms', () => {
     expect(types(r.events)).toEqual(['reachRight']);
   });
 
-  test('an arm lowered only to head height stays up (down means below the shoulder)', () => {
+  test('press reps: lowering to nose height ends a rep, forehead height keeps it up', () => {
     const det = standingDetector();
-    const r = run(det, pose({ left: 'up' }), 15, 0);
-    const half = pose({ left: 'up' });
-    half[15] = { ...half[15], y: 0.44 }; // below the nose, above the shoulder
-    run(det, half, 5, r.t);
-    expect(det.state.leftArmUp).toBe(true);
+    let r = run(det, pose({ left: 'up', right: 'up' }), 10, 0);
+    const forehead = pose({ left: 'up', right: 'up' });
+    forehead[15] = { ...forehead[15], y: 0.41 - 0.15 * T }; // between the down and up lines
+    forehead[16] = { ...forehead[16], y: 0.41 - 0.15 * T };
+    r = run(det, forehead, 5, r.t);
+    expect(det.state.leftArmUp && det.state.rightArmUp).toBe(true);
+    const shoulderHeight = pose({ left: 'up', right: 'up' });
+    shoulderHeight[15] = { ...shoulderHeight[15], y: 0.46 };
+    shoulderHeight[16] = { ...shoulderHeight[16], y: 0.46 };
+    r = run(det, shoulderHeight, 5, r.t);
+    expect(det.state.leftArmUp || det.state.rightArmUp).toBe(false);
+    const again = run(det, pose({ left: 'up', right: 'up' }), 5, r.t);
+    expect(types([...again.events])).toEqual(['armsUp']);
   });
 });
 
@@ -248,6 +256,29 @@ describe('recorded clips', () => {
 
   test('squat: two squats (clip starts mid-squat), no jumps from standing up', () => {
     expect(kinds('squat')).toEqual(['squat', 'squat']);
+  });
+
+  // Second session, recorded from a different spot: calibrated from each clip's first 300 ms.
+  test('armsUp: three overhead presses from shoulder height', () => {
+    expect(types(replay('armsUp', Infinity, 'self').events)).toEqual([
+      'armsUp',
+      'armsUp',
+      'armsUp',
+    ]);
+  });
+
+  test('reach: left, left, right (the second right rep runs past the clip end)', () => {
+    expect(types(replay('reach', Infinity, 'self').events)).toEqual([
+      'reachLeft',
+      'reachLeft',
+      'reachRight',
+    ]);
+  });
+
+  test('mixed play: jump (arm swing ignored), squat, two presses, sidestep, walks off', () => {
+    const { events, tracking } = replay('mixed', Infinity, 'self');
+    expect(types(events)).toEqual(['jump', 'squat', 'armsUp', 'armsUp', 'sidestep']);
+    expect(tracking.map(([, on]) => on)).toEqual([false]);
   });
 
   test('leaveFrame: tracking lost once while out of frame, then regained', () => {

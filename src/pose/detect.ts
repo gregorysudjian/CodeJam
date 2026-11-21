@@ -157,6 +157,10 @@ export function createDetector(cal: Calibration): Detector {
       state.airborne = true;
       airborneUntil = t + K.AIRBORNE_MS;
       jumpAllowedAt = airborneUntil + K.JUMP_COOLDOWN_MS;
+      // Arms that swung up during take-off are not a reach or armsUp.
+      state.leftArmUp = false;
+      state.rightArmUp = false;
+      armGesture = 'none';
       emit('jump');
     }
 
@@ -171,23 +175,23 @@ export function createDetector(cal: Calibration): Detector {
       emit('sidestep');
     }
 
-    // Arms: up when the wrist passes the nose, down when it drops below its shoulder.
-    // Frozen while airborne, because arms swing up during a jump.
+    // Arms: up when the wrist is well above the nose, down once it is back near nose height,
+    // so overhead presses from shoulder height count as reps (A's clips: people rarely drop
+    // their arms to their sides between reps). Ignored while airborne: arms swing during a jump.
     if (!state.airborne) {
-      const armUp = (was: boolean, wrist: number, shoulder: number) =>
-        was ? p(wrist).y <= p(shoulder).y : p(wrist).y < p(NOSE).y;
-      state.leftArmUp = armUp(state.leftArmUp, L_WRIST, L_SHOULDER);
-      state.rightArmUp = armUp(state.rightArmUp, R_WRIST, R_SHOULDER);
-    }
-    const both = state.leftArmUp && state.rightArmUp;
-    const one = state.leftArmUp !== state.rightArmUp;
-    if (!state.leftArmUp && !state.rightArmUp) armGesture = 'none';
-    else if (armGesture !== 'fired') {
-      if (both) {
-        armGesture = 'fired';
-        emit('armsUp');
-      } else if (one) {
-        if (armGesture === 'none') {
+      const armUp = (was: boolean, wrist: number) => {
+        const aboveNose = (p(NOSE).y - p(wrist).y) / T;
+        return was ? aboveNose > K.ARM_DOWN_ABOVE_NOSE_T : aboveNose > K.ARM_UP_ABOVE_NOSE_T;
+      };
+      state.leftArmUp = armUp(state.leftArmUp, L_WRIST);
+      state.rightArmUp = armUp(state.rightArmUp, R_WRIST);
+      const both = state.leftArmUp && state.rightArmUp;
+      if (!state.leftArmUp && !state.rightArmUp) armGesture = 'none';
+      else if (armGesture !== 'fired') {
+        if (both) {
+          armGesture = 'fired';
+          emit('armsUp');
+        } else if (armGesture === 'none') {
           armGesture = 'settling';
           oneArmSince = t;
         } else if (t - oneArmSince >= K.ARM_SETTLE_MS) {
