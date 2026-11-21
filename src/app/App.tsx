@@ -214,6 +214,8 @@ function MainApp() {
     navigator.mediaDevices
       ?.enumerateDevices?.()
       .then((devices) => {
+        // A Keyboard click while the devices were being listed wins (found by Patrick's Mac).
+        if (readInputChoice() === 'keyboard') return;
         if (devices.some((d) => d.kind === 'videoinput')) setInputKind('pose');
       })
       .catch(() => {});
