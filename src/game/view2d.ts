@@ -1,6 +1,7 @@
 import type { Level, Spawn } from '@/contracts';
 import type { Item } from './core';
 import { OUTCOME_LABEL, raceLabel, racePulse, type GhostOutcome, type GhostPose } from './ghost';
+import { GLYPH, paintGlyph } from './glyph';
 import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
 import { createTrack } from './timeline';
@@ -216,6 +217,14 @@ export function create2DView(
           }
         }
         ctx!.globalAlpha = 1;
+        // The move icon, as in 3D (glyph.ts); a block's sits over its free lane.
+        const glyph = GLYPH[spawn.kind];
+        if (glyph && spawn.kind !== 'orb') {
+          const lane = spawn.kind === 'block' ? freeLane(spawn) : 0;
+          const c = project(lane * T.LANE_WIDTH, T.ICON_HEIGHT[spawn.kind], z);
+          const r = (T.ICON_SIZE / 2) * unit * c.s;
+          if (r >= 4) paintGlyph(ctx!, glyph, colorOf(item), c.x, c.y, r);
+        }
       }
     },
     engage() {},
@@ -229,6 +238,10 @@ export function create2DView(
     dispose() {},
   };
 }
+
+/** The lane a block leaves open. */
+const freeLane = (spawn: Spawn): number =>
+  [-1, 0, 1].find((l) => !spawn.lanes.includes(l as -1 | 0 | 1)) ?? 0;
 
 /** Smashed crates and collected orbs disappear; everything else stays visible as it passes. */
 function isGone(spawn: Spawn, v: Verdict | undefined): boolean {

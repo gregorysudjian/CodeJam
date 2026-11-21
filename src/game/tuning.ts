@@ -156,6 +156,13 @@ export const BURST_SEC = 0.45;
 export const COLLECT_SEC = 0.35; // an orb flies into the hand
 export const COLLECT_PULL = 14; // how fast it homes in (per second)
 export const ICON_SIZE = 1.5; // move icon above each object, world units
+/** Height of each kind's move icon above the floor (orbs have none), world units. */
+export const ICON_HEIGHT = {
+  block: BLOCK_HEIGHT * 0.75, // in the free lane, between the walls
+  hurdle: HURDLE_HEIGHT + 1.1,
+  beam: BEAM_HEIGHT + 1.2,
+  crate: CRATE_HEIGHT + 0.9,
+} as const;
 export const ICON_BRIGHTNESS = 1.6; // above 1 so it glows a little
 export const BURST_POOL = 10;
 export const POOL_WARM = 4; // views of each kind built up front

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { MoveType, ObstacleKind, Spawn } from '@/contracts';
+import { GLYPH, paintGlyph, type Glyph } from './glyph';
 import type { Verdict } from './judge';
 import { neon } from './scene';
 import * as T from './tuning';
@@ -113,8 +114,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
   };
   const laneX = (lane: number): number => lane * L;
 
-  /* Icons: a sprite above each object showing the move, readable from 2 m. */
-  type Glyph = 'go' | 'up' | 'down' | 'arms';
+  /* Icons: a sprite above each object showing the move (glyph.ts), readable from 2 m. */
   const iconMats = new Map<string, THREE.SpriteMaterial>();
   const iconMaterial = (glyph: Glyph, key: ColorKey | 'hit'): THREE.SpriteMaterial => {
     const id = `${glyph}|${key}`;
@@ -173,7 +173,8 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     root: THREE.Group;
     /** Reset for reuse and fit to this spawn (lanes, hold length). */
     configure(spawn: Spawn, length: number): void;
-    icon?: { sprite: THREE.Sprite; glyph: Glyph };
+    /** The move icon; its glyph comes from GLYPH by kind. */
+    icon?: THREE.Sprite;
     engage?(attractor?: () => THREE.Vector3): void;
     onHit?(): void;
     tick?(dt: number, time: number): void;
@@ -181,6 +182,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
 
   function makeView(kind: ObstacleKind, parts: Parts): ObstacleView {
     const { root, icon } = parts;
+    const glyph = GLYPH[kind];
     root.visible = false;
     scene.add(root);
     return {
@@ -189,7 +191,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       show(spawn, length) {
         const key = colorKeyFor(spawn.requires);
         applyPalette(root, palettes[key]);
-        if (icon) icon.sprite.material = iconMaterial(icon.glyph, key);
+        if (icon && glyph) icon.material = iconMaterial(glyph, key);
         parts.configure(spawn, length);
         root.visible = true;
       },
@@ -199,7 +201,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       setVerdict(v) {
         if (v !== 'hit') return;
         applyPalette(root, hitPalette);
-        if (icon) icon.sprite.material = iconMaterial(icon.glyph, 'hit');
+        if (icon && glyph) icon.material = iconMaterial(glyph, 'hit');
         parts.onHit?.();
       },
       tick(dt, time) {
@@ -228,11 +230,11 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     guide.scale.set(L * 0.8, T.TELEGRAPH_LENGTH, 1);
     guide.position.z = -T.TELEGRAPH_LENGTH / 2 + 1;
     const sprite = makeIcon();
-    sprite.position.y = T.BLOCK_HEIGHT * 0.75;
+    sprite.position.y = T.ICON_HEIGHT.block;
     root.add(guide, sprite);
     return {
       root,
-      icon: { sprite, glyph: 'go' },
+      icon: sprite,
       configure(spawn) {
         const free = ([-1, 0, 1] as const).find((l) => !spawn.lanes.includes(l)) ?? 0;
         walls.forEach((g, i) => (g.visible = spawn.lanes.includes((i - 1) as -1 | 0 | 1)));
@@ -260,9 +262,9 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     plate.scale.set(W, 2.5, 1);
     plate.position.z = 1.25;
     const sprite = makeIcon();
-    sprite.position.y = T.HURDLE_HEIGHT + 1.1;
+    sprite.position.y = T.ICON_HEIGHT.hurdle;
     root.add(plate, sprite);
-    return { root, icon: { sprite, glyph: 'up' }, configure() {} };
+    return { root, icon: sprite, configure() {} };
   }
 
   function buildBeam(): Parts {
@@ -304,11 +306,11 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       root.add(front, back);
     }
     const sprite = makeIcon();
-    sprite.position.y = top + 1.2;
+    sprite.position.y = T.ICON_HEIGHT.beam;
     root.add(sprite);
     return {
       root,
-      icon: { sprite, glyph: 'down' },
+      icon: sprite,
       configure(_spawn, length) {
         const long = length > T.BEAM_MIN_DEPTH;
         const depth = Math.max(T.BEAM_MIN_DEPTH, length);
@@ -363,7 +365,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     plate.position.z = 1.25;
     root.add(plate);
     const sprite = makeIcon();
-    sprite.position.y = T.CRATE_HEIGHT + 0.9;
+    sprite.position.y = T.ICON_HEIGHT.crate;
     root.add(sprite);
 
     let smashT = -1;
@@ -373,7 +375,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     };
     return {
       root,
-      icon: { sprite, glyph: 'arms' },
+      icon: sprite,
       configure(spawn, length) {
         smashT = -1;
         sprite.visible = true;
@@ -554,89 +556,11 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
   };
 }
 
-/** A round neon badge with a move glyph, drawn once per glyph and colour. */
-function drawGlyph(glyph: 'go' | 'up' | 'down' | 'arms', hex: number): THREE.CanvasTexture {
-  const size = 128;
+/** The badge texture for one glyph and colour (glyph.ts paints it). */
+function drawGlyph(glyph: Glyph, hex: number): THREE.CanvasTexture {
   const c = document.createElement('canvas');
-  c.width = c.height = size;
-  const g = c.getContext('2d')!;
-  const color = `#${hex.toString(16).padStart(6, '0')}`;
-  g.fillStyle = 'rgba(7, 9, 13, 0.72)';
-  g.beginPath();
-  g.arc(64, 64, 58, 0, Math.PI * 2);
-  g.fill();
-  g.strokeStyle = color;
-  g.lineWidth = 6;
-  g.stroke();
-  g.lineWidth = 11;
-  g.lineCap = 'round';
-  g.lineJoin = 'round';
-  const path = (pts: [number, number][]): void => {
-    g.beginPath();
-    pts.forEach(([x, y], i) => (i === 0 ? g.moveTo(x, y) : g.lineTo(x, y)));
-    g.stroke();
-  };
-  if (glyph === 'go') {
-    path([
-      [40, 38],
-      [64, 58],
-      [88, 38],
-    ]);
-    path([
-      [40, 66],
-      [64, 86],
-      [88, 66],
-    ]);
-  } else if (glyph === 'up') {
-    path([
-      [64, 96],
-      [64, 34],
-    ]);
-    path([
-      [40, 56],
-      [64, 32],
-      [88, 56],
-    ]);
-  } else if (glyph === 'down') {
-    path([
-      [64, 30],
-      [64, 84],
-    ]);
-    path([
-      [40, 62],
-      [64, 86],
-      [88, 62],
-    ]);
-    path([
-      [38, 100],
-      [90, 100],
-    ]);
-  } else {
-    // a figure with both arms up
-    g.fillStyle = color;
-    g.beginPath();
-    g.arc(64, 46, 9, 0, Math.PI * 2);
-    g.fill();
-    path([
-      [64, 60],
-      [64, 88],
-    ]);
-    path([
-      [64, 88],
-      [52, 106],
-    ]);
-    path([
-      [64, 88],
-      [76, 106],
-    ]);
-    path([
-      [42, 26],
-      [50, 62],
-      [64, 64],
-      [78, 62],
-      [86, 26],
-    ]);
-  }
+  c.width = c.height = 128;
+  paintGlyph(c.getContext('2d')!, glyph, `#${hex.toString(16).padStart(6, '0')}`, 64, 64, 64);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
