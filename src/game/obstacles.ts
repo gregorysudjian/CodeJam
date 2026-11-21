@@ -232,10 +232,12 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     const glyph = GLYPH[kind];
     root.visible = false;
     scene.add(root);
+    let goesPast = false; // a hit or a missed orb: hidden once it is past the runner
     return {
       kind,
       root,
       show(spawn, length, variant) {
+        goesPast = false;
         const key = colorKeyFor(spawn.requires);
         applyPalette(root, palettes[key]);
         if (icon && glyph) icon.material = iconMaterial(glyph, key);
@@ -249,12 +251,17 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       setVerdict(v) {
         // A cleared object's icon goes: it would pass over the runner and hide the move.
         if ((v === 'cleared' || v === 'collected') && icon) icon.visible = false;
+        if (v === 'hit' || v === 'missed') goesPast = true;
         if (v !== 'hit') return;
         applyPalette(root, hitPalette);
         if (icon && glyph) icon.material = iconMaterial(glyph, 'hit');
         parts.onHit?.();
       },
       tick(dt, time) {
+        // Past the runner the icon has said its piece; a missed object's red icon would
+        // otherwise pass right by the camera.
+        if (icon?.visible && root.position.z > LK.ICON_HIDE_PAST) icon.visible = false;
+        if (goesPast && root.visible && root.position.z > LK.MISSED_HIDE_PAST) root.visible = false;
         if (icon) {
           // Far away the icon grows, so it keeps a readable size on screen (look.ts); it grows
           // upward from its base, so it never sinks into its own object. A block's icon stays
@@ -502,7 +509,12 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       lookPieces[look]!.push({
         obj,
         home,
-        vel: new THREE.Vector3(col * 3.2 + (row - 0.5) * 0.8, 3.5 + (row / rows) * 5, -2 - row),
+        // Out to the sides (the middle column splits left and right), only a little up.
+        vel: new THREE.Vector3(
+          (col !== 0 ? col * 3.2 : row % 2 === 0 ? -2.4 : 2.4) * LK.SMASH_SIDEWAYS,
+          (3.5 + (row / rows) * 5) * LK.SMASH_LIFT,
+          -2 - row,
+        ),
         spin: new THREE.Vector3(2 + col, 3 - row * 2, col * 2.5 + 1),
       });
     };
@@ -587,8 +599,9 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
             p.home.z + p.vel.z * t,
           );
           p.obj.rotation.set(p.spin.x * t, p.spin.y * t, p.spin.z * t);
-          p.obj.scale.setScalar(Math.max(0.01, 1 - (t / T.SMASH_SEC) * 0.7));
-          p.obj.visible = t < T.SMASH_SEC;
+          // Gone in SMASH_SHRINK_SEC: the pieces never sweep across the camera (look.ts).
+          p.obj.scale.setScalar(Math.max(0.01, 1 - t / LK.SMASH_SHRINK_SEC));
+          p.obj.visible = t < LK.SMASH_SHRINK_SEC;
         }
       },
     };

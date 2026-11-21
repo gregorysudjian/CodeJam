@@ -9,6 +9,8 @@ import { colorKeyFor, createObstacles, variantFor, type ObstacleView } from './o
 import { createPlayer } from './player';
 import type { Quality } from './quality';
 import { createStage, neon } from './scene';
+import * as LK from './look';
+import { labelHeight, toCameraSpace, type CameraSpot } from './overlay';
 import { createTrack } from './timeline';
 import { planTrail } from './trail';
 import * as T from './tuning';
@@ -108,6 +110,32 @@ export function create3DView(
   let comboChangedT = Infinity;
   const milestoneLabel = createLabel(stage.scene, T.MILESTONE_WIDTH, 1024, T.MILESTONE_POS, 997);
   let milestoneT = Infinity;
+  // Screen-space labels (overlay.ts): GameHud is laid out in CSS pixels (its move cue sits in
+  // the top band at every size), so these are placed in pixels too, on the camera: the race
+  // chip bottom right, milestone and FINAL STRETCH banners bottom centre under the combo.
+  stage.camera.add(raceChip.sprite, milestoneLabel.sprite);
+  const spot: CameraSpot = { x: 0, y: 0, z: 0, height: 0 };
+  const box = { cx: 0, cy: 0, h: 0 };
+  /** Puts a label's centre at (cx, cy) px with height h px; returns nothing. */
+  const placeOnScreen = (sprite: THREE.Sprite, cx: number, cy: number, h: number): void => {
+    box.cx = cx;
+    box.cy = cy;
+    box.h = h;
+    const W = Math.max(1, canvas.clientWidth);
+    const H = Math.max(1, canvas.clientHeight);
+    toCameraSpace(box, W, H, stage.camera.fov, LK.OVERLAY_DEPTH, spot);
+    sprite.position.set(spot.x, spot.y, spot.z);
+    sprite.scale.set(spot.height / LABEL_ASPECT, spot.height, 1);
+  };
+  // "YOUR BEST" on the floor behind the ghost, like the player's combo counter.
+  const ghostTag = createLabel(
+    stage.scene,
+    LK.GHOST_TAG_WIDTH,
+    512,
+    { x: 0, y: LK.GHOST_TAG.y, z: LK.GHOST_TAG.z },
+    996,
+  );
+  ghostTag.draw({ text: 'YOUR BEST', color: LK.GHOST_ACCENT });
   const showMilestone = (label: { text: string; color: number }): void => {
     milestoneLabel.draw(label);
     milestoneT = 0;
@@ -299,8 +327,20 @@ export function create3DView(
       }
       raceChip.sprite.visible = race !== null;
       raceChangedT += realDt;
-      const chipScale = T.RACE_WIDTH * (1 + (reduceMotion ? 0 : racePulse(raceChangedT)));
-      raceChip.sprite.scale.set(chipScale, chipScale * LABEL_ASPECT, 1);
+      if (raceChip.sprite.visible) {
+        // Bottom right, clear of GameHud's plates, move cue and camera preview.
+        const H = canvas.clientHeight;
+        const h = labelHeight(H, LK.RACE_H.share, LK.RACE_H.min, LK.RACE_H.max);
+        const pop = 1 + (reduceMotion ? 0 : racePulse(raceChangedT));
+        // Anchored at its bottom-right corner, so the pop grows it into the screen, not off it.
+        const ph = h * pop;
+        placeOnScreen(
+          raceChip.sprite,
+          canvas.clientWidth - LK.OVERLAY_MARGIN - ph / LABEL_ASPECT / 2,
+          H - LK.OVERLAY_MARGIN - ph / 2,
+          ph,
+        );
+      }
       if (bannerT >= 0) {
         bannerT += realDt;
         const k = reduceMotion ? 1 : Math.min(1, bannerT / T.BANNER_POP_SEC);
@@ -319,6 +359,11 @@ export function create3DView(
         ghostInput.rightArmUp = ghost.rightArmUp;
         ghostRunner.update(visDt, ghostInput, runSpeed);
       }
+      // The tag shows while the ghost is in another lane (in the player's lane it wraps the
+      // player, and the tag would read as the player's).
+      ghostTag.sprite.visible =
+        ghostRunner !== null && ghost !== null && Math.abs(ghostRunner.x - player.x) > 1;
+      if (ghostRunner) ghostTag.sprite.position.x = ghostRunner.x;
 
       // Intro: the countdown number over the runner (3, 2, 1, GO).
       const count = countdownAt(intro);
@@ -368,7 +413,8 @@ export function create3DView(
         }
         comboShown = combo;
       }
-      comboChip.sprite.visible = combo !== null;
+      // While a milestone banner says "10 COMBO!" the counter steps aside instead of repeating it.
+      comboChip.sprite.visible = combo !== null && milestoneT >= T.MILESTONE_SEC;
       comboChangedT += realDt;
       const cs =
         T.COMBO_WIDTH * (1 + (reduceMotion ? 0 : 0.25 * Math.max(0, 1 - comboChangedT / 0.2)));
@@ -381,14 +427,21 @@ export function create3DView(
         showMilestone({ text: 'FINAL STRETCH', color: T.ZONE_LOOK.finale.accentA });
         stage.milestone();
       }
-      // Milestone banner in the sky band, above every obstacle.
+      // Milestone banner bottom centre, under the combo counter: below the runner nothing is
+      // still to come, and GameHud's move cue owns the top band.
       milestoneT += realDt;
       milestoneLabel.sprite.visible = milestoneT < T.MILESTONE_SEC;
       if (milestoneLabel.sprite.visible) {
         const k = reduceMotion ? 1 : Math.min(1, milestoneT / 0.2);
         const pop = 1 - (1 - k) ** 3;
-        const s = T.MILESTONE_WIDTH * (0.6 + 0.4 * pop);
-        milestoneLabel.sprite.scale.set(s, s * LABEL_ASPECT, 1);
+        const H = canvas.clientHeight;
+        const h = labelHeight(H, LK.MILESTONE_H.share, LK.MILESTONE_H.min, LK.MILESTONE_H.max);
+        placeOnScreen(
+          milestoneLabel.sprite,
+          canvas.clientWidth / 2,
+          H - LK.OVERLAY_MARGIN - h / 2,
+          h * (0.6 + 0.4 * pop),
+        );
         const fade = milestoneT / T.MILESTONE_SEC;
         milestoneLabel.sprite.material.opacity = fade < 0.7 ? 1 : 1 - (fade - 0.7) / 0.3;
       }
@@ -439,7 +492,8 @@ export function create3DView(
         color: n >= 20 ? T.MOVE_COLOR.armsUp : n >= 10 ? T.MOVE_COLOR.sidestep : T.COLOR_LIME,
       });
       stage.milestone();
-      for (const move of ['jump', 'armsUp', 'sidestep'] as const) obstacles.burst(player.x, move);
+      // One ring: three at once added up to a white glare over the runner.
+      obstacles.burst(player.x, 'jump');
     },
     showGhostOutcome(outcome) {
       if (bannerT >= 0) return;
