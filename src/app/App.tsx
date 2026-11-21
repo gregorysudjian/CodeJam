@@ -1,6 +1,6 @@
 // Owner: Greg (D). Screen state machine and wiring: the only place that imports the modules.
 // Screens come from src/ui (pure: props in, callbacks out); see src/ui/README.md.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import type {
   CoachAdvice,
@@ -17,35 +17,64 @@ import type {
 } from '@/contracts';
 import { createStore } from '@/data';
 import { createKeyboardInput } from '@/input';
-import { createPoseInput } from '@/pose';
-import {
-  DashboardScreen,
-  LandingScreen,
-  LeaderboardScreen,
-  ProfileScreen,
-  ResultsScreen,
-  WorkoutSelectScreen,
-  type ProfileInput,
-} from '@/ui/screens';
+// Screens are imported from their own files, not the src/ui/screens barrel, so the lazily
+// loaded dashboard (and Recharts) can split into its own chunk.
+import { LandingScreen } from '@/ui/screens/LandingScreen';
+import { LeaderboardScreen } from '@/ui/screens/LeaderboardScreen';
+import { ProfileScreen } from '@/ui/screens/ProfileScreen';
+import { ResultsScreen } from '@/ui/screens/ResultsScreen';
+import { WorkoutSelectScreen } from '@/ui/screens/WorkoutSelectScreen';
+import type { ProfileInput } from '@/ui/screens/ProfileScreen';
 import { WORKOUTS } from '@/workout';
 import { CalibrateStep } from './CalibrateStep';
 import { DevPose } from './DevPose';
-import { PlayScreen } from './PlayScreen';
+import { KioskBoard } from './KioskBoard';
+import { CameraErrorOverlay, OfflineBanner } from './ErrorStates';
+import { classifyCameraError, type CameraErrorInfo } from './errors';
+import { createSwitchableInput } from './switchableInput';
+import { TryMoves } from './TryMoves';
+import { tutorialMoves } from './tutorial';
+import { LEADERBOARD_SIZE } from './tuning';
+import { useOnline } from './useOnline';
 
 type Screen =
-  'landing' | 'profile' | 'select' | 'calibrate' | 'play' | 'results' | 'dashboard' | 'leaderboard';
+  | 'landing'
+  | 'profile'
+  | 'select'
+  | 'calibrate'
+  | 'tutorial'
+  | 'play'
+  | 'results'
+  | 'dashboard'
+  | 'leaderboard';
 
 const APP_NAME = 'Neon Arena';
 const NOTICE_MS = 4000;
-const LEADERBOARD_SIZE = 20;
+
+// Heavy parts load only when needed (audit #8): the game (Three.js) when a round starts, the
+// dashboard charts (Recharts) when the dashboard opens, the pose module (MediaPipe) when the
+// player switches to the camera.
+const PlayScreen = lazy(() => import('./PlayScreen').then((m) => ({ default: m.PlayScreen })));
+const DashboardScreen = lazy(() =>
+  import('@/ui/screens/DashboardScreen').then((m) => ({ default: m.DashboardScreen })),
+);
+type PoseModule = typeof import('@/pose');
 
 const store = createStore();
 const isDevPose = new URLSearchParams(window.location.search).get('dev') === 'pose';
+const isKiosk = new URLSearchParams(window.location.search).get('kiosk') === '1';
 const publicUrl = window.location.origin;
 const workouts = Object.values(WORKOUTS);
 
 export default function App() {
   if (isDevPose) return <DevPose />;
+  if (isKiosk)
+    return (
+      <KioskBoard
+        store={store}
+        qr={<QRCodeSVG value={publicUrl} bgColor="transparent" fgColor="currentColor" />}
+      />
+    );
   return <MainApp />;
 }
 
@@ -56,6 +85,9 @@ function MainApp() {
   const [inputKind, setInputKind] = useState<'keyboard' | 'pose'>('keyboard');
   const [debug, setDebug] = useState(false);
   const [notice, setNotice] = useState('');
+  const [cameraError, setCameraError] = useState<CameraErrorInfo | null>(null);
+  const [tutorialDone, setTutorialDone] = useState(false);
+  const online = useOnline();
 
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [advice, setAdvice] = useState<CoachAdvice | null>(null);
@@ -82,15 +114,35 @@ function MainApp() {
   }, [screen]);
 
   // ── Input: one source at a time, started here and stopped when it changes ──
+  const [poseModule, setPoseModule] = useState<PoseModule | null>(null);
+  useEffect(() => {
+    if (inputKind !== 'pose' || poseModule) return;
+    let cancelled = false;
+    import('@/pose')
+      .then((m) => {
+        if (!cancelled) setPoseModule(m);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setCameraError(classifyCameraError(err));
+        setInputKind('keyboard');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [inputKind, poseModule]);
+  // Until the pose module has loaded, the keyboard stays the input.
   const input: InputSource = useMemo(
-    () => (inputKind === 'pose' ? createPoseInput() : createKeyboardInput()),
-    [inputKind],
+    () =>
+      inputKind === 'pose' && poseModule ? poseModule.createPoseInput() : createKeyboardInput(),
+    [inputKind, poseModule],
   );
   useEffect(() => {
     let cancelled = false;
     input.start().catch((err: unknown) => {
       if (cancelled) return;
-      setNotice(err instanceof Error ? err.message : 'Camera unavailable, using the keyboard.');
+      // Fall back to the keyboard at once, and explain what happened with a way to retry.
+      setCameraError(classifyCameraError(err));
       setInputKind('keyboard');
     });
     return () => {
@@ -99,12 +151,17 @@ function MainApp() {
     };
   }, [input]);
   const pose = input.kind === 'pose' ? (input as PoseInputSource) : null;
+  // The game always gets this one stable input; K swaps what it forwards to, so the round goes on.
+  const [gameInput] = useState(() => createSwitchableInput(input));
+  useEffect(() => gameInput.setSource(input), [gameInput, input]);
 
   useEffect(() => {
     if (!notice) return;
     const t = setTimeout(() => setNotice(''), NOTICE_MS);
     return () => clearTimeout(t);
   }, [notice]);
+
+  const switchToKeyboard = useCallback(() => setInputKind('keyboard'), []);
 
   // ── Returning player and top scores for the landing screen ──
   useEffect(() => {
@@ -129,13 +186,21 @@ function MainApp() {
   }, []);
 
   // ── Navigation helpers ──
+  // "Try each move" runs before a player's first round, after calibration when the camera is used.
+  const needsTutorial = sessions.length === 0 && !tutorialDone;
+  const afterSetup: Screen = needsTutorial ? 'tutorial' : 'play';
+  const finishTutorial = useCallback(() => {
+    setTutorialDone(true);
+    setScreen('play');
+  }, []);
+
   const startSession = useCallback(
     (c: SessionConfig) => {
       // A fresh level each time unless the config pins a seed (coach's pick keeps its own).
       setConfig({ ...c });
-      setScreen(inputKind === 'pose' ? 'calibrate' : 'play');
+      setScreen(inputKind === 'pose' ? 'calibrate' : afterSetup);
     },
-    [inputKind],
+    [inputKind, afterSetup],
   );
 
   const openDashboard = useCallback(async () => {
@@ -161,6 +226,7 @@ function MainApp() {
       await store.signOut();
       setReturning(null);
       setSessions([]);
+      setTutorialDone(false);
       setCoachPick(null);
       setSummary(null);
       setAdvice(null);
@@ -306,23 +372,30 @@ function MainApp() {
         <CalibrateStep
           pose={pose}
           mode={config.mode}
-          onDone={() => setScreen('play')}
+          onDone={() => setScreen(afterSetup)}
           onCancel={() => setScreen('select')}
           onUseKeyboard={() => {
             setInputKind('keyboard');
-            setScreen('play');
+            setScreen(afterSetup);
           }}
         />
       )}
+      {screen === 'tutorial' && config && (
+        <TryMoves moves={tutorialMoves(config)} input={gameInput} onDone={finishTutorial} />
+      )}
       {screen === 'play' && config && (
-        <PlayScreen
-          config={config}
-          input={input}
-          weightKg={profile?.weightKg}
-          debug={debug}
-          onGame={handleGame}
-          onFinish={(s) => void handleFinish(s)}
-        />
+        <Suspense fallback={<div className="h-screen bg-bg" />}>
+          <PlayScreen
+            config={config}
+            input={gameInput}
+            pose={pose}
+            weightKg={profile?.weightKg}
+            debug={debug}
+            onGame={handleGame}
+            onFinish={(s) => void handleFinish(s)}
+            onUseKeyboard={switchToKeyboard}
+          />
+        </Suspense>
       )}
       {screen === 'results' && summary && (
         <ResultsScreen
@@ -341,15 +414,17 @@ function MainApp() {
         />
       )}
       {screen === 'dashboard' && profile && (
-        <DashboardScreen
-          profile={profile}
-          sessions={sessions}
-          coachPick={coachPick}
-          onPlay={() => setScreen('select')}
-          onPlayCoachPick={startSession}
-          onLeaderboard={openLeaderboard}
-          onEditProfile={() => setScreen('profile')}
-        />
+        <Suspense fallback={<div className="h-screen bg-bg" />}>
+          <DashboardScreen
+            profile={profile}
+            sessions={sessions}
+            coachPick={coachPick}
+            onPlay={() => setScreen('select')}
+            onPlayCoachPick={startSession}
+            onLeaderboard={openLeaderboard}
+            onEditProfile={() => setScreen('profile')}
+          />
+        </Suspense>
       )}
       {screen === 'leaderboard' && (
         <LeaderboardScreen
@@ -365,6 +440,23 @@ function MainApp() {
         />
       )}
 
+      {cameraError && (
+        <CameraErrorOverlay
+          error={cameraError}
+          onUseKeyboard={() => {
+            setCameraError(null);
+            // Calibration needs the camera; with the keyboard there is nothing to calibrate.
+            if (screen === 'calibrate') setScreen(afterSetup);
+          }}
+          onRetry={() => {
+            setCameraError(null);
+            setInputKind('pose');
+          }}
+        />
+      )}
+      {!online && (
+        <OfflineBanner onUseKeyboard={inputKind === 'pose' ? switchToKeyboard : undefined} />
+      )}
       {notice && (
         <div
           role="status"

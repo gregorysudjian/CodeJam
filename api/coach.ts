@@ -8,6 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import {
   COACH_MAX_TOKENS,
+  COACH_MIN_INTERVAL_SEC,
   COACH_MODEL,
   COACH_SCHEMA,
   COACH_TIMEOUT_MS,
@@ -47,6 +48,22 @@ export async function POST(request: Request): Promise<Response> {
   });
   const { data: auth, error: authError } = await sb.auth.getUser(token);
   if (authError || !auth.user) return json({ error: 'invalid token' }, 401);
+
+  // Per-user rate limit, checked before any other work. Atomic in Postgres (claim_coach_slot,
+  // migration 0002). If the check itself fails, fail closed: no Claude call; the client uses rules.
+  const { data: claimed, error: limitError } = await sb.rpc('claim_coach_slot', {
+    p_min_interval_seconds: COACH_MIN_INTERVAL_SEC,
+  });
+  if (limitError) return json({ error: 'rate limit check failed' }, 503);
+  if (claimed !== true) {
+    return Response.json(
+      { error: 'too many coach requests' },
+      {
+        status: 429,
+        headers: { 'Cache-Control': 'no-store', 'Retry-After': String(COACH_MIN_INTERVAL_SEC) },
+      },
+    );
+  }
 
   const [profileRes, sessionsRes] = await Promise.all([
     sb

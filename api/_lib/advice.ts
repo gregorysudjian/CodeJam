@@ -9,6 +9,8 @@ export const RECAP_MAX = 300;
 export const TIP_MAX = 180;
 export const REASON_MAX = 180;
 export const HISTORY_LIMIT = 10;
+/** At most one coach call per user per this many seconds (claim_coach_slot, migration 0002). */
+export const COACH_MIN_INTERVAL_SEC = 10;
 
 const WORKOUTS: WorkoutId[] = ['legs', 'arms', 'shoulders', 'fullBody'];
 const DURATIONS = [45, 90, 180];
