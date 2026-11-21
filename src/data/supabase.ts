@@ -37,6 +37,14 @@ const KEYS = {
   board: (w: string, m: string, d: number) => `codejam.sb.board.${w}.${m}.${d}`,
 };
 
+/**
+ * Postgres errors that mean "this row will never be accepted" (a check constraint, a bad value),
+ * as opposed to the network, auth or the server being down, which are worth retrying.
+ */
+function isRowRejected(code: string | undefined): boolean {
+  return code === '23514' || code === '23502' || (code?.startsWith('22') ?? false);
+}
+
 function withTimeout<T>(p: PromiseLike<T>, ms = SUPABASE_TIMEOUT_MS): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('timeout')), ms);
@@ -85,6 +93,17 @@ export function createSupabaseStore(
     return data.session?.user.id ?? null;
   }
 
+  // Sessions the server refused for good (a check constraint, migration 0004): never resent, and
+  // saveSession must not report them as synced.
+  const refused = new Set<string>();
+
+  async function upsertSessions(rows: SessionRow[]) {
+    const { error } = await withTimeout(
+      sb.from('sessions').upsert(rows, { onConflict: 'id', ignoreDuplicates: true }),
+    );
+    return error;
+  }
+
   /** Push queued sessions; anything that still fails stays queued. Never throws. */
   async function sendQueue(): Promise<void> {
     try {
@@ -92,17 +111,26 @@ export function createSupabaseStore(
       if (pending.length === 0) return;
       const uid = await userId();
       if (!uid) return;
-      const { error } = await withTimeout(
-        sb.from('sessions').upsert(
-          pending.map((s) => sessionToRow(s, uid)),
-          { onConflict: 'id', ignoreDuplicates: true },
-        ),
-      );
-      if (error) {
+      const sent = new Set<string>();
+      const error = await upsertSessions(pending.map((s) => sessionToRow(s, uid)));
+      if (!error) {
+        for (const s of pending) sent.add(s.id);
+      } else if (isRowRejected(error.code)) {
+        // One bad row fails the whole batch, so it would block every later round in the queue
+        // forever. Send them one by one and drop only the rows the server refuses.
+        for (const s of pending) {
+          const e = await upsertSessions([sessionToRow(s, uid)]);
+          if (!e) sent.add(s.id);
+          else if (isRowRejected(e.code)) {
+            console.warn('The server refused a session; it is dropped.', e.message);
+            refused.add(s.id);
+            sent.add(s.id);
+          }
+        }
+      } else {
         console.warn('Session sync failed; it stays queued.', error.message);
         return;
       }
-      const sent = new Set(pending.map((s) => s.id));
       writeJson(
         kv,
         KEYS.queue,
@@ -224,7 +252,7 @@ export function createSupabaseStore(
       };
       writeJson(kv, KEYS.queue, [...queue(), saved]);
       await flush();
-      const synced = !queue().some((s) => s.id === saved.id);
+      const synced = !refused.has(saved.id) && !queue().some((s) => s.id === saved.id);
       const result = { ...saved, synced };
       writeJson(kv, KEYS.sessions, mergeQueued([result, ...cachedSessions()]));
       return result;
