@@ -28,7 +28,7 @@ You pick what to train (Legs, Arms, Shoulders or Full body) and a 3-lane neon ru
 - **Low impact** removes hurdles. **Treadmill mode** uses only crates and orbs (upper body), calibrated on the shoulders at 1 to 1.5 m, for people who run.
 - **Ghost runner:** when you replay a level, a see-through runner replays your best run beside you, and a chip shows whether you are ahead.
 - **After each round:** score, grade, accuracy, best streak, reps per move, calories (labelled as an estimate), and a coach card with a recap, one tip for the move you missed most, and a recommended next session you can start with one click.
-- **Progress:** a dashboard with active minutes this week against your goal, a day streak and reps by move, and a leaderboard per workout and mode. `?kiosk=1` turns a second screen into a live leaderboard with a QR code to play.
+- **Progress:** a dashboard with active minutes this week against your goal, a day streak and reps by move, and a leaderboard per workout, mode and round length. `?kiosk=1` turns a second screen into a live leaderboard with a QR code to play.
 - **No account needed:** you play as an anonymous guest and can pick a display name.
 - **No camera?** Every move has a keyboard key, and `K` switches between camera and keyboard mid-round without restarting it.
 
