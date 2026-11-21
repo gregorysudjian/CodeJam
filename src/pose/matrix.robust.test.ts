@@ -64,6 +64,28 @@ const names = Object.keys(import.meta.glob('./fixtures/**/*.json'))
   .sort();
 const cutoffs: Record<string, number> = { standing: 5500, jump: 7200, 'greg/mixed': 6300 };
 const identity: Transform = (b) => b;
+function forEachFrame(
+  clip: ReturnType<typeof loadClip>,
+  fps: number | undefined,
+  emit: (index: number, t: number) => void,
+) {
+  const last = clip.frames.length - 1;
+  if (fps) {
+    // Sample the nearest captured pose on an irregular synthetic camera clock. A nominal 30 FPS
+    // can reuse a capture from a slower source. Record both the source index and simulated time.
+    const random = rng(16);
+    let i = 0;
+    for (
+      let t = clip.frames[0].t;
+      t <= clip.frames[last].t;
+      t += (1000 / fps) * (0.8 + 0.4 * random())
+    ) {
+      while (i < last && Math.abs(clip.frames[i + 1].t - t) <= Math.abs(clip.frames[i].t - t)) i++;
+      emit(i, t);
+    }
+  } else clip.frames.forEach((f, i) => emit(i, f.t));
+}
+
 function play(name: string, v: Variant): Event[] {
   const clip = loadClip(name);
   const group = name.includes('/') ? name.slice(0, name.lastIndexOf('/') + 1) : '';
@@ -87,20 +109,7 @@ function play(name: string, v: Variant): Event[] {
     if (gesture.update(pose, t, det.state, det.readout)) result.push({ type: 'pause', frame, t });
   };
   const last = clip.frames.length - 1;
-  if (v.fps) {
-    // Sample the nearest captured pose on an irregular synthetic camera clock. A nominal 30 FPS
-    // can reuse a capture from a slower source. Record both the source index and simulated time.
-    const random = rng(16);
-    let i = 0;
-    for (
-      let t = clip.frames[0].t;
-      t <= clip.frames[last].t;
-      t += (1000 / v.fps) * (0.8 + 0.4 * random())
-    ) {
-      while (i < last && Math.abs(clip.frames[i + 1].t - t) <= Math.abs(clip.frames[i].t - t)) i++;
-      emit(i, t);
-    }
-  } else clip.frames.forEach((f, i) => emit(i, f.t));
+  forEachFrame(clip, v.fps, emit);
   if (name === 'near/squat' || name === 'greg/squat') {
     for (let dt = 33; dt <= 1000; dt += 33) emit(last, clip.frames[last].t + dt);
   }
@@ -115,6 +124,12 @@ function compare(name: string, v: Variant) {
     type: v.mirror ? reflect(e.type) : e.type,
   }));
   const actual = play(name, v);
+  if (!name.split('/').at(-1)?.startsWith('pauseX')) {
+    expect(
+      actual.filter((e) => e.type === 'pause'),
+      name + ' / ' + v.name,
+    ).toEqual([]);
+  }
   const unused = new Set(actual);
   const missed: Event[] = [];
   // Associate a rep with the same move within half a second, one-to-one, nearest first.
@@ -136,7 +151,7 @@ const known: Record<string, string[]> = {
   'roll -5|near/reach': ['miss reachRight 8', 'extra reachLeft 44', 'extra reachLeft 201'],
   'roll 5|greg/armsUp': ['extra reachRight 41'],
   'roll 5|near/reach': ['extra reachRight 84', 'extra reachRight 201'],
-  'fps 10|greg/leaveFrame': ['miss sidestep 121'],
+  'fps 10|greg/leaveFrame': ['miss sidestep 121', 'extra sidestep 155', 'extra sidestep 184'],
   'fps 10|greg/mixed': [
     'miss jump 35',
     'miss reachRight 61',
@@ -208,3 +223,22 @@ describe.each(['standing', 'greg/standing', 'near/standing'])(
     });
   },
 );
+
+test('the full session suppresses the two extra detector lane changes as Greg leaves at 10 FPS', () => {
+  const s = createSession();
+  const stand = loadClip('greg/standing');
+  forEachFrame(stand, undefined, (i, t) => {
+    const pose = stand.frames[i].pose;
+    s.frame(pose ? [toPoints(pose)] : [], t);
+  });
+  expect(s.calibration).not.toBeNull();
+  const start = stand.frames.at(-1)!.t + 33;
+  const events: { type: MoveType; t: number }[] = [];
+  s.onMove((e) => events.push({ type: e.type, t: Math.round(e.t - start) }));
+  const clip = loadClip('greg/leaveFrame');
+  forEachFrame(clip, 10, (i, t) => {
+    const pose = clip.frames[i].pose;
+    s.frame(pose ? [toPoints(pose)] : [], start + t);
+  });
+  expect(events).toEqual([{ type: 'sidestep', t: 6796 }]);
+});

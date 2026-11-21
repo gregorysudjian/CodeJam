@@ -83,3 +83,41 @@ test.fails.each([0.6, 0.65, 0.8, 1])(
     expect({ firstPick: picks[0], moves }).toEqual({ firstPick: undefined, moves: [] });
   },
 );
+
+function spectatorX(scale: number) {
+  const s = createSession();
+  for (const f of playerClip.frames) {
+    if (f.t > 2500) break;
+    s.frame(f.pose ? [toPoints(f.pose)] : [], f.t);
+  }
+  expect(s.calibration).not.toBeNull();
+  const clip = loadClip('near/pauseX');
+  let frame = 0;
+  const pauses: number[] = [];
+  s.onGesture(() => pauses.push(frame));
+  // The camera switches to a spectator demonstrating the pause sign, to one side of the mark.
+  for (const [i, f] of clip.frames.entries()) {
+    frame = i;
+    const pose = f.pose
+      ? toPoints(f.pose).map((p) => ({
+          ...p,
+          x: 0.65 + (p.x - 0.5) * scale,
+          y: 0.55 + (p.y - 0.55) * scale,
+        }))
+      : null;
+    s.frame(pose ? [pose] : [], 2500 + f.t);
+  }
+  return pauses;
+}
+test.each([0.4, 0.55, 0.6])(
+  'a distant spectator at %s× demonstrating X does not pause the player',
+  (scale) => {
+    expect(spectatorX(scale)).toEqual([]);
+  },
+);
+test.fails.each([0.65, 0.8, 1])(
+  'Abdo: a spectator at %s× demonstrating X must not pause the player',
+  (scale) => {
+    expect(spectatorX(scale)).toEqual([]);
+  },
+);
