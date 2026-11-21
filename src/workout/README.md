@@ -43,9 +43,11 @@ Scoring per CONTRACTS.md:
 - Calories are an estimate: MET 8 for legs and full body, 6 for arms and shoulders, 9 on the treadmill, with 70 kg assumed when no weight is given.
 - Change from the stub: live calories now count only running time, from the first game event, without pauses. `finish(activeSec)` uses the app's number as before. The optional `opts.now` exists for tests.
 
-## Leaderboard fairness: longer rounds always win (proposal for D)
+## Leaderboard fairness: longer rounds always win (fixed by D in #45)
 
-The board (`public.leaderboard`, `supabase/migrations/0001_init.sql`) keeps each player's best score per **workout and mode**, whatever the duration, difficulty or low impact. Judges play 45 s.
+**Done (#45, no scoring change):** the board ranks per workout, mode **and** round length (`supabase/migrations/0003_leaderboard_duration.sql`, `LeaderboardEntry.durationSec`, a 45 S / 90 S / 180 S filter; landing and kiosk show 45 s). The measurements that led to it are below.
+
+Before #45, the board (`public.leaderboard`, `supabase/migrations/0001_init.sql`) kept each player's best score per **workout and mode**, whatever the duration, difficulty or low impact. Judges play 45 s.
 
 **Measured:** every level replayed through the real scorer (`createSessionTracker`), difficulty 0.5, 20 seeds each. "Perfect" clears everything; "typical" succeeds on each object with 80 % chance (seeded).
 
@@ -61,14 +63,9 @@ The board (`public.leaderboard`, `supabase/migrations/0001_init.sql`) keeps each
 
 - **180 s scores about 6× more than 45 s** with perfect play. An 80 % run at 180 s still beats a perfect 45 s run by 2×. A judge can never top a board that holds one long round.
 - **Points per minute is not a fix:** perfect play earns 6,710 → 9,190 → 10,263 points a minute (Full body, floor), because long rounds reach the ×3 and ×4 streak multipliers that 45 s rarely does.
-- **Low impact** scores about 5 % less than normal (no hurdles; more sidesteps and orbs, which are worth half). It is not stored, so it can't be split out today.
+- **Low impact** scores about 5 % less than normal (no hurdles; more sidesteps and orbs, which are worth half). It is not stored, so it still shares a board with normal rounds. Accepted: 5 % is within the spread between two players.
 
-**Proposal (D's folders, no scoring change):** rank per duration as well.
-- The sessions table already stores `duration_sec`. A new migration recreates the view with `duration_sec` in the `distinct on` and in the select list. `create or replace view` can only add columns at the end, so drop and recreate it; keep it a plain view, never `security_invoker`.
-- `LeaderboardEntry` (contract) gains `durationSec`.
-- The leaderboard screen filters by it, defaulting to 45 s for the demo.
-
-Saved sessions keep their scores, and nothing in the formula changes. Until then: on the demo laptop, play only 45 s rounds, so the board compares like with like.
+**What was proposed, and shipped as is:** rank per duration as well, with a new migration that recreates the view (a plain view, never `security_invoker`), `durationSec` on the contract, and a duration filter defaulting to 45 s. Saved sessions keep their scores, and nothing in the formula changed.
 
 ## Physical load: what an unwarmed judge in jeans gets
 
@@ -96,5 +93,5 @@ A crate with `holdSec` is judged like a held beam: both arms must go up inside `
 
 ## Status
 - **Works:** generator and tracker. Fairness checks are mutation-tested: weakening any rule makes them fail. They run over every difficulty the coach can recommend (0 to 1 in 0.1 steps), and a "coach compatibility" test checks that each step up is at least as hard as the one below. Both demo levels are pinned object by object (`demo.test.ts`).
-- **Waiting on D:** the leaderboard-fairness proposal above. The scoring formula is unchanged until Greg agrees.
+- **Leaderboard fairness:** fixed by D in #45 (one board per round length). The scoring formula is unchanged; changing it would need Greg's OK, because it affects saved sessions.
 - **Not tested:** whether the gaps and speeds feel right for a body in front of a webcam. Tune `GAP_*`, `HOLD_*` and the game's `SPEED_*` with Abdo at the camera.
