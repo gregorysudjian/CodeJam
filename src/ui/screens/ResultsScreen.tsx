@@ -1,8 +1,8 @@
-import { motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Lightbulb, Play, Sparkles, Trophy } from "lucide-react";
-import type { CoachAdvice, SessionConfig, SessionSummary } from "@/contracts";
-import { Button } from "@/ui/components/ui/button";
-import { Skeleton } from "@/ui/components/ui/skeleton";
+import { motion, useReducedMotion } from 'motion/react';
+import { ArrowRight, Lightbulb, Play, Sparkles, Trophy } from 'lucide-react';
+import type { CoachAdvice, SessionConfig, SessionSummary } from '@/contracts';
+import { Button } from '@/ui/components/ui/button';
+import { Skeleton } from '@/ui/components/ui/skeleton';
 import {
   AnimatedNumber,
   Eyebrow,
@@ -21,10 +21,10 @@ import {
   WORKOUT_LABELS,
   MODE_LABELS,
   useHotkey,
-} from "@/ui/kit";
-import { formatTime } from "@/ui/lib/format";
-import { cn } from "@/ui/lib/utils";
-import { accuracyGrade, mostMissed } from "@/ui/screens/resultsRules";
+} from '@/ui/kit';
+import { formatTime } from '@/ui/lib/format';
+import { cn } from '@/ui/lib/utils';
+import { accuracyGrade, mostMissed } from '@/ui/screens/resultsRules';
 
 export interface ResultsScreenProps {
   summary: SessionSummary;
@@ -38,10 +38,10 @@ export interface ResultsScreenProps {
   onLeaderboard?(): void;
 }
 const GRADE_COLOR = {
-  S: "text-lime border-lime/50",
-  A: "text-cyan border-cyan/50",
-  B: "text-amber border-amber/50",
-  C: "text-text-muted border-glass-border",
+  S: 'text-lime border-lime/50',
+  A: 'text-cyan border-cyan/50',
+  B: 'text-amber border-amber/50',
+  C: 'text-text-muted border-glass-border',
 };
 export function ResultsScreen({
   summary,
@@ -58,9 +58,9 @@ export function ResultsScreen({
   const grade = accuracyGrade(summary.accuracy);
   const missed = mostMissed(summary);
   const maxReps = Math.max(1, ...MOVE_ORDER.map((m) => summary.reps[m]));
-  useHotkey("Enter", onPlayAgain);
+  useHotkey('Enter', onPlayAgain);
   useHotkey(
-    "n",
+    'n',
     () => {
       if (advice) onStartNext(advice.next);
     },
@@ -82,8 +82,9 @@ export function ResultsScreen({
     >
       {handsFree && (
         <div className="flex items-center justify-center gap-3 text-lime">
-          <MoveFigure pose="armsUp" size={55} animate />
-          <span className="font-display-italic text-[20px]">RAISE BOTH ARMS TO PLAY AGAIN</span>
+          {/* Read from the floor mark, about 1.5 m away (QA A1). */}
+          <MoveFigure pose="armsUp" size={96} animate />
+          <span className="font-display-italic text-display-sm">RAISE BOTH ARMS TO PLAY AGAIN</span>
         </div>
       )}
     </ScreenFooter>
@@ -93,7 +94,7 @@ export function ResultsScreen({
       <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="min-w-0">
           <Eyebrow>
-            ROUND COMPLETE · {WORKOUT_LABELS[summary.config.workout]} ·{" "}
+            ROUND COMPLETE · {WORKOUT_LABELS[summary.config.workout]} ·{' '}
             {MODE_LABELS[summary.config.mode]} · {summary.config.durationSec} S
           </Eyebrow>
           <div className="mt-6 flex items-center gap-6">
@@ -103,7 +104,7 @@ export function ResultsScreen({
             />
             <div
               className={cn(
-                "hud-text-glow grid size-24 shrink-0 -rotate-6 place-items-center rounded-2xl border font-display-italic text-display-md",
+                'hud-text-glow grid size-24 shrink-0 -rotate-6 place-items-center rounded-2xl border font-display-italic text-display-md',
                 GRADE_COLOR[grade],
               )}
               aria-label={`Grade ${grade}`}
@@ -184,7 +185,7 @@ export function ResultsScreen({
                         animate={{ scaleX: summary.reps[move] / maxReps }}
                         transition={{ duration: reduce ? 0 : 0.5, delay: reduce ? 0 : i * 0.06 }}
                         className={cn(
-                          "h-full origin-left bg-current",
+                          'h-full origin-left bg-current',
                           ACCENT_TEXT[MOVE_ACCENTS[move]],
                         )}
                       />
@@ -194,7 +195,7 @@ export function ResultsScreen({
                       className="text-right font-display-italic text-title"
                     />
                     <span className="text-right font-display-italic text-caption text-danger">
-                      {summary.missed[move] > 0 ? `${summary.missed[move]} MISSED` : ""}
+                      {summary.missed[move] > 0 ? `${summary.missed[move]} MISSED` : ''}
                     </span>
                   </div>
                 ),
@@ -215,11 +216,11 @@ export function ResultsScreen({
             {advice && (
               <span
                 className={cn(
-                  "rounded-md border border-current px-2 py-1 font-display-italic text-caption",
-                  advice.source === "ai" ? "text-lime" : "text-cyan",
+                  'rounded-md border border-current px-2 py-1 font-display-italic text-caption',
+                  advice.source === 'ai' ? 'text-lime' : 'text-cyan',
                 )}
               >
-                {advice.source === "ai" ? "AI" : "RULES"}
+                {advice.source === 'ai' ? 'AI' : 'RULES'}
               </span>
             )}
           </div>
@@ -232,7 +233,7 @@ export function ResultsScreen({
               </div>
               <div
                 className={cn(
-                  "border-l-2 border-current pl-5",
+                  'border-l-2 border-current pl-5',
                   ACCENT_TEXT[WORKOUT_ACCENTS[advice.next.workout]],
                 )}
               >
@@ -240,18 +241,18 @@ export function ResultsScreen({
                 <div className="my-4 flex items-center gap-3">
                   <MoveFigure
                     pose={
-                      advice.next.workout === "legs"
-                        ? "squat"
-                        : advice.next.workout === "arms"
-                          ? "reachRight"
-                          : advice.next.workout === "shoulders"
-                            ? "armsUp"
-                            : "jump"
+                      advice.next.workout === 'legs'
+                        ? 'squat'
+                        : advice.next.workout === 'arms'
+                          ? 'reachRight'
+                          : advice.next.workout === 'shoulders'
+                            ? 'armsUp'
+                            : 'jump'
                     }
                     size={95}
                   />
                   <h2 className="min-w-0 font-display-italic text-title">
-                    {WORKOUT_LABELS[advice.next.workout]} · {MODE_LABELS[advice.next.mode]} ·{" "}
+                    {WORKOUT_LABELS[advice.next.workout]} · {MODE_LABELS[advice.next.mode]} ·{' '}
                     {advice.next.durationSec} S
                   </h2>
                 </div>
