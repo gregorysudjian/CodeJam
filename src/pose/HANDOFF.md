@@ -1,207 +1,176 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat 13:50. Read this first in a new conversation._
+_Last refresh: Sat ~2 PM, after opening PR #27. Read this first in a new conversation._
 
 ## 1. Context
 
-- CodeJam 16 webcam fitness game: a 3-lane runner you play with your body. Vite + React + TS strict,
-  Three.js, MediaPipe pose on device, Supabase, Vercel. Docs: `AGENTS.md`, `docs/PLAN.md`,
+- CodeJam 16 webcam fitness game: a 3-lane runner played with your body (Vite + React + TS strict,
+  Three.js, MediaPipe pose on device, Supabase, Vercel). Docs: `AGENTS.md`, `docs/PLAN.md`,
   `docs/CONTRACTS.md` (the law), `docs/DEMO.md`.
-- Role A (Vision). Branch **`abdo-1`**. Never commit, merge, rebase or push to `main`; never force-push.
-  `main` was merged into `abdo-1` at ~1:50 PM (Greg's request; adds `vercel.json`). PR #27 is open.
+- Role A (Vision, Abdo). Branch **`abdo-1`**. Never commit, merge or push to `main`, never rebase,
+  never force-push. Greg merges PRs.
 - A owns only `src/pose/`, `public/models/`, `public/mediapipe/`. Anything else → `src/pose/NEEDS.md`.
-- No npm packages; every number in `src/pose/tuning.ts`; `npm run check` before each commit.
+- No new npm packages; every number in `src/pose/tuning.ts`; `npm run check` passes before each push.
 - Code freeze **Sunday 12:00 PM** Montreal time.
 
 ## 2. Current state
 
-- **Works:** real `createPoseInput()` (contract-exact), calibration with status messages, all six
-  moves, tracking flag, background-person handling, treadmill mode, D-key debug overlay with
-  sliders, `?dev=pose` page with recorder. See README's MORNING REPORT for the evidence.
-- **Half-done / not done:**
-  - Nothing is half-written in code. Not done: "raise both arms to start" (app-side, NEEDS.md 5),
-    station setup notes (Phase 4), real-camera tuning (needs A).
-- **Last commit:** see `git log -1`.
-- **`npm run check`:** passes (317 pose tests; 530 with the whole team after merging main). Use its exit code; a `| grep` can hide a failure.
-  A clean checkout of `origin/abdo-1` + `npm ci` + `npm run check` passes too (nothing local needed).
-  Mutation sweep: each of the 23 `DETECTION` thresholds and the calibration / body-picking constants
-  set to an extreme breaks at least one test (only the overlay's list length is cosmetic).
-- **End to end:** `main`'s full flow (calibrate → tutorial with the video off-page → play) ran on
-  replayed clips with only the model swapped, in floor and treadmill mode (see §6 "Testing without
-  a camera"). Phase 3's "treadmill round playable" holds on replayed data.
-- **Whole team:** scratch merge of `main` + `p1-workout` + `p2-game` + `abdo-1`: no conflicts,
-  403 tests (with `--testTimeout=120000` for Patrick's slow ones), build OK, a full round of the real
-  3D game ran on replayed pose with no errors.
-  Re-run at 11:06 with Patrick's newest branches: no conflicts, plain `npm run check` 417 tests.
-- **Integration:** verified against `origin/main` PR #19 in a scratch worktree (never merged): `main`'s
-  check passes with this `src/pose` (236 tests incl. the DevPose snippet from NEEDS.md 1), the real
-  calibration screen and `?dev=pose` work with a stubbed camera, StrictMode leaves one camera track.
-  `main` added packages since `abdo-1` branched: after any merge of `main` into `abdo-1`, run
-  `npm install`.
+- **PR #27 is open:** https://github.com/gregorysudjian/CodeJam/pull/27 (`abdo-1` → `main`),
+  mergeable, changes only the three A folders. `main` (with Patrick's game and workout already
+  merged, and `vercel.json`) was merged into `abdo-1` at ~1:50 PM with no conflicts.
+- **Last commit:** see `git log -1` (this handoff's own commit). **`npm run check` passes:** 530 tests
+  with the whole team's code, 317 of them in `src/pose`. This was verified in a clean scratch
+  checkout.
+- **Works:** real `createPoseInput()` (contract-exact): camera, MediaPipe, `calibrate()` with status
+  messages, lane, jump, squat, armsUp, reachLeft/reachRight, `tracking`, move events,
+  `drawSkeleton`. Also treadmill mode, the D-key debug overlay (sliders, threshold lines on the
+  video), and `?dev=pose` (`mountPoseDebug`, exported from `src/pose`) with calibrate buttons, a move
+  tally and a clip recorder.
+- **Evidence:**
+  - Clips from two bodies (A and Greg) plus 11 synthetic variants each.
+  - Full app flows with replayed clips: calibration → tutorial → real 3D game round. Also the
+    `vite preview` production build.
+  - Greg ran it on his machine too (his README on branch `greg-clips`).
+- **Real camera, Sat ~1:30 PM:** 25.7 FPS on GPU (camera 30 fps, 640×480); calibrated W 0.107,
+  T 0.214; threshold lines line up with the body. **Not done yet:** step 3 onwards of §6 (10 of
+  each move).
+- **Half-done:** nothing in code.
+  - A's **local `node_modules` is broken**: `npm ci` after the merge hit `EPERM` because an old dev
+    server (PID 19480, started 3:35 AM, port 5173) locks a file.
+  - Fix: Task Manager → Details → end `node.exe` PID 19480 (or any `node.exe` running vite from
+    CodeJam), then `npm ci` in `C:\Users\kalla\CodeJam`. Until then `npm run dev` / `check` fail
+    locally.
 
-## 3. Architecture
+## 3. Architecture of `src/pose/`
 
 ```
-webcam ─► camera.ts (stream) ─► <video> (mirrored by CSS in engine.ts)
-            │ requestVideoFrameCallback, once per new frame (engine.ts)
-            ▼
-landmarker.ts  detect(video) → raw landmarks for 1..MAX_POSES bodies (shared model, GPU→CPU)
-            ▼
-session.ts     pickBody (largest, nearest) → size gate → calibrating? calibration.ts : detect.ts
-            ▼                                   │ statuses (5% steps) → calibrate(onStatus)
+webcam ─► camera.ts (getUserMedia stream) ─► <video> (mirrored with CSS in engine.ts)
+             │ requestVideoFrameCallback per new frame, plus a 30 ms watchdog (engine.ts)
+             ▼
+landmarker.ts  detect(video) → raw landmarks for 1..MAX_POSES bodies (one shared model, GPU→CPU,
+               MediaPipe JS loaded lazily)
+             ▼
+session.ts     size gate → pickBody → calibrating? calibration.ts : detect.ts; listeners isolated
+             ▼                                   │ status in 5% steps → calibrate(onStatus)
 detect.ts      EMA smoothing → lane / jump / squat / arms / tracking / drift → InputState + MoveEvents
-            ▼
-engine.ts      getState() (game polls), onMove listeners, drawSkeleton (skeleton.ts), D → overlay.ts
+             ▼
+engine.ts      getState() (game polls), onMove, drawSkeleton (skeleton.ts), D → overlay.ts
 ```
 
-- `index.ts` — `createPoseInput()` = `createPoseEngine().source`; also exports `mountPoseDebug`
-  (Greg asked for it in `main`'s docs/PROGRESS.md and docs/AUDIT.md #7).
-- `engine.ts` — browser glue; StrictMode-safe start/stop; `calibrate()` before `start()` works;
-  a 30 ms watchdog keeps frames flowing when the app takes the video off the page (it pauses) and
-  turns a stalled camera into "no body" after 1 s; frames are deduplicated by decoded-frame count.
-- `session.ts` — pure per-frame core (tested on clips).
-- `calibration.ts` — pure calibrator, messages per mode, treadmill T estimate.
-- `detect.ts` — pure detector; landmark indices; `toPlayerX` (the only `1 - x`); `pickBody`.
-- `tuning.ts` — **all thresholds**; `DETECTION` is live (sliders), `DETECTION_DEFAULTS` committed.
-- `overlay.ts`, `skeleton.ts`, `landmarker.ts`, `camera.ts`, `debug.ts`, `recording.ts`.
-- Tests: `detect.test.ts` (rules), `variants.test.ts` (clips × variants), `session.test.ts`,
-  `treadmill.test.ts`, `calibration.test.ts`, `skeleton.test.ts`, `overlay.test.ts`;
-  helpers in `fixtures.ts`; clips in `fixtures/*.json` (A, two sessions at different spots;
-  what each clip contains and its quirks: `fixtures/README.md`).
+| File | One line |
+| --- | --- |
+| `index.ts` | `createPoseInput()` (contract) and `mountPoseDebug` (Greg asked for it) |
+| `engine.ts` | Browser side: StrictMode-safe start/stop, frame loop and watchdog (keeps frames flowing when the app takes the video off the page; a camera stalled > 1 s counts as "no body"), D key |
+| `session.ts` | Pure per-frame core: player pick and size gate, calibrate or detect, quiet auto-calibration |
+| `calibration.ts` | Pure calibrator: noBody / tooFar / tooClose / holdStill / done; treadmill tolerates jogging |
+| `detect.ts` | Pure detector; `toPlayerX` is the only `1 - x`; `pickBody`; landmark indices |
+| `tuning.ts` | **All thresholds.** `DETECTION` is live (sliders), `DETECTION_DEFAULTS` is committed |
+| `overlay.ts` | Debug overlay text, 12 sliders, Reset, Copy; hands keyboard focus back after use |
+| `skeleton.ts` | Skeleton and threshold-line drawing with the object-cover crop |
+| `landmarker.ts`, `camera.ts` | Model (from `public/`) and camera, with readable errors |
+| `debug.ts`, `recording.ts` | `?dev=pose` page; clip recorder format |
+| `fixtures.ts`, `fixtures/` | Test replay helpers; A's clips, `greg/`, `extra/<move>-<N>-name.json` auto-tests |
+| `*.test.ts` | detect (rules), variants (clips × variants, state timing), session, treadmill, calibration, skeleton, overlay |
 
 ## 4. Decisions
 
-All in `src/pose/DECISIONS.md` (33, with reasons). The big ones: lane 0.55/0.3 W; arm up 0.3 T above
-the nose (kept for the game's latency leads), "down" back near the nose (press reps); arms ignored mid-jump; squat rep after 250 ms down,
-and a raised jump line (0.45 T) for 0.4 s after a squat instead of a block (crouch-then-jump works);
-jump speed > 1.0 T/s; tracking lost when hips leave the frame; baselines drift only when
-still; size gate 40%; `MAX_POSES = 1`; pose handles D, app handles R; video kept playing off-page.
+`src/pose/DECISIONS.md` (36 entries, each with its reason). The ones that matter most:
+
+- Lane line 0.55 / 0.3 W.
+- **Arm up 0.3 T** above the nose (kept: Patrick's game latency leads were tuned on it; 0.4 added
+  ~70 ms of lag); arm down back near the nose (press reps).
+- **A reach needs the other arm down** (Greg's half press).
+- **The squat rep is decided after standing up** (crouch then jump is a jump; `ducking` is instant).
+- Jump speed > 1.0 T/s; after a squat a jump must rise 0.45 T.
+- Baselines drift only when the player is still.
+- Size gate 40% before picking a body; `MAX_POSES = 1`.
+- Pose handles D, the app handles R.
+- The video keeps playing off-page.
 
 ## 5. Known bugs and risks (ranked)
 
-1. **Not yet run on a real camera since Phase 0.** All detection evidence is from recorded clips.
-2. **FPS with the full input is unmeasured on your camera** (overlay shows it). Phase 0 spike: 25.9 FPS
-   GPU. The pose logic itself costs ~2 µs per frame (measured), so FPS is the camera plus MediaPipe.
-3. **Only one body type recorded** (A). A teammate of a different height is the Phase 1 done-check.
-4. **Treadmill was simulated** by scaling floor clips; real jogging arm swing is untested. Treadmill
-   does not re-baseline size while jogging, so if the runner drifts much closer or further on the
-   belt, press R (a ~40% size change also trips the size gate and pauses tracking).
-5. **The app moves the `<video>` between screens.** Removing it pauses it; the engine now resumes it
-   and processes frames on a watchdog timer (verified in Chromium). Watch FPS in the play screen.
-6. **Video mirroring owner mismatch**: contract says UI mirrors, app says A does; pose mirrors now.
-   If any screen adds `scale-x-[-1]` the video flips back (NEEDS.md 2).
-7. **Jump out of a deep crouch registers ~0.17 s later** (it must clear 0.45 T, not 0.15 T, for 0.4 s
-   after a squat/crouch). Normal jumps are unchanged. If hurdles feel late, lower
-   `JUMP_AFTER_SQUAT_ON_T` (0.45) a little; never below ~0.3 (standing up onto the toes).
-8. Background people with `MAX_POSES = 1`: MediaPipe may lock onto someone else; the size gate stops
-   tracking a much smaller/larger person, but a same-size person beside you could be picked.
-9. The `squat` **event** fires 250 ms after the hips cross the line (the `ducking` state is instant,
-   so beams are unaffected); the rep counter and tutorial see it a moment later.
+1. **The move check on the real camera (§6 step 3+) is not done yet**, and neither is a teammate check
+   on a real camera (Greg's recorded clips pass).
+2. **A's local `node_modules` is broken** until the old dev server is ended (§2).
+3. **Combined FPS** of pose plus the 3D game on the demo laptop is unmeasured (pose alone: 25.7 GPU).
+4. **Treadmill was simulated** by scaling clips. A runner drifting on the belt → press R.
+5. Hands resting on the head can count as arms up (trade-off for the game's timing, DECISIONS 33).
+6. Known limits: a half press on a camera tilted 3° can read as a reach; very quick left/right
+   reaches can lose a rep at ±1% jitter or ≥ 30% dropped frames.
+7. A jump out of a deep crouch registers ~0.17 s later (raised jump line after a squat).
+8. Video mirroring: the pose module mirrors its own `<video>`. If a screen adds `scale-x-[-1]` it
+   flips back (NEEDS 2).
 
-## 6. Needs real-camera test (about 10 minutes)
+## 6. Needs real-camera test (10 minutes)
 
-Setup: `npm run dev`, Chrome, open `http://localhost:5173/?dev=pose`, paste the console snippet from
-README "How to use it". Stand at playing distance (feet in view).
-
-1. **FPS:** overlay top line. Expect ≥ 25 FPS and `GPU`. If < 25, look at the second line: if the
-   camera's own fps is also low, it is the camera (add light); if the camera says ~30, it is the
-   model (check `GPU`, close other tabs). Note both numbers.
-2. **Calibration:** click `⟳ calibrate floor`, walk back. Expect `tooClose` while your feet are cut
-   off, then `holdStill` climbing to 100%, then "Calibrated". Step far back first: expect `tooFar`.
-   If the room is too small to get your feet in view, set `CALIBRATION_FEET_IN_VIEW = false` in
-   `tuning.ts` (head and knees are then enough; detection uses the hips).
-3. **Moves, 10 each:** press `Reset tally` (right panel), do 10 sidesteps (right, back, left,
-   back… each lane change counts), then read the tally; repeat for jump, squat, both arms up, left
-   arm only, right arm only. Expect 10/10 each, nothing counted under the other moves. With the
-   overlay on, the coloured lines show the lane, squat, jump and arm-up thresholds on the video.
-4. **No false moves:** stand still 20 s, shuffle a little, scratch your head. Expect nothing. Then
-   rest both hands on top of your head: this may count as arms up (known trade-off, DECISIONS 33;
-   raising the line adds arm lag the game would need to absorb).
-5. **Squat then stand up fast onto your toes:** expect `squat` only, no `jump`. Then **crouch deep
-   and jump**: expect `jump` (and no `squat` unless you paused at the bottom). Then **10 fast squats**
-   (no pause): expect 10.
-6. **Walk out of frame:** `tracking □` within ~0.5 s; walk back: `■` within ~0.3 s.
-7. **Sliders:** move `LANE_ON_W` to 1.0 → small sidesteps stop counting. Press Reset.
-8. **Treadmill:** click `⟳ calibrate treadmill` at about 1–1.5 m. Jog on the spot 20 s: expect no
-   moves. Then reaches and both-arms presses: expect them to count.
-9. **In the real app, without merging** (Git Bash, in the CodeJam folder):
-   ```bash
-   git fetch && git worktree add --detach ../codejam-main-try origin/main
-   cd ../codejam-main-try && rm -rf src/pose && cp -r ../CodeJam/src/pose src/pose
-   cp -r ../CodeJam/public/models ../CodeJam/public/mediapipe public/ && npm ci && npm run dev
+**Setup**
+1. End the old dev server and run `npm ci` (§2).
+2. `npm run dev`, leave it running, and open the printed URL + `?dev=pose` in Chrome (for example
+   `http://localhost:5173/?dev=pose`).
+3. F12 → Console (type `allow pasting` if asked), paste:
+   ```js
+   const host = document.createElement('div');
+   host.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#111;overflow:auto';
+   document.body.append(host);
+   const { mountPoseDebug } = await import('/src/pose/index.ts');
+   mountPoseDebug(host);
    ```
-   Open the printed localhost URL, play as guest, press **K** (pose), START: calibration screen shows
-   the skeleton over you; the tutorial counts your moves; press **D** in play for the overlay, **R**
-   to recalibrate. Afterwards: `cd ../CodeJam && git worktree remove --force ../codejam-main-try`.
-   Never commit in that folder.
-10. **Teammate** of a different height: repeat step 3; target 8/10. Keep evidence: they record a
-    clip per move with the `● …` buttons (still for the first second, ~4 reps) and you save each as
-    `src/pose/fixtures/extra/<move>-<N>-<name>.json`; tests then expect exactly N (see
-    `fixtures/README.md`). A failing one is a real bug to tune against.
-11. Optional: set `MAX_POSES = 2` in `tuning.ts`, check FPS, have someone walk behind you.
+4. Allow the camera, close DevTools, and stand at playing distance with your feet in view.
 
-Recording a new clip for a failing case: use the `● …` buttons, then put the JSON in
-`src/pose/fixtures/` and add an expectation in `variants.test.ts`.
+**Checklist**
+1. ✅ (done Sat 1:30 PM) **FPS:** the overlay shows ≥ 25 FPS and GPU; line 2 shows the camera's own fps.
+2. ✅ (done) **Calibration:** `⟳ calibrate floor` → `tooClose` with feet cut off → `holdStill`
+   0–100% → "Calibrated". The coloured lines sit on the body.
+3. **Moves, about 10 each:** press `Reset tally` before each move and read the tally after.
+   - Sidesteps: right, back, left, back (each lane change counts).
+   - Jumps, squats (hips below the orange line), both arms up (down to the chin between reps),
+     left arm only, right arm only.
+   - Expect 10/10 with nothing counted under other moves. Squats are counted when you stand back
+     up, or 0.8 s into a hold.
+4. **No false moves:** stand still 20 s, shuffle, scratch your head → nothing.
+5. **Squat, then stand up fast onto your toes** → squat only. **Crouch deep and jump** → jump only.
+6. **Walk out of frame:** `tracking □` within ~0.5 s; walk back: `■` within ~0.3 s.
+7. **Treadmill:** `⟳ calibrate treadmill` at 1–1.5 m. Jog on the spot 20 s → no moves; reaches and
+   presses count.
+8. **In the app:** play a round with K (pose). Press D during play → overlay; R → recalibrate.
+9. **Teammate of a different height:** repeat step 3, target 8/10. Save their clips as
+   `src/pose/fixtures/extra/<move>-<N>-<name>.json` and tests then expect exactly N.
 
-**Testing without a camera (how the overnight session verified things):**
-- Detection: replay clips in Vitest (`fixtures.ts`: `replay(clip, { transform, dropFraction, … })`).
-- Browser lifecycle: in Playwright, `page.addInitScript` replacing `navigator.mediaDevices.getUserMedia`
-  with a `canvas.captureStream(30)`; MediaPipe runs (no body found), so start/stop, FPS, overlay,
-  calibration status and the app's screens can be checked. Never use the real webcam unattended.
-- Against `main` without merging: `git worktree add --detach <scratch dir> origin/main`, copy
-  `src/pose` and `public/models`, `public/mediapipe` in, `npm ci`, `npm run check`, then
-  `git worktree remove --force <dir>`. Never commit there.
-- Full game flow with your moves but no camera: in that scratch app, Playwright `page.route` serves a
-  replacement `/src/pose/landmarker.ts` whose `getLandmarker()` returns `{ delegate, detect() }` that
-  plays clips from `/src/pose/fixtures/*.json?import` by elapsed time (camera stubbed as above).
-  Everything else is the real code. Note: React StrictMode creates two pose inputs (useMemo runs
-  twice); only one is started.
+If something misses: `STATION.md` has a symptom → slider table. "Copy changed values" in the overlay
+gives JSON to put into `DETECTION_DEFAULTS`.
 
-## 7. Waiting on teammates
+## 7. Waiting on teammates (copy-paste, full text in `NEEDS.md`)
 
-Copy-paste messages for Greg are in `src/pose/NEEDS.md`: 1 wire `?dev=pose` (ready `DevPose.tsx`,
-verified against `main`); 2 who mirrors the video; 3 skeleton canvas over the video; 4 FYI tuned
-thresholds; 5 optional "raise both arms to start"; 6 optional skeleton on the play preview; 7 FYI
-mid-round K switch calibrates silently; 8 FYI for Patrick: pose state timing unchanged (his game's
-latency leads depend on it).
+- **To Greg:**
+  > PR #27 is up (main merged in, vercel.json included, check green with everything: 530 tests).
+  > Your clips are in `src/pose/fixtures/greg/` and both findings are fixed: the half press is not
+  > a reach, and the crouch before a jump is not a squat (`src/pose/DECISIONS.md` 34–36). After
+  > merging, please wire `?dev=pose` with the ready `DevPose.tsx` in `src/pose/NEEDS.md` item 1
+  > (imports `mountPoseDebug` from `@/pose`). The pose module mirrors its own video, so please
+  > make sure no screen adds another mirror (NEEDS 2).
+- **To Greg (optional):** NEEDS 5 ("raise both arms to start" via `onMove` `armsUp`), NEEDS 6
+  (skeleton on the play screen's camera preview), NEEDS 7 (a mid-round K switch calibrates silently).
+- **To Patrick (FYI):** NEEDS 8. Pose state timing is unchanged from when he measured his latency
+  leads; only the squat *event* moved (decided after standing up). Collisions use the state.
 
 ## 8. Next tasks (priority, PLAN.md phase)
 
-1. Run §6 with A at the camera; tune `tuning.ts` from the overlay (Phase 1 done-check).
-2. Teammate test, 8/10 (Phase 1 done-check).
-3. Merge `abdo-1` via PR when Greg asks (PLAN.md §7 merge order C, B, A, D). Before that, A decides
-   whether to merge `origin/main` into `abdo-1` (dry run at 07:15: no conflicts) and then runs
-   `npm install` and `npm run check`.
-4. Measure `MAX_POSES = 2` FPS; keep it if ≥ 25 (Phase 2 "ignore background people").
-5. Phase 4: demo-conditions test (venue light, people behind), station setup notes.
-
-### Ready PR description (when A opens `abdo-1` → `main`; merge order C, B, A, D)
-
-Title: `pose: real pose input — calibration, moves, treadmill, debug overlay`
-
-```
-Replaces the src/pose stub with the real pose input (CONTRACTS.md, unchanged interfaces).
-
-- createPoseInput(): camera, MediaPipe Pose Landmarker (lite, from public/), calibrate() with
-  status messages, lane / jump / squat / armsUp / reachLeft / reachRight, tracking flag,
-  move events, drawSkeleton (handles VideoSlot's object-cover crop)
-- Treadmill mode: shoulder calibration at 1–1.5 m, arm moves only
-- D toggles a pose debug overlay (live values, threshold lines, sliders); R stays in the app
-- The pose module mirrors its own <video> (slots.tsx expects that) and keeps it playing when a
-  screen takes it off the page
-- ?dev=pose: mountPoseDebug exported from src/pose (see src/pose/NEEDS.md 1 for DevPose.tsx)
-- Thresholds tuned from recorded clips: src/pose/DECISIONS.md; station notes: src/pose/STATION.md
-- 219 tests on recorded landmark clips and synthetic variants; npm run check passes
-
-Only src/pose/, public/models/, public/mediapipe/ changed. No new packages or env vars.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-```
+1. Fix the local `node_modules` (§2), then finish §6 steps 3–8 on the real camera (Phase 1 done-check).
+2. Teammate check, 8/10 (Phase 1 done-check). Save clips as `fixtures/extra/` tests.
+3. Answer review comments on PR #27. Greg merges.
+4. After the merge: play full rounds with pose plus the 3D game on the demo laptop and measure
+   combined FPS (Phase 2). If it is under 20, try the game's low graphics (`?gfx=low`).
+5. Patrick's `?debug=timing`: play 2–3 pose rounds and share the report with him, so the game's
+   pose leads match real lag (Phase 2).
+6. Measure `MAX_POSES = 2` FPS; keep it if ≥ 25 with the game (Phase 2, background people).
+7. Phase 4: venue-lighting test, `STATION.md` setup at the venue.
 
 ## 9. Starter prompt for a new conversation
 
 ```
-I'm role A (Vision) on our CodeJam 16 project. Work only on branch abdo-1 and only in
-src/pose/, public/models/ and public/mediapipe/; never touch main. Read AGENTS.md, then
-read src/pose/HANDOFF.md first, then continue from the next task.
+I'm Abdo, role A (Vision) on our CodeJam 16 project. Work only on branch abdo-1 and only in
+src/pose/, public/models/ and public/mediapipe/; never commit, merge, rebase or push to main, never
+force-push. If something outside my folders needs changing, tell me and write it in
+src/pose/NEEDS.md. Read AGENTS.md, then read src/pose/HANDOFF.md first, then continue from the next
+task.
 ```
