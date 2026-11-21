@@ -55,3 +55,9 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > Wrapping it with the skeleton, like the calibration screen does, shows players they are tracked:
 > `<div className="relative h-full w-full"><VideoSlot pose={pose} /><SkeletonSlot pose={pose} /></div>`.
 > `drawSkeleton` already handles the `object-cover` crop. Purely visual; skip if the HUD is busy.
+
+## 7. FYI: switching to pose mid-round (K)
+
+> A new pose input that was never calibrated calibrates itself once the player stands still for
+> 1.5 s; until then `getState().tracking` is false, so the game stays paused with no message. If you
+> want messages there, call `pose.calibrate(mode, onStatus)` after a mid-round K (like R does).

@@ -130,7 +130,8 @@ Recording a new clip for a failing case: use the `● …` buttons, then put the
 
 Copy-paste messages for Greg are in `src/pose/NEEDS.md`: 1 wire `?dev=pose` (ready `DevPose.tsx`,
 verified against `main`); 2 who mirrors the video; 3 skeleton canvas over the video; 4 FYI tuned
-thresholds; 5 optional "raise both arms to start"; 6 optional skeleton on the play preview.
+thresholds; 5 optional "raise both arms to start"; 6 optional skeleton on the play preview; 7 FYI
+mid-round K switch calibrates silently.
 
 ## 8. Next tasks (priority, PLAN.md phase)
 

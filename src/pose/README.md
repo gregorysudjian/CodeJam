@@ -48,7 +48,7 @@ No console errors.
 cannot be in view (`CALIBRATION_FEET_IN_VIEW`); arm-up line 0.4 T so hands resting on the head are
 not "arms up"; a verified `DevPose.tsx` for Greg (NEEDS.md 1); a ready PR description (HANDOFF §8).
 
-**Decisions:** `DECISIONS.md` (27). **For Greg:** `NEEDS.md` (6 copy-paste messages).
+**Decisions:** `DECISIONS.md` (27). **For Greg:** `NEEDS.md` (7 copy-paste messages).
 **New session:** `HANDOFF.md`. **Real-camera checklist:** `HANDOFF.md` §6 (10 min).
 
 ## How to use it
