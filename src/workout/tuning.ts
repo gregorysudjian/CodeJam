@@ -42,7 +42,7 @@ export const MIN_GAP_SEC = 1.1; // never less, even at peak
 export const MIN_GAP_BEAM_TO_HURDLE_SEC = 1.5; // stand up before jumping
 // A breath between two squats, from the end of the first (its hold included): back-to-back
 // squats at the 1.1 s minimum gap are hard work for an unwarmed player in jeans. Both demo
-// levels have none closer than 1.9 s, so they are unchanged (level.test.ts checks it).
+// levels have none closer than 1.9 s, so they are unchanged (demo.test.ts pins them).
 export const MIN_GAP_SQUAT_TO_SQUAT_SEC = 1.8;
 export const MIN_GAP_AFTER_HOLD_SEC = 1.3; // a breather after a held beam or crate
 // Gap at effort 0 and at effort 1, each at difficulty 0 and 1. Gaps are measured from the
