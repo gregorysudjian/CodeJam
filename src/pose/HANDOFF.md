@@ -115,8 +115,16 @@ README "How to use it". Stand at playing distance (feet in view).
 7. **Sliders:** move `LANE_ON_W` to 1.0 → small sidesteps stop counting. Press Reset.
 8. **Treadmill:** click `⟳ calibrate treadmill` at about 1–1.5 m. Jog on the spot 20 s: expect no
    moves. Then reaches and both-arms presses: expect them to count.
-9. **In the app** (if Greg's branch is merged somewhere you can run): calibration screen skeleton
-   lines up with your body; press D during play → overlay; press R → recalibrates.
+9. **In the real app, without merging** (Git Bash, in the CodeJam folder):
+   ```bash
+   git fetch && git worktree add --detach ../codejam-main-try origin/main
+   cd ../codejam-main-try && rm -rf src/pose && cp -r ../CodeJam/src/pose src/pose
+   cp -r ../CodeJam/public/models ../CodeJam/public/mediapipe public/ && npm ci && npm run dev
+   ```
+   Open the printed localhost URL, play as guest, press **K** (pose), START: calibration screen shows
+   the skeleton over you; the tutorial counts your moves; press **D** in play for the overlay, **R**
+   to recalibrate. Afterwards: `cd ../CodeJam && git worktree remove --force ../codejam-main-try`.
+   Never commit in that folder.
 10. **Teammate** of a different height: repeat step 3; target 8/10.
 11. Optional: set `MAX_POSES = 2` in `tuning.ts`, check FPS, have someone walk behind you.
 
