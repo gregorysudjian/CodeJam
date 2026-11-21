@@ -339,7 +339,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
       capsB.instanceMatrix.needsUpdate = true;
 
       // Lane lines pulse faster and brighter as the streak climbs.
-      const pulse = fever > 0 ? 0.5 + 0.5 * Math.sin(clock * (3 + fever * 2)) : 0;
+      const pulse = fever > 0 && !reduceMotion ? 0.5 + 0.5 * Math.sin(clock * (3 + fever * 2)) : 0;
       limeMat.color
         .copy(limeBase)
         .multiplyScalar(T.NEON_BOOST * (0.8 + fever * 0.12 + pulse * fever * 0.15));

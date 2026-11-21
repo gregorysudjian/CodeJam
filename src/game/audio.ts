@@ -187,7 +187,11 @@ export function createGameAudio(): GameAudio {
       });
     },
     dispose() {
-      if (ctx.state !== 'closed') void ctx.close().catch(() => {});
+      // Close after the tail of the last sounds: the app unmounts the game on 'finished',
+      // and closing at once would cut the finish fanfare.
+      setTimeout(() => {
+        if (ctx.state !== 'closed') void ctx.close().catch(() => {});
+      }, T.AUDIO_CLOSE_DELAY_MS);
     },
   };
 }

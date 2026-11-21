@@ -127,6 +127,7 @@ export function createPlayer(): Player {
   aura.visible = false;
   ground.add(aura);
   let auraState: { color: number; ok: boolean } | null = null;
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   let auraClock = 0;
   root.add(ground);
 
@@ -201,7 +202,10 @@ export function createPlayer(): Player {
         ? 0
         : auraState.ok
           ? T.AURA_OPACITY
-          : T.AURA_OPACITY * (0.5 + 0.5 * Math.sin(auraClock * 18));
+          : reduceMotion
+            ? T.AURA_OPACITY
+            : // under 3 flashes a second (WCAG 2.3.1), red flashes being the risky kind
+              T.AURA_OPACITY * (0.6 + 0.4 * Math.sin(auraClock * Math.PI * 2 * T.AURA_PULSE_HZ));
       auraMat.opacity += (auraTarget - auraMat.opacity) * lerpRate(20, dt);
       aura.visible = auraMat.opacity > 0.01;
       aura.scale.y = crouch;
