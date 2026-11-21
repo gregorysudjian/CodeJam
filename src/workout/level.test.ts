@@ -6,6 +6,8 @@ import * as T from './tuning';
 const WORKOUT_IDS: WorkoutId[] = ['legs', 'arms', 'shoulders', 'fullBody'];
 const MODES: PlayMode[] = ['floor', 'treadmill'];
 const DIFFICULTIES = [0, 0.5, 1];
+/** The coach (src/data/coach.ts) recommends any difficulty in steps of 0.1: these are swept too. */
+const COACH_STEPS = [0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9];
 const DURATIONS = [45, 90, 180];
 const SEEDS = Array.from({ length: 40 }, (_, i) => i * 7919 + 1);
 const EPS = 1e-9;
@@ -22,10 +24,10 @@ let cache: Level[] | null = null;
 function allLevels(): Level[] {
   cache ??= WORKOUT_IDS.flatMap((workout) =>
     MODES.flatMap((mode) =>
-      DIFFICULTIES.flatMap((difficulty) =>
+      [...DIFFICULTIES, ...COACH_STEPS].flatMap((difficulty) =>
         [false, true].flatMap((lowImpact) =>
           DURATIONS.flatMap((durationSec) =>
-            SEEDS.map((seed) =>
+            (DIFFICULTIES.includes(difficulty) ? SEEDS : SEEDS.slice(0, 8)).map((seed) =>
               generateLevel({ workout, mode, durationSec, difficulty, lowImpact, seed }),
             ),
           ),
@@ -41,7 +43,7 @@ const label = (l: Level): string => JSON.stringify(l.config);
 /** Generous per-test timeout for the sweep; it takes well under a second on a fast laptop. */
 const SWEEP_TIMEOUT_MS = 30_000;
 
-describe('fairness rules (CONTRACTS.md "Level rules"), every workout × mode × difficulty × duration × 40 seeds', () => {
+describe('fairness rules (CONTRACTS.md "Level rules"), every workout × mode × duration × difficulty (0, 0.5, 1 × 40 seeds; every other 0.1 step × 8)', () => {
   it(
     'first wave at 4 s or later, sorted, inside the round with time to judge the last one',
     () => {
@@ -413,6 +415,64 @@ describe('round curve and difficulty', () => {
       );
     expect(count(1)).toBeGreaterThan(count(0.5));
     expect(count(0.5)).toBeGreaterThan(count(0));
+  });
+});
+
+describe('coach compatibility: every difficulty step the coach can recommend', () => {
+  // The coach recommends workout, mode, 45/90/180 s and difficulty 0 to 1 in steps of 0.1
+  // (never Legs on the treadmill). Fairness is in the sweep above; here: each step is no easier
+  // than the one before, and 1 is clearly harder than 0. Measured minimums (20 seeds): waves a
+  // minute +24 %, intensity +0.19, average hold +0.6 s; the bounds sit just under them.
+  const STEPS = Array.from({ length: 11 }, (_, k) => k / 10);
+  const stats = (workout: WorkoutId, mode: PlayMode, durationSec: number, difficulty: number) => {
+    let waves = 0,
+      intensity = 0,
+      n = 0,
+      hold = 0,
+      holds = 0;
+    for (const seed of SEEDS.slice(0, 20)) {
+      const lv = generateLevel({ workout, mode, durationSec, difficulty, seed });
+      waves += lv.waves.length;
+      for (const w of lv.waves) {
+        intensity += w.intensity;
+        n++;
+        for (const sp of w.spawns) {
+          if (!sp.holdSec) continue;
+          hold += sp.holdSec;
+          holds++;
+        }
+      }
+    }
+    return {
+      perMin: waves / 20 / (durationSec / 60),
+      intensity: intensity / n,
+      hold: holds ? hold / holds : 0,
+    };
+  };
+
+  it('each step is no easier than the last, and difficulty 1 is clearly harder than 0', () => {
+    const problems: string[] = [];
+    for (const workout of WORKOUT_IDS)
+      for (const mode of MODES) {
+        if (mode === 'treadmill' && workout === 'legs') continue; // the coach never offers it
+        for (const durationSec of DURATIONS) {
+          const at = STEPS.map((d) => stats(workout, mode, durationSec, d));
+          const name = `${workout} ${mode} ${durationSec} s`;
+          at.forEach((s, k) => {
+            if (k === 0) return;
+            const p = at[k - 1]!;
+            if (s.perMin < p.perMin - 0.5) problems.push(`${name}: fewer waves at ${STEPS[k]}`);
+            if (s.intensity <= p.intensity) problems.push(`${name}: no faster at ${STEPS[k]}`);
+            if (s.hold < p.hold - 0.1) problems.push(`${name}: shorter holds at ${STEPS[k]}`);
+          });
+          const [easy, hard] = [at[0]!, at[10]!];
+          if (hard.perMin < easy.perMin * 1.15) problems.push(`${name}: 1 not much denser than 0`);
+          if (hard.intensity < easy.intensity + 0.15)
+            problems.push(`${name}: 1 not much faster than 0`);
+          if (hard.hold < easy.hold + 0.4) problems.push(`${name}: 1 holds not much longer than 0`);
+        }
+      }
+    expect(problems).toEqual([]);
   });
 });
 
