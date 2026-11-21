@@ -17,8 +17,8 @@ Target length: 2 minutes 40 seconds for the judges. Shorter talk means more Q&A,
 | --- | --- | --- |
 | 0:00 to 0:20 | Presenter | Hook. "Who here has skipped a workout this week?" Then one line on the problem: working out at home is boring, so people stop. |
 | 0:20 to 0:35 | Presenter | What it is, in one sentence: "It's a workout you play with your whole body, using only your laptop's webcam, with a coach that recommends your next session from how you did." |
-| 0:35 to 1:30 | Player, Operator, Presenter | Live round. `?demo=1` has already selected Full body, and the Operator has set the switch to Camera. The Operator clicks Start. The Player stands on the tape mark (about 1.5 m) and holds still for about 1.5 s to calibrate; the round then opens with a 3 s camera fly-in and 3-2-1, GO (there is no "raise both arms to start"). The Presenter fills the countdown: "It just measured the player, so every move is judged against their own body." The Presenter names each move as it comes: sidestep, grab the orb (one arm), smash the crate (both arms), jump, squat and hold. If a ghost was rehearsed on this URL with the camera: "The see-through runner is our best rehearsal; the chip at the top says whether we're ahead." |
-| 1:30 to 1:55 | Presenter | The loop around the game. Results: score and grade, accuracy, best streak, reps per move, calories labelled as an estimate. Coach card (its badge says RULES): a recap from the numbers, one tip for the move missed most, and a recommended next session. Dashboard: active minutes this week against the weekly goal, and the day streak. Leaderboard: best score per workout and mode. |
+| 0:35 to 1:30 | Player, Operator, Presenter | Live round. `?demo=1` has already selected Full body, and the Operator has set the switch to Camera. The Operator clicks Start. The Player stands on the tape mark (about 1.5 m) and holds still for about 1.5 s to calibrate; the round then opens with a 3 s camera fly-in and 3-2-1, GO (there is no "raise both arms to start"). The Presenter fills the countdown: "It just measured the player, so every move is judged against their own body." The Presenter names each move as it comes: sidestep, grab the orb (one arm), smash the crate (both arms), jump, squat and hold. If a ghost was rehearsed on this URL with the camera: "The see-through runner is our best rehearsal; the chip at the top says whether we're ahead." Point once at a PERFECT label and at the tunnel and bridge as the track changes. **Timing:** START to results measured at 50 s (keyboard); calibration adds 2 to 4 s with the camera, so START at 0:35 gives results at about 1:28. |
+| 1:30 to 1:55 | Presenter | The loop around the game. Results: score and grade, accuracy, best streak, reps per move, calories labelled as an estimate. Coach card (its badge says RULES): a recap from the numbers, one tip for the move missed most, and a recommended next session. Dashboard: active minutes this week against the weekly goal, and the day streak. Leaderboard: best score per workout, mode and round length, so a judge's 45 s round is never up against a 3-minute one. |
 | 1:55 to 2:25 | Presenter | How it works: "Tracking runs in the browser, and the video never leaves the laptop. Every threshold is a fraction of your own body, measured at calibration. Webcam moves arrive late, so the game draws obstacles early by each move's measured lag. Sessions live in Postgres, and each player can read only their own rows. The coach reads your history and recommends the next session. Today that's our rule-based coach; the server endpoint is built to hand this to Claude, rate-limited, and switches on when a key is added. And treadmill mode gives runners upper-body moves." |
 | 2:25 to 2:40 | Presenter | Close and invite: "The high score today is ____. Who wants to beat it?" |
 
@@ -81,13 +81,13 @@ Per the opening slides, Popular Vote is a 2-minute demo, then the audience ranks
 
 | Time | Who | What |
 | --- | --- | --- |
-| 0:00 to 0:15 | Presenter | Hook and the one-sentence description from the main script |
-| 0:15 to 1:05 | Player and Presenter | The 45-second seeded demo round. Calibrate during setup, before the clock starts. Presenter names the moves |
+| 0:00 to 0:12 | Presenter | Hook and the one-sentence description from the main script. The Player is already on the mark, Camera selected |
+| 0:12 to 1:05 | Operator, Player, Presenter | Operator clicks START at 0:12. Calibration (about 2 s, it happens after START, every round), 3 s fly-in and 3-2-1, the 45 s round, results at about 1:05. Presenter names the moves |
 | 1:05 to 1:35 | Presenter | Results, coach card, leaderboard: one line each. Skip the dashboard. Player keeps arms down (both arms up replays) |
 | 1:35 to 1:50 | Presenter | How it works in one line: tracking on the laptop, video never leaves it, and a coach that reads your history and recommends your next session |
 | 1:50 to 2:00 | Presenter | Close on the QR code: "Scan it and play on your own laptop." |
 
-No architecture slide in this version. Rehearse it with a timer at least twice.
+No architecture slide in this version. Rehearse it with a timer at least twice. Measured on `main` (Sat 15:50, keyboard, `?demo=1`): START → HUD 0.8 s, then the 3 s intro, results 50.1 s after START, rule-based coach card at once. Not yet timed with the camera.
 
 ### Check the stage on Saturday
 
@@ -125,7 +125,22 @@ No. The card says "General fitness encouragement, not medical advice." The rule-
 No hardware and no install: any laptop with a webcam. The level is generated from the workout you pick, so the game is built around training goals. You race a ghost of your best run. And it has a treadmill mode for people who already run.
 
 **Webcams are laggy. How is it fair?**
-We measured the lag on recorded clips: about 0.06 s for a jump up to about 0.3 s for squats and arms, plus about 0.1 s for the camera and model. With the camera, each obstacle is drawn early by its move's lag, so reacting when you see it lands inside the judging window (0.35 s before to 0.15 s after). The keyboard gets no lead.
+We measured the lag on recorded clips: about 0.06 s for a jump up to about 0.3 s for squats and arms, plus about 0.1 s for the camera and model. With the camera, each obstacle is drawn early by its move's lag (0.1 s for a jump, 0.25 s for a sidestep, 0.3 s for squats and arms), so reacting when you see it lands inside the judging window (0.35 s before to 0.15 s after). Only the drawing moves; the rules don't. The keyboard gets no lead. A test fails if anyone lowers a lead below what the recorded clips need.
+
+**What do PERFECT, GOOD and LATE mean?**
+When the game first saw your move, relative to the object's arrival. With the camera, PERFECT is from 0.12 s early to 0.125 s late (the band is shifted for the camera's lag); earlier is GOOD, later is LATE. It's feedback only: a GOOD or LATE clear scores the same as a PERFECT.
+
+**How does the ghost runner work?**
+During a round the game records five states 20 times a second: lane, in the air, squatting, each arm. That's about 1 KB per 45 s level, kept in the browser. When you play the identical level again (a fingerprint of every wave), a see-through runner replays your best run, and the "+2 VS GHOST" chip comes from judging the recording with the same rules, live. Camera and keyboard ghosts are kept apart, because a keyboard run has no lag and would be unbeatable.
+
+**Why the city, tunnel and bridge?**
+So a 45 s round feels like a journey: the tunnel starts at 30% of the round, the bridge at 52%, and the last 10 s are the finale. The beat speeds up from 118 to 138 BPM and adds layers at streaks of 5, 10 and 20. On a slow laptop the game drops the scenery extras first (towers, skyline, particles) when it runs under 45 FPS; the track and obstacles always stay.
+
+**How do I pause without touching the laptop?**
+Cross your forearms in an X in front of your chest and hold it for 1 s; the same X resumes. We chose an X because the pose model can't see a fist. It never fires mid-move (not while jumping, squatting or with an arm up), and it gave zero false pauses across every recorded clip and 960 noisy replays. It has been tested on recorded and spliced clips, not yet live on a camera (`src/pose/DECISIONS.md` 41): rehearse it on the demo laptop, and say so if asked. Switching tabs also pauses.
+
+**Why only 1.5 m? Don't you need my feet?**
+No: detection uses the hips and shoulders, never the feet. Calibration asks for head to knees plus room to squat and jump, which works out to about 1.5 m; closer than about 1.2 m it says "step back". Earlier, asking for the feet made players stand so far back they couldn't read the screen.
 
 **What happens if the wifi drops?**
 The round is played and saved on the laptop. Sessions that can't reach the server wait in a local queue and sync later, and the coach falls back to the rules. `?store=local` runs with no backend at all.

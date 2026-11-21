@@ -1,11 +1,11 @@
 # Progress (Greg: D + C)
 
-## Status (Saturday about 4:30 PM)
+## Status (Saturday about 5:00 PM)
 
 **On `main` and working end to end:** Patrick's 3D game with the polish (runner rig, city/tunnel/bridge/finale zones, music, PERFECT/GOOD/LATE, intro) and the colour/readability pass; Abdo's body control with calibration at about 1.5 m (head to knees), the X pause gesture and camera-by-default when a camera exists; Greg's wiring (camera switch, hands-free play again, X pause/resume, End round, pause on tab switch, offline fixes) and every QA finding fixed (docs/QA.md). Demo on Patrick's Mac: `npm run dev`, `http://localhost:5173/?demo=1` (DEMO.md). Coach: rule-based (no Claude key).
 
 **Who is doing what**
-- Patrick's Mac (`p5-game`, level with main): his camera session, then latency leads, hit causes, ghost rehearsals, one PR. Meanwhile: leaderboard fairness numbers (a 180 s round outscores a 45 s one on the same board), judge edge-case tests, load audit.
+- Patrick's Mac (`p5-game`, 11 commits not yet in a PR): his camera session, then latency leads, hit causes, ghost rehearsals, one PR. His leaderboard fairness numbers are in (`src/workout/README.md`) and the fix is merged.
 - Patrick's second laptop (`p6-look`): ghost readability, hit effects, banners vs the top-band cue; the three items deferred until `p5-game` merges.
 - Abdo: real X clips and near-miss checks; on call for detection cases from Patrick's session.
 - Fourth helper: re-sweep of the new main, Devpost screenshots, operator card (`docs/OPERATOR.md`), pitch Q&A.
@@ -13,12 +13,16 @@
 
 **Open problems, ranked by demo risk**
 1. The camera session on the demo Mac (calibration at 1.5 m, X, grades, music volume, FPS) hasn't happened yet. **Patrick**
-2. Leaderboard mixes round lengths; judges play 45 s. Waiting for Patrick's numbers; the likely fix is a duration filter (Greg: `src/data`, the view). **Greg + Patrick**
-3. Vercel's daily deploy cap: the live site can lag `main`; the demo runs locally, so it doesn't block the demo. **Greg** (check Sunday morning)
+2. Vercel's daily deploy cap: the live site can lag `main`; the demo runs locally, so it doesn't block the demo. **Greg** (check Sunday morning)
 
 **Sunday morning (Greg's Claude):** delete test players from the database, check the leaderboard, make sure the live site has the final `main`. After about 10 AM: crash or unplayable fixes only.
 
 ## Log
+
+### Leaderboard per round length (batch #45)
+- Patrick measured a 180 s round at about 6× a 45 s one, so a judge could never top a board with a long round on it. The board is now per workout, mode **and** round length: contract (`LeaderboardEntry.durationSec`, `getLeaderboard(workout, mode, durationSec, limit?)`), migration `0003_leaderboard_duration.sql` (applied; still a plain view, `authenticated` now SELECT only), both stores, a 45 S / 90 S / 180 S filter on the leaderboard screen. Landing top 3 and the kiosk show the 45 s board. Rank and personal best compare same-length rounds. The local store keeps the player's best only (QA Q16).
+- **Tested:** `npm run check` (729 tests). Live database: view columns, grants and `reloptions` (no `security_invoker`). Headless Chrome on `?demo=1&store=local&music=off`: one keyboard round → leaderboard opens on FULL BODY · FLOOR · 45 S with the round; 90 S shows the empty board with Back; no console errors. `?kiosk=1` against live Supabase: request `duration_sec=eq.45` returns 200 and shows the board. **Not tested:** the live site (deploys with this batch).
+
 
 ### #5 signOut: "New guest" creates a new player
 - **Contract (approved):** `DataStore.signOut(): Promise<void>` forgets the current guest. In `src/contracts/index.ts` and `docs/CONTRACTS.md`, which are still identical.

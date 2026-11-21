@@ -34,7 +34,7 @@ const KEYS = {
   queue: 'codejam.sb.queue', // sessions not yet on the server
   sessions: 'codejam.sb.sessions', // last list fetched, for offline
   profile: 'codejam.sb.profile',
-  board: (w: string, m: string) => `codejam.sb.board.${w}.${m}`,
+  board: (w: string, m: string, d: number) => `codejam.sb.board.${w}.${m}.${d}`,
 };
 
 function withTimeout<T>(p: PromiseLike<T>, ms = SUPABASE_TIMEOUT_MS): Promise<T> {
@@ -250,8 +250,8 @@ export function createSupabaseStore(
       }
     },
 
-    async getLeaderboard(workout, mode, limit = 10) {
-      const key = KEYS.board(workout, mode);
+    async getLeaderboard(workout, mode, durationSec, limit = 10) {
+      const key = KEYS.board(workout, mode, durationSec);
       try {
         // The leaderboard is for signed-in players only (CONTRACTS.md); before sign-in, use the cache.
         if (!(await userId())) return readJson<LeaderboardEntry[]>(kv, key, []);
@@ -261,6 +261,7 @@ export function createSupabaseStore(
             .select('*')
             .eq('workout', workout)
             .eq('mode', mode)
+            .eq('duration_sec', durationSec)
             .order('score', { ascending: false })
             .limit(limit)
             .returns<LeaderboardRow[]>(),

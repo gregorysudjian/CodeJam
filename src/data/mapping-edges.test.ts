@@ -134,7 +134,7 @@ describe('profile mapping: edge cases', () => {
 });
 
 describe('leaderboardFromRow', () => {
-  it('maps the five public columns and parses the date', () => {
+  it('maps the six public columns and parses the date', () => {
     expect(
       leaderboardFromRow({
         display_name: 'Guest-1234',
@@ -142,12 +142,14 @@ describe('leaderboardFromRow', () => {
         mode: 'floor',
         score: 4750,
         created_at: '2026-11-21T08:00:00.000Z',
+        duration_sec: 45,
       }),
     ).toEqual({
       displayName: 'Guest-1234',
       workout: 'fullBody',
       mode: 'floor',
       score: 4750,
+      durationSec: 45,
       at: Date.parse('2026-11-21T08:00:00.000Z'),
     });
   });

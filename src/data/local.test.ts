@@ -22,8 +22,9 @@ const reps: Record<MoveType, number> = {
 const summary = (
   score: number,
   workout: SessionSummary['config']['workout'] = 'fullBody',
+  durationSec = 45,
 ): SessionSummary => ({
-  config: { workout, mode: 'floor', durationSec: 45 },
+  config: { workout, mode: 'floor', durationSec },
   score,
   streak: 0,
   multiplier: 1,
@@ -53,14 +54,17 @@ describe('local store', () => {
     await store.saveSession(summary(500));
     await store.saveSession(summary(900));
     await store.saveSession(summary(700, 'arms'));
+    await store.saveSession(summary(5000, 'fullBody', 180));
     const list = await store.listSessions();
-    expect(list.map((s) => s.score)).toEqual([700, 900, 500]);
+    expect(list.map((s) => s.score)).toEqual([5000, 700, 900, 500]);
     expect(list.every((s) => s.synced === true)).toBe(true); // nothing is queued locally
-    const board = await store.getLeaderboard('fullBody', 'floor');
-    expect(board.map((r) => [r.displayName, r.score])).toEqual([
-      ['Greg', 900],
-      ['Greg', 500],
+    // The player's best only (QA Q16), and only rounds of the same length.
+    const board = await store.getLeaderboard('fullBody', 'floor', 45);
+    expect(board.map((r) => [r.displayName, r.score, r.durationSec])).toEqual([['Greg', 900, 45]]);
+    expect((await store.getLeaderboard('fullBody', 'floor', 180)).map((r) => r.score)).toEqual([
+      5000,
     ]);
+    expect(await store.getLeaderboard('fullBody', 'floor', 90)).toEqual([]);
   });
 
   it('signOut forgets the player, so the next sign-in is a new guest with no history', async () => {
