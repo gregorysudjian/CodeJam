@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { InputState, Level } from '@/contracts';
 import { feverTier, holdFeedback, type HoldFeedback, type Item } from './core';
-import type { GhostOutcome, GhostPose } from './ghost';
+import { OUTCOME_LABEL, type GhostOutcome, type GhostPose } from './ghost';
 import { requirementMet } from './judge';
 import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
@@ -288,16 +288,9 @@ function createFinishGate(): { group: THREE.Group; setFade(opacity: number): voi
   };
 }
 
-const BANNER_TEXT: Record<GhostOutcome, { text: string; color: number }> = {
-  beaten: { text: 'GHOST BEATEN', color: T.COLOR_LIME },
-  lost: { text: 'GHOST WINS', color: T.MOVE_COLOR.armsUp },
-  tie: { text: 'TIE', color: T.GHOST_ACCENT },
-  saved: { text: 'GHOST SAVED', color: T.GHOST_ACCENT },
-};
-
 /** The end banner as a sprite: drawn once to a canvas, always on top, no fog. */
 function createBanner(outcome: GhostOutcome): THREE.Sprite {
-  const { text, color } = BANNER_TEXT[outcome];
+  const { text, color } = OUTCOME_LABEL[outcome];
   const hex = `#${color.toString(16).padStart(6, '0')}`;
   const c = document.createElement('canvas');
   c.width = 1024;

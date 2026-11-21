@@ -35,6 +35,14 @@ export interface GhostRun {
 
 export type GhostOutcome = 'beaten' | 'lost' | 'tie' | 'saved';
 
+/** The end banner's text and colour, shared by the 3D and 2D views. */
+export const OUTCOME_LABEL: Record<GhostOutcome, { text: string; color: number }> = {
+  beaten: { text: 'GHOST BEATEN', color: T.COLOR_LIME },
+  lost: { text: 'GHOST WINS', color: T.MOVE_COLOR.armsUp },
+  tie: { text: 'TIE', color: T.GHOST_ACCENT },
+  saved: { text: 'GHOST SAVED', color: T.GHOST_ACCENT },
+};
+
 /* ── Encoding: 6 bits per sample, exactly one base64 character ── */
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';

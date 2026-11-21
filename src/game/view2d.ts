@@ -1,5 +1,6 @@
 import type { Level, Spawn } from '@/contracts';
 import type { Item } from './core';
+import { OUTCOME_LABEL, type GhostOutcome, type GhostPose } from './ghost';
 import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
 import { createTrack } from './timeline';
@@ -26,10 +27,9 @@ export function create2DView(
   const ctx = canvas.getContext('2d');
   const track = createTrack(level.waves, level.config.durationSec);
   const verdicts = new Map<Item, Verdict>();
-  let playerX = 0;
-  let jumpT = Infinity;
-  let wasAirborne = false;
-  let crouch = 1;
+  const playerMotion = newMotion();
+  const ghostMotion = newMotion();
+  let outcome: GhostOutcome | null = null;
 
   const colorOf = (item: Item): string => {
     const v = verdicts.get(item);
@@ -37,7 +37,7 @@ export function create2DView(
   };
 
   return {
-    frame({ elapsed, visDt, state, phase }) {
+    frame({ elapsed, visDt, state, phase, ghost }) {
       if (!ctx) return;
       const dpr = Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
       const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
@@ -95,38 +95,63 @@ export function create2DView(
         .sort((a, b) => b.z - a.z);
       for (const { item, z } of visible) drawObject(item, z);
 
-      // Runner.
-      playerX += (state.lane * T.LANE_WIDTH - playerX) * (1 - Math.exp(-T.LANE_SLIDE_RATE * visDt));
-      if (state.airborne && !wasAirborne) jumpT = 0;
-      wasAirborne = state.airborne;
-      jumpT += visDt;
-      const p = jumpT / T.JUMP_VISUAL_SEC;
-      const lift = p < 1 ? T.JUMP_HEIGHT * 4 * p * (1 - p) : 0;
-      crouch +=
-        ((state.ducking ? T.CROUCH_SCALE : 1) - crouch) * (1 - Math.exp(-T.CROUCH_RATE * visDt));
-      const feet = project(playerX, lift, 0);
-      const top = project(playerX, lift + 1.9 * crouch * RUNNER_SCALE, 0);
-      const r = T.PLAYER_RADIUS * unit * RUNNER_SCALE;
-      ctx.fillStyle = '#d9e1ec';
-      ctx.beginPath();
-      ctx.roundRect(feet.x - r, top.y, r * 2, feet.y - top.y, r);
-      ctx.fill();
-      ctx.strokeStyle = css(T.COLOR_LIME);
-      ctx.lineWidth = r * 0.35;
-      const shoulder = project(playerX, lift + 1.4 * crouch * RUNNER_SCALE, 0).y;
-      for (const [side, up] of [
-        [-1, state.leftArmUp],
-        [1, state.rightArmUp],
-      ] as const) {
+      // Runners: the ghost (if any) first, as a cyan outline behind the player.
+      const drawRunner = (m: Motion, pose: RunnerPose, isGhost: boolean): void => {
+        const lift = stepMotion(m, pose, visDt);
+        const size = RUNNER_SCALE * (isGhost ? T.GHOST_SCALE : 1);
+        const feet = project(m.x, lift, 0);
+        const top = project(m.x, lift + 1.9 * m.crouch * size, 0);
+        const r = T.PLAYER_RADIUS * unit * size;
         ctx.beginPath();
-        ctx.moveTo(feet.x + side * r, shoulder);
-        ctx.lineTo(feet.x + side * r * 1.8, up ? shoulder - r * 2.6 : shoulder + r * 2);
-        ctx.stroke();
-      }
+        ctx.roundRect(feet.x - r, top.y, r * 2, feet.y - top.y, r);
+        if (isGhost) {
+          ctx.globalAlpha = T.GHOST_ACCENT_OPACITY;
+          ctx.strokeStyle = css(T.GHOST_ACCENT);
+          ctx.lineWidth = r * 0.25;
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = '#d9e1ec';
+          ctx.fill();
+        }
+        ctx.strokeStyle = css(isGhost ? T.GHOST_ACCENT : T.COLOR_LIME);
+        ctx.lineWidth = r * 0.35;
+        const shoulder = project(m.x, lift + 1.4 * m.crouch * size, 0).y;
+        for (const [side, up] of [
+          [-1, pose.leftArmUp],
+          [1, pose.rightArmUp],
+        ] as const) {
+          ctx.beginPath();
+          ctx.moveTo(feet.x + side * r, shoulder);
+          ctx.lineTo(feet.x + side * r * 1.8, up ? shoulder - r * 2.6 : shoulder + r * 2);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      };
+      if (ghost) drawRunner(ghostMotion, ghost, true);
+      drawRunner(playerMotion, state, false);
 
       if (phase === 'paused') {
         ctx.fillStyle = `rgba(0, 0, 0, ${T.PAUSE_DIM})`;
         ctx.fillRect(0, 0, w, h);
+      }
+      if (outcome) {
+        const { text, color } = OUTCOME_LABEL[outcome];
+        const bw = Math.min(w * 0.6, h * 1.1);
+        const bh = bw / 5.33;
+        const bx = (w - bw) / 2;
+        const by = h * 0.18;
+        ctx.fillStyle = 'rgba(7, 9, 13, 0.78)';
+        ctx.strokeStyle = css(color);
+        ctx.lineWidth = Math.max(2, bh * 0.04);
+        ctx.beginPath();
+        ctx.roundRect(bx, by, bw, bh, bh * 0.2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = css(color);
+        ctx.font = `italic 800 ${Math.round(bh * 0.55)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, w / 2, by + bh / 2 + bh * 0.03);
       }
 
       function drawObject(item: Item, z: number): void {
@@ -170,7 +195,9 @@ export function create2DView(
       verdicts.set(item, v);
     },
     setQuality() {},
-    showGhostOutcome() {}, // drawn in step (f)
+    showGhostOutcome(o) {
+      outcome ??= o;
+    },
     dispose() {},
   };
 }
@@ -178,4 +205,27 @@ export function create2DView(
 /** Smashed crates and collected orbs disappear; everything else stays visible as it passes. */
 function isGone(spawn: Spawn, v: Verdict | undefined): boolean {
   return (spawn.kind === 'crate' && v === 'cleared') || (spawn.kind === 'orb' && v === 'collected');
+}
+
+/** Lane slide, jump arc and crouch of a 2D runner (the player or the ghost). */
+interface Motion {
+  x: number;
+  jumpT: number;
+  wasAirborne: boolean;
+  crouch: number;
+}
+type RunnerPose = Pick<GhostPose, 'lane' | 'airborne' | 'ducking' | 'leftArmUp' | 'rightArmUp'>;
+
+const newMotion = (): Motion => ({ x: 0, jumpT: Infinity, wasAirborne: false, crouch: 1 });
+
+/** Advances the motion by `dt` toward `pose`; returns the jump height. */
+function stepMotion(m: Motion, pose: RunnerPose, dt: number): number {
+  m.x += (pose.lane * T.LANE_WIDTH - m.x) * (1 - Math.exp(-T.LANE_SLIDE_RATE * dt));
+  if (pose.airborne && !m.wasAirborne) m.jumpT = 0;
+  m.wasAirborne = pose.airborne;
+  m.jumpT += dt;
+  const p = m.jumpT / T.JUMP_VISUAL_SEC;
+  m.crouch +=
+    ((pose.ducking ? T.CROUCH_SCALE : 1) - m.crouch) * (1 - Math.exp(-T.CROUCH_RATE * dt));
+  return p < 1 ? T.JUMP_HEIGHT * 4 * p * (1 - p) : 0;
 }
