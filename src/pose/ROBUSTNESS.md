@@ -95,3 +95,21 @@ With the foreground continuously visible, scales 0.40, 0.60, 0.80, 0.95 and 1.00
 **Possible, spectator demonstrates X.** `crowd.robust.test.ts` first calibrates on 2.5 s of near/standing and then supplies only the spectator from near/pauseX, displaced sideways by 0.15 frame widths. Expected zero pauses from a stationary player. At 0.65× and 0.70×, source frame 123 incorrectly pauses the game. At 0.80× both frames 44 and 123 pause it. At 0.60× neither does. This is a synthetic identity switch involving a real recorded X gesture. [Frame evidence sent to Abdo](https://github.com/gregorysudjian/CodeJam/commit/821b882fec3a59192181012bcffcefc382cdaf64#commitcomment-211230809).
 
 **Low demo priority, detector-only regression.** On main `646254f`, greg/leaveFrame at irregular 10 FPS adds two unmatched sidesteps on source frames 155 and 184 (5250 and 6225 ms). Neither reaches the public session's move listener in the corresponding calibrated replay. That listener emits one sidestep at 6796 ms. The original matrix above is from `56fb514`; the current detector's 10 FPS row therefore has two additional extra sidesteps. The regression test now checks the user-visible result as well as the isolated detector.
+
+## Two tabs sharing a camera
+
+On Windows with headless Chrome 157, two same-origin tabs opened independent pose engines against the same file-backed camera. In five runs both streams stayed live. While the second tab was in front, the first processed 2–3 frames in 2.2 s. Bringing the first tab back to the front restored 46–49 processed frames in 1.65 s, even while the second tab still held its stream. Closing the second stream left the first processing 35–43 frames over the next 1.4 s. Both tracks ended on explicit stop. There were zero page exceptions. These windows use wall-clock waits, so the counts are observations, not timing assertions.
+
+To reproduce, start the Vite server and open `/src/pose/clip-viewer.html` in two Chrome tabs with the same local fake video capture. In each tab's DevTools console run:
+
+```js
+const { createPoseEngine } = await import('/src/pose/engine.ts');
+const engine = createPoseEngine({ keys: false });
+let frames = 0;
+engine.onFrame(() => frames++);
+await engine.source.start();
+const track = engine.source.video.srcObject.getVideoTracks()[0];
+const sample = () => ({ frames, track: track.readyState });
+```
+
+Read `sample()` before and after switching foreground tabs, stop the second with `engine.source.stop()`, and sample the first again. Stop the first stream at the end. An exclusive physical camera or another application can still reject acquisition; the injected busy-error test above covers that UI path. Physical device sharing on Patrick’s Mac is **not tested**.
