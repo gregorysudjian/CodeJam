@@ -43,6 +43,35 @@ export const RACE_WIDTH = 3.4; // world units: readable from 2 m
 export const RACE_PULSE = 0.3; // the chip pops 30 % larger when the lead changes ...
 export const RACE_PULSE_SEC = 0.45; // ... and settles over this long (none with reduced motion)
 
+/* ── Timing grades and combo (feedback.ts) ── */
+/**
+ * A clear is graded by when its move was first seen, in game seconds from the object's time t
+ * (the window is -0.35 to +0.15). The camera's lag makes the same on-time move land later on
+ * the judging clock: with the leads above, a camera player who moves as the object reaches the
+ * runner is seen about 0.1 s after t, a keyboard player at t. So the bands differ by input.
+ * Before `perfectFrom`: GOOD (early); from `lateFrom`: LATE; in between: PERFECT.
+ */
+export const GRADE_BANDS: Record<'pose' | 'keyboard', { perfectFrom: number; lateFrom: number }> = {
+  pose: { perfectFrom: -0.12, lateFrom: 0.125 },
+  keyboard: { perfectFrom: -0.15, lateFrom: 0.07 },
+};
+export const COMBO_MILESTONES = [5, 10, 20] as const; // then every COMBO_MILESTONE_EVERY
+export const COMBO_MILESTONE_EVERY = 10;
+export const COMBO_SHOW_FROM = 2; // the combo counter under the runner shows from this streak
+export const GRADE_SEC = 0.75; // the grade word beside the runner: pops, rises, fades
+export const GRADE_RISE = 0.55; // world units it rises (none with reduced motion)
+export const GRADE_POS = { side: 1.55, y: 1.75, z: 0.6 }; // beside the runner, over judged ground
+export const GRADE_WIDTH = 2.3; // world units
+export const COMBO_POS = { y: 0.32, z: 1.6 }; // on the floor just behind the runner
+export const COMBO_WIDTH = 1.9;
+// Top of the sky band, above the ghost race chip: never over the far end of the track, where
+// new obstacles appear.
+export const MILESTONE_POS = { x: 0, y: 7.4, z: -6 };
+export const MILESTONE_WIDTH = 5.4;
+export const MILESTONE_SEC = 1.3;
+export const SHOCKWAVE_SEC = 0.55; // floor ring at a milestone
+export const SHOCKWAVE_SCALE = 9;
+
 /* Timing probe (?debug=timing, timing.ts): data for tuning VISUAL_LEAD_SEC with the camera. */
 export const TIMING_PROBE_SEC = 1; // watch each object from t - 1 s to t + 1 s
 export const TIMING_PROBE_FIRST_FRAME_SEC = 0.1; // satisfied this soon = the player did not move
@@ -88,6 +117,25 @@ export const SPEED_LINE_LENGTH = 2.6;
 export const SPEED_LINE_SPAN = 70; // they recycle over this distance
 export const SPEED_LINE_RATE = 1.8; // they move faster than the track
 
+/* ── World zones (world.ts): the track travels through these, in order ── */
+export const ZONE_TUNNEL_AT = 0.3; // fraction of the round
+export const ZONE_BRIDGE_AT = 0.52;
+export const FINALE_SEC = 10; // the last 10 s are the finale stretch
+export const ZONE_BLEND = 30; // world units over which the colours change at a border
+export const ZONE_RISE = 22; // scenery grows out of (or sinks into) the ground over this distance
+export const TUNNEL_SEGMENT = 5; // world units per tunnel ring
+export const TUNNEL_HALF_WIDTH = 6.2; // walls this far from the centre line
+export const TUNNEL_HEIGHT = 7.2; // ceiling, above the camera
+export const BRIDGE_PYLON_SPACING = 70;
+export const BRIDGE_RAIL_SPACING = 3;
+export const SKYLINE_COUNT = 40; // far skyline behind the bridge
+export const SKYLINE_PARALLAX = 0.12;
+export const PARTICLE_COUNT = 260; // drifting motes, sparks, stars, confetti by zone
+export const PARTICLE_SIZE = 0.3; // world units
+export const TRAIL_SPACING = 2.6; // trail motes leading into the next block's free lane or orb
+export const TRAIL_MAX = 5; // per object
+export const TRAIL_HEIGHT = 0.75;
+
 /* ── Look ("Neon Arena", matches the UI) ── */
 export const COLOR_BG = 0x07090d;
 export const COLOR_FLOOR = 0x0b0f16;
@@ -110,6 +158,87 @@ export const BLOOM_RADIUS = 0.2;
 export const BLOOM_THRESHOLD = 1.0; // only colours boosted by NEON_BOOST pass it
 export const NEON_BOOST = 1.7; // neon parts are drawn brighter than 1.0 (HDR) so they bloom
 export const COLOR_TRACK = 0x101724;
+/**
+ * Each zone's colours. Backgrounds stay near black so the neon obstacles and the lime lanes
+ * read the same everywhere; only the sky glow, the scenery lights and the particles change hue.
+ * `rate`: particle speed relative to the track (sparks rush in the tunnel, stars barely move).
+ */
+export interface ZoneLook {
+  bg: number;
+  fogNear: number;
+  fogFar: number;
+  horizon: number; // colour of the glow at the vanishing point
+  horizonGain: number;
+  floor: number; // tint over the floor grid (white = as drawn)
+  accentA: number; // tower caps, tunnel rings, bridge cables
+  accentB: number;
+  arch: number; // the gates the runner passes through
+  particle: number;
+  particleRate: number;
+}
+export const ZONE_LOOK: Record<'city' | 'tunnel' | 'bridge' | 'finale', ZoneLook> = {
+  city: {
+    bg: 0x07090d,
+    fogNear: 30,
+    fogFar: 105,
+    horizon: 0xc6ff3d,
+    horizonGain: 0.22,
+    floor: 0xffffff,
+    accentA: 0x22d3ee,
+    accentB: 0xff3dcb,
+    arch: 0xc6ff3d,
+    particle: 0x7fe9ff,
+    particleRate: 1.15,
+  },
+  tunnel: {
+    bg: 0x090611,
+    fogNear: 14,
+    fogFar: 78,
+    horizon: 0xfff1d6, // the light at the end of the tunnel
+    horizonGain: 0.3,
+    floor: 0xc9b8ff,
+    accentA: 0xff3dcb,
+    accentB: 0x8b5cf6,
+    arch: 0xff3dcb,
+    particle: 0xffb020,
+    particleRate: 1.9,
+  },
+  bridge: {
+    bg: 0x040b16,
+    fogNear: 36,
+    fogFar: 125,
+    horizon: 0x22d3ee,
+    horizonGain: 0.3,
+    floor: 0x5a86b8, // the grid fades into dark water
+    accentA: 0x22d3ee,
+    accentB: 0xdfeeff, // railings: white, never lime beside the lime lane edges
+    arch: 0x22d3ee,
+    particle: 0xdff4ff,
+    particleRate: 0.25,
+  },
+  finale: {
+    bg: 0x10060f,
+    fogNear: 30,
+    fogFar: 110,
+    horizon: 0xff6a3d, // sunset
+    horizonGain: 0.34,
+    floor: 0xffc9b0,
+    accentA: 0xffd166,
+    accentB: 0xff3dcb,
+    arch: 0xffd166,
+    particle: 0xffd166,
+    particleRate: 1.3,
+  },
+};
+
+/* ── Intro (intro.ts): 3, 2, 1 while the camera flies in, then GO and the clock starts ── */
+export const INTRO_SEC = 3; // one second per number; `?intro=off` skips it
+export const INTRO_FLY_SEC = 2.7; // the camera reaches the chase position just before GO
+export const INTRO_GO_SEC = 0.7; // GO stays up this long into the round
+export const INTRO_FROM = { angle: 2.5, radius: 4.6, height: 1.5 }; // in front of the runner, to the right
+export const INTRO_LOOK_Y = 1.25; // the camera looks at the runner's chest at the start
+export const COUNT_POS = { y: 3.1, z: -3 }; // the countdown number, above the runner
+export const COUNT_WIDTH = 6; // the label canvas is wide; the digit itself is about 1 unit tall
 
 /* ── Camera ── */
 export const CAMERA_FOV = 62;
@@ -123,16 +252,39 @@ export const FOV_KICK_TIER = 1.5; // degrees added per streak tier
 export const PAUSE_DIM = 0.55; // darkness of the paused scene
 
 /* ── Player ── */
-export const PLAYER_RADIUS = 0.36;
-export const PLAYER_BODY_LENGTH = 0.85;
+export const PLAYER_RADIUS = 0.36; // 2D fallback runner width, ghost shell
 export const LANE_SLIDE_RATE = 14; // exponential approach per second
 export const JUMP_HEIGHT = 1.5;
 export const JUMP_VISUAL_SEC = 0.6;
-export const CROUCH_SCALE = 0.58;
+export const CROUCH_SCALE = 0.58; // 2D fallback only; the 3D runner squats or slides (runnerPose.ts)
 export const CROUCH_RATE = 18;
 export const ARM_RATE = 16;
-export const RUN_BOB_HZ = 2.6;
-export const RUN_BOB_HEIGHT = 0.06;
+/* Runner rig (runnerPose.ts, player.ts): limb lengths in world units, angles in radians. */
+export const RIG = {
+  hipSide: 0.13, // hip joints either side of the pelvis centre
+  hipDrop: 0.05, // hip joints below the pelvis pivot
+  thigh: 0.46,
+  shin: 0.46,
+  foot: 0.04, // sole below the ankle
+  torso: 0.62, // pelvis pivot to the neck
+  neck: 0.24, // neck to the centre of the head
+  head: 0.22, // head radius
+  shoulderSide: 0.32,
+  upperArm: 0.3,
+  foreArm: 0.3,
+} as const;
+export const RUN_BLEND_RATE = 6; // standing to running, per second
+export const STRIDE_HZ_BASE = 1.25; // run cycles per second at speed 0 (two steps per cycle) ...
+export const STRIDE_HZ_PER_SPEED = 0.055; // ... plus this per unit of speed (12 → 1.9 Hz, 21 → 2.4 Hz)
+export const RUN_BOB = 0.07; // hip bounce per step
+export const LEAN_PER_SPEED = 0.045; // sideways roll per unit/s of lane-change speed
+export const LEAN_MAX = 0.42;
+export const LAND_SEC = 0.22; // landing squash after a jump
+export const LAND_SQUASH = 0.2; // body height lost at the deepest point of the landing
+export const TAKEOFF_STRETCH = 0.12; // body stretched by this much as it leaves the floor
+export const DUCK_RATE = 16; // into and out of the squat or slide, per second
+export const SLIDE_RATE = 5; // squat (standing still) to slide (running), per second
+export const MOVE_POP_SEC = 0.35; // the ground ring flashes when a move is detected
 export const HIT_FLASH_SEC = 0.35;
 export const STUMBLE_SEC = 0.5;
 export const AURA_OPACITY = 0.28; // hold feedback column around the runner
@@ -173,3 +325,12 @@ export const AUDIO_BASE_HZ = 392; // G4; each move is a fixed interval above or 
 export const SAW_VOLUME = 0.6; // move confirmations sit under the effects
 export const SAW_MIN_GAP_SEC = 0.15;
 export const AUDIO_CLOSE_DELAY_MS = 2000; // let the finish fanfare ring out after destroy()
+/* Music (music.ts): a synthesised beat under the effects. `?music=off` (or localStorage game.music) */
+export const MUSIC_VOLUME = 0.35; // relative to AUDIO_VOLUME: under the effects, which carry the feedback
+export const BPM_START = 118; // at the start of the round ...
+export const BPM_END = 138; // ... rising steadily to the end
+export const BPM_FINALE_BONUS = 6; // the finale stretch pushes it further
+export const MUSIC_LOOKAHEAD_SEC = 0.15; // notes are scheduled this far ahead of the audio clock
+export const MUSIC_FILTER_HZ = [1400, 2600, 5000, 9000] as const; // master low-pass by streak tier
+export const MUSIC_DUCK_SEC = 0.35; // a hit muffles the music this long
+export const MUSIC_FADE_SEC = 0.25; // pause, resume and finish fades
