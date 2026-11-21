@@ -218,3 +218,29 @@ or the named file.
       0.66 W in his real size, a real step the stale W missed.
     - **Still to check on real clips:** A's `● drift` and `● turnStep` (turning narrows W, but
       not T).
+45. **Lag study: no threshold can buy back the squat and arm lag without new false moves.**
+    Proposal for Greg: **change nothing**; the game's leads stay valid. Method: each state's onset
+    line swept lower, one at a time; a value counts only if all 19 real clips (3 sessions) keep
+    their exact moves, ±0.5% noise (4 seeds per clip) adds nothing new, and then the full test
+    suite (variants, crouches, drift) passes.
+    | Line (today) | Lowest value safe on the clips | State onset earlier | Full suite |
+    | --- | --- | --- | --- |
+    | `SQUAT_ON_T` 0.3 | 0.17 (0.20, 0.22, 0.25 too) | 146 ms median, 234 max (95 at 0.20) | **fails**: crouch-then-jumps count squats (1.4–1.6× deeper crouches), jumps after a crouch turn on later (the post-squat line starts sooner), `leaveFrame`, `mixed` and tilt variants change |
+    | `ARM_UP_ABOVE_NOSE_T` 0.3 | none: any lower turns Greg's half press into a 4th press | 29 ms at 0.25, 61 ms at 0.15 (without that clip) | not run |
+    | `LANE_ON_W` 0.55 | 0.52 (0.50: a false sidestep on Greg standing, with noise) | 31 ms | not worth it |
+    | `JUMP_ON_T` 0.15 | 0.12 | 0 ms | nothing to gain |
+    | `SMOOTHING_ALPHA` 0.5 | none (noise changes Greg's reaches and presses) | ≤ 32 ms | — |
+    The squat and arm lag is mostly the body travelling to a line that must sit clear of noise
+    and crouches. Earlier detection would need a different signal (e.g. onset by speed), judged
+    on the steady-rhythm `● lag*` clips; not before the freeze unless those clips show a large,
+    clean gain. Nothing in `src/pose` changed for this.
+46. **Calibration under fidgeting: candidate parked until A's `● fidget` clip.** On the real
+    still clips calibration takes 1.53–1.56 s (the 1.5 s hold), so the target holds for a still
+    player. With ±1% per-frame noise it failed in most clips (0/10 starts on session 1 and Greg),
+    because one jittery frame restarts the hold. (a) A 250 ms grace for "moved" frames fixed the
+    noise (8–10/10, median ~1.53 s, W/T within 2% median) but let a ±0.1 T bob finish and broke
+    "moving during the hold restarts it": rejected. (b) Judging stillness on a 5-frame median
+    (`CALIBRATION_STILL_WINDOW`) gets 7–10/10 under ±1% noise, still rejects the bob, keeps W/T
+    within 1.5% median (worst 3–8%), but restarts ~100 ms after a real step instead of at once.
+    It changes nothing measurable on real still clips, so it waits for real fidgeting to show a
+    need. Patch: HANDOFF §8.

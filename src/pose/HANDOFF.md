@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat ~5:30 PM. A new conversation starts here: read this, then do §8 task 1._
+_Last refresh: Sat ~6:30 PM. A new conversation starts here: read this, then do §8 task 1._
 
 ## 1. Context
 
@@ -85,7 +85,7 @@ engine.ts      source: getState() (the game polls it), onMove, onGesture, drawSk
 4. **Low FPS:** at 10 FPS, crouch-then-jumps read as squats and quick reaches get lost; 15 FPS is fine. Patrick measures the combined FPS and uses `?gfx=low` if pose falls under about 20.
 5. Low reaches (wrist less than 0.3 T above the nose) don't count. That's deliberate, because the game timing is tuned on it. Tell players to reach high.
 6. Hands resting on the head can count as arms up (DECISIONS 33).
-7. A player more than 40% closer or further than at calibration is treated as a stranger and loses tracking until they step back or press R.
+7. ~~A player more than 40% closer or further is a stranger~~: fixed Sat ~6 PM (DECISIONS 44, synthetic + `near/mixed`); confirm on A's `● drift` and `● turnStep` clips. Remaining: a player who walks closer while standing in a **side lane** keeps the old size until back in the centre lane.
 8. Treadmill mode is only simulated (scaled clips). If the runner drifts on the belt, press R.
 9. Known noise limits: a half press on a camera tilted 3° can read as a reach; Greg's fastest reach swaps can lose a rep or read as a jump at ±1% noise.
 
@@ -118,6 +118,30 @@ NEEDS 1, 2, 5, 6, 7, 9, 10, 11 and 12 are done. 3, 4 and 8 are FYI. Open items:
 
 ## 8. Next tasks (priority, mapped to docs/PLAN.md phases)
 
+**Greg's standing order (Sat ~5:45 PM):** work in a loop on your own; you own detection quality.
+Loop: `git fetch`, merge origin/main, take the top item, test it (real clips are the referee; red
+then green; DECISIONS entry before the commit; adversarial review: could it fire a move or pause
+the player didn't make, does it change when a state turns on, is every number in `tuning.ts`),
+`npm run check`, push, then "abdo-1 ready to merge at <commit>". Message Greg only for ready, for
+demo breakers, or for the lag proposal; otherwise a digest under 10 lines about hourly. Grade
+yourself hourly in §10.
+
+**Waiting on A's camera session** (the 17-step list in the conversation; recorder buttons exist in
+`debug.ts`): app check, `pauseX` arms out, `xLow`, `xTouch`, `xOverhead`, `drift`, `fidget`,
+`handsOnHead`, `lowReach`, `turnStep`, `squatArmsOut`, `lagSidestep/Jump/Squat/ArmsUp/Reach`.
+When they land in `~/Downloads`:
+- near-misses → `fixtures/near/`, tests in `variants.test.ts` › closer play (task 1 below);
+- `drift`, `turnStep` → check DECISIONS 44 holds (no false moves, tracking kept) and add as tests;
+- `fidget` → measure time to calibrate with and without `pending-calibration-median.patch`
+  (DECISIONS 46: `git apply src/pose/pending-calibration-median.patch`; it also needs the
+  "moving during the hold restarts it" test to allow the restart within the 5-frame window).
+  Ship only if real fidgeting needs it;
+- `handsOnHead`, `lowReach` → item 3 of Greg's list: count how many real reaches fall under the
+  0.3 T line and how often hands on the head read as arms up; propose only if no clip breaks
+  (DECISIONS 45 already shows lowering the arm line costs Greg's half press);
+- `lag*` → item 4: onset by speed instead of a lower line (DECISIONS 45). Proposal only.
+- `squatArmsOut` → add to the closer-play expectations (3 squats, no armsUp, no pause).
+
 0. **App check on the merged main** (§6 step 6), then tell Greg the result.
 1. **Phase 4 (hardening): X near-miss clips.** After §6 step 5, copy the new `~/Downloads/pose-{pauseX,xLow,xTouch,xOverhead}-*.json` into `src/pose/fixtures/near/` with clear names (for example `pauseX-chest.json`, `pauseX-armsOut.json`, `xLow.json`). In `variants.test.ts` › `describe('closer play …')`, expect the real number of pauses for the pauseX clips and 0 for the x* clips. If one fails, look at `isCrossed` with real values (see the probe pattern in DECISIONS 42) before changing `GESTURE_*` thresholds, and only before Sunday 10 AM. Run `npm run check`, push `abdo-1` and tell Greg **"ready"**.
 2. **Phase 4: on call for Patrick's Mac session** (§7). His cases come in as clips; fix them in `src/pose`. The pinned timing test must pass.
@@ -138,3 +162,14 @@ check git status, open PRs (gh pr list) and whether npm run check passes, and te
 what changed. Read AGENTS.md, then read src/pose/HANDOFF.md first, then continue from the next
 task.
 ```
+
+## 10. Hourly self-grade
+
+- **Sat ~6:30 PM.** *Improved for a real judge:* stepping 30–60 cm closer or back mid-play no
+  longer causes false squats, stuck ducking or lost tracking (DECISIONS 44; 11 of 32 drift cases
+  red → green; no real clip got worse, one real missed sidestep is now counted). *Measured, no
+  change:* the lag study (45: lower lines cost crouch-jumps and Greg's half press) and calibration
+  under noise (46: real still players already calibrate in ~1.53 s; candidate parked). *Noise:*
+  none shipped. *Next:* A's camera clips (near-misses first, then drift/fidget/handsOnHead/
+  lowReach/lag), Codex's `a2-pose-robust` once it exists (not on the remote yet).
+
