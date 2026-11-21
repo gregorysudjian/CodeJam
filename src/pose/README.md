@@ -1,6 +1,6 @@
 # src/pose — Vision (owner A)
 
-## MORNING REPORT (last update: Sat 07:20 — refreshed through the night)
+## MORNING REPORT (last update: Sat 07:29 — refreshed through the night)
 
 **TL;DR:** the real pose input is done on `abdo-1` (Phase 1, most of Phase 2, Phase 3 treadmill),
 208 tests pass, and it runs end to end inside `main`'s real app (calibration → tutorial → play) on
@@ -27,7 +27,9 @@ your replayed clips. Nothing touched `main`. It has **not** met a real camera si
   loads no MediaPipe files; after K, the lazy chunk, WASM and model load (all 200), 28 FPS GPU,
   calibration screen shows our message, no errors.
 
-**What works (tested on your clips + synthetic variants)**
+**What works (tested on your clips + synthetic variants).** A mutation sweep set each of the 23
+detection thresholds to an extreme value: every one breaks at least one test, so the tests pin real
+behaviour.
 - `createPoseInput()` per the contract: camera, MediaPipe, `calibrate()` with status messages,
   smoothing, lane (hysteresis), jump, squat, arms up, reach left/right, `tracking`, move events,
   `drawSkeleton` (handles the app's object-cover crop).
