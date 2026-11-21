@@ -12,7 +12,8 @@ your replayed clips. Nothing touched `main`. It has **not** met a real camera si
 2. **Tell Greg** both requests in his `main` docs (PROGRESS.md, AUDIT.md #1 and #7) are done on
    `abdo-1`: the real `createPoseInput()`, and `mountPoseDebug` exported from `src/pose/index.ts`.
    Send `NEEDS.md` items 1 (ready `DevPose.tsx`) and 2 (who mirrors the video). He plans to merge
-   `abdo-1` after Patrick's `p1-workout` and `p2-game`.
+   `abdo-1` after Patrick's `p1-workout` and `p2-game`. Send Patrick `NEEDS.md` 8 (his game's pose
+   latency leads still match).
 3. **Decide the merge:** `main` has moved (PR #19, new packages). Merge `origin/main` into `abdo-1`,
    `npm install`, `npm run check`, then open the PR with the text in `HANDOFF.md` §8. A dry run
    (`git merge-tree`, nothing changed) shows **no conflicts**: `main` never touched `src/pose`,
@@ -43,8 +44,9 @@ behaviour.
   `drawSkeleton` (handles the app's object-cover crop).
 - Every clip gives the right moves; so do 11 variants of every clip (shorter/taller, closer/farther,
   ±0.5–1% jitter, ±3° tilt, 20–40% dropped frames, all at once), at the same times (±100–250 ms).
-- No moves standing still. Standing up from a squat, even onto the toes: no jump. Crouch-then-jump: a jump. Squats 4× faster or slower count. Stepping back quickly
-  is not a jump; stepping closer re-baselines.
+- No moves standing still. Standing up from a squat, even onto the toes: no jump. Crouch-then-jump:
+  a jump. Squats 4× faster or slower count. Stepping back quickly is not a jump; stepping closer
+  re-baselines.
 - Background people: largest, nearest body wins; bodies far from the player's size are ignored.
 - Treadmill: shoulder calibration at 1–1.5 m (works while already jogging), arms only; floor results
   unchanged.
