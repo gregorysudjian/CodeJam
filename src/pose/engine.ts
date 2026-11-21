@@ -72,10 +72,18 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   const aspect = () =>
     video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3;
 
+  let errorLogged = false;
   const onVideoFrame = () => {
     if (!running || !landmarker) return;
     const t = performance.now();
-    session.frame(landmarker.detect(video), t);
+    try {
+      session.frame(landmarker.detect(video), t, aspect());
+    } catch (err) {
+      // e.g. a lost GPU context: keep the loop alive (tracking goes false) instead of freezing.
+      if (!errorLogged) console.error('[pose] frame failed', err);
+      errorLogged = true;
+      session.frame([], t, aspect());
+    }
     frames++;
     if (t - windowStart >= FPS_WINDOW_MS) {
       fps = (frames * 1000) / (t - windowStart);
@@ -153,10 +161,17 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     getState: () => session.getState(),
     onMove: (cb) => session.onMove(cb),
     async calibrate(mode, onStatus) {
-      const done = session.calibrate(mode, onStatus, aspect());
+      const done = session.calibrate(mode, onStatus);
       if (!running) {
         onStatus({ step: 'noBody', progress: 0, message: 'Starting the camera…' });
-        await start(); // a camera error rejects here; the app falls back to the keyboard
+        try {
+          await start();
+        } catch (err) {
+          // No camera: drop the pending calibration quietly and report the camera error.
+          done.catch(() => {});
+          session.cancel('The camera could not start.');
+          throw err;
+        }
       }
       return done;
     },

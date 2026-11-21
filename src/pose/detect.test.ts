@@ -236,6 +236,47 @@ describe('baseline drift', () => {
     run(det, pose({ dy: 0.5 * T }), 150, 0); // 5 s hold
     expect(det.state.ducking).toBe(true);
   });
+
+  test('a long overhead hold (narrower, raised shoulders) does not shrink W or T', () => {
+    const det = standingDetector();
+    const hold = pose({ left: 'up', right: 'up' });
+    // Arms up pull the shoulders in and up (A's clip: W 0.087 → 0.072).
+    hold[11] = { ...hold[11], x: hold[11].x - 0.01, y: 0.46 };
+    hold[12] = { ...hold[12], x: hold[12].x + 0.01, y: 0.46 };
+    const r = run(det, hold, 150, 0); // 5 s
+    expect(det.readout.W).toBeCloseTo(W, 3);
+    expect(det.readout.T).toBeCloseTo(T, 3);
+    // So a normal sidestep still counts afterwards.
+    run(det, pose(), 5, r.t);
+    run(det, pose({ dx: 0.7 * W }), 10, r.t + 200);
+    expect(det.state.lane).toBe(1);
+  });
+
+  test('stepping back quickly (hips rise 0.2 T in 0.3 s) is not a jump', () => {
+    const det = standingDetector();
+    const events: MoveEvent[] = [];
+    let r = run(det, pose(), 20, 0);
+    for (let i = 1; i <= 9; i++) {
+      r = run(det, pose({ dy: (-0.2 * T * i) / 9 }), 1, r.t);
+      events.push(...r.events);
+    }
+    r = run(det, pose({ dy: -0.2 * T }), 30, r.t);
+    events.push(...r.events);
+    expect(events).toEqual([]);
+    expect(det.state.airborne).toBe(false);
+  });
+
+  test('stepping closer slowly is followed: W and T grow while standing still', () => {
+    const det = standingDetector();
+    const closer = pose().map((p) => ({
+      ...p,
+      x: 0.5 + (p.x - 0.5) * 1.2,
+      y: 0.5 + (p.y - 0.5) * 1.2,
+    }));
+    run(det, closer, 300, 0); // 10 s
+    expect(det.readout.W).toBeCloseTo(W * 1.2, 2);
+    expect(det.readout.T).toBeCloseTo(T * 1.2, 2);
+  });
 });
 
 /* Replays of A's recorded clips (src/pose/fixtures), calibrated from standing.json. */

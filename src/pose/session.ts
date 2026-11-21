@@ -36,17 +36,16 @@ interface Pending {
 }
 
 export interface Session {
-  /** Feeds one camera frame: every body MediaPipe found (raw landmarks), at time t (ms). */
-  frame(poses: Point[][], t: number): void;
+  /**
+   * Feeds one camera frame: every body MediaPipe found (raw landmarks), at time t (ms).
+   * `aspect` is the video's width / height (for the treadmill torso estimate).
+   */
+  frame(poses: Point[][], t: number, aspect?: number): void;
   /**
    * Starts (or restarts) calibration. Resolves when done. A newer calibrate() or cancel() rejects
    * the older one. Detection pauses (tracking: false) until it is done.
    */
-  calibrate(
-    mode: PlayMode,
-    onStatus: (s: CalibrationStatus) => void,
-    aspect?: number,
-  ): Promise<void>;
+  calibrate(mode: PlayMode, onStatus: (s: CalibrationStatus) => void): Promise<void>;
   /** Rejects a pending calibration (camera stopped). Keeps the last calibration. */
   cancel(reason: string): void;
   getState(): InputState;
@@ -99,16 +98,14 @@ export function createSession(): Session {
   function calibrate(
     m: PlayMode,
     onStatus: (s: CalibrationStatus) => void,
-    videoAspect = aspect,
     silent = false,
   ): Promise<void> {
     cancel('Calibration restarted.');
     mode = m;
-    aspect = videoAspect;
     detector = null;
     return new Promise<void>((resolve, reject) => {
       pending = {
-        calibrator: createCalibrator(m, videoAspect),
+        calibrator: createCalibrator(m, () => aspect),
         mode: m,
         onStatus,
         resolve,
@@ -126,7 +123,8 @@ export function createSession(): Session {
     p.reject(new Error(reason));
   }
 
-  function frame(poses: Point[][], t: number) {
+  function frame(poses: Point[][], t: number, videoAspect?: number) {
+    if (videoAspect && Number.isFinite(videoAspect)) aspect = videoAspect;
     bodies = poses.length;
     const i = poses.length > 1 ? pickBody(poses, lastCentre) : poses.length - 1;
     player = i >= 0 ? poses[i] : null;
@@ -139,7 +137,7 @@ export function createSession(): Session {
 
     // Never calibrated and nobody asked (e.g. pose switched on mid-round): calibrate quietly in
     // the last mode so the input still works once the player stands still.
-    if (!detector && !pending) calibrate(mode, () => {}, aspect, true).catch(() => {});
+    if (!detector && !pending) calibrate(mode, () => {}, true).catch(() => {});
 
     if (pending) {
       const p = pending;
@@ -163,7 +161,7 @@ export function createSession(): Session {
 
   return {
     frame,
-    calibrate: (m, onStatus, a) => calibrate(m, onStatus, a),
+    calibrate: (m, onStatus) => calibrate(m, onStatus),
     cancel,
     getState: () => (detector ? { ...detector.state } : { ...NEUTRAL_STATE }),
     onMove(cb) {

@@ -83,7 +83,9 @@ export const DETECTION_DEFAULTS = Object.freeze({
 
   /** Jump: hip centre above standing height while moving up faster than this (T per second). */
   JUMP_ON_T: 0.15,
-  JUMP_MIN_UP_SPEED_T: 0.5,
+  JUMP_MIN_UP_SPEED_T: 1.0, // A's jumps rise 1.1–3.6 T/s (even at 40% dropped frames); a quick step back ~0.6
+  /** The upward speed is measured over this window (ms). */
+  JUMP_SPEED_WINDOW_MS: 150,
   AIRBORNE_MS: 450,
   JUMP_COOLDOWN_MS: 300,
   /** Ignore the rise for this long after a squat ends, so standing up is not a jump. */
@@ -108,6 +110,11 @@ export const DETECTION_DEFAULTS = Object.freeze({
   BASELINE_DRIFT_PER_SEC: 0.3,
   /** The lane centre drifts slower, and only while in the centre lane. */
   CENTRE_DRIFT_PER_SEC: 0.1,
+  /** Standing still = the centre stayed within this (T) for this long. Only then baselines drift. */
+  IDLE_STILL_T: 0.05,
+  IDLE_STILL_MS: 500,
+  /** No drift beyond this distance from standing height (T): stepping 20% closer moves ~0.18 T. */
+  IDLE_MAX_DROP_T: 0.25,
 });
 
 export type DetectionTuning = { -readonly [K in keyof typeof DETECTION_DEFAULTS]: number };

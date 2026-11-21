@@ -132,11 +132,13 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
 
   const smooth = new Map<number, { x: number; y: number }>();
   let lastT = -Infinity;
-  let lastY = cal.centreY;
+  /** Recent centre heights, to measure the rise over a short window (robust to dropped frames). */
+  let history: { t: number; y: number }[] = [];
   let presentSince = -Infinity;
   let missingSince = -Infinity;
   let airborneUntil = -Infinity;
   let jumpAllowedAt = -Infinity;
+  let still = { y: cal.centreY, since: -Infinity }; // where the centre has stayed, and since when
   let armGesture: 'none' | 'settling' | 'fired' = 'none';
   let oneArmSince = 0;
   const core = coreLandmarks(mode);
@@ -190,9 +192,13 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
 
     const dt = (t - lastT) / 1000;
     const fresh = dt > 0 && dt < 0.5; // no speed or drift across gaps
-    const upSpeed = fresh ? (lastY - c.y) / T / dt : 0; // T per second, + = up
     lastT = t;
-    lastY = c.y;
+    if (!fresh) history = [];
+    history.push({ t, y: c.y });
+    while (history.length > 1 && t - history[1].t >= K.JUMP_SPEED_WINDOW_MS) history.shift();
+    const ref = history[0];
+    // Upward speed over the window, in T per second (+ = up).
+    const upSpeed = t > ref.t ? (ref.y - c.y) / T / ((t - ref.t) / 1000) : 0;
 
     const emit = (type: MoveType) => {
       if (state.tracking) events.push({ type, t });
@@ -269,9 +275,18 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
     }
 
     // Slow drift toward the current body while standing still (handles stepping closer or
-    // further, or wandering). Never during a move, so a held squat or lane is not cancelled.
+    // further, or wandering). Only when the centre has stayed put for a while, so a slow squat
+    // (still moving) is not eaten; never during a move, so a held squat or lane is not
+    // cancelled. Arms up count as a move: they narrow and lift the shoulders (W, T).
+    if (Math.abs(c.y - still.y) > K.IDLE_STILL_T * T) still = { y: c.y, since: t };
     const idle =
-      !state.ducking && !state.airborne && t >= jumpAllowedAt && Math.abs(drop) < K.SQUAT_OFF_T;
+      !state.ducking &&
+      !state.airborne &&
+      !state.leftArmUp &&
+      !state.rightArmUp &&
+      t >= jumpAllowedAt &&
+      t - still.since >= K.IDLE_STILL_MS &&
+      Math.abs(drop) < K.IDLE_MAX_DROP_T;
     if (floor && idle && fresh) {
       const k = 1 - Math.exp(-K.BASELINE_DRIFT_PER_SEC * dt);
       standY += k * (c.y - standY);

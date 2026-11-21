@@ -46,3 +46,15 @@ or the named file.
 19. **Treadmill mode ignores the hips for tracking** (shoulders only) and has no lanes, jumps or
     squats, per PLAN.md. Squatting at treadmill distance pushes the shoulders out of frame, so
     tracking is lost there; that is expected.
+20. **Baselines drift only when the player is still** (the centre stayed within 0.05 T for 0.5 s) and
+    within 0.25 T of standing height, and never with an arm up. Found by a test: stepping 20% closer
+    sinks the hips ~0.18 T in frame, beyond the old 0.15 T band, so the baseline never adapted and
+    squats/jumps were measured from the wrong height. Arms up narrow and lift the shoulders, which
+    used to shrink W and T during an overhead hold.
+21. **Jump speed is measured over the last 150 ms and must exceed 1.0 T/s** (was per frame, 0.5).
+    A's jumps rise at 1.1–3.6 T/s even with 40% dropped frames; stepping back quickly rises ~0.6 T/s
+    and used to fire a jump.
+22. **A MediaPipe error on one frame no longer stops the loop** (treated as "no body"); if the camera
+    fails inside `calibrate()`, the pending calibration is dropped without an unhandled rejection.
+23. **The treadmill torso estimate uses the live video aspect** (passed each frame), not the aspect at
+    `calibrate()` time, which can be before the camera runs.

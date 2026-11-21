@@ -41,6 +41,17 @@ describe('treadmill calibration', () => {
     expect(result!.T).toBeLessThan(0.2 * 2.4 * 1.15);
   });
 
+  test('uses the real video aspect for that estimate (a 16:9 camera)', async () => {
+    const s = createSession();
+    const done = s.calibrate('treadmill', () => {});
+    for (const f of loadClip('standing').frames.slice(0, 80)) {
+      s.frame([veryNear(toPoints(f.pose!))], f.t, 16 / 9);
+    }
+    await done;
+    // Same body in pixels, but y units are relatively larger on a 16:9 frame.
+    expect(s.calibration!.T).toBeCloseTo(1.5 * s.calibration!.W * (16 / 9), 2);
+  });
+
   test('says tooFar at floor distance (about 2.5 m)', () => {
     expect(calibrateStanding('treadmill', (p) => p).step).toBe('tooFar');
   });

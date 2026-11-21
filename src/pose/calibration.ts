@@ -75,7 +75,12 @@ export function measureForMode(pose: Point[], mode: PlayMode, aspect: number): C
   return m;
 }
 
-export function createCalibrator(mode: PlayMode, aspect = 4 / 3): Calibrator {
+/** `aspect`: the video's width / height, or a getter (the camera may not be running yet). */
+export function createCalibrator(
+  mode: PlayMode,
+  aspect: number | (() => number) = 4 / 3,
+): Calibrator {
+  const getAspect = typeof aspect === 'function' ? aspect : () => aspect;
   const msg = CALIBRATION_MESSAGES[mode];
   let holdStart = -1;
   let ref: Calibration | null = null;
@@ -99,7 +104,7 @@ export function createCalibrator(mode: PlayMode, aspect = 4 / 3): Calibrator {
       resetHold();
       return { status: status('noBody') };
     }
-    const m = measureForMode(pose, mode, aspect);
+    const m = measureForMode(pose, mode, getAspect());
 
     if (mode === 'floor') {
       if (m.T < CALIBRATION_MIN_T_FRAME) {
