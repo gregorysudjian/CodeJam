@@ -576,6 +576,7 @@
 .workout-screen [role='radiogroup'][aria-label='Workout'] > [role='radio'] {
   min-height: 320px;
 }
+
 .workout-screen [role='radiogroup'] + div {
   padding-top: 12px;
 }
@@ -939,5 +940,46 @@
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* Short screens (1280×720 projector, 1366×768 laptop): keep the settings row above the footer
+   and the coach's PLAY THIS NEXT in view on results (QA Q1, Q5). */
+@media (max-height: 800px) {
+  .workout-screen main {
+    padding-top: 16px;
+    gap: 16px;
+  }
+  .workout-screen h1 {
+    font-size: 48px;
+  }
+  .workout-screen [role='radiogroup'][aria-label='Workout'] > [role='radio'] {
+    min-height: 0;
+  }
+  .workout-screen [role='radiogroup'][aria-label='Workout'] > [role='radio'] svg {
+    max-height: 96px;
+  }
+  .results-screen main {
+    padding-top: 24px;
+    gap: 24px;
+  }
+  .results-screen .results-score {
+    font-size: 96px;
+  }
+  .results-screen .results-stats {
+    margin-top: 12px;
+  }
+  .results-screen .results-stats > div {
+    padding: 12px;
+  }
+}
+
+/* Narrower than 1440 px: let the select screen's settings segments shrink so mode, duration,
+   low impact and Camera/Keyboard stay on one row (QA Q1). */
+@media (max-width: 1439px) {
+  .workout-settings [role='radio'] {
+    min-width: 84px;
+    padding-left: 14px;
+    padding-right: 14px;
   }
 }
