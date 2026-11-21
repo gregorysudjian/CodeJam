@@ -27,11 +27,10 @@ The team is three people. Role C (backend and workout logic) was split between P
 | Folder | Owner | Contents |
 | --- | --- | --- |
 | `src/pose/` | Abdo (A) | Camera, MediaPipe, calibration, move detection |
-| `src/game/`, `src/input/` | Patrick (B) | Three.js runner, keyboard input, game audio |
-| `src/workout/` | Patrick | Level generation, scoring, stats |
+| `src/game/`, `src/input/`, `src/workout/` | Patrick (B) | Three.js runner, keyboard input, game audio, level generation, scoring, stats |
 | `src/data/`, `supabase/`, `api/` | Greg | Data store (Supabase and local), SQL migrations, server endpoint |
 | `src/app/`, `src/ui/` | Greg (D) | Screens, HUD, dashboard, wiring |
-| `src/contracts/` and all config | Greg only | Shared types and project setup |
+| `docs/`, `src/contracts/` and all config | Greg only | Shared types and project setup |
 
 ## Rules
 

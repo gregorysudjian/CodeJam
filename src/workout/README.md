@@ -23,7 +23,12 @@ Pure and seeded (mulberry32): the same complete config always gives the same lev
    - The last object finishes 1 s before the round ends, so every object is judged before `finished`.
    - Orb labels: floor uses `reachLeft` on lane −1 and `reachRight` otherwise (either arm works on the floor). Treadmill uses the arm the lane needs (−1 left, +1 right, 0 `armsUp`).
 
-**Demo round:** the app preselects `DEMO_CONFIG` (Full body, floor, 45 s, seed 41492) when opened with `?demo=1`; its low-impact toggle plays the same seed without hurdles. The seed satisfies Greg's `demo.test.ts` (every move at least twice, also in the low-impact version; three easy waves at each end; no hurdle right after a beam) and `level.test.ts` (all five objects in the first five waves, a held squat, a combo). Its waves open block, orb, crate, hurdle, held beam and close on two crates. A tuning change that alters the demo fails CI, so it has to be done on purpose, and the Player should rehearse again after it.
+**Demo round:** open the app with `?demo=1` (for example `https://codejam-jet.vercel.app/?demo=1`) and every round is the demo level, whatever card is picked: Full body, floor, 45 s, seed 41492 (`DEMO_CONFIG`). No app change is needed; `generateLevel` reads the flag. The "Low impact" toggle still applies: same seed, no hurdles, for judges. Seed 41492 passes `demo.test.ts`:
+- every move at least twice, also in the low-impact version;
+- three easy waves at each end;
+- no hurdle right after a beam.
+
+It also passes `level.test.ts`: all five objects in the first five waves, a held squat and a combo. It opens block, orb, crate, hurdle, held beam and closes on two crates. A tuning change that alters the demo fails CI, so it has to be done on purpose, and the Player should rehearse again after it.
 
 ## createSessionTracker(config, opts) — `tracker.ts`
 

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import type { Level, MoveType, ObstacleKind } from '@/contracts';
-import { DEMO_CONFIG, generateLevel } from './index';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { Level, MoveType, ObstacleKind, SessionConfig } from '@/contracts';
+import { DEMO_CONFIG, DEMO_SEED, generateLevel } from './index';
 
 const MOVES: MoveType[] = ['sidestep', 'jump', 'squat', 'armsUp', 'reachLeft', 'reachRight'];
 const EASY: ObstacleKind[] = ['block', 'crate', 'orb'];
@@ -44,5 +44,35 @@ describe('demo preset', () => {
     const level = generateLevel({ ...DEMO_CONFIG, lowImpact: true });
     expect(level.waves.flatMap((w) => w.spawns).some((s) => s.kind === 'hurdle')).toBe(false);
     expect(demoProblems(level)).toEqual([]);
+  });
+});
+
+describe('?demo=1', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+  const pick: SessionConfig = { workout: 'arms', mode: 'treadmill', durationSec: 180 };
+
+  it('without the flag, the picked config is played', () => {
+    expect(generateLevel({ ...pick, seed: 7 }).config).toMatchObject({ workout: 'arms', seed: 7 });
+  });
+
+  it('with the flag, every round is the demo level, whatever was picked', () => {
+    vi.stubGlobal('window', { location: { search: '?demo=1' } });
+    const level = generateLevel(pick);
+    expect(level).toEqual(generateLevel(DEMO_CONFIG));
+    expect(level.config).toMatchObject({
+      workout: 'fullBody',
+      mode: 'floor',
+      durationSec: 45,
+      seed: DEMO_SEED,
+    });
+  });
+
+  it('the low-impact toggle still applies: same seed, no hurdles', () => {
+    vi.stubGlobal('window', { location: { search: '?demo=1' } });
+    const level = generateLevel({ ...pick, lowImpact: true });
+    expect(level.config).toMatchObject({ seed: DEMO_SEED, lowImpact: true });
+    expect(level.waves.flatMap((w) => w.spawns).some((s) => s.kind === 'hurdle')).toBe(false);
   });
 });

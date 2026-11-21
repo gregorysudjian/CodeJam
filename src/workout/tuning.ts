@@ -56,8 +56,8 @@ export const ALTERNATE_REACH_CHANCE = 0.8; // treadmill orbs switch arm, for fas
 
 /* ── The demo round (docs/DEMO.md): the same level every time, so the Player can practise it ── */
 /**
- * The app preselects DEMO_CONFIG with ?demo=1; its low-impact toggle plays the same seed
- * without hurdles. Seed 41492 was searched against both test files: every move at least
+ * With ?demo=1 in the URL, generateLevel (index.ts) plays DEMO_CONFIG for every round; the
+ * app's low-impact toggle still applies (same seed, no hurdles). Seed 41492 was searched against both test files: every move at least
  * twice (low-impact too), three easy waves at each end, no hurdle right after a beam
  * (demo.test.ts), and all five objects in the first five waves with a held squat and a
  * block-and-orb combo (level.test.ts). If the generator changes, search again.

@@ -27,7 +27,7 @@ import {
   WorkoutSelectScreen,
   type ProfileInput,
 } from '@/ui/screens';
-import { DEMO_CONFIG, WORKOUTS } from '@/workout';
+import { WORKOUTS } from '@/workout';
 import { CalibrateStep } from './CalibrateStep';
 import { DevPose } from './DevPose';
 import { PlayScreen } from './PlayScreen';
@@ -40,10 +40,7 @@ const NOTICE_MS = 4000;
 const LEADERBOARD_SIZE = 20;
 
 const store = createStore();
-const params = new URLSearchParams(window.location.search);
-const isDevPose = params.get('dev') === 'pose';
-/** ?demo=1: the select screen starts on the fixed demo level (docs/DEMO.md); Enter starts it. */
-const isDemo = params.get('demo') === '1';
+const isDevPose = new URLSearchParams(window.location.search).get('dev') === 'pose';
 const publicUrl = window.location.origin;
 const workouts = Object.values(WORKOUTS);
 
@@ -300,7 +297,7 @@ function MainApp() {
         <WorkoutSelectScreen
           workouts={workouts}
           coachPick={coachPick}
-          initial={config ?? (isDemo ? DEMO_CONFIG : undefined)}
+          initial={config ?? undefined}
           onStart={startSession}
           onBack={() => setScreen(sessions.length ? 'dashboard' : 'landing')}
         />
@@ -334,8 +331,7 @@ function MainApp() {
           isPersonalBest={personalBest}
           rank={rank}
           handsFree={inputKind === 'pose'}
-          // Same choice again: a fresh level, unless the round used a fixed seed (the demo preset).
-          onPlayAgain={() => startSession(config ?? { ...summary.config, seed: undefined })}
+          onPlayAgain={() => startSession({ ...summary.config, seed: undefined })}
           onStartNext={startSession}
           onDashboard={() => void openDashboard()}
           onLeaderboard={() => {
