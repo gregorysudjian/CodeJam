@@ -69,13 +69,13 @@ export function createKeyboardController(now: () => number): KeyboardController 
           emit('squat');
           break;
         case 'KeyW':
-          emit('armsUp');
+          if (!(held.has('KeyQ') && held.has('KeyE'))) emit('armsUp');
           break;
         case 'KeyQ':
-          emit('reachLeft');
+          if (!held.has('KeyW')) emit(held.has('KeyE') ? 'armsUp' : 'reachLeft');
           break;
         case 'KeyE':
-          emit('reachRight');
+          if (!held.has('KeyW')) emit(held.has('KeyQ') ? 'armsUp' : 'reachRight');
           break;
       }
       return true;

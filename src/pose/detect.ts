@@ -154,6 +154,7 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
   let still = { y: cal.centreY, since: -Infinity }; // where the centre has stayed, and since when
   let armGesture: 'none' | 'settling' | 'fired' = 'none';
   let oneArmSince = 0;
+  let resizeSince = -1; // the body has looked resized (a distance change) since then
   const core = coreLandmarks(mode);
 
   const isPresent = (pose: Point[] | null): pose is Point[] => {
@@ -331,6 +332,41 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
       t >= highJumpUntil &&
       t - still.since >= K.IDLE_STILL_MS &&
       Math.abs(drop) < K.IDLE_MAX_DROP_T;
+    // A distance change: the whole body grew or shrank (W and T together, by the same ratio), held
+    // for a moment. A squat never does this (T does not grow while ducking) and a jump keeps the
+    // size. Re-baseline at once, and drop a `ducking` that only came from walking closer (the hips
+    // move down the frame when the camera points above them). Centre lane only: a new W would
+    // move the lane lines under a player standing in a side lane.
+    const kW = Math.abs(p(L_SHOULDER).x - p(R_SHOULDER).x) / W;
+    const kT = Math.abs(hips.y - shoulders.y) / T;
+    const resized =
+      floor &&
+      fresh &&
+      state.lane === 0 &&
+      !state.airborne &&
+      !state.leftArmUp &&
+      !state.rightArmUp &&
+      // A false duck only comes from walking closer; a shrinking body while ducking may be a
+      // real squat leaning back (Greg's: W 0.86 ×), so that waits until the player is up.
+      !(state.ducking && kW < 1) &&
+      Math.abs(Math.log(kW)) >= Math.log(1 + K.RESCALE_MIN) &&
+      Math.abs(Math.log(kT)) >= Math.log(1 + K.RESCALE_MIN) &&
+      Math.abs(kT / kW - 1) <= K.RESCALE_SHAPE_TOL;
+    if (!resized) resizeSince = -1;
+    else if (resizeSince < 0) resizeSince = t;
+    if (resized && t - resizeSince >= K.RESCALE_CONFIRM_MS) {
+      resizeSince = -1;
+      W *= kW;
+      T *= kT;
+      standY = c.y;
+      still = { y: c.y, since: t };
+      if (state.ducking) {
+        state.ducking = false;
+        squatCounted = true; // never count it
+        squatPendingAt = -1;
+      }
+    }
+
     if (floor && idle && fresh) {
       const k = 1 - Math.exp(-K.BASELINE_DRIFT_PER_SEC * dt);
       standY += k * (c.y - standY);
