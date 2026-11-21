@@ -1,6 +1,9 @@
-// Owner: A. Test-only helpers to replay recorded clips (src/pose/fixtures/*.json) through the detector.
-import type { MoveEvent } from '@/contracts';
-import { createDetector, measureBody, type Calibration, type Point } from './detect';
+// Owner: A. Test-only helpers: replay recorded clips (src/pose/fixtures/*.json) through the
+// detector, optionally transformed into synthetic variants (scaled, jittery, dropped frames,
+// a second person in frame).
+import type { MoveEvent, PlayMode } from '@/contracts';
+import { measureForMode } from './calibration';
+import { type Calibration, createDetector, type Point, pickBody, toPlayerX, mid } from './detect';
 import type { Recording } from './recording';
 
 const clips = import.meta.glob<Recording>('./fixtures/**/*.json', {
@@ -17,48 +20,113 @@ export function loadClip(name: string): Recording {
 export const toPoints = (pose: [number, number, number, number][]): Point[] =>
   pose.map(([x, y, , visibility]) => ({ x, y, visibility }));
 
+/** Deterministic random numbers (mulberry32), so noisy tests are repeatable. */
+export function rng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export type PoseTransform = (pose: Point[]) => Point[];
+
+/** Scales the body about a fixed point: about the feet = taller/shorter, about the centre = closer/farther. */
+export const scaleAbout =
+  (cx: number, cy: number, s: number): PoseTransform =>
+  (pose) =>
+    pose.map((p) => ({ ...p, x: cx + (p.x - cx) * s, y: cy + (p.y - cy) * s }));
+
+/** Adds uniform noise of ±amp to every coordinate (landmark jitter). */
+export const jitter = (amp: number, seed = 1): PoseTransform => {
+  const r = rng(seed);
+  return (pose) =>
+    pose.map((p) => ({ ...p, x: p.x + (r() * 2 - 1) * amp, y: p.y + (r() * 2 - 1) * amp }));
+};
+
+export interface ReplayOptions {
+  upToMs?: number;
+  /** 'standing': calibrate on standing.json (session 1, same spot). 'self': the clip's first 300 ms. */
+  calibrate?: 'standing' | 'self';
+  mode?: PlayMode;
+  /** Applied to every pose, in the calibration clip too (the same body, transformed). */
+  transform?: PoseTransform;
+  /** Fraction of frames to drop at random (camera hiccups). */
+  dropFraction?: number;
+  /** Extra bodies in frame for each pose (e.g. someone behind the player); pickBody chooses. */
+  others?: (pose: Point[], t: number) => Point[][];
+}
+
 /** Calibration from the median of the clip's first `ms` milliseconds, when the player stands still. */
-export function calibrateFromClip(rec: Recording, ms = 500): Calibration {
+export function calibrateFromClip(
+  rec: Recording,
+  ms: number,
+  mode: PlayMode = 'floor',
+  transform: PoseTransform = (p) => p,
+): Calibration {
+  const aspect = rec.video.width / rec.video.height;
   const bodies = rec.frames
     .filter((f) => f.t < ms && f.pose)
-    .map((f) => measureBody(toPoints(f.pose!)));
+    .map((f) => measureForMode(transform(toPoints(f.pose!)), mode, aspect));
   const median = (k: keyof Calibration) =>
     bodies.map((b) => b[k]).sort((a, b) => a - b)[bodies.length >> 1];
-  return { hipX: median('hipX'), hipY: median('hipY'), W: median('W'), T: median('T') };
+  return {
+    centreX: median('centreX'),
+    centreY: median('centreY'),
+    W: median('W'),
+    T: median('T'),
+  };
 }
 
 export interface Replay {
   events: MoveEvent[];
   /** Times where tracking flipped, as [t, tracking]. */
   tracking: [number, boolean][];
+  /** How often pickBody chose a body other than the real player (index 0). */
+  wrongPicks: number;
 }
 
-/**
- * Replays a clip. Calibration comes from standing.json (first session, same spot), like the
- * real app, because those clips can start mid-move. Clips from a later session at a different
- * spot use 'self': the first 300 ms of the clip, where the player stands still.
- */
-export function replay(
-  name: string,
-  upToMs = Infinity,
-  calibrate: 'standing' | 'self' = 'standing',
-): Replay {
+export function replay(name: string, opts: ReplayOptions = {}): Replay {
+  const {
+    upToMs = Infinity,
+    calibrate = 'standing',
+    mode = 'floor',
+    transform = (p) => p,
+    dropFraction = 0,
+    others,
+  } = opts;
   const rec = loadClip(name);
   const cal =
     calibrate === 'self'
-      ? calibrateFromClip(rec, 300)
-      : calibrateFromClip(loadClip('standing'), 1000);
-  const det = createDetector(cal);
+      ? calibrateFromClip(rec, 300, mode, transform)
+      : calibrateFromClip(loadClip('standing'), 1000, mode, transform);
+  const det = createDetector(cal, mode);
+  const drop = rng(7);
   const events: MoveEvent[] = [];
   const tracking: [number, boolean][] = [];
   let wasTracking = det.state.tracking;
+  let last: { x: number; y: number } | null = null;
+  let wrongPicks = 0;
   for (const f of rec.frames) {
     if (f.t > upToMs) break;
-    events.push(...det.update(f.pose ? toPoints(f.pose) : null, f.t));
+    if (dropFraction > 0 && drop() < dropFraction) continue;
+    let pose = f.pose ? transform(toPoints(f.pose)) : null;
+    if (pose && others) {
+      const bodies = [pose, ...others(pose, f.t)];
+      const i = pickBody(bodies, last);
+      if (i !== 0) wrongPicks++;
+      pose = bodies[i];
+      const s = mid(pose[11], pose[12]);
+      last = { x: toPlayerX(s.x), y: s.y };
+    }
+    events.push(...det.update(pose, f.t));
     if (det.state.tracking !== wasTracking) {
       wasTracking = det.state.tracking;
       tracking.push([f.t, wasTracking]);
     }
   }
-  return { events, tracking };
+  return { events, tracking, wrongPicks };
 }

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import type { MoveEvent } from '@/contracts';
 import { createDetector, measureBody, type Point } from './detect';
 import { replay } from './fixtures';
-import * as K from './tuning';
+import { DETECTION as K } from './tuning';
 
 /*
  * Synthetic standing pose: W = 0.1 (shoulders), T = 0.2 (shoulder centre to hip centre).
@@ -56,7 +56,7 @@ describe('measureBody', () => {
     const cal = measureBody(pose({ dx: 0.1 }));
     expect(cal.W).toBeCloseTo(W);
     expect(cal.T).toBeCloseTo(T);
-    expect(cal.hipX).toBeCloseTo(0.6);
+    expect(cal.centreX).toBeCloseTo(0.6);
   });
 });
 
@@ -240,7 +240,7 @@ describe('baseline drift', () => {
 
 /* Replays of A's recorded clips (src/pose/fixtures), calibrated from standing.json. */
 describe('recorded clips', () => {
-  const kinds = (name: string, upTo?: number) => types(replay(name, upTo).events);
+  const kinds = (name: string, upTo?: number) => types(replay(name, { upToMs: upTo }).events);
 
   test('standing still: no moves', () => {
     expect(kinds('standing', 5500)).toEqual([]);
@@ -260,7 +260,7 @@ describe('recorded clips', () => {
 
   // Second session, recorded from a different spot: calibrated from each clip's first 300 ms.
   test('armsUp: three overhead presses from shoulder height', () => {
-    expect(types(replay('armsUp', Infinity, 'self').events)).toEqual([
+    expect(types(replay('armsUp', { calibrate: 'self' }).events)).toEqual([
       'armsUp',
       'armsUp',
       'armsUp',
@@ -268,7 +268,7 @@ describe('recorded clips', () => {
   });
 
   test('reach: left, left, right (the second right rep runs past the clip end)', () => {
-    expect(types(replay('reach', Infinity, 'self').events)).toEqual([
+    expect(types(replay('reach', { calibrate: 'self' }).events)).toEqual([
       'reachLeft',
       'reachLeft',
       'reachRight',
@@ -276,7 +276,7 @@ describe('recorded clips', () => {
   });
 
   test('mixed play: jump (arm swing ignored), squat, two presses, sidestep, walks off', () => {
-    const { events, tracking } = replay('mixed', Infinity, 'self');
+    const { events, tracking } = replay('mixed', { calibrate: 'self' });
     expect(types(events)).toEqual(['jump', 'squat', 'armsUp', 'armsUp', 'sidestep']);
     expect(tracking.map(([, on]) => on)).toEqual([false]);
   });
