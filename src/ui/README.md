@@ -1,15 +1,41 @@
 # src/ui — Neon Arena UI (owner: D, branch greg-2)
 
-Designed in the Lovable project "Neon Arena Fitness" and synced to
-`gregorysudjian/neon-arena-fitness`. Everything in this folder is copied verbatim from that
-repo's `src/ui/`. Change the design there and re-port; small fixes here are fine, but mention
-them so Lovable can pick them up.
+Originally designed in the Lovable project "Neon Arena Fitness". **The token layer has since
+been reworked in this repo and is no longer a verbatim copy** — re-porting `theme.css` from
+Lovable would undo it. Components and screens are still close to the Lovable originals.
+
+## Design rules
+
+The palette used to be five fully-saturated accents on near-black, each with a 64px glow.
+Every one passed WCAG, so the problem was never contrast — it was that nothing receded, so
+nothing could lead. Four rules keep that from coming back:
+
+1. **One accent.** Lime is the brand, and it sits *below* primary text in luminance (13.10:1
+   vs 16.25:1) so text leads and the accent points. Cyan, magenta, amber and violet are move
+   encoding only — one hue per move type, on chips, figures and charts. They never appear in
+   chrome. `success` / `warning` / `danger` are separate and functional.
+2. **Elevation is a step up the ramp, not a glow.** `bg → surface → bg-raised → hover` with a
+   `line` hairline. `glass` is opaque; it is not a blur.
+3. **Glow is a state, not a style.** The primary CTA keeps one (it has to be findable from
+   across a room) and live scoring feedback keeps one. Selected segments, panels, headings,
+   icons and focus rings do not.
+4. **Ordinal things descend one ramp.** Podium places and S/A/B/C grades step down through the
+   neutrals instead of cycling hues, so rank reads as rank.
+
+`Eyebrow` and `SectionTitle` default to **neutral**. They used to default to lime, which is how
+the accent ended up on every screen — don't change that default back.
+
+Two numbers deliberately resist the usual advice: body text is **20px**, not 16px, because this
+is read while standing back from a laptop; and the display ramp stays large for the same reason.
+
+Before changing colour, run the contrast check in the PR description's method: every text pair
+must clear 4.5:1, every UI boundary 3:1.
 
 ## What is here
 
 | Folder | Contents |
 | --- | --- |
-| `theme.css` | Every design token (`@theme`), font imports, glass, glow, grain, grid and keyframes. Imported by `src/index.css`. |
+| `theme.css` | Every design token (`@theme`), font imports, surfaces, type ramps and keyframes. Imported by `src/index.css`. Token *names* are unchanged from the Lovable version, so components did not need editing; their *values* are not. |
 | `components/ui/` | shadcn primitives (button, card, badge, input, progress, skeleton, slider, switch, tooltip). |
 | `kit/` | Design system: `Screen` (with a measured, full-bleed `footer` slot), `ScreenFooter` (standard Back · Primary bar), `CoachBanner` (one-line coach's pick), `Backdrop`, `GlassPanel`, `GameButton`, `SectionTitle`, `StatTile`, `AnimatedNumber`, `MoveChip`, `MoveFigure`, `BustOutline`, `ProgressRing`, `SegmentedControl`, `ToggleRow`, `TextField`, `KeyHint`, `EmptyState`, `useHotkey`, and `tokens.ts` (move/workout labels, colours, icons). |
 | `screens/` | Pure presentational screens: props in, callbacks out. No fetching, no global state. |
