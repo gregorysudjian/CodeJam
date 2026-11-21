@@ -17,14 +17,15 @@ This repository currently holds the build plan. The code is written during the h
 
 ## Team
 
-Fill this in at kickoff (roles are described in section 3 of the plan).
+Three people. Role C from the plan (backend and workout logic) is split between Patrick and Greg.
 
-| Role | Person | Folders |
+| Person | Role | Folders |
 | --- | --- | --- |
-| A, Vision | | `src/pose/` |
-| B, Game | | `src/game/`, `src/input/` |
-| C, Backend and workout logic | | `src/workout/`, `src/data/`, `supabase/`, `api/` |
-| D, UI and integrator | | `src/app/`, `src/ui/`, shared files |
+| Abdo | A, Vision | `src/pose/` |
+| Patrick | B, Game, plus workout logic | `src/game/`, `src/input/`, `src/workout/` |
+| Greg | D, UI and integrator, plus backend | `src/app/`, `src/ui/`, `src/data/`, `supabase/`, `api/`, shared files |
+
+Live: https://codejam-jet.vercel.app (deploys from `main`).
 
 ## Running locally
 

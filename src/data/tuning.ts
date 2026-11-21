@@ -1,0 +1,19 @@
+// Every tunable number for src/data (AGENTS.md rule 10).
+
+/** The client gives up on /api/coach after this long and uses the rule-based coach. */
+export const COACH_CLIENT_TIMEOUT_MS = 8000;
+/** A Supabase call slower than this counts as offline (the session is queued). */
+export const SUPABASE_TIMEOUT_MS = 5000;
+
+/** Rule-based coach (docs/CONTRACTS.md). */
+export const DIFFICULTY_DEFAULT = 0.5;
+export const DIFFICULTY_STEP = 0.1;
+export const ACCURACY_RAISE_ABOVE = 0.85;
+export const ACCURACY_LOWER_BELOW = 0.6;
+export const COACH_WEEK_MS = 7 * 24 * 3600 * 1000;
+export const COACH_DURATIONS = [45, 90, 180] as const;
+export const COACH_DEFAULT_DURATION = 90;
+
+/** Local storage. */
+export const LOCAL_MAX_SESSIONS = 200;
+export const DEFAULT_WEEKLY_GOAL_MIN = 60;
