@@ -42,7 +42,12 @@ function installProbe() {
     const render = renderer.render;
     renderer.render = function (...args) {
       const result = render.apply(this, args);
-      if (probe.started !== null && probe.firstFrameMs === null && this.domElement.isConnected) {
+      if (
+        probe.started !== null &&
+        probe.firstFrameMs === null &&
+        this.domElement.isConnected &&
+        this.getRenderTarget() === null
+      ) {
         probe.firstFrameMs = performance.now() - probe.started;
       }
       return result;
