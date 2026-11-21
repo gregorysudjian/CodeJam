@@ -73,6 +73,53 @@ function storeWith(fetchImpl: typeof fetch) {
   return { store, kv, auth };
 }
 
+describe('supabase store signInGuest', () => {
+  it('shares one sign-in between concurrent calls (double click, StrictMode)', async () => {
+    const userId = '00000000-0000-4000-8000-0000000000bb';
+    let signups = 0;
+    const fakeServer = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+      if (url.includes('/auth/v1/signup')) {
+        signups++;
+        return Response.json({
+          access_token: 'tok',
+          refresh_token: 'ref',
+          token_type: 'bearer',
+          expires_in: 3600,
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          user: { id: userId, aud: 'authenticated', role: 'authenticated', is_anonymous: true },
+        });
+      }
+      if (url.includes('/rest/v1/profiles') && method === 'GET') return Response.json([]);
+      if (url.includes('/rest/v1/profiles') && method === 'POST') {
+        return Response.json(
+          {
+            id: userId,
+            display_name: 'Kiosk',
+            goal: 'getMoving',
+            level: 'beginner',
+            weight_kg: null,
+            weekly_goal_min: 60,
+          },
+          { status: 201 },
+        );
+      }
+      return new Response(null, { status: 404 });
+    }) as typeof fetch;
+    const store = createSupabaseStore(URL, 'anon', memory(), {
+      fetch: fakeServer,
+      authStorage: memory(),
+    });
+
+    const [a, b] = await Promise.all([store.signInGuest('Kiosk'), store.signInGuest('Kiosk')]);
+
+    expect(signups).toBe(1);
+    expect(a.id).toBe(userId);
+    expect(b.id).toBe(userId);
+  });
+});
+
 describe('supabase store signOut', () => {
   it('does not hang on bad wifi: gives up on the queue after the cap and still signs out', async () => {
     const neverAnswers = (() => new Promise<Response>(() => {})) as typeof fetch;

@@ -11,3 +11,7 @@ export const FINISH_DELAY_MS = 1500;
 
 /** After the player has been out of frame this long, offer the keyboard under the HUD. */
 export const TRACKING_LOST_HINT_MS = 3000;
+
+/** Kiosk leaderboard (?kiosk=1) for the demo table: refresh interval and number of rows. */
+export const KIOSK_REFRESH_MS = 15000;
+export const LEADERBOARD_SIZE = 20;

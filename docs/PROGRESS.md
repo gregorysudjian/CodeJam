@@ -13,6 +13,7 @@ _Updated after every PR._
 - #8 `signOut` never hangs on bad wifi: the queue wait is capped at 2 s, and sign-out no longer makes a network call
 - #9 Results wait 1.5 s after the game finishes, so Patrick's finish arch and fanfare play (his request #5)
 - #10 Error states: camera blocked, missing, busy or other (full-screen, with Use keyboard and Try again), player lost (keyboard offer after 3 s), offline banner
+- #11 Kiosk leaderboard `?kiosk=1`: the board with the QR code, refreshing every 15 s, with its own in-memory guest so it never touches the game tab's player. Also fixes a sign-in race (two concurrent `signInGuest` calls)
 
 **Testing rule (from Greg):** unit tests first. One scripted round per change, using `?demo=1&store=local` once Patrick's demo is on `main`. Browser testing is time-boxed to 5 minutes.
 
@@ -27,7 +28,7 @@ _Updated after every PR._
 
 **Requests:** none open (see below).
 
-**Next 3:** kiosk leaderboard (3d) → panic keys, including K mid-round without restarting (3e) → low-graphics toggle (3f, optional).
+**Next 3:** full A-to-Z audit (docs/AUDIT.md) → per-user rate limit on /api/coach → panic keys, including K mid-round without restarting.
 
 ## Log
 
@@ -56,6 +57,12 @@ _Updated after every PR._
 - `src/app/ErrorStates.tsx`, built from the kit (`GlassPanel`, `EmptyState`, `GameButton`); `src/ui` is untouched. **Camera overlay:** shown when the camera fails to start. The app has already switched to the keyboard; "Use keyboard" dismisses the overlay (and moves on from calibration), and "Try again" retries the camera. **Offline banner:** `useOnline` follows the browser's online and offline events. **Player lost:** once tracking has been lost for `TRACKING_LOST_HINT_MS` (3 s), a "Use the keyboard" button appears under the HUD's "Step back into the frame".
 - **Tested:** `npm run check` passes (49 tests). One scripted pass with `?store=local`: K → the camera overlay appears (the pose stub fails), "Try again" shows it again, "Use keyboard" dismisses it, and the landing screen still works. The offline banner appears and disappears with the network. No errors.
 - **Not tested:** the player-lost hint (keyboard input never loses tracking, so this needs Abdo's pose input). The blocked, missing and busy messages are unit-tested only.
+
+### #11 Kiosk leaderboard (3d)
+- `?kiosk=1` renders `KioskBoard`: `LeaderboardScreen` in kiosk mode with the QR code, refreshed every `KIOSK_REFRESH_MS` (15 s). The filter chips still work. Back or Play leave kiosk mode for the normal app.
+- The leaderboard needs a signed-in user, so in kiosk mode `createStore()` signs in a throwaway guest kept in memory, under its own session key and cross-tab channel (`sessionName: 'kiosk'`). The game tab's saved player is never touched. Each kiosk page load creates one anonymous "Leaderboard" user with no sessions.
+- **Found while testing:** two concurrent `signInGuest` calls (React StrictMode running the effect twice, or a double click) each signed up a user. The loser's profile insert failed row-level security, and the store fell back to local for the rest of the visit. Concurrent calls now share one sign-in. Unit test added.
+- **Tested:** `npm run check` passes (50 tests). In Chrome against live Supabase: `?kiosk=1` made 3 leaderboard requests in 33 s and showed the QR code, the database held exactly one kiosk user, and a player saved in another tab ("Alpha") was still offered after the kiosk had run. No errors.
 
 ## Requests
 
