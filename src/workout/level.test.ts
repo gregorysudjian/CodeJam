@@ -12,126 +12,198 @@ const EPS = 1e-9;
 // The contract's numbers, written out so a retune in tuning.ts cannot quietly break them.
 const CONTRACT = { firstWave: 4, warmupGap: 1.8, minGap: 1.1, beamToHurdle: 1.5 };
 
-/** Every combination, legs on treadmill included (the UI disables it, the generator still copes). */
-function* allLevels(): Generator<Level> {
-  for (const workout of WORKOUT_IDS)
-    for (const mode of MODES)
-      for (const difficulty of DIFFICULTIES)
-        for (const lowImpact of [false, true])
-          for (const durationSec of DURATIONS)
-            for (const seed of SEEDS)
-              yield generateLevel({ workout, mode, durationSec, difficulty, lowImpact, seed });
+/**
+ * Every combination, legs on treadmill included (the UI disables it, the generator still copes).
+ * Generated once for the whole file: 2,880 levels. Each rule below collects its violations and
+ * makes one assertion, so the sweep stays fast on slow laptops (thousands of single `expect`
+ * calls took up to a minute there) and a failure lists every offending level at once.
+ */
+let cache: Level[] | null = null;
+function allLevels(): Level[] {
+  cache ??= WORKOUT_IDS.flatMap((workout) =>
+    MODES.flatMap((mode) =>
+      DIFFICULTIES.flatMap((difficulty) =>
+        [false, true].flatMap((lowImpact) =>
+          DURATIONS.flatMap((durationSec) =>
+            SEEDS.map((seed) =>
+              generateLevel({ workout, mode, durationSec, difficulty, lowImpact, seed }),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  return cache;
 }
 const holdOf = (w: Level['waves'][number]): number =>
   Math.max(0, ...w.spawns.map((s) => s.holdSec ?? 0));
 const label = (l: Level): string => JSON.stringify(l.config);
+/** Generous per-test timeout for the sweep; it takes well under a second on a fast laptop. */
+const SWEEP_TIMEOUT_MS = 30_000;
 
 describe('fairness rules (CONTRACTS.md "Level rules"), every workout × mode × difficulty × duration × 40 seeds', () => {
-  it('first wave at 4 s or later, sorted, inside the round with time to judge the last one', () => {
-    for (const level of allLevels()) {
-      const { waves, config } = level;
-      expect(waves.length, label(level)).toBeGreaterThan(0);
-      expect(waves[0]!.t, label(level)).toBeGreaterThanOrEqual(CONTRACT.firstWave);
-      for (let i = 1; i < waves.length; i++) expect(waves[i]!.t).toBeGreaterThan(waves[i - 1]!.t);
-      const last = waves[waves.length - 1]!;
-      expect(last.t + holdOf(last) + T.END_MARGIN_SEC, label(level)).toBeLessThanOrEqual(
-        config.durationSec + EPS,
-      );
-    }
-  });
-
-  it('gaps: 1.8 s in the warm-up, never under 1.1 s, measured from the end of a hold', () => {
-    for (const level of allLevels()) {
-      const { waves, config } = level;
-      for (let i = 1; i < waves.length; i++) {
-        const prev = waves[i - 1]!;
-        const gap = waves[i]!.t - (prev.t + holdOf(prev));
-        expect(gap, label(level)).toBeGreaterThanOrEqual(CONTRACT.minGap - EPS);
-        if (waves[i]!.t < T.WARMUP_END * config.durationSec) {
-          expect(gap, label(level)).toBeGreaterThanOrEqual(CONTRACT.warmupGap - EPS);
+  it(
+    'first wave at 4 s or later, sorted, inside the round with time to judge the last one',
+    () => {
+      const problems: string[] = [];
+      for (const level of allLevels()) {
+        const { waves, config } = level;
+        if (waves.length === 0) {
+          problems.push(`${label(level)}: no waves`);
+          continue;
+        }
+        if (waves[0]!.t < CONTRACT.firstWave)
+          problems.push(`${label(level)}: first wave ${waves[0]!.t}`);
+        for (let i = 1; i < waves.length; i++) {
+          if (!(waves[i]!.t > waves[i - 1]!.t))
+            problems.push(`${label(level)}: not sorted at ${i}`);
+        }
+        const last = waves[waves.length - 1]!;
+        if (last.t + holdOf(last) + T.END_MARGIN_SEC > config.durationSec + EPS) {
+          problems.push(`${label(level)}: last wave ends too late`);
         }
       }
-    }
-  });
+      expect(problems).toEqual([]);
+    },
+    SWEEP_TIMEOUT_MS,
+  );
 
-  it('at least 1.5 s from the end of a beam to any following hurdle', () => {
-    for (const level of allLevels()) {
-      let beamEnd = -Infinity;
-      for (const w of level.waves) {
-        if (w.spawns.some((s) => s.kind === 'hurdle')) {
-          expect(w.t - beamEnd, label(level)).toBeGreaterThanOrEqual(CONTRACT.beamToHurdle - EPS);
-        }
-        if (w.spawns.some((s) => s.kind === 'beam')) beamEnd = w.t + holdOf(w);
-      }
-    }
-  });
-
-  it('a block always leaves exactly one free lane, at most one lane from the last free lane', () => {
-    for (const level of allLevels()) {
-      let lastFree: Lane = 0; // the player starts in the centre
-      let orbLanes: Lane[] = [];
-      for (const w of level.waves) {
-        for (const s of w.spawns) {
-          if (s.kind === 'orb') orbLanes.push(s.lanes[0]!);
-          if (s.kind !== 'block') continue;
-          const free = ([-1, 0, 1] as Lane[]).filter((l) => !s.lanes.includes(l));
-          expect(free, label(level)).toHaveLength(1);
-          expect(Math.abs(free[0]! - lastFree), label(level)).toBeLessThanOrEqual(1);
-          // Stricter than the contract: also reachable from any floor orb the player chased.
-          if (level.config.mode === 'floor') {
-            for (const o of orbLanes)
-              expect(Math.abs(free[0]! - o), label(level)).toBeLessThanOrEqual(1);
-          }
-          lastFree = free[0]!;
-          orbLanes = [];
-        }
-      }
-    }
-  });
-
-  it('treadmill has only crates and orbs; low impact has no hurdles', () => {
-    for (const level of allLevels()) {
-      const kinds = new Set(level.waves.flatMap((w) => w.spawns.map((s) => s.kind)));
-      if (level.config.mode === 'treadmill') {
-        for (const k of kinds) expect(['crate', 'orb'], label(level)).toContain(k);
-      }
-      if (level.config.lowImpact) expect(kinds.has('hurdle'), label(level)).toBe(false);
-    }
-  });
-
-  it('spawns are well formed: lanes, the move that clears them, holds only on beams and crates', () => {
-    const expected: Record<Exclude<ObstacleKind, 'orb'>, string> = {
-      block: 'sidestep',
-      hurdle: 'jump',
-      beam: 'squat',
-      crate: 'armsUp',
-    };
-    for (const level of allLevels()) {
-      for (const w of level.waves) {
-        expect(w.intensity).toBeGreaterThanOrEqual(0);
-        expect(w.intensity).toBeLessThanOrEqual(1);
-        expect(w.spawns.length).toBeGreaterThan(0);
-        for (const s of w.spawns) {
-          if (s.kind === 'orb') {
-            expect(s.lanes).toHaveLength(1);
-            const lane = s.lanes[0]!;
-            if (lane === -1) expect(s.requires).toBe('reachLeft');
-            if (lane === 1) expect(s.requires).toBe('reachRight');
-            if (lane === 0 && level.config.mode === 'treadmill') expect(s.requires).toBe('armsUp');
-          } else {
-            expect(s.requires).toBe(expected[s.kind]);
-            if (s.kind !== 'block') expect(s.lanes).toEqual([-1, 0, 1]);
-          }
-          if (s.holdSec !== undefined) {
-            expect(['beam', 'crate']).toContain(s.kind);
-            expect(s.holdSec).toBeGreaterThanOrEqual(T.HOLD_MIN_SEC);
-            expect(s.holdSec).toBeLessThanOrEqual(T.HOLD_MAX_SEC.atD1);
-            expect(w.t).toBeGreaterThanOrEqual(T.WARMUP_END * level.config.durationSec); // no holds in warm-up
+  it(
+    'gaps: 1.8 s in the warm-up, never under 1.1 s, measured from the end of a hold',
+    () => {
+      const problems: string[] = [];
+      for (const level of allLevels()) {
+        const { waves, config } = level;
+        for (let i = 1; i < waves.length; i++) {
+          const prev = waves[i - 1]!;
+          const gap = waves[i]!.t - (prev.t + holdOf(prev));
+          if (gap < CONTRACT.minGap - EPS) problems.push(`${label(level)}: gap ${gap} at ${i}`);
+          if (waves[i]!.t < T.WARMUP_END * config.durationSec && gap < CONTRACT.warmupGap - EPS) {
+            problems.push(`${label(level)}: warm-up gap ${gap} at ${i}`);
           }
         }
       }
-    }
-  });
+      expect(problems).toEqual([]);
+    },
+    SWEEP_TIMEOUT_MS,
+  );
+
+  it(
+    'at least 1.5 s from the end of a beam to any following hurdle',
+    () => {
+      const problems: string[] = [];
+      for (const level of allLevels()) {
+        let beamEnd = -Infinity;
+        for (const w of level.waves) {
+          if (
+            w.spawns.some((s) => s.kind === 'hurdle') &&
+            w.t - beamEnd < CONTRACT.beamToHurdle - EPS
+          ) {
+            problems.push(`${label(level)}: hurdle ${w.t - beamEnd} s after a beam`);
+          }
+          if (w.spawns.some((s) => s.kind === 'beam')) beamEnd = w.t + holdOf(w);
+        }
+      }
+      expect(problems).toEqual([]);
+    },
+    SWEEP_TIMEOUT_MS,
+  );
+
+  it(
+    'a block always leaves exactly one free lane, at most one lane from the last free lane',
+    () => {
+      const problems: string[] = [];
+      for (const level of allLevels()) {
+        let lastFree: Lane = 0; // the player starts in the centre
+        let orbLanes: Lane[] = [];
+        for (const w of level.waves) {
+          for (const s of w.spawns) {
+            if (s.kind === 'orb') orbLanes.push(s.lanes[0]!);
+            if (s.kind !== 'block') continue;
+            const free = ([-1, 0, 1] as Lane[]).filter((l) => !s.lanes.includes(l));
+            if (free.length !== 1) {
+              problems.push(`${label(level)}: block at ${w.t} leaves ${free.length} free lanes`);
+              continue;
+            }
+            if (Math.abs(free[0]! - lastFree) > 1)
+              problems.push(`${label(level)}: free lane jumps at ${w.t}`);
+            // Stricter than the contract: also reachable from any floor orb the player chased.
+            if (level.config.mode === 'floor' && orbLanes.some((o) => Math.abs(free[0]! - o) > 1)) {
+              problems.push(`${label(level)}: free lane two from an orb at ${w.t}`);
+            }
+            lastFree = free[0]!;
+            orbLanes = [];
+          }
+        }
+      }
+      expect(problems).toEqual([]);
+    },
+    SWEEP_TIMEOUT_MS,
+  );
+
+  it(
+    'treadmill has only crates and orbs; low impact has no hurdles',
+    () => {
+      const problems: string[] = [];
+      for (const level of allLevels()) {
+        for (const s of level.waves.flatMap((w) => w.spawns)) {
+          if (level.config.mode === 'treadmill' && s.kind !== 'crate' && s.kind !== 'orb') {
+            problems.push(`${label(level)}: ${s.kind} on the treadmill`);
+          }
+          if (level.config.lowImpact && s.kind === 'hurdle')
+            problems.push(`${label(level)}: hurdle in low impact`);
+        }
+      }
+      expect(problems).toEqual([]);
+    },
+    SWEEP_TIMEOUT_MS,
+  );
+
+  it(
+    'spawns are well formed: lanes, the move that clears them, holds only on beams and crates',
+    () => {
+      const expected: Record<Exclude<ObstacleKind, 'orb'>, string> = {
+        block: 'sidestep',
+        hurdle: 'jump',
+        beam: 'squat',
+        crate: 'armsUp',
+      };
+      const problems: string[] = [];
+      for (const level of allLevels()) {
+        const at = (w: Level['waves'][number], what: string) =>
+          problems.push(`${label(level)} @${w.t}: ${what}`);
+        for (const w of level.waves) {
+          if (w.intensity < 0 || w.intensity > 1) at(w, `intensity ${w.intensity}`);
+          if (w.spawns.length === 0) at(w, 'no spawns');
+          for (const s of w.spawns) {
+            if (s.kind === 'orb') {
+              const lane = s.lanes[0];
+              if (s.lanes.length !== 1) at(w, `orb with ${s.lanes.length} lanes`);
+              if (lane === -1 && s.requires !== 'reachLeft')
+                at(w, `left orb requires ${s.requires}`);
+              if (lane === 1 && s.requires !== 'reachRight')
+                at(w, `right orb requires ${s.requires}`);
+              if (lane === 0 && level.config.mode === 'treadmill' && s.requires !== 'armsUp') {
+                at(w, `centre treadmill orb requires ${s.requires}`);
+              }
+            } else {
+              if (s.requires !== expected[s.kind]) at(w, `${s.kind} requires ${s.requires}`);
+              if (s.kind !== 'block' && s.lanes.join() !== '-1,0,1')
+                at(w, `${s.kind} lanes ${s.lanes.join()}`);
+            }
+            if (s.holdSec !== undefined) {
+              if (s.kind !== 'beam' && s.kind !== 'crate') at(w, `hold on a ${s.kind}`);
+              if (s.holdSec < T.HOLD_MIN_SEC || s.holdSec > T.HOLD_MAX_SEC.atD1)
+                at(w, `hold ${s.holdSec}`);
+              if (w.t < T.WARMUP_END * level.config.durationSec) at(w, 'hold in the warm-up');
+            }
+          }
+        }
+      }
+      expect(problems).toEqual([]);
+    },
+    SWEEP_TIMEOUT_MS,
+  );
 });
 
 describe('config', () => {
