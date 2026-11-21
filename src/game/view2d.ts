@@ -5,7 +5,9 @@ import { countdownAt } from './intro';
 import { OUTCOME_LABEL, raceLabel, racePulse, type GhostOutcome, type GhostPose } from './ghost';
 import { GLYPH, paintGlyph } from './glyph';
 import type { Verdict } from './judge';
+import * as LK from './look';
 import { colorKeyFor } from './obstacles';
+import { endBannerBox, LABEL_ASPECT, raceBox, type PixelBox } from './overlay';
 import { createTrack } from './timeline';
 import * as T from './tuning';
 import type { GameView } from './view3d';
@@ -38,6 +40,7 @@ export function create2DView(
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   let gradeShown: Grade | null = null;
   let gradeT = Infinity;
+  const box: PixelBox = { cx: 0, cy: 0, h: 0 }; // reused by the screen-space plates
 
   const colorOf = (item: Item): string => {
     const v = verdicts.get(item);
@@ -98,12 +101,13 @@ export function create2DView(
           z: track.distanceAt(item.wave.t) - track.distanceAt(elapsed + lead[item.spawn.requires]),
         }))
         .filter(
-          ({ item, z }) => z < T.VIEW_DISTANCE && z > -4 && !isGone(item.spawn, verdicts.get(item)),
+          ({ item, z }) =>
+            z < T.VIEW_DISTANCE && z > -4 && !isGone(item.spawn, verdicts.get(item), z),
         )
         .sort((a, b) => b.z - a.z);
       for (const { item, z } of visible) drawObject(item, z);
 
-      // Runners: the ghost (if any) first, as a cyan outline behind the player.
+      // Runners: the ghost (if any) first, as a silver outline behind the player (as in 3D).
       const drawRunner = (m: Motion, pose: RunnerPose, isGhost: boolean): void => {
         const lift = stepMotion(m, pose, visDt);
         const size = RUNNER_SCALE * (isGhost ? T.GHOST_SCALE : 1);
@@ -113,15 +117,15 @@ export function create2DView(
         ctx.beginPath();
         ctx.roundRect(feet.x - r, top.y, r * 2, feet.y - top.y, r);
         if (isGhost) {
-          ctx.globalAlpha = T.GHOST_ACCENT_OPACITY;
-          ctx.strokeStyle = css(T.GHOST_ACCENT);
+          ctx.globalAlpha = LK.GHOST_ACCENT_OPACITY;
+          ctx.strokeStyle = css(LK.GHOST_ACCENT);
           ctx.lineWidth = r * 0.25;
           ctx.stroke();
         } else {
           ctx.fillStyle = '#d9e1ec';
           ctx.fill();
         }
-        ctx.strokeStyle = css(isGhost ? T.GHOST_ACCENT : T.COLOR_LIME);
+        ctx.strokeStyle = css(isGhost ? LK.GHOST_ACCENT : T.COLOR_LIME);
         ctx.lineWidth = r * 0.35;
         const shoulder = project(m.x, lift + 1.4 * m.crouch * size, 0).y;
         for (const [side, up] of [
@@ -147,25 +151,33 @@ export function create2DView(
         if (raceShown !== null) raceChangedT = 0; // not the first draw: the lead changed
         raceShown = race;
       }
-      if (race !== null) {
-        const { text, color } = raceLabel(race);
-        const pop = 1 + (reduceMotion ? 0 : racePulse(raceChangedT));
-        const base = Math.min(w * 0.26, h * 0.5);
-        const cy = h * 0.06 + base / 5.33 / 2; // the centre stays put while it pops
-        const cw = base * pop;
-        const ch = cw / 5.33;
-        ctx.fillStyle = 'rgba(7, 9, 13, 0.72)';
+      /** A plate with a word, at a box from overlay.ts (CSS pixels, so scaled by dpr here). */
+      const plate = (b: PixelBox, text: string, color: number): void => {
+        const ch = b.h * dpr;
+        if (!(ch >= 1)) return; // no room (a canvas without layout): roundRect throws below 0
+        const cw = ch / LABEL_ASPECT;
+        const cx = b.cx * dpr;
+        const cy = b.cy * dpr;
+        ctx.fillStyle = 'rgba(7, 9, 13, 0.75)';
         ctx.strokeStyle = css(color);
-        ctx.lineWidth = Math.max(2, ch * 0.05);
+        ctx.lineWidth = Math.max(2, ch * 0.045);
         ctx.beginPath();
-        ctx.roundRect((w - cw) / 2, cy - ch / 2, cw, ch, ch * 0.3);
+        ctx.roundRect(cx - cw / 2, cy - ch / 2, cw, ch, ch * 0.22);
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = css(color);
-        ctx.font = `italic 800 ${Math.round(ch * 0.55)}px system-ui, sans-serif`;
+        ctx.font = `italic 800 ${Math.round(ch * 0.56)}px system-ui, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(text, w / 2, cy + ch * 0.03);
+        ctx.fillText(text, cx, cy + ch * 0.03);
+      };
+      const cssW = w / dpr;
+      const cssH = h / dpr;
+      if (race !== null) {
+        // Bottom right, as in 3D: top centre sat on GameHud's progress bar and move cue.
+        const { text, color } = raceLabel(race);
+        const pop = 1 + (reduceMotion ? 0 : racePulse(raceChangedT));
+        plate(raceBox(cssW, cssH, pop, box), text, color);
       }
       // Countdown, timing grade, combo: the same words as in 3D, as plain text.
       const label = (s: string, color: number, x: number, y: number, size: number): void => {
@@ -200,23 +212,9 @@ export function create2DView(
         );
 
       if (outcome) {
+        // In the middle under GameHud's plates, as in 3D (it sat on the score plate).
         const { text, color } = OUTCOME_LABEL[outcome];
-        const bw = Math.min(w * 0.6, h * 1.1);
-        const bh = bw / 5.33;
-        const bx = (w - bw) / 2;
-        const by = h * 0.18;
-        ctx.fillStyle = 'rgba(7, 9, 13, 0.78)';
-        ctx.strokeStyle = css(color);
-        ctx.lineWidth = Math.max(2, bh * 0.04);
-        ctx.beginPath();
-        ctx.roundRect(bx, by, bw, bh, bh * 0.2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = css(color);
-        ctx.font = `italic 800 ${Math.round(bh * 0.55)}px system-ui, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(text, w / 2, by + bh / 2 + bh * 0.03);
+        plate(endBannerBox(cssW, cssH, 1, box), text, color);
       }
 
       function drawObject(item: Item, z: number): void {
@@ -256,9 +254,12 @@ export function create2DView(
           }
         }
         ctx!.globalAlpha = 1;
-        // The move icon, as in 3D (glyph.ts); a block's sits over its free lane.
+        // The move icon, as in 3D (glyph.ts); a block's sits over its free lane. As in 3D it
+        // goes once the object is cleared or past the runner: a block's icon over the free lane
+        // passed right over the runner who had just stepped into it.
         const glyph = GLYPH[spawn.kind];
-        if (glyph && spawn.kind !== 'orb') {
+        const v = verdicts.get(item);
+        if (glyph && spawn.kind !== 'orb' && v !== 'cleared' && z > -LK.ICON_HIDE_PAST) {
           const lane = spawn.kind === 'block' ? freeLane(spawn) : 0;
           const c = project(lane * T.LANE_WIDTH, T.ICON_HEIGHT[spawn.kind], z);
           const r = (T.ICON_SIZE / 2) * unit * c.s;
@@ -288,8 +289,12 @@ export function create2DView(
 const freeLane = (spawn: Spawn): number =>
   [-1, 0, 1].find((l) => !spawn.lanes.includes(l as -1 | 0 | 1)) ?? 0;
 
-/** Smashed crates and collected orbs disappear; everything else stays visible as it passes. */
-function isGone(spawn: Spawn, v: Verdict | undefined): boolean {
+/**
+ * Smashed crates and collected orbs disappear, and as in 3D a hit object or missed orb goes
+ * once it is MISSED_HIDE_PAST behind the runner (`z` is its distance ahead).
+ */
+function isGone(spawn: Spawn, v: Verdict | undefined, z: number): boolean {
+  if ((v === 'hit' || v === 'missed') && z < -LK.MISSED_HIDE_PAST) return true;
   return (spawn.kind === 'crate' && v === 'cleared') || (spawn.kind === 'orb' && v === 'collected');
 }
 

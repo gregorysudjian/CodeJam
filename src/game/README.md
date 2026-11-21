@@ -222,6 +222,19 @@ Newest first.
 - **Edge cases pinned as tests (`core.test.ts`):** a hold across a pause, tracking loss or a K switch (the new input has the 0.3 s grace), a paused core never finishes (END ROUND saves nothing), and a round that ends mid-hold gives no verdict.
 - **Checked in Chrome on this branch:** a scripted round with one of each failure gets the right cause on every row; rounds unchanged (16/7/0, idle 13 hits, 2D); ghost line; graphics carry-over over three rounds; the held beam ends at the runner as it is cleared.
 - **Checked after merging #45 and #46 (Sat ~5 PM, Chrome 157 on the demo Mac, M4 Pro, built-in display at 1512×945):** a scripted perfect keyboard round of the demo level on `?demo=1&store=local&music=off` scored 4,750, 100 %, best streak 23, 0 hits; average 120 fps, slowest 5 % of frames 10 ms, graphics quality 0 throughout; the round saved; no console errors. At 5, 10 and 20 COMBO the banner (bottom centre) and the VS GHOST chip (bottom right) stay clear of the HUD cue. Not checked: the camera, an external screen.
+- **Judge edge cases in the browser (Sat ~6 PM, main at #47, same Mac, `?store=local&music=off`, keyboard):** every case ended in a sensible result with no console errors, at 120 fps.
+
+  | Case | Result |
+  | --- | --- |
+  | Low impact, scripted perfect: Legs, Arms, Shoulders, Full body (floor, random seeds) and the demo level | 0 hits, saved. Low impact is floor only (the select screen ignores it on the treadmill, which has no jumps). |
+  | Treadmill, scripted perfect: Arms, Shoulders, Full body | 0 hits, saved |
+  | Stands still the whole round (demo level) | 300 points, 19 %, 13 hits and 7 missed orbs, saved; 3 blocks clear by themselves (their free lane is the middle one, where an idle player stands) |
+  | Mashes keys (about 30 presses a second) | 2,550 points, 88 %, saved. Only possible on the keyboard; a body can't do it. Not changed: it would be a scoring change. |
+  | Esc 9 times at 10 s, then once more | Paused after the 9th, running after the 10th; still 0 hits, saved |
+  | K at 15 s (to a camera that sees nobody), K again 4 s later | The round paused for calibration, came back on the keyboard and finished 100 %, saved. Side effect in `src/app`: cancelling the calibration shows "Recalibration failed. Press K for the keyboard." for a few seconds although the player is already on the keyboard. |
+  | END ROUND from the pause screen at 0:01 | Back to the select screen, nothing saved |
+
+- **Cold start (production build, `vite preview`, cache cleared, new player each time):** landing 318 KB (228 KB JS), ready in 0.11 s locally and 0.36 s at 10 Mbps. Nothing more loads after the select screen (520 KB in all): the game chunk is fetched there. "START THE ROUND" to the first game frame: 0.39 s, with or without the 10 Mbps limit. A new player's first START shows the 15 s "Try each move" first (`src/app`, Esc skips it; `docs/OPERATOR.md` says so). Camera play adds the pose WASM and model (about 9 MB, measured in `docs/QA.md`); not measured here.
 
 ### Game feel pass (`p4-game-feel`, Sat afternoon)
 Judging, events and `src/contracts` are unchanged: a scripted perfect run of the demo level still gives 16 cleared, 7 collected, 0 hits, with the camera leads or without.
