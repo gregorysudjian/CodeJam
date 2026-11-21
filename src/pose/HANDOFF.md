@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat 06:55 (overnight autonomous session). Read this first in a new conversation._
+_Last refresh: Sat 07:00 (overnight autonomous session). Read this first in a new conversation._
 
 ## 1. Context
 
@@ -22,7 +22,7 @@ _Last refresh: Sat 06:55 (overnight autonomous session). Read this first in a ne
   - Nothing is half-written in code. Not done: "raise both arms to start" (app-side, NEEDS.md 5),
     station setup notes (Phase 4), real-camera tuning (needs A).
 - **Last commit:** see `git log -1`.
-- **`npm run check`:** passes (176 tests). Use its exit code; a `| grep` can hide a failure.
+- **`npm run check`:** passes (177 tests). Use its exit code; a `| grep` can hide a failure.
 - **Integration:** verified against `origin/main` PR #19 in a scratch worktree (never merged): `main`'s
   check passes with this `src/pose` (236 tests incl. the DevPose snippet from NEEDS.md 1), the real
   calibration screen and `?dev=pose` work with a stubbed camera, StrictMode leaves one camera track.
@@ -57,7 +57,7 @@ engine.ts      getState() (game polls), onMove listeners, drawSkeleton (skeleton
 
 ## 4. Decisions
 
-All in `src/pose/DECISIONS.md` (26, with reasons). The big ones: lane 0.55/0.3 W; arm up 0.4 T above
+All in `src/pose/DECISIONS.md` (27, with reasons). The big ones: lane 0.55/0.3 W; arm up 0.4 T above
 the nose, "down" back near the nose (press reps); arms ignored mid-jump; squat rep after 250 ms down,
 and a raised jump line (0.45 T) for 0.4 s after a squat instead of a block (crouch-then-jump works);
 jump speed over 150 ms > 1.0 T/s; tracking lost when hips leave the frame; baselines drift only when
