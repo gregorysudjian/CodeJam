@@ -28,7 +28,8 @@ mountPoseDebug(document.body);
 | `camera.ts` | `getUserMedia` at 640×480, front camera |
 | `landmarker.ts` | Creates the Pose Landmarker from `public/`, GPU first, CPU fallback |
 | `skeleton.ts` | `toPlayerX` (the only `1 - x` in the app) and `drawPose` |
-| `debug.ts` | The `?dev=pose` view |
+| `debug.ts` | The `?dev=pose` view, with the clip recorder |
+| `recording.ts` | Clip format and JSON download for test fixtures |
 | `index.ts` | `createPoseInput()` — still the scaffold stub; real version is Phase 1 |
 
 ## Assets (served from `public/`, never a CDN)
@@ -42,7 +43,10 @@ mountPoseDebug(document.body);
 
 - Works: `npm run check` passes. In headless Chrome the model and WASM load from `public/` (GPU delegate,
   about 1.2 s) and `detectForVideo` runs; the cleanup removes everything.
-- Not tested yet: the real webcam, the skeleton on a real body and real FPS (needs a person in front of a
-  camera; the headless browser uses a software GPU, so its timing means nothing).
+- Tested on A's laptop (2026-11-21): 25.9 FPS, GPU delegate, 640×480; skeleton lines up, mirroring is
+  correct (right hand up shows on the right of the screen), full body tracked. FPS is likely capped by the
+  webcam in low light, not the model.
+- Recorder: buttons at the bottom of the debug view record 8 s of raw landmarks after a 3 s countdown and
+  download `pose-<label>-<time>.json`. Fixtures go in `src/pose/fixtures/`.
 - Next (Phase 1): `createPoseInput()` with calibration, smoothing, lane hysteresis, jump, squat, arms, tracking
   flag, move events and a debug overlay with sliders.

@@ -20,3 +20,8 @@ export const DRAW_POINT_RADIUS = 4;
 
 /** FPS counter window. */
 export const FPS_WINDOW_MS = 1000;
+
+/** Debug recorder: countdown before a clip, clip length, decimals kept in the JSON. */
+export const RECORD_COUNTDOWN_MS = 3000;
+export const RECORD_DURATION_MS = 8000;
+export const RECORD_DECIMALS = 4;

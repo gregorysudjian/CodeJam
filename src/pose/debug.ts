@@ -3,8 +3,12 @@
 import type { PoseLandmarker } from '@mediapipe/tasks-vision';
 import { closeCamera, openCamera } from './camera';
 import { createLandmarker } from './landmarker';
+import { downloadRecording, toRecordedPose, type RecordedFrame } from './recording';
 import { drawPose } from './skeleton';
-import { FPS_WINDOW_MS } from './tuning';
+import { FPS_WINDOW_MS, RECORD_COUNTDOWN_MS, RECORD_DURATION_MS } from './tuning';
+
+/** Clips to record for the detector's test fixtures. */
+const CLIP_LABELS = ['standing', 'sidestep', 'jump', 'squat', 'armsUp', 'reach', 'leaveFrame'];
 
 /** Mounts the debug view into `container`. Returns a cleanup that releases everything. */
 export function mountPoseDebug(container: HTMLElement): () => void {
@@ -24,7 +28,26 @@ export function mountPoseDebug(container: HTMLElement): () => void {
     'position:absolute;top:8px;left:8px;padding:4px 8px;background:rgba(0,0,0,0.6);border-radius:4px;white-space:pre';
   hud.textContent = 'Starting camera…';
 
-  root.append(video, canvas, hud);
+  // Recorder: pick a clip, get a countdown, then the landmarks download as JSON.
+  let rec: { label: string; startAt: number; frames: RecordedFrame[] } | null = null;
+  const bar = document.createElement('div');
+  bar.style.cssText =
+    'position:absolute;left:8px;right:8px;bottom:8px;display:flex;flex-wrap:wrap;gap:6px';
+  const buttons = CLIP_LABELS.map((label) => {
+    const b = document.createElement('button');
+    b.textContent = `● ${label}`;
+    b.style.cssText =
+      'padding:4px 10px;border:0;border-radius:4px;background:rgba(0,0,0,0.7);color:#fff;font:inherit;cursor:pointer';
+    b.onclick = () => {
+      if (rec) return;
+      rec = { label, startAt: performance.now() + RECORD_COUNTDOWN_MS, frames: [] };
+      buttons.forEach((x) => (x.disabled = true));
+    };
+    return b;
+  });
+  bar.append(...buttons);
+
+  root.append(video, canvas, hud, bar);
   container.append(root);
 
   let disposed = false;
@@ -57,9 +80,29 @@ export function mountPoseDebug(container: HTMLElement): () => void {
       frames = 0;
       windowStart = now;
     }
+    let recLine = '';
+    if (rec) {
+      const elapsed = now - rec.startAt;
+      if (elapsed < 0) {
+        recLine = `\nGet ready: ${rec.label} in ${Math.ceil(-elapsed / 1000)}…`;
+      } else if (elapsed < RECORD_DURATION_MS) {
+        rec.frames.push({ t: Math.round(elapsed), pose: toRecordedPose(pose) });
+        recLine = `\n● REC ${rec.label} ${((RECORD_DURATION_MS - elapsed) / 1000).toFixed(1)} s`;
+      } else {
+        downloadRecording({
+          label: rec.label,
+          video: { width: video.videoWidth, height: video.videoHeight },
+          frames: rec.frames,
+        });
+        recLine = `\nSaved ${rec.label} (${rec.frames.length} frames)`;
+        rec = null;
+        buttons.forEach((x) => (x.disabled = false));
+      }
+    }
     hud.textContent =
       `FPS ${fps.toFixed(1)}  ${delegate}\n` +
-      `${video.videoWidth}×${video.videoHeight}  ${pose ? 'body found' : 'no body'}`;
+      `${video.videoWidth}×${video.videoHeight}  ${pose ? 'body found' : 'no body'}` +
+      recLine;
 
     frameHandle = video.requestVideoFrameCallback(onFrame);
   };
