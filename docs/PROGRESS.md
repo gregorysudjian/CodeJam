@@ -9,7 +9,8 @@ _Updated after every PR._
 **Merged and live**
 - #2 UI (Neon Arena screens) · #3 backend (schema, store with offline queue, coach endpoint) · #4 wiring (all 8 screens on real data)
 - #5 `signOut`: "New guest" now starts a new player
-- #6 Demo preset: `?demo=1` preselects the fixed 45 s demo level (seed 189), with a low-impact version via the toggle
+- #6 demo preset: **reverted in #7**. `src/workout` is Patrick's, and his `p1-workout` already has the real generator and `?demo=1` (seed 594)
+- #8 `signOut` never hangs on bad wifi: the queue wait is capped at 2 s, and sign-out no longer makes a network call
 
 **How it was tested:** `npm run check` on every PR. Click-throughs by keyboard in Chrome against live Supabase, plus `?store=local`. Security rules tested with two anonymous users. Offline save tested with the network cut. `/api/coach` tested on a Vercel preview.
 
@@ -17,13 +18,12 @@ _Updated after every PR._
 
 **Open problems, ranked by demo risk**
 1. Body control isn't on `main` (Abdo's `createPoseInput`), and the 3D game isn't on `main` (Patrick's `p0-game`). No PRs open yet.
-2. No error screens for camera denied, no camera, or offline (backlog item 3, next).
-3. The demo seed belongs to the current placeholder generator. If the generator changes (item 8 or Patrick), the seed must be searched again (see `src/workout/demo.test.ts`).
-4. An offline save waits up to about 10 s before falling back. The results screen already shows meanwhile, so only the coach card and rank arrive late.
+2. No error screens for camera denied, no camera, or offline (3c, after 3b).
+3. An offline save waits up to about 10 s before falling back. The results screen already shows meanwhile, so only the coach card and rank arrive late.
 
 **Requests:** none open (see below).
 
-**Next 3:** error states → kiosk leaderboard (`?kiosk=1`) → panic keys check.
+**Next 3:** 1.5 s delay before results (3b) → error states (3c) → kiosk leaderboard (3d).
 
 ## Log
 
@@ -33,11 +33,14 @@ _Updated after every PR._
 - **App:** "New guest" (and "Play as guest" when a player is saved) signs out and resets per-player state before the profile step. "Continue as …" keeps the player.
 - **Tested:** the new unit test passes (42 total). In Chrome against live Supabase: Alpha → reload → "Continue as Alpha" → New guest → fresh guest name → Beta → reload → "Continue as Beta". The database holds exactly two players. The same flow works with `?store=local`. A fresh player gets the empty leaderboard state ("Be the first on the board") with no console errors.
 
-### #6 Demo preset
-- `DEMO_CONFIG` lives in `src/workout/tuning.ts` (Full body, floor, 45 s, seed 189), exported from `@/workout`. The generator's inline numbers moved into `tuning.ts` too, with no behaviour change.
-- Seed 189 was found by searching for a level that shows every move at least twice, opens and closes on three easy waves (block, crate or orb) so the round ends on a streak, and never puts a hurdle right after a beam. Its low-impact version (same seed, no hurdles) shows every other move at least twice. `src/workout/demo.test.ts` checks all of this.
-- **App:** with `?demo=1`, the workout screen starts on the demo level. "Play again" keeps the seed and otherwise still gives a fresh level. DEMO.md explains how to use it.
-- **Tested:** 46 tests pass. In Chrome with `?demo=1&store=local`: Enter → S → Enter starts the demo round. Played it twice and both saved sessions have seed 189. No console errors.
+### #7 Revert of #6 (demo preset) and doc fixes
+- #6 put a demo preset into `src/workout`, which is Patrick's folder. It conflicted with his `p1-workout` (`index.ts`, add/add on `tuning.ts`). Reverted. After the revert, `p1-workout` merges cleanly with `main` (checked with `git merge-tree`). His branch provides `?demo=1` without app changes.
+- AGENTS.md: Patrick owns `src/game`, `src/input` and `src/workout`; Greg owns `docs/`. CONTRACTS.md: crates follow the hold rule too ("both arms up for the whole `holdSec` if set, with 0.3 s of grace").
+
+### #8 signOut on bad wifi (3a)
+- The wait for sending queued sessions is capped at `SIGNOUT_FLUSH_TIMEOUT_MS` (2 s, in `src/data/tuning.ts`). Sessions that miss the cap are dropped with the guest, because they can't move to the next player.
+- **Found while testing:** `supabase.auth.signOut({ scope: 'local' })` still calls the server's logout endpoint with no timeout and holds the auth lock meanwhile, so on bad wifi "New guest", and the next guest's sign-in waiting on that lock, could hang for minutes. Sign-out now removes the stored session directly (key `sb-<ref>-auth-token`, set explicitly in the client). That needs no network, and anonymous guests lose nothing by skipping the server-side logout.
+- **Tested:** `src/data/supabase.test.ts` uses a stand-in fetch that never answers: `signOut` returns in about 2 s and clears the session, profile, cache and queue. With a fetch that answers, it sends the queued round first and doesn't wait for the cap. In Chrome against live Supabase: New guest → profile in about 1 s, and the database held exactly two players. With the network cut: New guest → profile in 0.2 s (local store).
 
 ## Requests
 

@@ -30,9 +30,9 @@ Before the pitch, the Player's account should already hold a few real sessions f
 
 ## The demo level
 
-- Use the 45-second preset with a fixed `seed`, so the round is the same every time and the Player knows it. **Open the app with `?demo=1`** (for example `https://codejam-jet.vercel.app/?demo=1`): the workout screen starts on the demo level (Full body, floor, 45 s, seed 189 in `src/workout/tuning.ts`), so Enter starts it, and "Play again" replays the same level.
+- Use the 45-second preset with a fixed `seed`, so the round is the same every time and the Player knows it.
 - It should show each move at least twice, end on a streak, and avoid the hardest combos.
-- For a judge's turn, use the same preset with the low-impact toggle offered up front: switch on "Low impact" on the workout screen. It keeps the seed and drops the hurdles, and still shows every other move at least twice.
+- For a judge's turn, use the same preset with the low-impact toggle offered up front.
 
 ## Fallback ladder
 

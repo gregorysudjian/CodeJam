@@ -23,7 +23,12 @@ import {
   type ProfileRow,
   type SessionRow,
 } from './mapping';
-import { COACH_CLIENT_TIMEOUT_MS, DEFAULT_WEEKLY_GOAL_MIN, SUPABASE_TIMEOUT_MS } from './tuning';
+import {
+  COACH_CLIENT_TIMEOUT_MS,
+  DEFAULT_WEEKLY_GOAL_MIN,
+  SIGNOUT_FLUSH_TIMEOUT_MS,
+  SUPABASE_TIMEOUT_MS,
+} from './tuning';
 
 const KEYS = {
   queue: 'codejam.sb.queue', // sessions not yet on the server
@@ -46,9 +51,20 @@ export function createSupabaseStore(
   url: string,
   anonKey: string,
   kv: KeyValue | null = browserStorage(),
+  /** Test hooks only: a stand-in fetch and auth storage. The app never passes these. */
+  testing?: { fetch?: typeof fetch; authStorage?: KeyValue },
 ): DataStore {
+  // Where supabase-js keeps the guest's session: its default key is sb-<project ref>-auth-token.
+  const authStorage = testing?.authStorage ?? browserStorage();
+  const authStorageKey = `sb-${new URL(url).hostname.split('.')[0]}-auth-token`;
   const sb: SupabaseClient = createClient(url, anonKey, {
-    auth: { persistSession: true, autoRefreshToken: true },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: !testing,
+      storageKey: authStorageKey,
+      ...(testing?.authStorage ? { storage: testing.authStorage } : {}),
+    },
+    ...(testing?.fetch ? { global: { fetch: testing.fetch } } : {}),
   });
 
   const queue = () => readJson<SavedSession[]>(kv, KEYS.queue, []);
@@ -272,15 +288,23 @@ export function createSupabaseStore(
     // Never rejects. Sends queued sessions first (they belong to the guest who is leaving), then
     // signs out locally, which needs no network, and forgets everything cached for that guest.
     async signOut() {
-      await flush();
-      try {
-        await sb.auth.signOut({ scope: 'local' });
-      } catch {
-        // Session storage already gone; nothing to sign out of.
-      }
-      for (const key of [KEYS.profile, KEYS.sessions, KEYS.queue]) {
+      // On bad wifi the flush can hang; never make "New guest" wait more than a moment for it.
+      // Sessions that did not make it are dropped with the guest (they cannot move to the next one).
+      await Promise.race([flush(), new Promise((r) => setTimeout(r, SIGNOUT_FLUSH_TIMEOUT_MS))]);
+      // Not sb.auth.signOut(): even with scope 'local' it calls the server's logout endpoint with
+      // no timeout and holds the auth lock meanwhile, so on bad wifi "New guest" (and the next
+      // sign-in, waiting on that lock) could hang for minutes. Removing the stored session signs
+      // the guest out on this device with no network; anonymous guests lose nothing by skipping
+      // the server-side logout. getSession() reads this storage, so the next signInGuest() starts
+      // a new user.
+      for (const [storage, key] of [
+        [authStorage, authStorageKey],
+        [kv, KEYS.profile],
+        [kv, KEYS.sessions],
+        [kv, KEYS.queue],
+      ] as const) {
         try {
-          kv?.removeItem(key);
+          storage?.removeItem(key);
         } catch {
           // Storage blocked.
         }

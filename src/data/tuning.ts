@@ -2,6 +2,8 @@
 
 /** The client gives up on /api/coach after this long and uses the rule-based coach. */
 export const COACH_CLIENT_TIMEOUT_MS = 8000;
+/** signOut waits at most this long to send queued sessions before signing out anyway (bad wifi). */
+export const SIGNOUT_FLUSH_TIMEOUT_MS = 2000;
 /** A Supabase call slower than this counts as offline (the session is queued). */
 export const SUPABASE_TIMEOUT_MS = 5000;
 
