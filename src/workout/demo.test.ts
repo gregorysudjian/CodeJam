@@ -23,6 +23,11 @@ export function demoProblems(level: Level): string[] {
     if (k === 'beam' && kinds[i + 1] === 'hurdle')
       problems.push(`hurdle right after beam at wave ${i}`);
   });
+  const waves = level.waves;
+  for (const w of [...waves.slice(0, EASY_EDGE), ...waves.slice(-EASY_EDGE)]) {
+    if (w.spawns.some((s) => s.holdSec))
+      problems.push(`held object at ${w.t} s, near the start or end`);
+  }
   return problems;
 }
 
@@ -44,6 +49,15 @@ describe('demo preset', () => {
     const level = generateLevel({ ...DEMO_CONFIG, lowImpact: true });
     expect(level.waves.flatMap((w) => w.spawns).some((s) => s.kind === 'hurdle')).toBe(false);
     expect(demoProblems(level)).toEqual([]);
+  });
+
+  it('the low-impact version is gentle for judges playing cold: no holds, squats as in the normal one', () => {
+    const squats = (lowImpact: boolean) =>
+      generateLevel({ ...DEMO_CONFIG, lowImpact })
+        .waves.flatMap((w) => w.spawns)
+        .filter((s) => s.requires === 'squat');
+    expect(squats(true).some((s) => s.holdSec)).toBe(false);
+    expect(squats(true).length).toBeLessThanOrEqual(squats(false).length + 1);
   });
 });
 

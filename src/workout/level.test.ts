@@ -160,7 +160,7 @@ describe('fairness rules (CONTRACTS.md "Level rules"), every workout × mode × 
   );
 
   it(
-    'spawns are well formed: lanes, the move that clears them, holds only on beams and crates',
+    'spawns are well formed: lanes, the move that clears them, holds only on beams and crates and never in the warm-up or the cool-down',
     () => {
       const expected: Record<Exclude<ObstacleKind, 'orb'>, string> = {
         block: 'sidestep',
@@ -196,6 +196,7 @@ describe('fairness rules (CONTRACTS.md "Level rules"), every workout × mode × 
               if (s.holdSec < T.HOLD_MIN_SEC || s.holdSec > T.HOLD_MAX_SEC.atD1)
                 at(w, `hold ${s.holdSec}`);
               if (w.t < T.WARMUP_END * level.config.durationSec) at(w, 'hold in the warm-up');
+              if (w.t >= T.PEAK_END * level.config.durationSec) at(w, 'hold in the cool-down');
             }
           }
         }
@@ -279,6 +280,40 @@ describe('workout character', () => {
         }
       }
     }
+  });
+
+  it("low impact gives the hurdles' share to sidesteps and reaches, so squats stay as frequent", () => {
+    const mix = (lowImpact: boolean, mode: PlayMode = 'floor') =>
+      Object.fromEntries(
+        mixFor(completeConfig({ workout: 'fullBody', mode, durationSec: 45, lowImpact, seed: 1 })),
+      );
+    const lowFull = mix(true);
+    expect(Object.keys(lowFull).sort()).toEqual(['beam', 'block', 'crate', 'orb']);
+    for (const [kind, share] of Object.entries({ block: 0.3, beam: 0.2, crate: 0.2, orb: 0.3 }))
+      expect(lowFull[kind], kind).toBeCloseTo(share, 10);
+    expect(mix(true, 'treadmill')).toEqual(mix(false, 'treadmill')); // no hurdles there anyway
+    // In generated levels too: the squat share stays, blocks and orbs take the hurdles' place.
+    const share = (lowImpact: boolean, kind: ObstacleKind) => {
+      let n = 0;
+      let total = 0;
+      for (const seed of SEEDS) {
+        const level = generateLevel({
+          workout: 'fullBody',
+          mode: 'floor',
+          durationSec: 180,
+          lowImpact,
+          seed,
+        });
+        for (const w of level.waves) {
+          total++;
+          if (w.spawns[0]!.kind === kind) n++;
+        }
+      }
+      return n / total;
+    };
+    expect(share(true, 'beam')).toBeCloseTo(share(false, 'beam'), 1);
+    expect(share(true, 'block')).toBeGreaterThan(share(false, 'block') + 0.05);
+    expect(share(true, 'orb')).toBeGreaterThan(share(false, 'orb') + 0.05);
   });
 
   it('legs gets long squat holds, shoulders gets long overhead holds', () => {

@@ -12,6 +12,12 @@ export const MIX: Record<WorkoutId, Record<ObstacleKind, number>> = {
   shoulders: { block: 0.1, hurdle: 0.05, beam: 0.05, crate: 0.45, orb: 0.35 },
   fullBody: { block: 0.2, hurdle: 0.2, beam: 0.2, crate: 0.2, orb: 0.2 },
 };
+/**
+ * Low impact (no jumps, for judges in street clothes): the hurdles' share goes to the gentle
+ * moves, sidestep blocks and reach orbs, in these parts. Spread over every kind, it made squat
+ * beams more frequent than in the normal level (the low-impact demo had 5 squats instead of 3).
+ */
+export const LOW_IMPACT_SHARE: Partial<Record<ObstacleKind, number>> = { block: 0.5, orb: 0.5 };
 
 /* ── Round curve: warm-up, build, peak, cool-down ── */
 export const WARMUP_END = 0.2; // fraction of the round
