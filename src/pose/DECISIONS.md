@@ -70,3 +70,6 @@ or the named file.
     rep event waits. Crouches last 0.13–0.31 s below the line; A's squats 0.8–2.6 s, and squats
     sped up 4× still count. Standing up onto the toes rises ≤ ~0.25 T; real jumps 0.55–0.73 T.
     Cost: a jump out of a deep crouch registers ~0.17 s later (normal jumps are unchanged).
+26. **Arm "up" line raised from 0.3 T to 0.4 T above the nose,** so hands resting on top of the head
+    (wrists ~0.25–0.3 T above the nose, common between sets) are not `armsUp`. A's real raises peak at
+    0.65–0.75 T in every clip, so a lower raise (0.5 T) still counts. Unverified on a real camera.

@@ -88,7 +88,8 @@ README "How to use it". Stand at playing distance (feet in view).
    back… each lane change counts), then read the tally; repeat for jump, squat, both arms up, left
    arm only, right arm only. Expect 10/10 each, nothing counted under the other moves. With the
    overlay on, the coloured lines show the lane, squat, jump and arm-up thresholds on the video.
-4. **No false moves:** stand still 20 s, shuffle a little, scratch your head. Expect nothing.
+4. **No false moves:** stand still 20 s, shuffle a little, scratch your head, rest both hands on top
+   of your head. Expect nothing. (If arm raises are missed instead, lower `ARM_UP_ABOVE_NOSE_T`.)
 5. **Squat then stand up fast onto your toes:** expect `squat` only, no `jump`. Then **crouch deep
    and jump**: expect `jump` (and no `squat` unless you paused at the bottom). Then **10 fast squats**
    (no pause): expect 10.

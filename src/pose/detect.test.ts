@@ -208,6 +208,24 @@ describe('arms', () => {
     expect(det.state.leftArmUp && det.state.rightArmUp).toBe(true); // the state still shows both up
   });
 
+  test('hands resting on top of the head (wrists ~0.3 T above the nose) are not arms up', () => {
+    const det = standingDetector();
+    const resting = pose();
+    resting[15] = { ...resting[15], y: 0.41 - 0.3 * T };
+    resting[16] = { ...resting[16], y: 0.41 - 0.3 * T };
+    const r = run(det, resting, 60, 0); // 2 s
+    expect(r.events).toEqual([]);
+    expect(det.state.leftArmUp || det.state.rightArmUp).toBe(false);
+  });
+
+  test('a lower arm raise (0.5 T above the nose, a less flexible player) still counts', () => {
+    const det = standingDetector();
+    const raised = pose();
+    raised[15] = { ...raised[15], y: 0.41 - 0.5 * T };
+    raised[16] = { ...raised[16], y: 0.41 - 0.5 * T };
+    expect(types(run(det, raised, 10, 0).events)).toEqual(['armsUp']);
+  });
+
   test('one arm held alone is a reach on that side; lowering it re-arms', () => {
     const det = standingDetector();
     let r = run(det, pose({ left: 'up' }), 15, 0);

@@ -109,7 +109,7 @@ export const DETECTION_DEFAULTS = Object.freeze({
   SQUAT_CONFIRM_MS: 250,
 
   /** Arms: wrist height above the nose, in T (contract: up above nose, down below shoulder). */
-  ARM_UP_ABOVE_NOSE_T: 0.3,
+  ARM_UP_ABOVE_NOSE_T: 0.4,
   ARM_DOWN_ABOVE_NOSE_T: 0.05,
   /** One arm up must stay alone this long to count as a reach, not the start of armsUp. */
   ARM_SETTLE_MS: 250,
