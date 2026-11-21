@@ -4,6 +4,49 @@ Findings log. Every hole has its reproduction (tokens shown as placeholders) and
 Re-run the checks with `supabase/tests/rls-harness.mjs` (local Postgres, no network) and
 `supabase/tests/live-probes.mjs` (the live project, creates `QA-` guests).
 
+## Sunday cleanup: test players (Greg's Claude runs it after Greg checks the list)
+
+Test players are every profile named `QA-…` (any case: `ilike`) plus one stray guest of mine that
+kept its default name (`Guest-NNNN`, id starting `17c6592d`). Run in the Supabase SQL editor.
+
+**1. List** (read only). Show Greg this list before step 2:
+
+```sql
+select p.id, p.display_name, p.created_at,
+       count(s.id) as sessions, coalesce(max(s.score), 0) as best_score
+from public.profiles p
+left join public.sessions s on s.user_id = p.id
+where p.display_name ilike 'QA-%'
+   or (p.id::text like '17c6592d%' and p.display_name like 'Guest-%')
+group by p.id, p.display_name, p.created_at
+order by p.created_at;
+```
+
+**2. Delete.** Same `where`, so it deletes exactly the rows listed; sessions go with their profile
+(`on delete cascade`). The SQL editor runs the whole block at once: run it first ending in
+`rollback;` and check that "DELETE n" matches the list and both counts are 0, then run it again
+ending in `commit;`.
+
+```sql
+begin;
+delete from public.profiles p
+where p.display_name ilike 'QA-%'
+   or (p.id::text like '17c6592d%' and p.display_name like 'Guest-%');
+select count(*) as qa_left from public.profiles
+  where display_name ilike 'QA-%' or (id::text like '17c6592d%' and display_name like 'Guest-%');
+select count(*) as qa_on_board from public.leaderboard where display_name ilike 'QA-%';
+rollback;  -- then commit;
+```
+
+Tested on a local Postgres (PGlite) with all migrations and a mix of players: it removes the
+`QA-` players (any case) and the stray guest with their rounds, and keeps a real player whose id
+also starts `17c6592d`, a real `Guest-` visitor and the kiosk's `Leaderboard` users. The board
+afterwards shows only the real players.
+
+Left on purpose: the anonymous `auth.users` rows behind those profiles (no name, no rounds, not on
+any board) and the kiosk's `Leaderboard` profiles (no rounds; count them with
+`select count(*) from public.profiles where display_name = 'Leaderboard';`).
+
 ## Leaderboard cheating (Saturday 6 PM)
 
 **Setup a visitor has:** the anon key (public, in the bundle) and a guest token from
