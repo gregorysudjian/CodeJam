@@ -1,24 +1,18 @@
 # Progress (Greg: D + C)
 
-## Status (Saturday about 6:00 PM)
+## Status (Saturday about 7:45 PM)
 
-**On `main`:** everything from the 4:30 PM status, plus the leaderboard per round length (#45), the p6-look pass (#46: ghost restyle, banners bottom-centre and race chip bottom-right, sound mix and limiter), the p5-game PR (#47: camera-session paste lines and hit table, fairer workouts, hold edge cases; demo level pinned and unchanged), and this batch (#48: QA fixes Q14, Q17, A3, abdo-1's station card and self-review, the helper's docs, shots, sweep script and pitch-claim tests). Demo on Patrick's Mac: `npm run dev`, `http://localhost:5173/?demo=1` (DEMO.md). Coach: rule-based.
+**On `main` (3f213f4):** everything from the 6 PM status, plus tonight's merges #49–#67: Abdo's drift fix and its walking-in guard, the lag study (decided: no change), Codex pose fixes (camera start-up, lost GPU context), the p6-look finish, readability and 2D fixes, the p5-game edge cases and `src/game/e2e/run.mjs`, the results screen at 1280×720, the leaderboard locked down (migration 0004, applied), the device notice for phones and Safari, the busy notice when sign-in is refused, QR codes pointing to the live site from localhost. 1,334 tests. Demo: `npm run dev`, `http://localhost:5173/?demo=1` on Patrick's Mac.
 
-**Who is doing what**
-- Patrick's Mac (`p5-game`): the camera session (paste lines, hit table, X, grades, music, FPS), a follow-up PR, then ghost rehearsals at `localhost:5173/?demo=1` in normal Chrome. Meanwhile: judge edge cases, cold-start timing.
-- Patrick's laptop 2 (`p6-look`): look and sound. The deferred items and the 2D fixes, now that p5-game is merged; readability from the mark, slow laptops, sound states.
-- Patrick's laptop 3 (Codex, `p7-robust`): game robustness: 30-round soak, projector events, keyboard edge cases (`src/input`), level invariants.
-- Abdo (`abdo-1`): the real-camera check in the app, X near-miss clips, on call for the Mac's session; threshold decisions.
-- Abdo's laptop 2 (Codex, `a2-pose-robust`): pose robustness: strangers behind the player, camera and model failures, synthetic bodies and FPS, false pauses, the privacy proof.
-- QA helper (`q-*`): re-sweeps after each merge (`docs/qa/sweep/`), doc consistency, pitch Q&A.
-- Greg: his 9 clips at 1.5 m for Abdo (including a second person's X), pitch rehearsal.
+**Still working:** Jiscar 1 (`src/ui`: Q19, Q20, copy rows, Q12, dashboard) and Jiscar 2 (live site: cleanup SQL, smoke test, caching). Everyone else is out of usage, with all their work merged.
 
-**Open problems, ranked by demo risk**
-1. The camera session on the demo Mac hasn't happened yet. **Patrick**
-2. The X has only been tested on Abdo's body; Greg's clips and the Mac session will tell. **Abdo, Greg**
-3. Vercel's daily cap: the live site can lag `main`; the demo runs locally. **Greg** (check Sunday morning)
+**Open, ranked by demo risk**
+1. **Patrick's camera session on the demo Mac** (`src/game/README.md`, "camera session"): timing leads, the drift fix, X, the look checklist, then ghost rehearsals. New conversation after his usage resets. **Patrick**
+2. **Abdo's camera clips** (drift first; then X near-misses, passerby, short X). Codex found that a spectator close behind can take over tracking or pause with an X: spectators stay to the sides (OPERATOR.md). **Abdo**
+3. **#58** (leaderboard readable before sign-in, migration 0005) waits on Greg's yes; #65 is stacked on it. **Greg**
+4. Backup video on the demo Mac (it's on Gregory 2's laptop); repo visibility for the Devpost link. **Greg**
 
-**Sunday morning (Greg's Claude):** delete test players from the database (ask Greg before "Test-Guest" and "Guest-4300"), check the leaderboard, make sure the live site has the final `main`. After about 10 AM: crash or unplayable fixes only.
+**Sunday morning (Greg's Claude):** run Jiscar 2's cleanup SQL after Greg checks the list (QA-% players; ask before "Test-Guest" and "Guest-4300"), the live smoke test, check the live site has the final `main`; Gregory 2's 9 AM sweep. After 10 AM: crash or unplayable fixes only.
 
 ## Log
 

@@ -14,7 +14,7 @@ You stand at the laptop, start rounds, and fix problems. You never speak. Chrome
 
 ## Before the first round
 
-1. Laptop plugged in, about 1 m high, level, facing a wall. Tape mark on the floor **about 1.5 m** from the laptop, 1.5 m clear around it. Light on the player, not behind them. Chrome zoom at 100 % (Ctrl/⌘ + 0); on a Windows laptop also Display scale 100 %: at 125 % the select screen needs scrolling (QA Q19).
+1. Laptop plugged in, about 1 m high, level, facing a wall. Tape mark on the floor **about 1.5 m** from the laptop, 1.5 m clear around it. Light on the player, not behind them. **Spectators stand to the sides, never behind the player:** a person close behind can be tracked instead, and their crossed arms can pause the round (`src/pose/ROBUSTNESS.md`). Chrome zoom at 100 % (Ctrl/⌘ + 0); on a Windows laptop also Display scale 100 %: at 125 % the select screen needs scrolling (QA Q19).
 2. Open the demo URL. **Continue as** the Player (the account with real rounds). For a judge: **New guest** → **S** (skip profile).
 3. On the select screen Full body · 45 s is preselected, and so is **CAMERA** when the laptop has one. If the switch shows KEYBOARD, click **CAMERA** (a click on the switch is remembered on this laptop). Then click **START** (after a mouse click, Enter re-presses that control).
 
