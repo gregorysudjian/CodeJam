@@ -16,6 +16,8 @@ const roll = (deg: number) => (pose: Point[]) => {
   });
 };
 
+const jitterAll = jitter(0.005, 11);
+
 /** Clip → replay options for the plain recording. Session 2 clips calibrate on their own start. */
 const CLIPS: Record<string, ReplayOptions> = {
   standing: { upToMs: 5500 },
@@ -44,6 +46,13 @@ const VARIANTS: Record<string, { opts: ReplayOptions; slackMs: number }> = {
   'camera tilted 3°': { opts: { transform: roll(3) }, slackMs: 100 },
   'camera tilted -3°': { opts: { transform: roll(-3) }, slackMs: 100 },
   '20% dropped frames': { opts: { dropFraction: 0.2 }, slackMs: 150 },
+  'all at once: taller, ±0.5% jitter, 2° tilt, 30% dropped': {
+    opts: {
+      transform: (p: Point[]) => roll(2)(jitterAll(scaleAbout(0.5, 0.97, 1.15)(p))),
+      dropFraction: 0.3,
+    },
+    slackMs: 250,
+  },
   '40% dropped frames (~17 FPS)': { opts: { dropFraction: 0.4 }, slackMs: 250 },
 };
 
