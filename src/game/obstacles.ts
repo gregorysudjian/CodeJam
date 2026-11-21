@@ -148,9 +148,69 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     });
   };
 
+  /* ── Shared geometry for the per-kind shapes (one upload, every pooled view) ── */
+  const crateRow = T.CRATE_HEIGHT / 2;
+  const crossGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-L * 0.4, -crateRow * 0.4, 0.41),
+    new THREE.Vector3(L * 0.4, crateRow * 0.4, 0.41),
+    new THREE.Vector3(-L * 0.4, crateRow * 0.4, 0.41),
+    new THREE.Vector3(L * 0.4, -crateRow * 0.4, 0.41),
+  ]);
+  const orbShellSource = new THREE.IcosahedronGeometry(T.ORB_RADIUS * 1.55, 0);
+  const orbGeo = {
+    core: new THREE.IcosahedronGeometry(T.ORB_RADIUS, 1),
+    shell: new THREE.EdgesGeometry(orbShellSource),
+    halo: new THREE.TorusGeometry(T.ORB_RADIUS * 2, 0.03, 6, 40),
+    pillar: new THREE.CylinderGeometry(0.035, 0.035, 1, 6),
+  };
+  orbShellSource.dispose();
+
+  /**
+   * What a builder returns. `makeView` turns it into a pooled ObstacleView: it colours the
+   * parts by move on `show`, turns them red on a hit, and calls the optional hooks.
+   */
+  interface Parts {
+    root: THREE.Group;
+    /** Reset for reuse and fit to this spawn (lanes, hold length). */
+    configure(spawn: Spawn, length: number): void;
+    icon?: { sprite: THREE.Sprite; glyph: Glyph };
+    engage?(attractor?: () => THREE.Vector3): void;
+    onHit?(): void;
+    tick?(dt: number, time: number): void;
+  }
+
+  function makeView(kind: ObstacleKind, parts: Parts): ObstacleView {
+    const { root, icon } = parts;
+    root.visible = false;
+    scene.add(root);
+    return {
+      kind,
+      root,
+      show(spawn, length) {
+        const key = colorKeyFor(spawn.requires);
+        applyPalette(root, palettes[key]);
+        if (icon) icon.sprite.material = iconMaterial(icon.glyph, key);
+        parts.configure(spawn, length);
+        root.visible = true;
+      },
+      engage(attractor) {
+        parts.engage?.(attractor);
+      },
+      setVerdict(v) {
+        if (v !== 'hit') return;
+        applyPalette(root, hitPalette);
+        if (icon) icon.sprite.material = iconMaterial(icon.glyph, 'hit');
+        parts.onHit?.();
+      },
+      tick(dt, time) {
+        parts.tick?.(dt, time);
+      },
+    };
+  }
+
   /* ── Builders, one per kind ── */
 
-  function buildBlock(): ObstacleView {
+  function buildBlock(): Parts {
     const root = new THREE.Group();
     const walls = [-1, 0, 1].map((lane) => {
       const g = new THREE.Group();
@@ -167,23 +227,21 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     const guide = floorPlate();
     guide.scale.set(L * 0.8, T.TELEGRAPH_LENGTH, 1);
     guide.position.z = -T.TELEGRAPH_LENGTH / 2 + 1;
-    const icon = makeIcon();
-    icon.position.y = T.BLOCK_HEIGHT * 0.75;
-    root.add(guide, icon);
-    return simpleView(
-      'block',
+    const sprite = makeIcon();
+    sprite.position.y = T.BLOCK_HEIGHT * 0.75;
+    root.add(guide, sprite);
+    return {
       root,
-      (spawn) => {
+      icon: { sprite, glyph: 'go' },
+      configure(spawn) {
         const free = ([-1, 0, 1] as const).find((l) => !spawn.lanes.includes(l)) ?? 0;
         walls.forEach((g, i) => (g.visible = spawn.lanes.includes((i - 1) as -1 | 0 | 1)));
-        guide.position.x = icon.position.x = laneX(free);
+        guide.position.x = sprite.position.x = laneX(free);
       },
-      icon,
-      'go',
-    );
+    };
   }
 
-  function buildHurdle(): ObstacleView {
+  function buildHurdle(): Parts {
     const root = new THREE.Group();
     const bar = glowBox(W, 0.12, 0.12);
     bar.position.y = T.HURDLE_HEIGHT;
@@ -201,13 +259,13 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     const plate = floorPlate();
     plate.scale.set(W, 2.5, 1);
     plate.position.z = 1.25;
-    const icon = makeIcon();
-    icon.position.y = T.HURDLE_HEIGHT + 1.1;
-    root.add(plate, icon);
-    return simpleView('hurdle', root, () => {}, icon, 'up');
+    const sprite = makeIcon();
+    sprite.position.y = T.HURDLE_HEIGHT + 1.1;
+    root.add(plate, sprite);
+    return { root, icon: { sprite, glyph: 'up' }, configure() {} };
   }
 
-  function buildBeam(): ObstacleView {
+  function buildBeam(): Parts {
     const root = new THREE.Group();
     const top = T.BEAM_HEIGHT;
     // Front: a solid slab. A long (held) beam continues as an open frame of rails and
@@ -245,13 +303,13 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       backPosts.push(back);
       root.add(front, back);
     }
-    const icon = makeIcon();
-    icon.position.y = top + 1.2;
-    root.add(icon);
-    return simpleView(
-      'beam',
+    const sprite = makeIcon();
+    sprite.position.y = top + 1.2;
+    root.add(sprite);
+    return {
       root,
-      (_spawn, length) => {
+      icon: { sprite, glyph: 'down' },
+      configure(_spawn, length) {
         const long = length > T.BEAM_MIN_DEPTH;
         const depth = Math.max(T.BEAM_MIN_DEPTH, length);
         span.visible = long;
@@ -265,20 +323,12 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
         });
         for (const p of backPosts) p.position.z = -depth;
       },
-      icon,
-      'down',
-    );
+    };
   }
 
-  function buildCrate(): ObstacleView {
+  function buildCrate(): Parts {
     const root = new THREE.Group();
-    const h = T.CRATE_HEIGHT / 2;
-    const crossGeo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-L * 0.4, -h * 0.4, 0.41),
-      new THREE.Vector3(L * 0.4, h * 0.4, 0.41),
-      new THREE.Vector3(-L * 0.4, h * 0.4, 0.41),
-      new THREE.Vector3(L * 0.4, -h * 0.4, 0.41),
-    ]);
+    const h = crateRow;
     const pieces: {
       obj: THREE.Group;
       home: THREE.Vector3;
@@ -312,17 +362,21 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     plate.scale.set(W, 2.5, 1);
     plate.position.z = 1.25;
     root.add(plate);
+    const sprite = makeIcon();
+    sprite.position.y = T.CRATE_HEIGHT + 0.9;
+    root.add(sprite);
 
-    const icon = makeIcon();
-    icon.position.y = T.CRATE_HEIGHT + 0.9;
-    root.add(icon);
     let smashT = -1;
-    const view = simpleView(
-      'crate',
+    const smash = (): void => {
+      if (smashT < 0) smashT = 0;
+      sprite.visible = false;
+    };
+    return {
       root,
-      (spawn, length) => {
+      icon: { sprite, glyph: 'arms' },
+      configure(spawn, length) {
         smashT = -1;
-        icon.visible = true;
+        sprite.visible = true;
         for (const p of pieces) {
           p.obj.position.copy(p.home);
           p.obj.rotation.set(0, 0, 0);
@@ -332,55 +386,38 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
         rails.visible = (spawn.holdSec ?? 0) > 0;
         rails.scale.z = Math.max(1, length);
       },
-      icon,
-      'arms',
-    );
-    const smash = (): void => {
-      if (smashT < 0) smashT = 0;
-      icon.visible = false;
-    };
-    view.engage = smash;
-    const baseVerdict = view.setVerdict;
-    view.setVerdict = (v) => {
-      baseVerdict(v);
-      if (v === 'hit') smash(); // the runner crashes through: red pieces
-    };
-    view.tick = (dt) => {
-      if (smashT < 0) return;
-      smashT += dt;
-      for (const p of pieces) {
+      engage: smash,
+      onHit: smash, // the runner crashes through: the pieces fly, already red
+      tick(dt) {
+        if (smashT < 0) return;
+        smashT += dt;
         const t = smashT;
-        p.obj.position.set(
-          p.home.x + p.vel.x * t,
-          p.home.y + p.vel.y * t - 4.9 * t * t,
-          p.home.z + p.vel.z * t,
-        );
-        p.obj.rotation.set(p.spin.x * t, p.spin.y * t, p.spin.z * t);
-        p.obj.scale.setScalar(Math.max(0.01, 1 - (t / T.SMASH_SEC) * 0.7));
-        p.obj.visible = t < T.SMASH_SEC;
-      }
+        for (const p of pieces) {
+          p.obj.position.set(
+            p.home.x + p.vel.x * t,
+            p.home.y + p.vel.y * t - 4.9 * t * t,
+            p.home.z + p.vel.z * t,
+          );
+          p.obj.rotation.set(p.spin.x * t, p.spin.y * t, p.spin.z * t);
+          p.obj.scale.setScalar(Math.max(0.01, 1 - (t / T.SMASH_SEC) * 0.7));
+          p.obj.visible = t < T.SMASH_SEC;
+        }
+      },
     };
-    return view;
   }
 
-  function buildOrb(): ObstacleView {
+  function buildOrb(): Parts {
     const root = new THREE.Group();
-    const coreGeo = new THREE.IcosahedronGeometry(T.ORB_RADIUS, 1);
-    const shellEdges = new THREE.EdgesGeometry(
-      new THREE.IcosahedronGeometry(T.ORB_RADIUS * 1.55, 0),
-    );
-    const haloGeo = new THREE.TorusGeometry(T.ORB_RADIUS * 2, 0.03, 6, 40);
-    const pillarGeo = new THREE.CylinderGeometry(0.035, 0.035, 1, 6);
     const orbs = [-1, 0, 1].map((lane) => {
       const g = new THREE.Group();
       g.position.x = laneX(lane);
       const float = new THREE.Group();
       float.position.y = T.ORB_HEIGHT;
-      const core = tag(new THREE.Mesh(coreGeo, placeholder.glow), 'glow');
-      const shell = tag(new THREE.LineSegments(shellEdges, placeholder.edge), 'edge');
-      const halo = tag(new THREE.Mesh(haloGeo, placeholder.glow), 'glow');
+      const core = tag(new THREE.Mesh(orbGeo.core, placeholder.glow), 'glow');
+      const shell = tag(new THREE.LineSegments(orbGeo.shell, placeholder.edge), 'edge');
+      const halo = tag(new THREE.Mesh(orbGeo.halo, placeholder.glow), 'glow');
       float.add(core, shell, halo);
-      const pillar = tag(new THREE.Mesh(pillarGeo, placeholder.tele), 'tele');
+      const pillar = tag(new THREE.Mesh(orbGeo.pillar, placeholder.tele), 'tele');
       pillar.scale.y = T.ORB_HEIGHT;
       pillar.position.y = T.ORB_HEIGHT / 2;
       const plate = floorPlate();
@@ -392,79 +429,52 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     let collectT = -1;
     let attract: (() => THREE.Vector3) | null = null;
     const local = new THREE.Vector3();
-    const view = simpleView('orb', root, (spawn) => {
-      collectT = -1;
-      attract = null;
-      orbs.forEach((o, i) => {
-        o.g.visible = spawn.lanes.includes((i - 1) as -1 | 0 | 1);
-        o.float.scale.setScalar(1);
-        o.float.position.set(0, T.ORB_HEIGHT, 0);
-      });
-    });
-    view.engage = (attractor) => {
-      if (collectT >= 0) return;
-      collectT = 0;
-      attract = attractor ?? null;
-    };
-    view.tick = (dt, time) => {
-      if (collectT >= 0) collectT += dt;
-      const k = collectT >= 0 ? Math.min(1, collectT / T.COLLECT_SEC) : 0;
-      for (const o of orbs) {
-        o.shell.rotation.set(time * 0.9, time * 1.3, 0);
-        o.halo.rotation.set(Math.PI / 2 + Math.sin(time * 2) * 0.3, 0, time);
-        if (collectT < 0) {
-          o.float.position.y = T.ORB_HEIGHT + Math.sin(time * 3) * 0.08;
-          continue;
-        }
-        if (!o.g.visible) continue;
-        if (attract) {
-          // Fly into the hand: ease toward it in the lane group's own space.
-          o.g.worldToLocal(local.copy(attract()));
-          o.float.position.lerp(local, 1 - Math.exp(-T.COLLECT_PULL * dt));
-        } else {
-          o.float.position.y += dt * 2;
-        }
-        o.float.scale.setScalar(Math.max(0.001, 1 - k * k));
-      }
-    };
-    return view;
-  }
-
-  function simpleView(
-    kind: ObstacleKind,
-    root: THREE.Group,
-    configure: (spawn: Spawn, length: number) => void,
-    icon?: THREE.Sprite,
-    glyph?: Glyph,
-  ): ObstacleView {
-    root.visible = false;
-    scene.add(root);
     return {
-      kind,
       root,
-      show(spawn, length) {
-        const key = colorKeyFor(spawn.requires);
-        applyPalette(root, palettes[key]);
-        if (icon && glyph) icon.material = iconMaterial(glyph, key);
-        configure(spawn, length);
-        root.visible = true;
+      configure(spawn) {
+        collectT = -1;
+        attract = null;
+        orbs.forEach((o, i) => {
+          o.g.visible = spawn.lanes.includes((i - 1) as -1 | 0 | 1);
+          o.float.scale.setScalar(1);
+          o.float.position.set(0, T.ORB_HEIGHT, 0);
+        });
       },
-      engage() {},
-      setVerdict(v) {
-        if (v !== 'hit') return;
-        applyPalette(root, hitPalette);
-        if (icon && glyph) icon.material = iconMaterial(glyph, 'hit');
+      engage(attractor) {
+        if (collectT >= 0) return;
+        collectT = 0;
+        attract = attractor ?? null;
       },
-      tick() {},
+      tick(dt, time) {
+        if (collectT >= 0) collectT += dt;
+        const k = collectT >= 0 ? Math.min(1, collectT / T.COLLECT_SEC) : 0;
+        for (const o of orbs) {
+          o.shell.rotation.set(time * 0.9, time * 1.3, 0);
+          o.halo.rotation.set(Math.PI / 2 + Math.sin(time * 2) * 0.3, 0, time);
+          if (collectT < 0) {
+            o.float.position.y = T.ORB_HEIGHT + Math.sin(time * 3) * 0.08;
+            continue;
+          }
+          if (!o.g.visible) continue;
+          if (attract) {
+            // Fly into the hand: ease toward it in the lane group's own space.
+            o.g.worldToLocal(local.copy(attract()));
+            o.float.position.lerp(local, 1 - Math.exp(-T.COLLECT_PULL * dt));
+          } else {
+            o.float.position.y += dt * 2;
+          }
+          o.float.scale.setScalar(Math.max(0.001, 1 - k * k));
+        }
+      },
     };
   }
 
   const builders: Record<ObstacleKind, () => ObstacleView> = {
-    block: buildBlock,
-    hurdle: buildHurdle,
-    beam: buildBeam,
-    crate: buildCrate,
-    orb: buildOrb,
+    block: () => makeView('block', buildBlock()),
+    hurdle: () => makeView('hurdle', buildHurdle()),
+    beam: () => makeView('beam', buildBeam()),
+    crate: () => makeView('crate', buildCrate()),
+    orb: () => makeView('orb', buildOrb()),
   };
   const free: Record<ObstacleKind, ObstacleView[]> = {
     block: [],
@@ -518,6 +528,8 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
         g.edges.dispose();
       }
       planeGeo.dispose();
+      crossGeo.dispose();
+      for (const g of Object.values(orbGeo)) g.dispose();
       for (const p of [...Object.values(palettes), hitPalette])
         for (const m of Object.values(p)) m.dispose();
       for (const m of iconMats.values()) {
