@@ -218,6 +218,8 @@ Newest first.
 - **Quality ladder:** the first step comes at 3 s, before the first object (2 s window).
 - **Fixes:** held objects end visually when the judge ends them, and the view gets this frame's input before the rules (the orb used to fly to the previous frame's hand).
 - **Workout:** gentler low impact, and no holds in the cool-down (`src/workout/README.md`).
+- **Camera-session step 2 in one paste:** the console prints the leads line for `tuning.ts` and the measured lags for `SESSION_LAG_SEC` in `latency.test.ts` together; step 3 has a checklist (cause, meaning, who fixes it) and a "Requests for A" template.
+- **Edge cases pinned as tests (`core.test.ts`):** a hold across a pause, tracking loss or a K switch (the new input has the 0.3 s grace), a paused core never finishes (END ROUND saves nothing), and a round that ends mid-hold gives no verdict.
 - **Checked in Chrome on this branch:** a scripted round with one of each failure gets the right cause on every row; rounds unchanged (16/7/0, idle 13 hits, 2D); ghost line; graphics carry-over over three rounds; the held beam ends at the runner as it is cleared.
 
 ### Game feel pass (`p4-game-feel`, Sat afternoon)

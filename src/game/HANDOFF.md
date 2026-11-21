@@ -1,4 +1,4 @@
-# Handoff: Patrick's game, input and workout (Sat Nov 21, evening)
+# Handoff: Patrick's game, input and workout (Sat Nov 21, late evening)
 
 For the next AI session working with Patrick. Read this, then `AGENTS.md`, then `docs/CONTRACTS.md`. Hard code freeze: **Sunday 12:00 PM Montreal**.
 
@@ -22,16 +22,20 @@ A webcam fitness runner for CodeJam 16. The player's body steers a 3-lane runner
 
 ## Where the branches are
 
-- **`p5-game` is the active branch:** `main` (already merged in, 706 tests pass) plus:
+- **`p5-game` is the active branch:** `main` (merged in up to #44, 753 tests pass) plus:
   - `?debug=timing` hit report: after each round, each hit or missed orb with a cause (late or early by X s, not seen, hold dropped, let go), plus a `VISUAL_LEAD_SEC.pose = { … }` line to paste into `tuning.ts`;
   - a ghost status line at each round start, and graphics that start at the level an earlier round reached;
   - the quality ladder's first step at 3 s, before the first obstacle;
   - fixes: held objects end visually when the judge ends them, and the view gets this frame's input before judging;
-  - workout: gentler low-impact levels, no holds in the last 15 % of a round.
+  - workout: gentler low-impact levels, no holds in the last 15 % of a round, and 1.8 s between two squats (`MIN_GAP_SQUAT_TO_SQUAT_SEC`);
+  - tests: both demo levels pinned object by object (`demo.test.ts`), every difficulty step the coach can pick checked fair and graded (`level.test.ts`), hold edge cases (pause, tracking loss, K switch, END ROUND) in `core.test.ts`;
+  - `src/workout/README.md`: a leaderboard-fairness proposal for Greg (longer rounds always win; **no scoring change until he agrees**) and a physical-load audit.
 - **`p3-game` is superseded.** It holds a parallel version of the game-feel polish that `main` already has from another session. Do not merge it.
 - `main` already has the game-feel pass (PR #38): runner rig, city / tunnel / bridge world, PERFECT / GOOD / LATE, music, three looks per obstacle, intro.
 
 ## What is left, in order
+
+**From about 10 AM Sunday:** only fixes for crashes or unplayable bugs. No tuning changes. Changing the demo level (seed 41492, `demo.test.ts`) needs Patrick's OK first.
 
 1. **Camera session.** Patrick does this: it needs his body, the webcam and his Mac, which is the demo laptop.
    - Start: `cd ~/CodeJam && git pull && npm run dev -- --strictPort`, then open `http://localhost:5173/?demo=1&debug=timing` and pick Camera. D shows the pose overlay and its FPS.

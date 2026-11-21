@@ -27,7 +27,8 @@ Pure and seeded (mulberry32): the same complete config always gives the same lev
 - every move at least twice, also in the low-impact version;
 - three easy waves at each end, none of them held;
 - no hurdle right after a beam;
-- the low-impact version, which judges play cold, has no holds and at most one squat more than the normal one (4 against 3). The normal demo level did not change with the low-impact and cool-down rules.
+- the low-impact version, which judges play cold, has no holds and at most one squat more than the normal one (4 against 3). The normal demo level did not change with the low-impact, cool-down and squat-gap rules;
+- both levels match their pinned signatures (each object's time, kind and hold).
 
 It also passes `level.test.ts`: all five objects in the first five waves, a held squat and a combo. It opens block, orb, crate, hurdle, held beam and closes on two crates. A tuning change that alters the demo fails CI, so it has to be done on purpose, and the Player should rehearse again after it.
 
@@ -94,5 +95,6 @@ Low impact: no jumps; squats and crates as above. The ranges are over 45, 90 and
 A crate with `holdSec` is judged like a held beam: both arms must go up inside `[t − 0.35, t + 0.15]`, then stay up until `t + holdSec`. A drop longer than 0.3 s is a hit. The game smashes the crate front on contact and shows magenta rails for the hold. Proposed wording for the crate row in the CONTRACTS.md collision table: "both arms up (for the whole `holdSec` if set, with 0.3 s of grace)".
 
 ## Status
-- **Works:** generator and tracker, with 32 tests (fairness checks mutation-tested: weakening any rule makes them fail).
+- **Works:** generator and tracker. Fairness checks are mutation-tested: weakening any rule makes them fail. They run over every difficulty the coach can recommend (0 to 1 in 0.1 steps), and a "coach compatibility" test checks that each step up is at least as hard as the one below. Both demo levels are pinned object by object (`demo.test.ts`).
+- **Waiting on D:** the leaderboard-fairness proposal above. The scoring formula is unchanged until Greg agrees.
 - **Not tested:** whether the gaps and speeds feel right for a body in front of a webcam. Tune `GAP_*`, `HOLD_*` and the game's `SPEED_*` with Abdo at the camera.
