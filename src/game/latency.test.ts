@@ -7,9 +7,6 @@ import { VISUAL_LEAD_SEC } from './tuning';
  * Webcam lag per move, measured on A's recorded clips (src/pose/fixtures on abdo-1): from the
  * first raw-landmark movement to the detector's state change, worst rep. Camera capture and
  * the model add about CAMERA_SEC on top; that part is not in the clips' timestamps.
- * After a camera session with ?debug=timing, its `lagSec` column is the whole lag, camera
- * included. If you lower a lead below what these numbers need, put those values here and set
- * CAMERA_SEC to 0.
  */
 const DETECTOR_LAG_SEC: Record<MoveType, number> = {
   jump: 0.078,
@@ -20,7 +17,15 @@ const DETECTOR_LAG_SEC: Record<MoveType, number> = {
   sidestep: 0.271,
 };
 const CAMERA_SEC = 0.1;
-const lagOf = (move: MoveType): number => DETECTOR_LAG_SEC[move] + CAMERA_SEC;
+const clipLagOf = (move: MoveType): number => DETECTOR_LAG_SEC[move] + CAMERA_SEC;
+
+/*
+ * The whole lag, camera included, measured in a camera session with ?debug=timing. After the
+ * second round the console prints this line next to the VISUAL_LEAD_SEC.pose line: paste both.
+ * Moves the session did not measure keep the clip lags above.
+ */
+const SESSION_LAG_SEC: Partial<Record<MoveType, number>> = {};
+const lagOf = (move: MoveType): number => SESSION_LAG_SEC[move] ?? clipLagOf(move);
 
 const idle: InputState = {
   tracking: true,
@@ -81,9 +86,9 @@ describe('latency compensation (VISUAL_LEAD_SEC)', () => {
     }
   });
 
-  it('without the leads, slow moves would be hits (why they exist)', () => {
+  it('without the leads, slow moves would be hits (why they exist, on the clip lags)', () => {
     for (const s of OBJECTS.filter((o) => o.kind !== 'hurdle' && o.kind !== 'orb')) {
-      expect(play(s, 0, lagOf(s.requires)), s.kind).toBe('hit');
+      expect(play(s, 0, clipLagOf(s.requires)), s.kind).toBe('hit');
     }
   });
 

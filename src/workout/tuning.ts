@@ -12,6 +12,12 @@ export const MIX: Record<WorkoutId, Record<ObstacleKind, number>> = {
   shoulders: { block: 0.1, hurdle: 0.05, beam: 0.05, crate: 0.45, orb: 0.35 },
   fullBody: { block: 0.2, hurdle: 0.2, beam: 0.2, crate: 0.2, orb: 0.2 },
 };
+/**
+ * Low impact (no jumps, for judges in street clothes): the hurdles' share goes to the gentle
+ * moves, sidestep blocks and reach orbs, in these parts. Spread over every kind, it made squat
+ * beams more frequent than in the normal level (the low-impact demo had 5 squats instead of 3).
+ */
+export const LOW_IMPACT_SHARE: Partial<Record<ObstacleKind, number>> = { block: 0.5, orb: 0.5 };
 
 /* ── Round curve: warm-up, build, peak, cool-down ── */
 export const WARMUP_END = 0.2; // fraction of the round
@@ -34,6 +40,10 @@ export const FIRST_WAVE_SEC = 4; // never earlier
 export const MIN_GAP_WARMUP_SEC = 1.8; // between waves during the warm-up
 export const MIN_GAP_SEC = 1.1; // never less, even at peak
 export const MIN_GAP_BEAM_TO_HURDLE_SEC = 1.5; // stand up before jumping
+// A breath between two squats, from the end of the first (its hold included): back-to-back
+// squats at the 1.1 s minimum gap are hard work for an unwarmed player in jeans. Both demo
+// levels have none closer than 1.9 s, so they are unchanged (demo.test.ts pins them).
+export const MIN_GAP_SQUAT_TO_SQUAT_SEC = 1.8;
 export const MIN_GAP_AFTER_HOLD_SEC = 1.3; // a breather after a held beam or crate
 // Gap at effort 0 and at effort 1, each at difficulty 0 and 1. Gaps are measured from the
 // end of the previous wave (its t plus any hold) to the next wave's t.
