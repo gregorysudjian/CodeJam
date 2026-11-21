@@ -38,10 +38,14 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 
 ## 4. FYI: thresholds tuned from recordings (no interface change)
 
-> Pose detection changed some CONTRACTS.md starting values after recording A's moves: lane line
-> 0.55 W (was 0.8 W), arm "down" near the nose (was below the shoulder), arms ignored mid-jump, and
-> tracking lost when the hips leave the frame. Details in `src/pose/DECISIONS.md`. Types and
-> interfaces are unchanged.
+> Pose detection changed some CONTRACTS.md starting values after recording A's moves (types and
+> interfaces unchanged; details and reasons in `src/pose/DECISIONS.md`):
+> - lane line 0.55 W (was 0.8 W); arm up 0.4 T above the nose, arm "down" back near the nose (was
+>   below the shoulder), so presses from shoulder height count;
+> - `ducking` is instant, but the `squat` event fires after 250 ms down (a crouch before a jump is
+>   not a squat); right after a squat a jump must rise 0.45 T instead of being blocked;
+> - arms are ignored mid-jump; tracking is also lost when the hips leave the frame or the camera
+>   stalls.
 
 ## 5. Optional: "raise both arms to start" (PLAN.md Phase 2, A's list, but it lives in the app)
 

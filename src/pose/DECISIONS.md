@@ -7,7 +7,8 @@ or the named file.
    `sidestep.json` moved the hips only 0.8 W, right on the contract's line.
 2. **Arm "down" is back near nose height** (`ARM_DOWN_ABOVE_NOSE_T = 0.05`), not below the shoulder.
    In `armsUp.json` and `mixed.json` A lowered the arms only to shoulder height between presses, every
-   time; with the contract's rule, 3 presses read as 1. "Up" is 0.3 T above the nose.
+   time; with the contract's rule, 3 presses read as 1. "Up" was 0.3 T above the nose (raised
+   to 0.4 T later, see 26).
 3. **Arms are ignored while airborne, and a take-off resets them.** Arms swing above the nose during a
    jump (`jump.json`, `mixed.json`), which fired false `armsUp` / `reachRight`.
 4. **One arm must stay up alone for 250 ms before it is a reach.** When raising both arms one leads by
