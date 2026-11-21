@@ -1,6 +1,14 @@
 import type { Game, InputSource, Level } from '@/contracts';
 import { createGameAudio } from './audio';
 import { createCore, feverTier, movesSeen } from './core';
+import {
+  compareRuns,
+  createGhostRecorder,
+  levelFingerprint,
+  type GhostOutcome,
+  type GhostResult,
+} from './ghost';
+import { browserStorage, createGhostStore } from './ghostStore';
 import { createQualityGovernor, type Quality } from './quality';
 import { createTimingProbe } from './timing';
 import * as T from './tuning';
@@ -18,6 +26,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   let view: GameView | null = null;
   // Read on every use: the app's input can switch between keyboard and camera mid-round (K).
   const leads: T.Leads = () => T.VISUAL_LEAD_SEC[input.kind];
+  const result: GhostResult = { cleared: 0, collected: 0, hit: 0 }; // this run, for the ghost
   const core = createCore(
     level,
     {
@@ -32,11 +41,24 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         if (v === 'cleared') audio.cleared(item.spawn.requires);
         else if (v === 'collected') audio.collected();
         else if (v === 'hit') audio.hit();
+        if (v === 'cleared' || v === 'collected' || v === 'hit') result[v]++;
         view?.verdict(item, v);
       },
     },
     leads,
   );
+
+  // Ghost runner: race the best stored run of this exact level (?ghost=off, ?ghost=reset).
+  const ghostFlag = readFlag('ghost');
+  const ghostStore = ghostFlag === 'off' ? null : createGhostStore(browserStorage());
+  if (ghostFlag === 'reset' && !ghostResetDone) {
+    ghostResetDone = true; // once per page load, or every round would wipe the previous ghost
+    ghostStore?.clear();
+  }
+  const fingerprint = levelFingerprint(level);
+  const ghost = ghostStore?.load(fingerprint) ?? null;
+  const recorder = ghostStore ? createGhostRecorder() : null;
+  let currentState = input.getState();
 
   // ?debug=timing: record move timing for tuning VISUAL_LEAD_SEC; printed when the round ends.
   const probe =
@@ -44,6 +66,29 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   core.onEvent((e) => {
     if (e.type !== 'finished') return;
     audio.finish();
+    if (ghostStore && recorder) {
+      recorder.sample(core.elapsed(), currentState); // the last tick
+      const run = {
+        v: 1 as const,
+        fingerprint,
+        hz: T.GHOST_HZ,
+        samples: recorder.samples,
+        result: { ...result },
+        savedAt: Date.now(),
+      };
+      const saved = ghostStore.saveIfBetter(run);
+      const outcome: GhostOutcome | null = ghost
+        ? compareRuns(result, ghost.result)
+        : saved
+          ? 'saved'
+          : null;
+      const told = (r: GhostResult) => `${r.cleared + r.collected} cleared, ${r.hit} hits`;
+      console.info(
+        `[game] ghost: ${outcome ?? 'not saved'}. This run ${told(result)}` +
+          (ghost ? `; ghost ${told(ghost.result)}` : '') +
+          (saved && ghost ? '. New ghost saved.' : ''),
+      );
+    }
     if (probe) {
       const report = probe.report();
       (window as unknown as { __gameTiming?: unknown }).__gameTiming = report;
@@ -82,7 +127,10 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     const realDt = Math.max(0, (now - last) / 1000);
     last = now;
     const state = input.getState(); // polled once per frame
+    currentState = state;
     core.step(realDt, state, now);
+    if (recorder && core.started() && !core.finished() && core.pauseReason() === null)
+      recorder.sample(core.elapsed(), state);
     if (probe && core.started() && !core.finished() && core.pauseReason() === null)
       probe.sample(core.elapsed(), state);
 
@@ -159,6 +207,8 @@ function tryCreate3D(
     return null;
   }
 }
+
+let ghostResetDone = false; // ?ghost=reset clears the stored ghosts once per page load
 
 /** '?gfx=high|medium|low|2d' or localStorage 'game.gfx'; anything else means automatic. */
 function readGfxSetting(): 'high' | 'medium' | 'low' | '2d' | 'auto' {
