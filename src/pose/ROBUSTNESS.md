@@ -141,3 +141,11 @@ Chrome ran the production pose engine code on the public sample fed through a fa
 **Possible on a cold start, before frame 0.** In Windows Chrome, DevTools held the model response while 30 successive pose engines each opened a file-backed camera and stopped. On `75beb3e`, all 30 tracks ended, but all 30 startup promises stayed pending and all 30 track listeners remained registered until the response resumed. A player switching to keyboard or leaving calibration can stop a camera during this window.
 
 Calling `stop()` now interrupts the pending setup. In five repeats of 30 stops, all 30 promises settled and all 30 listeners were removed before releasing the response in every run. No track was live. The regression in `engine.robust.test.ts` also checks that releasing the model later cannot start a stale frame loop. Removing the fix made that test fail again.
+
+## Saturday 6:09 pm Montreal · first-hour review
+
+**Grade B+.** The highest-value result for the judges was a working keyboard round after camera permission disappears during setup. The repeat-start soak also caught 30 stopped sessions still waiting on the model download. For the operator, a spectator's X and a pause after wrist release matter more than two extra detector sidesteps that never reached the game. Abdo has the clip and frame numbers for both pause cases.
+
+For the judges' privacy question, the decoded SDK request contained counters and timing data. The warmed page completed the demo offline. A physical webcam, a live crowd and Patrick's Mac GPU are **not tested** on laptop 2. This Windows machine has no camera or ffmpeg; plain Node can drive Chrome and a file-backed camera.
+
+Next hour, verify camera re-entry after a mid-round GPU loss, replay incoming live near-miss and passerby clips first, and retire the obsolete drift expectations when decision 48 reaches main. Further repeats of unchanged landmark scale sweeps have low priority.
