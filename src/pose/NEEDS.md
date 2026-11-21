@@ -23,7 +23,7 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > }
 > ```
 
-## 2. Who mirrors the video (contract comment vs app)
+## 2. ✅ Checked (Greg: no second mirror) — Who mirrors the video (contract comment vs app)
 
 > CONTRACTS.md says `video` is mirrored by the UI with CSS `scaleX(-1)`, but `src/app/slots.tsx`
 > says "already mirrored by A" and no UI code mirrors it. The pose module now sets
@@ -49,20 +49,20 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > - arms are ignored mid-jump; tracking is also lost when the hips leave the frame or the camera
 >   stalls.
 
-## 5. Optional: "raise both arms to start" (PLAN.md Phase 2, A's list, but it lives in the app)
+## 5. ✅ Done (Greg, #31: arms up on results plays again) — "raise both arms to start" (PLAN.md Phase 2, A's list, but it lives in the app)
 
 > The pose input already emits an `armsUp` move event. For a hands-free start, the ready screen can
 > subscribe with `pose.onMove((e) => { if (e.type === 'armsUp') startRound(); })` and unsubscribe
 > on unmount. No pose change needed.
 
-## 6. Optional: skeleton on the play screen's camera preview
+## 6. ✅ Done (Greg, #31) — skeleton on the play screen's camera preview
 
 > The play screen's camera preview (`cameraSlot` in `PlayScreen.tsx`) shows only `<VideoSlot>`.
 > Wrapping it with the skeleton, like the calibration screen does, shows players they are tracked:
 > `<div className="relative h-full w-full"><VideoSlot pose={pose} /><SkeletonSlot pose={pose} /></div>`.
 > `drawSkeleton` already handles the `object-cover` crop. Purely visual; skip if the HUD is busy.
 
-## 7. FYI: switching to pose mid-round (K)
+## 7. ✅ Done (Greg, #31: K mid-round calibrates with messages) — switching to pose mid-round (K)
 
 > A new pose input that was never calibrated calibrates itself once the player stands still for
 > 1.5 s; until then `getState().tracking` is false, so the game stays paused with no message. If you

@@ -161,13 +161,16 @@ gives JSON to put into `DETECTION_DEFAULTS`.
 
 ## 8. Next tasks (priority, PLAN.md phase)
 
-1. Finish §6 steps 4–8 on the real camera, ideally in the full app (Phase 1 done-check).
-2. Teammate check, 8/10 (Phase 1 done-check). Save clips as `fixtures/extra/` tests.
-3. Answer review comments on PR #27. Greg merges.
-4. After the merge: play full rounds with pose plus the 3D game on the demo laptop and measure
-   combined FPS (Phase 2). If it is under 20, try the game's low graphics (`?gfx=low`).
-5. Patrick's `?debug=timing`: play 2–3 pose rounds and share the report with him, so the game's
-   pose leads match real lag (Phase 2).
+1. **Now (Greg's ask, Sat ~2:40 PM): on the demo laptop, Patrick's Mac.** `git pull` main,
+   `npm run dev`, `http://localhost:5173/?demo=1&debug=timing`. Play full pose rounds and measure
+   pose FPS (D overlay) and page FPS (console snippet). If pose is under 20, use `&gfx=low`. Also
+   check Greg's #31: arms up on results plays again (armed after 1.5 s), K mid-round calibrates with
+   messages, skeleton on the play preview. Covers §6 step 8 and the timing report for Patrick.
+2. Finish §6 steps 4–7 on the real camera (Phase 1 done-check).
+3. Teammate check, 8/10 (Phase 1 done-check). Save clips as `fixtures/extra/` tests.
+4. (done) PR #27 merged via #30; NEEDS 1, 2, 5, 6, 7 done by Greg (#28, #31).
+5. Patrick's `?debug=timing`: share the combined table from item 1 with him, so the game's pose
+   leads match real lag (Phase 2).
 6. Measure `MAX_POSES = 2` FPS; keep it if ≥ 25 with the game (Phase 2, background people).
 7. Phase 4: venue-lighting test, `STATION.md` setup at the venue.
 
