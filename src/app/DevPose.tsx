@@ -1,9 +1,19 @@
-// ?dev=pose: host for A's pose debug view. Wired to mountPoseDebug once abdo-1 is merged.
+// ?dev=pose: hosts A's pose debug page (camera, skeleton overlay, calibrate buttons, move tally,
+// clip recorder). The pose module loads only here, so the normal app never pays for it.
+import { useEffect, useRef } from 'react';
+
 export function DevPose() {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-      <h2 className="text-3xl font-bold">?dev=pose</h2>
-      <p className="opacity-70">Pose debug view lands with the src/pose merge.</p>
-    </div>
-  );
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
+    void import('@/pose').then((m) => {
+      if (!cancelled && ref.current) cleanup = m.mountPoseDebug(ref.current);
+    });
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, []);
+  return <div ref={ref} className="min-h-screen bg-bg" />;
 }

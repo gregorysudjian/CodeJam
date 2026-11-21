@@ -1,25 +1,25 @@
 # Progress (Greg: D + C)
 
-## Status (Saturday about 2 PM)
+## Status (Saturday about 2:30 PM)
+
+**All three parts are on `main`:** Patrick's game and workout (#24, #25) and Abdo's body control (#27). `npm run check`: 530 tests.
 
 **First 3 things for Greg**
-1. **Abdo: open the `abdo-1` PR** (merge `main` into it first). It is the last missing piece: body control. Greg's clips are on `greg-clips` for his tests.
-2. **Add `ANTHROPIC_API_KEY` in Vercel** (still missing). Then play one round and check the coach card says AI.
-3. **Ask the Lovable Claude to move the HUD cue word** off the centre of the screen (Requests below): "SQUAT" covers the beam it announces.
+1. **Demo from the laptop:** `git pull`, `npx vercel dev`, open `http://localhost:3000/?demo=1`, pick Camera, calibrate, play. It needs no deploy (DEMO.md station checklist).
+2. **Add `ANTHROPIC_API_KEY`** to `.env.local` for the local demo (no `VITE_`, never committed), and to Vercel for the live site. Then check the coach card says AI.
+3. **Play a few camera rounds** on the demo laptop with Patrick and Abdo (Patrick's prompt: latency leads, holds, FPS with pose and 3D, demo level, ghost rehearsals).
 
-**Live:** https://codejam-jet.vercel.app deploys again (the Vercel cap cleared). It has Patrick's 3D game and level generator (#24, #25), the camera/keyboard switch (#20) and the offline fixes (#21). Body control arrives with `abdo-1`.
+**Vercel:** the Hobby cap (100 deployments per 24 h) is used up; Vercel's API says it fully resets **Sunday 1:40 PM**, slots may free from about 3 AM. The live site is at #25 (game, no body control) until then. The demo doesn't need it: `vercel dev` runs everything locally, coach included. No trial is offered to this account; Pro would be $20.
 
-**Tested today:** each PR with `npm run check` green (213 tests on `main` now). Patrick's PRs: reviewed against the contracts, checked merged in order, one scripted round in the app (3D at about 100 FPS here, tutorial, pause, results, Play again, no console errors). Everyone merged together, including `abdo-1`: 432 tests green, demo round at 49 FPS.
+**Tested:** #27 reviewed and checked merged with `main` and `?dev=pose` (530 tests). Browser: a keyboard demo round to results; the Camera switch started the real webcam (MediaPipe running) and Keyboard stopped it; `?dev=pose` shows Abdo's page; no console errors. `vercel dev` locally: a round saved to Supabase, `/api/coach` passed auth and the rate limit, then "not configured" (no key yet), so rules.
 
-**Not tested (needs hardware or a person):** a real webcam through the app; pose and 3D together on the demo laptop; a real Claude answer.
+**Not tested:** a full calibrated camera round through the app with a person in front of it (Greg did calibration and moves on the debug page this morning); a real Claude answer.
 
 **Open problems, ranked by demo risk**
-1. Body control isn't on `main` until `abdo-1` merges. **Abdo**
-2. The HUD cue word covers the obstacle it announces. **Lovable UI**
-3. No Claude key, so the coach is always rules. **Greg**
-4. `?dev=pose` waits for `abdo-1` (the change is ready). **Greg**, right after
-
-**Next for me:** review `abdo-1` when it opens, then wire `?dev=pose`.
+1. Camera play through the app on the demo laptop: calibration, holds, FPS. **Everyone**, now
+2. No Claude key. **Greg**
+3. The HUD cue word covers the obstacle it announces. **Lovable UI**
+4. The live site lags `main` until the Vercel cap frees. **Greg** (check Sunday morning)
 
 ## Log
 
@@ -105,11 +105,16 @@
 - `?demo=1` preselects `DEMO_CONFIG` (Full body, floor, 45 s) on the select screen, so the screen matches the level the workout module plays.
 - DEMO.md: Patrick's ghost-runner notes (one ghost per origin, per low-impact setting, and per input) and a station checklist line to rehearse on each tab.
 
+### #27 Abdo's body control (merged, with `?dev=pose` and the demo plan)
+- Reviewed against the contracts and AGENTS.md: `src/pose` plus the model and WASM in `public/` (rule 11, no CDN); no contract, package or config change; no imports from other modules; no network calls in pose code (rule 5). `main` + #27 + `?dev=pose`: 530 tests, build OK.
+- Greg's clips are in `src/pose/fixtures/greg/` and both findings are fixed (DECISIONS 34 to 36). Squats shorter than 0.8 s now count when the player stands up, unless a jump follows; the game judges beams on the instant `ducking` state, so play is unchanged, and the tutorial's squat tick comes a moment later.
+- Merged in one push with `?dev=pose` (mounts `mountPoseDebug`) and the DEMO.md station plan (demo on `npx vercel dev` locally), to spend one deployment.
+
 ## Requests
 
 _For things outside my folders: src/ui (Lovable Claude), src/pose (Abdo), src/game, src/input and src/workout (Patrick), packages, keys._
 
-- **Abdo:** merge `main` into `abdo-1`, then open the PR. Optional, after merging: preload the pose model on the landing screen if calibration starts slowly on the demo laptop. Look at Greg's clips on `greg-clips` (armsUp gives an extra reachRight; a squat before the jump in mixed).
+- **Abdo (optional):** preload the pose model on the landing screen if calibration starts slowly on the demo laptop.
 - **Lovable UI (Patrick's request 7):** the HUD cue word ("SQUAT" with its countdown ring, `hud-cue` at `top-[40%]` in `GameHud`) sits where the announced obstacle approaches and covers it and the free-lane chevron. Move it to the top band between score and timer, or make it much more transparent.
 - **Patrick (optional):** a low-graphics switch was requested; the select screen's slot now holds the camera switch and the auto quality ladder plus `?gfx=low` already cover it, so I'm leaving it out unless the demo laptop needs it.
 
