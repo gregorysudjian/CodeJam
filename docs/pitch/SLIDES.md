@@ -42,4 +42,4 @@ What the box line says on purpose: **video never leaves the laptop**. Only numbe
 > [QR code] codejam-jet.vercel.app
 
 - Fill the score in from the leaderboard right before the pitch.
-- **The QR must point to `https://codejam-jet.vercel.app`.** Take it from the live site's kiosk (`https://codejam-jet.vercel.app/?kiosk=1`: its QR encodes the live URL), or any QR generator. **Don't screenshot the QR on the demo Mac**: there it encodes `http://localhost:5173`, which is a dead link on a phone (QA Q18).
+- **The QR must point to `https://codejam-jet.vercel.app`.** Screenshot it from any kiosk (on the demo Mac too: on localhost the app's QR codes encode the live URL) or use any QR generator.
