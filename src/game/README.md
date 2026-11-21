@@ -74,7 +74,7 @@ At the finish a banner says GHOST SAVED (first run of a level), GHOST BEATEN, GH
   - store cap, tie, blocked or full storage, clear.
 - In the browser, two rounds in one context: perfect play saved a 1,032-character ghost, then an idle round showed the ghost sidestepping (4.0 s), pressing (8.3 s), jumping (10.5 s) and squatting (13.0 s) while the player stood, and ended on GHOST WINS. The same in the 2D fallback.
 
-**Ghost status:** (a)–(g) done. Review loops follow.
+**Ghost status:** done: (a)–(g), three review loops, and the live race. Measured on the demo level with the ghost and race on: judging unchanged (16/7/0, TIE against a perfect ghost), draw calls avg 91 → 103, JavaScript median 0.2 → 0.3 ms per frame. Not tested: a real webcam, a real GPU.
 
 ## Events
 
