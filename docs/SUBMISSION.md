@@ -45,7 +45,7 @@ Three people, four modules, one shared TypeScript contract file (`src/contracts/
 - **Backend.** Supabase anonymous sign-in and Postgres. Row-level security on every table: a player can read and insert only their own sessions, with no update or delete. A `leaderboard` view exposes only each player's best per workout, mode and round length (name, score, date); one board per length, because a 180 s round scores about 6× a 45 s one. Check constraints keep stored values in sane ranges.
 - **Offline.** If the network drops, the round is still played and saved. Sessions wait in a local queue and sync later, reads time out quickly and fall back to cache, and the coach falls back to the rules. `?store=local` runs with no backend at all.
 - **Coach endpoint.** A Vercel serverless function checks the player's token, reads their history through a Supabase client that carries that token (so row-level security applies on the server too and no service key is needed), and allows at most one call per player every 10 s with an atomic Postgres function. It asks Claude for JSON matching a schema, with a 7 s timeout and no retries, and validates the answer before returning it. **For the demo no Claude key is configured**, so the coach card shows the rule-based coach (it says RULES). It recommends the workout you played least this week, raises difficulty by 0.1 above 85% accuracy and lowers it below 60%, and aims the tip at your most-missed move.
-- **Quality.** 699 automated tests (Vitest). A mutation sweep set each of the 23 detection thresholds to an extreme value, and every one breaks at least one test.
+- **Quality.** 762 automated tests (Vitest). A mutation sweep set each of the 23 detection thresholds to an extreme value, and every one breaks at least one test.
 
 ## Challenges we ran into
 
@@ -98,7 +98,7 @@ Record on the demo laptop at `http://localhost:5173/?demo=1` with real sessions 
 
 ## Screenshots
 
-Real captures at 1920×1080 from `main` (bb17780 and bff0541), in [docs/submission/](submission/), ready to upload. All are from `http://localhost:5173/?demo=1&store=local` (the 45 s demo level) played **with the keyboard** by a script, so no camera preview appears; the ghost is an earlier, weaker run of the same level.
+Real captures at 1920×1080 from `main` (bb17780 to 231dc4a; which screen on which commit is listed under the table), in [docs/submission/](submission/), ready to upload. All are from `http://localhost:5173/?demo=1&store=local` (the 45 s demo level) played **with the keyboard** by a script, so no camera preview appears; the ghost is an earlier, weaker run of the same level.
 
 | File | Screen | Shows |
 | --- | --- | --- |
@@ -120,4 +120,4 @@ Real captures at 1920×1080 from `main` (bb17780 and bff0541), in [docs/submissi
 - One shot with the **camera**, showing the preview and skeleton in the corner, and `?dev=pose` (landmarks and threshold lines). This machine has no camera.
 - The leaderboard and kiosk on the **live site** after the team's real rounds: the local store holds one player, so the podium shows a single name.
 
-Select, results and dashboard were retaken on `main` bb17780 after the UI fixes in #41; the game frames (04–09) on bff0541 after the new scenery colours and icons in #42; leaderboard and kiosk (12, 13) on ba46d74 after the per-length boards in #45.
+Select, results and dashboard were retaken on `main` bb17780 after the UI fixes in #41; the game frames (04–09) on 231dc4a after the silver ghost and bottom banners in #46; leaderboard and kiosk (12, 13) on ba46d74 after the per-length boards in #45.

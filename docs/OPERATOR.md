@@ -53,4 +53,4 @@ Keyboard play: ← → lane, ↑ or Space jump, ↓ squat (hold), W both arms, Q
 | Choppy (under 20 FPS) | Plug in, close tabs, more light on the player; last resort **K** |
 | App won't load | Backup video. Laptop dead: second laptop |
 
-**Don't:** click "Play this next" with `?demo=1` to show the coach's pick (it plays the same demo level). Don't use a LAN IP: the camera needs `localhost` or https. Don't open the kiosk with `&store=local` on the demo laptop: if no player is saved yet, it creates one called "Leaderboard" (QA Q17).
+**Don't:** click "Play this next" with `?demo=1` to show the coach's pick (it plays the same demo level). Don't use a LAN IP: the camera needs `localhost` or https.
