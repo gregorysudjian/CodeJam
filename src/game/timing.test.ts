@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { InputState, Level, MoveType, Spawn, Wave } from '@/contracts';
 import { createCore } from './core';
-import { createTimingProbe, mergeTiming, summarizeTiming, type TimingSamples } from './timing';
+import {
+  createTimingProbe,
+  describeSpawn,
+  explainMiss,
+  frameStats,
+  leadsToPaste,
+  mergeTiming,
+  summarizeTiming,
+  type TimingSamples,
+} from './timing';
+import { VISUAL_LEAD_SEC } from './tuning';
 
 const idle: InputState = {
   tracking: true,
@@ -109,5 +119,106 @@ describe('timing probe', () => {
     const report = probe([w(5, blockFreeLeft)], (e) => ({ ...idle, lane: e >= 4.8 ? -1 : 0 }));
     expect(report[0]).toMatchObject({ move: 'sidestep', seen: 1 });
     expect(report[0]!.medianOffsetSec).toBeCloseTo(-0.2, 1);
+  });
+});
+
+describe('why a hit happened (explainMiss)', () => {
+  const heldBeam: Spawn = { ...beam, holdSec: 1.6 };
+  const heldCrate: Spawn = { kind: 'crate', lanes: [-1, 0, 1], requires: 'armsUp', holdSec: 1.6 };
+
+  it('never seen: a detection problem (or the player did not move)', () => {
+    expect(explainMiss(hurdle, []).cause).toBe('not seen');
+  });
+
+  it('late or early, by how much, whichever is closer to the window', () => {
+    const late = explainMiss(hurdle, [[0.32, 0.7]]);
+    expect(late.cause).toBe('late');
+    expect(late.detail).toContain('+0.32 s');
+    expect(late.detail).toContain('0.17 s after the window closed');
+    const early = explainMiss(hurdle, [[-0.9, -0.45]]);
+    expect(early.cause).toBe('early');
+    expect(early.detail).toContain('0.10 s before the window opened');
+    // early by 0.15 s, late by 0.05 s: it was late
+    expect(
+      explainMiss(hurdle, [
+        [-0.9, -0.5],
+        [0.2, 0.6],
+      ]).cause,
+    ).toBe('late');
+  });
+
+  it('a held object dropped for longer than the grace, and back before its end', () => {
+    const m = explainMiss(heldBeam, [
+      [-0.2, 0.8],
+      [1.2, 1.7],
+    ]);
+    expect(m.cause).toBe('dropped');
+    expect(m.detail).toContain('gone at +0.80 s for 0.40 s');
+    expect(
+      explainMiss(heldCrate, [
+        [-0.2, 0.8],
+        [1.2, 1.7],
+      ]).cause,
+    ).toBe('dropped');
+  });
+
+  it('a held object let go too soon; short gaps are bridged like the judge does', () => {
+    const m = explainMiss(heldBeam, [
+      [-0.2, 0.5],
+      [0.7, 1.0],
+    ]); // 0.2 s gap bridged
+    expect(m.cause).toBe('let go');
+    expect(m.detail).toContain('let go at +1.00 s: 0.60 s before the hold ended');
+    // seen again only after the hold: still let go, not dropped
+    expect(
+      explainMiss(heldBeam, [
+        [-0.2, 0.9],
+        [1.9, 2.2],
+      ]).cause,
+    ).toBe('let go');
+  });
+
+  it('a hold kept to within the grace of its end is not blamed', () => {
+    expect(explainMiss(heldBeam, [[-0.2, 1.4]]).cause).toBe('in window');
+  });
+
+  it('the probe records what the judge saw, late moves included', () => {
+    const t = 5;
+    const items = itemsOf([w(t, heldBeam), w(10, hurdle)]);
+    const p = createTimingProbe(items, 'floor', () => NO_LEAD);
+    for (let e = 0; e <= 12; e += 1 / 60) {
+      const ducking = (e >= t - 0.2 && e < t + 0.8) || (e >= t + 1.2 && e < t + 1.7);
+      p.sample(e, { ...idle, ducking, airborne: e >= 10.4 && e < 10.85 });
+    }
+    expect(p.explain(items[0]!)).toMatchObject({ cause: 'dropped' });
+    expect(p.explain(items[1]!)).toMatchObject({ cause: 'late' });
+  });
+});
+
+describe('camera-session helpers', () => {
+  it('leadsToPaste: suggested leads for measured moves, current ones for the rest', () => {
+    const rows = summarizeTiming(new Map([['squat', [0.15, 0.2, 0.25]]]), VISUAL_LEAD_SEC.pose);
+    expect(leadsToPaste(rows, VISUAL_LEAD_SEC.pose)).toBe(
+      `{ jump: 0.1, sidestep: 0.25, squat: ${rows[0]!.suggestedLeadSec}, armsUp: 0.3, reachLeft: 0.3, reachRight: 0.3 }`,
+    );
+  });
+
+  it('describeSpawn names the object and what clears it', () => {
+    expect(describeSpawn({ ...beam, holdSec: 1.6 })).toBe('beam (squat, held 1.6 s)');
+    expect(describeSpawn(blockFreeLeft)).toBe('block (sidestep, free lane -1)');
+    expect(describeSpawn({ kind: 'orb', lanes: [1], requires: 'reachRight' })).toBe(
+      'orb (reachRight, lane 1)',
+    );
+  });
+
+  it('frameStats: median and slowest-5 % frame rate, worst frame', () => {
+    const frames = [...Array<number>(95).fill(1 / 60), ...Array<number>(5).fill(1 / 20)];
+    expect(frameStats(frames)).toEqual({
+      frames: 100,
+      medianFps: 60,
+      slowFps: 20,
+      worstFrameMs: 50,
+    });
+    expect(frameStats([])).toMatchObject({ frames: 0 });
   });
 });

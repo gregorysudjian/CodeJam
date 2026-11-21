@@ -85,7 +85,9 @@ export const MAX_PIXEL_RATIO = 2;
 // QUALITY_WINDOW_SEC window (after QUALITY_SKIP_SEC of start-up) steps down one level.
 // `?gfx=high|medium|low` fixes the level, `?gfx=2d` forces the fallback (also localStorage 'game.gfx').
 export const QUALITY_MIN_FPS = 45;
-export const QUALITY_WINDOW_SEC = 3;
+// 1 s skip + 2 s window: a slow laptop steps down at 3 s, before the first object can arrive
+// (the contract puts the first wave at 4 s or later), not in the middle of it.
+export const QUALITY_WINDOW_SEC = 2;
 export const QUALITY_SKIP_SEC = 1;
 export const QUALITY_PANIC_FPS = 20; // below this, step down after QUALITY_PANIC_SEC, not a full window
 export const QUALITY_PANIC_SEC = 0.5;

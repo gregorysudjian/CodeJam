@@ -93,6 +93,17 @@ describe('quality governor', () => {
     expect(run(g, 2, 6)).toEqual([1, 2]);
   });
 
+  it('a slow laptop steps down before the first object arrives (first wave at 4 s or later)', () => {
+    const g = createQualityGovernor(0, true, 2);
+    let t = 0;
+    let steppedAt = Infinity;
+    for (let i = 0; i < 30 * 6 && steppedAt === Infinity; i++) {
+      t += 1 / 30; // a steady 30 fps: slow, but not a panic
+      if (g.sample(1 / 30, true) !== null) steppedAt = t;
+    }
+    expect(steppedAt).toBeLessThanOrEqual(3.5);
+  });
+
   it('does nothing when fixed by ?gfx', () => {
     const fixedHigh = createQualityGovernor(0, false, 2);
     expect(run(fixedHigh, 10, 30)).toEqual([]);
