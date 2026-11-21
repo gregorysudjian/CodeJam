@@ -1,6 +1,7 @@
 // Owner: A. Creates the MediaPipe Pose Landmarker from files in public/.
-import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
+import { FilesetResolver, type NormalizedLandmark, PoseLandmarker } from '@mediapipe/tasks-vision';
 import {
+  MAX_POSES,
   MIN_DETECTION_CONFIDENCE,
   MIN_PRESENCE_CONFIDENCE,
   MIN_TRACKING_CONFIDENCE,
@@ -10,25 +11,58 @@ import {
 
 export type Delegate = 'GPU' | 'CPU';
 
-/** Tries the GPU delegate first and falls back to CPU if it fails to start. */
-export async function createLandmarker(): Promise<{
-  landmarker: PoseLandmarker;
+export interface Landmarker {
   delegate: Delegate;
-}> {
+  /** Runs the model on the current video frame. Returns one landmark list per body found. */
+  detect(video: HTMLVideoElement): NormalizedLandmark[][];
+}
+
+/** Tries the GPU delegate first and falls back to CPU if it fails to start. */
+async function create(): Promise<Landmarker> {
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
   const make = (delegate: Delegate) =>
     PoseLandmarker.createFromOptions(fileset, {
       baseOptions: { modelAssetPath: MODEL_PATH, delegate },
       runningMode: 'VIDEO',
-      numPoses: 1,
+      numPoses: MAX_POSES,
       minPoseDetectionConfidence: MIN_DETECTION_CONFIDENCE,
       minPosePresenceConfidence: MIN_PRESENCE_CONFIDENCE,
       minTrackingConfidence: MIN_TRACKING_CONFIDENCE,
     });
+  let model: PoseLandmarker;
+  let delegate: Delegate = 'GPU';
   try {
-    return { landmarker: await make('GPU'), delegate: 'GPU' };
+    model = await make('GPU');
   } catch (err) {
     console.warn('[pose] GPU delegate failed, falling back to CPU', err);
-    return { landmarker: await make('CPU'), delegate: 'CPU' };
+    delegate = 'CPU';
+    model = await make('CPU');
   }
+  let lastTs = -1;
+  return {
+    delegate,
+    detect(video) {
+      // VIDEO mode needs strictly increasing timestamps, even across pose inputs sharing the model.
+      const ts = Math.max(performance.now(), lastTs + 1);
+      lastTs = ts;
+      return model.detectForVideo(video, ts).landmarks;
+    },
+  };
+}
+
+let shared: Promise<Landmarker> | null = null;
+
+/**
+ * One model for the whole page. The app creates a new pose input each time the player switches
+ * input (and React StrictMode starts it twice), so loading once avoids repeated 1–2 s loads and
+ * leaked GPU contexts. A failed load is retried on the next call.
+ */
+export function getLandmarker(): Promise<Landmarker> {
+  if (!shared) {
+    shared = create().catch((err: unknown) => {
+      shared = null;
+      throw err;
+    });
+  }
+  return shared;
 }

@@ -29,6 +29,13 @@ export const DRAW_POINT_RADIUS = 4;
 /** FPS counter window. */
 export const FPS_WINDOW_MS = 1000;
 
+/** Debug overlay text refresh interval (not every frame). */
+export const OVERLAY_REFRESH_MS = 150;
+/** Moves the overlay lists. */
+export const RECENT_EVENTS = 6;
+/** Calibration progress is reported in steps of this size, not every frame. */
+export const CALIBRATION_STATUS_STEP = 0.05;
+
 /*
  * Calibration (docs/CONTRACTS.md): about 1.5 s of standing still records the centre, the
  * shoulder width W and the torso length T.
