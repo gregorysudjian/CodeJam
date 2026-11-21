@@ -88,11 +88,25 @@ See the bottom of this file (kept up to date per phase).
 2. Optional: a low-graphics toggle on the select screen that writes localStorage `game.gfx` = `low` or `high`.
 3. HUD cue words: orbs carry `reachLeft` / `reachRight` / `armsUp`, and a floor orb in the centre lane says `reachRight` though either arm works. Show "REACH" for both reach moves.
 4. Docs: AGENTS.md ownership (Patrick also owns `src/workout/`); CONTRACTS.md crate row: "both arms up (for the whole `holdSec` if set, with 0.3 s of grace)".
+5. Show the finish: in `PlayScreen`, wait about 1.5 s after `finished` before calling `onFinish`. The game shows a finish arch, the world coasts to a stop and the runner raises both arms, but today the results screen replaces it at once. The fanfare already rings out after `destroy()`.
+6. A pause overlay with text ("Step back into view" for `trackingLost`). The game dims the scene while paused, but shows no words.
 
 ### Checked end to end (local merge of main + p1-game + p1-workout)
 - `npm run check`: 78 tests pass.
 - Real app with `?store=local&demo=1&gfx=2d`, demo round played by scripted keyboard: score 4200, 100 % accuracy, best streak 21, reps per move and calories correct, rule-based coach card shown, no console errors.
 - Same app in 3D: renders, HUD cues show, auto low graphics engaged on the software renderer, no audio autoplay warning after the "Start round" click.
+
+### Game feel (`p2-game`)
+Checked with screenshots at each moment and full scripted rounds (perfect: 0 hits; idle: every non-orb a hit), plus the real app by keyboard (100 %, same score as before).
+- **Readable from 2 m:** a move icon above every obstacle (arrow up = jump, arrow down = squat, figure with arms up = crate, double chevron over the free lane = sidestep). Blocks paint a guide in the free lane.
+- **Hits feel like hits:** red impact ring, the runner flashes and stumbles, crates shatter red, camera shake (none with reduced motion).
+- **Orbs fly into the hand** that took them (the raised one on the floor, by lane on the treadmill).
+- **Holds give live feedback:** a column of light in the move's colour while a held beam or crate is held, a slow red pulse (1.4 Hz, under the WCAG flash limit; steady with reduced motion) while it is not.
+- **Streak rewards:** at 5, 10 and 20 in a row (the multiplier steps) the lane lines pulse, a level-up chime plays, and from 10 speed lines rush past with a small field-of-view kick. A hit resets it.
+- **"I saw that" sounds:** quiet confirmations for every detected lane change, jump, squat and arm raise, also before the start. With a webcam this tells the player the camera follows them. Rate-limited against jitter.
+- **A real ending:** a checkered FINISH arch sits exactly where the runner is at `durationSec`, then the world coasts to a stop, the runner celebrates, and a fanfare plays.
+- **Pause** dims the scene, corrected for bloom's linear-light blending.
+- **Robustness:** sprites and off-screen pooled materials are now disposed; the core sorts waves itself; `streak`, `feverTier` and `movesSeen` are unit-tested.
 
 ### Phase 2 so far (`p1-game`)
 - **Sound** (`audio.ts`): Web Audio synthesis, so no files and no package. Each move has its own pitch for the cue, plus sounds for clear, orb collect, crate smash and hit. Mute with `?mute=1` or localStorage `game.muted = '1'`. Chrome only lets audio start after a click on the page; the app's "Start round" click counts. Headless tests ran silent because nothing was clicked, and the game carried on fine.
