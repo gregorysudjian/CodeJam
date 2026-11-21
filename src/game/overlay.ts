@@ -1,9 +1,11 @@
+import { MILESTONE_H, OVERLAY_GAP, OVERLAY_MARGIN, RACE_H } from './look';
+
 /**
  * Screen-space labels: the app's HUD (GameHud) is laid out in CSS pixels at fixed offsets
  * (its move cue sits 124 px from the top at every size), so labels that must stay clear of it
  * are placed in pixels too, not in the 3D world. A label is a sprite parented to the camera at
  * `depth` in front of it; this turns a pixel box into that sprite's position and size.
- * Pure, so it is unit-tested (overlay.test.ts).
+ * Pure, so it is unit-tested (overlay.test.ts), including that no label overlaps GameHud.
  */
 export interface PixelBox {
   cx: number; // centre, CSS pixels from the left
@@ -17,6 +19,9 @@ export interface CameraSpot {
   z: number;
   height: number; // world units at that depth
 }
+
+/** Canvas height over width of a label (1024 x 192, 512 x 96): its width is h / LABEL_ASPECT. */
+export const LABEL_ASPECT = 3 / 16;
 
 export function toCameraSpace(
   box: PixelBox,
@@ -37,4 +42,37 @@ export function toCameraSpace(
 /** Label height in pixels for a canvas this tall: a share of it, within [min, max]. */
 export function labelHeight(viewH: number, share: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, viewH * share));
+}
+
+/**
+ * The milestone and FINAL STRETCH banner: bottom centre, under the combo counter (below the
+ * runner nothing is still to come, and GameHud's move cue owns the top band).
+ * `grow` (0 to 1) is its pop-in; it grows from 60 % of its height.
+ */
+export function milestoneBox(viewW: number, viewH: number, grow = 1, out?: PixelBox): PixelBox {
+  const h = labelHeight(viewH, MILESTONE_H.share, MILESTONE_H.min, MILESTONE_H.max);
+  const b = out ?? { cx: 0, cy: 0, h: 0 };
+  b.cx = viewW / 2;
+  b.cy = viewH - OVERLAY_MARGIN - h / 2;
+  b.h = h * (0.6 + 0.4 * grow);
+  return b;
+}
+
+/**
+ * The live race chip ("+2 VS GHOST"): bottom right, anchored at its bottom-right corner so a
+ * pop (`pop` > 1 when the lead changes) grows it into the screen. On a narrow screen it shrinks
+ * rather than reach the banner's full width.
+ */
+export function raceBox(viewW: number, viewH: number, pop = 1, out?: PixelBox): PixelBox {
+  const bannerH = labelHeight(viewH, MILESTONE_H.share, MILESTONE_H.min, MILESTONE_H.max);
+  const room = viewW / 2 - bannerH / LABEL_ASPECT / 2 - OVERLAY_GAP - OVERLAY_MARGIN;
+  const h = Math.min(
+    labelHeight(viewH, RACE_H.share, RACE_H.min, RACE_H.max) * pop,
+    Math.max(0, room) * LABEL_ASPECT,
+  );
+  const b = out ?? { cx: 0, cy: 0, h: 0 };
+  b.cx = viewW - OVERLAY_MARGIN - h / LABEL_ASPECT / 2;
+  b.cy = viewH - OVERLAY_MARGIN - h / 2;
+  b.h = h;
+  return b;
 }

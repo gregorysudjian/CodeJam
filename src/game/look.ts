@@ -17,6 +17,13 @@ export const ICON_STROKE_BOOST = 3; // extra stroke width, in the 128-pixel glyp
 export const GUIDE_OPACITY = 0.75;
 export const GUIDE_CHEVRONS = 3;
 export const GRADE_GOOD_COLOR = 0xe6edf5; // white: never read as the cyan of a block beside it
+// Words drawn in the world near the runner (view3d.ts), sized to read from the mark on a
+// 1280x720 projector (checked on screenshots downscaled to a third). These replace
+// tuning.ts GRADE_WIDTH (2.3: PERFECT was 22 px tall at 1366x768), GRADE_POS.side and
+// COMBO_WIDTH (1.9) in the 3D view.
+export const GRADE_WIDTH = 3.5; // world units
+export const GRADE_SIDE = 1.95; // the word's centre from the runner: clear of its raised arms
+export const COMBO_WIDTH = 2.5;
 
 /* ── Screen-space labels (view3d.ts, overlay.ts), kept clear of GameHud ── */
 // GameHud's own boxes, in CSS pixels: plates in the top corners, the race bar, the move cue
@@ -25,8 +32,10 @@ export const GRADE_GOOD_COLOR = 0xe6edf5; // white: never read as the cyan of a 
 // the ghost race chip bottom right. Heights are a share of the canvas height, within limits.
 export const OVERLAY_DEPTH = 2; // world units in front of the camera
 export const OVERLAY_MARGIN = 24; // px from the screen edge (GameHud uses 24 px too)
-export const MILESTONE_H = { share: 0.065, min: 34, max: 72 }; // banner height, px
-export const RACE_H = { share: 0.055, min: 30, max: 60 }; // race chip height, px
+export const OVERLAY_GAP = 16; // px kept between the banner and the race chip
+// At a third of 1280x720 (a projector read from the mark) 0.065 and 0.055 left 9 px letters.
+export const MILESTONE_H = { share: 0.095, min: 44, max: 104 }; // banner height, px
+export const RACE_H = { share: 0.075, min: 38, max: 82 }; // race chip height, px
 
 /* ── Ghost runner (player.ts, view3d.ts) ── */
 // Silver glass with white accents: never the player's lime, and never a move colour (the old
@@ -37,7 +46,7 @@ export const GHOST_OPACITY = 0.3;
 export const GHOST_ACCENT_OPACITY = 0.5;
 // "BEST" on the floor behind the ghost, like the player's combo counter; hidden when the ghost
 // shares the player's lane (it wraps the player then, and the tag would read as the player's).
-export const GHOST_TAG_WIDTH = 1.25;
+export const GHOST_TAG_WIDTH = 1.8; // 1.25 was unreadable from the mark
 export const GHOST_TAG = { y: 0.3, z: 1.6 };
 
 /* ── Hits and smashes (obstacles.ts) ── */
