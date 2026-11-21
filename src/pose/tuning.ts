@@ -95,12 +95,18 @@ export const DETECTION_DEFAULTS = Object.freeze({
   JUMP_SPEED_WINDOW_MS: 150,
   AIRBORNE_MS: 450,
   JUMP_COOLDOWN_MS: 300,
-  /** Ignore the rise for this long after a squat ends, so standing up is not a jump. */
-  JUMP_BLOCK_AFTER_SQUAT_MS: 400,
+  /**
+   * For this long after a squat (or a pre-jump crouch) ends, a jump must rise higher, so standing
+   * up, even onto the toes (≤ ~0.25 T), is not a jump but a crouch-and-jump (0.55–0.73 T) is.
+   */
+  JUMP_AFTER_SQUAT_MS: 400,
+  JUMP_AFTER_SQUAT_ON_T: 0.45,
 
-  /** Squat: hip centre below standing height. */
+  /** Squat: hip centre below standing height. `ducking` turns on at once (beams need it). */
   SQUAT_ON_T: 0.3,
   SQUAT_OFF_T: 0.15,
+  /** The squat event (a rep) needs this long below the line; pre-jump crouches last 0.13–0.3 s. */
+  SQUAT_CONFIRM_MS: 250,
 
   /** Arms: wrist height above the nose, in T (contract: up above nose, down below shoulder). */
   ARM_UP_ABOVE_NOSE_T: 0.3,

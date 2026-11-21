@@ -114,6 +114,32 @@ describe('squat', () => {
     expect(r.events).toEqual([]);
   });
 
+  test('ducking is immediate; the squat event waits until the squat is held', () => {
+    const det = standingDetector();
+    let r = run(det, pose({ dy: 0.5 * T }), 2, 0);
+    expect(det.state.ducking).toBe(true);
+    expect(r.events).toEqual([]);
+    r = run(det, pose({ dy: 0.5 * T }), Math.ceil(K.SQUAT_CONFIRM_MS / FRAME_MS), r.t);
+    expect(types(r.events)).toEqual(['squat']);
+  });
+
+  test('a quick dip below the line (shorter than the confirm time) is not a squat rep', () => {
+    const det = standingDetector();
+    const events: MoveEvent[] = [];
+    let r = run(det, pose({ dy: 0.5 * T }), 3, 0);
+    events.push(...r.events);
+    r = run(det, pose(), 15, r.t);
+    events.push(...r.events);
+    expect(events).toEqual([]);
+  });
+
+  test('a big jump right after a squat still counts (crouch then jump)', () => {
+    const det = standingDetector();
+    let r = run(det, pose({ dy: 0.5 * T }), 10, 0);
+    r = run(det, pose({ dy: -0.7 * T }), 3, r.t);
+    expect(types(r.events)).toEqual(['jump']);
+  });
+
   test('standing up out of a squat, even overshooting, is not a jump', () => {
     const det = standingDetector();
     let r = run(det, pose({ dy: 0.8 * T }), 20, 0);

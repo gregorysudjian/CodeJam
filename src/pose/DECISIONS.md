@@ -63,3 +63,10 @@ or the named file.
     pose input froze for good. The engine now resumes it on `pause` while running, and a 30 ms
     watchdog processes frames when rVFC has been quiet for 100 ms (deduplicated by video time).
     After the fix: 30 FPS attached, detached, re-attached and moved; 0 after `stop()`.
+25. **Crouch-then-jump works; the squat event needs 250 ms below the line; after a squat a jump must
+    rise 0.45 T for 0.4 s** (replaces the 0.4 s jump block). Found by a test: with pre-jump crouches
+    just 20% deeper than A's, the crouch counted as a squat and the 0.4 s block swallowed the jump
+    (two of four jumps lost). `ducking` still turns on at once, because beams use the state; only the
+    rep event waits. Crouches last 0.13–0.31 s below the line; A's squats 0.8–2.6 s, and squats
+    sped up 4× still count. Standing up onto the toes rises ≤ ~0.25 T; real jumps 0.55–0.73 T.
+    Cost: a jump out of a deep crouch registers ~0.17 s later (normal jumps are unchanged).

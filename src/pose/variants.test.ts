@@ -87,7 +87,7 @@ describe('squat edge cases on the real squat clip', () => {
   );
 
   test('the guard is what prevents it (without the post-squat block the same clip jumps)', () => {
-    DETECTION.JUMP_BLOCK_AFTER_SQUAT_MS = 0;
+    DETECTION.JUMP_AFTER_SQUAT_MS = 0;
     try {
       expect(kinds(replay('squat', { transform: springUp(0.05) }).events)).toContain('jump');
     } finally {
@@ -96,6 +96,36 @@ describe('squat edge cases on the real squat clip', () => {
   });
 
   test.each([2, 3, 4])('a %s× slower squat still counts, without a jump', (timeScale) => {
+    expect(kinds(replay('squat', { timeScale }).events)).toEqual(['squat', 'squat']);
+  });
+});
+
+describe('jumps with a deeper crouch first (countermovement), on the real jump clip', () => {
+  const STAND = 0.676; // A's standing hip height in the first session
+  /** Deepens every dip below standing height by `k` (1.4 = crouches 40% deeper than A's). */
+  const deeperCrouch = (k: number) => (pose: Point[]) => {
+    const hipY = (pose[23].y + pose[24].y) / 2;
+    const extra = hipY > STAND ? (hipY - STAND) * (k - 1) : 0;
+    return pose.map((p) => ({ ...p, y: p.y + extra }));
+  };
+
+  test.each([1.2, 1.4, 1.6])('%s× deeper crouches: all four jumps, no squats', (k) => {
+    expect(kinds(replay('jump', { upToMs: 7200, transform: deeperCrouch(k) }).events)).toEqual([
+      'jump',
+      'jump',
+      'jump',
+      'jump',
+    ]);
+  });
+
+  test('2× deeper (a held, squat-deep crouch): still all four jumps', () => {
+    const k = kinds(replay('jump', { upToMs: 7200, transform: deeperCrouch(2) }).events);
+    expect(k.filter((x) => x === 'jump')).toHaveLength(4);
+  });
+});
+
+describe('faster squats (the real squat clip sped up)', () => {
+  test.each([0.5, 0.33, 0.25])('%s× the time: both squats count, no jumps', (timeScale) => {
     expect(kinds(replay('squat', { timeScale }).events)).toEqual(['squat', 'squat']);
   });
 });

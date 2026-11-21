@@ -70,7 +70,9 @@ while idle; size gate 40%; `MAX_POSES = 1`; pose handles D, app handles R.
    and processes frames on a watchdog timer (verified in Chromium). Watch FPS in the play screen.
 6. **Video mirroring owner mismatch**: contract says UI mirrors, app says A does; pose mirrors now.
    If any screen adds `scale-x-[-1]` the video flips back (NEEDS.md 2).
-7. A real jump within 0.4 s after standing up from a squat is ignored (the guard). Probably fine.
+7. **Jump out of a deep crouch registers ~0.17 s later** (it must clear 0.45 T, not 0.15 T, for 0.4 s
+   after a squat/crouch). Normal jumps are unchanged. If hurdles feel late, lower
+   `JUMP_AFTER_SQUAT_ON_T` (0.45) a little; never below ~0.3 (standing up onto the toes).
 8. Background people with `MAX_POSES = 1`: MediaPipe may lock onto someone else; the size gate stops
    tracking a much smaller/larger person, but a same-size person beside you could be picked.
 
@@ -87,7 +89,9 @@ README "How to use it". Stand at playing distance (feet in view).
    arm only, right arm only. Expect 10/10 each, nothing counted under the other moves. With the
    overlay on, the coloured lines show the lane, squat, jump and arm-up thresholds on the video.
 4. **No false moves:** stand still 20 s, shuffle a little, scratch your head. Expect nothing.
-5. **Squat then stand up fast onto your toes:** expect `squat` only, no `jump`.
+5. **Squat then stand up fast onto your toes:** expect `squat` only, no `jump`. Then **crouch deep
+   and jump**: expect `jump` (and no `squat` unless you paused at the bottom). Then **10 fast squats**
+   (no pause): expect 10.
 6. **Walk out of frame:** `tracking □` within ~0.5 s; walk back: `■` within ~0.3 s.
 7. **Sliders:** move `LANE_ON_W` to 1.0 → small sidesteps stop counting. Press Reset.
 8. **Treadmill:** click `⟳ calibrate treadmill` at about 1–1.5 m. Jog on the spot 20 s: expect no

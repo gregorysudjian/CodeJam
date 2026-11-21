@@ -144,7 +144,10 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
   let presentSince = -Infinity;
   let missingSince = -Infinity;
   let airborneUntil = -Infinity;
-  let jumpAllowedAt = -Infinity;
+  let jumpAllowedAt = -Infinity; // cooldown after a jump
+  let highJumpUntil = -Infinity; // after a squat ends, a jump must rise higher until then
+  let duckSince = 0;
+  let squatCounted = false;
   let still = { y: cal.centreY, since: -Infinity }; // where the centre has stayed, and since when
   let armGesture: 'none' | 'settling' | 'fired' = 'none';
   let oneArmSince = 0;
@@ -214,21 +217,29 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
     const offset = (c.x - centreX) / W;
 
     if (floor) {
-      // Squat, with hysteresis.
+      // Squat, with hysteresis. `ducking` is immediate (beams); the squat event (one rep) waits
+      // until the squat is held briefly, so the crouch before a jump is not a squat.
       if (!state.ducking && drop > K.SQUAT_ON_T) {
         state.ducking = true;
-        emit('squat');
+        duckSince = t;
+        squatCounted = false;
       } else if (state.ducking && drop < K.SQUAT_OFF_T) {
         state.ducking = false;
-        jumpAllowedAt = Math.max(jumpAllowedAt, t + K.JUMP_BLOCK_AFTER_SQUAT_MS);
+        highJumpUntil = t + K.JUMP_AFTER_SQUAT_MS;
+      }
+      if (state.ducking && !squatCounted && t - duckSince >= K.SQUAT_CONFIRM_MS) {
+        squatCounted = true;
+        emit('squat');
       }
 
-      // Jump: above standing height and still rising; fixed airtime, then a cooldown.
+      // Jump: above standing height and still rising; fixed airtime, then a cooldown. Right after
+      // a squat it must rise higher, so standing back up is not a jump.
+      const jumpLine = t < highJumpUntil ? K.JUMP_AFTER_SQUAT_ON_T : K.JUMP_ON_T;
       if (
         !state.airborne &&
         !state.ducking &&
         t >= jumpAllowedAt &&
-        -drop > K.JUMP_ON_T &&
+        -drop > jumpLine &&
         upSpeed > K.JUMP_MIN_UP_SPEED_T
       ) {
         state.airborne = true;
@@ -292,6 +303,7 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
       !state.leftArmUp &&
       !state.rightArmUp &&
       t >= jumpAllowedAt &&
+      t >= highJumpUntil &&
       t - still.since >= K.IDLE_STILL_MS &&
       Math.abs(drop) < K.IDLE_MAX_DROP_T;
     if (floor && idle && fresh) {
