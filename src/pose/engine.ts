@@ -139,7 +139,11 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     // The camera stopped delivering frames (unplugged, taken by another app, laptop asleep): tell
     // the session nobody is visible, so tracking goes false and the game pauses instead of
     // holding the last pose forever.
-    if (now - lastProcessedAt > CAMERA_STALL_MS) session.frame([], now, aspect());
+    if (now - lastProcessedAt > CAMERA_STALL_MS) {
+      session.frame([], now, aspect());
+      fps = 0; // show the stall on the overlay instead of the last FPS
+      overlay.update();
+    }
   };
 
   const onKey = (e: KeyboardEvent) => {
