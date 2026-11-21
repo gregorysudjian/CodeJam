@@ -15,6 +15,8 @@ export const TRACKING_LOST_HINT_MS = 3000;
 /** Kiosk leaderboard (?kiosk=1) for the demo table: refresh interval and number of rows. */
 export const KIOSK_REFRESH_MS = 15000;
 export const LEADERBOARD_SIZE = 20;
+/** The board shown first (landing top 3, kiosk, leaderboard): judges play the 45 s demo round. */
+export const BOARD_DEFAULT_DURATION_SEC = 45;
 
 /** "Try each move" tutorial before a player's first round: time per move (about 15 s in total). */
 export const TUTORIAL_STEP_MS = 2500;

@@ -46,6 +46,7 @@ export interface LeaderboardRow {
   mode: PlayMode;
   score: number;
   created_at: string;
+  duration_sec: number;
 }
 
 const MOVES: MoveType[] = ['sidestep', 'jump', 'squat', 'armsUp', 'reachLeft', 'reachRight'];
@@ -145,6 +146,7 @@ export function leaderboardFromRow(r: LeaderboardRow): LeaderboardEntry {
     score: r.score,
     workout: r.workout,
     mode: r.mode,
+    durationSec: r.duration_sec,
     at: Date.parse(r.created_at),
   };
 }
