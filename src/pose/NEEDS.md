@@ -48,3 +48,10 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > The pose input already emits an `armsUp` move event. For a hands-free start, the ready screen can
 > subscribe with `pose.onMove((e) => { if (e.type === 'armsUp') startRound(); })` and unsubscribe
 > on unmount. No pose change needed.
+
+## 6. Optional: skeleton on the play screen's camera preview
+
+> The play screen's camera preview (`cameraSlot` in `PlayScreen.tsx`) shows only `<VideoSlot>`.
+> Wrapping it with the skeleton, like the calibration screen does, shows players they are tracked:
+> `<div className="relative h-full w-full"><VideoSlot pose={pose} /><SkeletonSlot pose={pose} /></div>`.
+> `drawSkeleton` already handles the `object-cover` crop. Purely visual; skip if the HUD is busy.

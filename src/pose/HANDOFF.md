@@ -121,8 +121,9 @@ Recording a new clip for a failing case: use the `● …` buttons, then put the
 
 ## 7. Waiting on teammates
 
-Copy-paste messages for Greg are in `src/pose/NEEDS.md` (wire `?dev=pose`; who mirrors the video;
-skeleton canvas over the video; FYI tuned thresholds; optional "raise both arms to start").
+Copy-paste messages for Greg are in `src/pose/NEEDS.md`: 1 wire `?dev=pose` (ready `DevPose.tsx`,
+verified against `main`); 2 who mirrors the video; 3 skeleton canvas over the video; 4 FYI tuned
+thresholds; 5 optional "raise both arms to start"; 6 optional skeleton on the play preview.
 
 ## 8. Next tasks (priority, PLAN.md phase)
 
@@ -132,6 +133,29 @@ skeleton canvas over the video; FYI tuned thresholds; optional "raise both arms 
    whether to merge `origin/main` into `abdo-1` and re-run `npm run check`.
 4. Measure `MAX_POSES = 2` FPS; keep it if ≥ 25 (Phase 2 "ignore background people").
 5. Phase 4: demo-conditions test (venue light, people behind), station setup notes.
+
+### Ready PR description (when A opens `abdo-1` → `main`; merge order C, B, A, D)
+
+Title: `pose: real pose input — calibration, moves, treadmill, debug overlay`
+
+```
+Replaces the src/pose stub with the real pose input (CONTRACTS.md, unchanged interfaces).
+
+- createPoseInput(): camera, MediaPipe Pose Landmarker (lite, from public/), calibrate() with
+  status messages, lane / jump / squat / armsUp / reachLeft / reachRight, tracking flag,
+  move events, drawSkeleton (handles VideoSlot's object-cover crop)
+- Treadmill mode: shoulder calibration at 1–1.5 m, arm moves only
+- D toggles a pose debug overlay (live values, threshold lines, sliders); R stays in the app
+- The pose module mirrors its own <video> (slots.tsx expects that) and keeps it playing when a
+  screen takes it off the page
+- ?dev=pose: mountPoseDebug in src/pose/debug.ts (see src/pose/NEEDS.md 1 for DevPose.tsx)
+- Thresholds tuned from recorded clips: src/pose/DECISIONS.md; station notes: src/pose/STATION.md
+- 177 tests on recorded landmark clips and synthetic variants; npm run check passes
+
+Only src/pose/, public/models/, public/mediapipe/ changed. No new packages or env vars.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+```
 
 ## 9. Starter prompt for a new conversation
 
