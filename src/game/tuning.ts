@@ -24,6 +24,9 @@ export const GRID_TILE = 4; // world units per floor grid square
 export const DASH_SPACING = 6;
 export const ARCH_SPACING = 26;
 export const ARCH_COUNT = 6;
+export const ARCH_HEIGHT = 4.4;
+export const TOWER_COUNT = 48;
+export const TOWER_PARALLAX = 0.6; // skyline scrolls slower than the track
 
 /* ── Look ("Neon Arena", matches the UI) ── */
 export const COLOR_BG = 0x07090d;
@@ -41,16 +44,17 @@ export const MOVE_COLOR = {
 } as const;
 export const FOG_NEAR = 30;
 export const FOG_FAR = 105;
-export const BLOOM_ENABLED = true;
-export const BLOOM_STRENGTH = 0.85;
-export const BLOOM_RADIUS = 0.45;
-export const BLOOM_THRESHOLD = 0.2;
-export const BLOOM_RESOLUTION_SCALE = 0.5; // bloom renders at half size; MediaPipe needs the GPU too
+export const BLOOM_ENABLED = true; // false = plain render, for weak laptops
+export const BLOOM_STRENGTH = 0.55;
+export const BLOOM_RADIUS = 0.2;
+export const BLOOM_THRESHOLD = 1.0; // only colours boosted by NEON_BOOST pass it
+export const NEON_BOOST = 1.7; // neon parts are drawn brighter than 1.0 (HDR) so they bloom
+export const COLOR_TRACK = 0x101724;
 
 /* ── Camera ── */
 export const CAMERA_FOV = 62;
-export const CAMERA_POS = { x: 0, y: 3.4, z: 6.8 };
-export const CAMERA_LOOK = { x: 0, y: 1.1, z: -10 };
+export const CAMERA_POS = { x: 0, y: 4.3, z: 7.4 };
+export const CAMERA_LOOK = { x: 0, y: 0.6, z: -14 };
 export const CAMERA_FOLLOW_X = 0.35; // fraction of the player's x the camera follows
 export const SHAKE_AMPLITUDE = 0.22;
 export const SHAKE_DECAY = 7; // per second
@@ -81,3 +85,4 @@ export const TELEGRAPH_LENGTH = 5; // floor marker painted ahead of each object
 export const SMASH_SEC = 0.7; // crate fragments / orb collect animation
 export const BURST_SEC = 0.45;
 export const BURST_POOL = 10;
+export const POOL_WARM = 4; // views of each kind built up front
