@@ -212,12 +212,17 @@ export interface DataStore {
   listSessions(limit?: number): Promise<SavedSession[]>; // newest first
   getLeaderboard(workout: WorkoutId, mode: PlayMode, limit?: number): Promise<LeaderboardEntry[]>;
   getCoachAdvice(session: SavedSession): Promise<CoachAdvice>; // never rejects; falls back to rules
+  signOut(): Promise<void>; // forgets the current guest; the next signInGuest creates a new user
 }
 
 // src/data/index.ts      export function createStore(): DataStore
 //                        Returns the Supabase store, or the local store when the URL has
 //                        ?store=local or the Supabase environment variables are missing.
 ```
+
+### signOut (added Saturday, approved by the team)
+
+"New guest" on the landing screen must start a new player instead of reusing the saved one. `signOut()` never rejects. The Supabase store first tries to send queued sessions, then signs out locally (works offline) and clears its cached profile, sessions and queue; the local store clears its saved player and sessions. The app calls it for "New guest"; "Continue as …" keeps the saved player.
 
 ## Guest profile defaults (C)
 

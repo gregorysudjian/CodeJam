@@ -63,6 +63,18 @@ describe('local store', () => {
     ]);
   });
 
+  it('signOut forgets the player, so the next sign-in is a new guest with no history', async () => {
+    const store = createLocalStore(memory());
+    const first = await store.signInGuest('First');
+    await store.saveSession(summary(800));
+    await store.signOut();
+    expect(await store.getProfile()).toBeNull();
+    expect(await store.listSessions()).toEqual([]);
+    const second = await store.signInGuest('Second');
+    expect(second.id).not.toBe(first.id);
+    expect(second.displayName).toBe('Second');
+  });
+
   it('works with storage blocked entirely', async () => {
     const store = createLocalStore(null);
     await expect(store.signInGuest()).resolves.toBeTruthy();

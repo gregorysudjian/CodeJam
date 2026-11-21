@@ -154,7 +154,18 @@ function MainApp() {
   }, [board.workout, board.mode, loadBoard]);
 
   // ── Guest sign-in and profile ──
+  // "Play as guest" for a first visit, "New guest" when a player is saved: either way a NEW
+  // player. "Continue as …" (continueAsReturning) keeps the saved one.
   const playAsGuest = async () => {
+    if (returning || profile) {
+      await store.signOut();
+      setReturning(null);
+      setSessions([]);
+      setCoachPick(null);
+      setSummary(null);
+      setAdvice(null);
+      setConfig(null);
+    }
     setProfile(await store.signInGuest());
     setScreen('profile');
   };
