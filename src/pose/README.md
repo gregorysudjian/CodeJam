@@ -1,9 +1,9 @@
 # src/pose — Vision (owner A)
 
-## MORNING REPORT (last update: Sat ~07:15 — refreshed through the night)
+## MORNING REPORT (last update: Sat 06:55 — refreshed through the night)
 
 **State:** Phase 1 (real detection), most of Phase 2 (robustness) and Phase 3 (treadmill input) are
-done and pushed to `abdo-1`. `npm run check` passes: **160 tests**. Nothing was pushed to `main`.
+done and pushed to `abdo-1`. `npm run check` passes: **174 tests**. Nothing was pushed to `main`.
 
 **Integration with `main` (verified, nothing merged):** in a throwaway worktree of `origin/main`
 (PR #19) with this `src/pose` copied in, `main`'s full `npm run check` passes (220 tests incl. the
@@ -28,10 +28,15 @@ mirrored and fills the frame, D shows the overlay (27 FPS GPU), Esc and K back t
 1. Camera stayed on after React StrictMode start/stop/start (leaked stream).
 2. **Pose froze for good if the app took the video off the page** (it pauses and never resumes).
 3. Baseline never adapted after stepping ~20% closer; stepping back quickly could fire a jump.
-4. Overhead holds shrank W and T; lane hysteresis bug leaving a side lane; GPU error stopped the loop;
-   unhandled rejection when the camera failed inside `calibrate()`.
+4. **A crouch before a jump (20% deeper than yours) became a squat and the jump was lost.** Now the
+   squat rep needs 250 ms down, and after a squat a jump just has to rise higher (0.45 T).
+5. Overhead holds shrank W and T; lane hysteresis bug leaving a side lane; GPU error stopped the loop;
+   unhandled rejection when the camera failed inside `calibrate()`; a throwing `onMove` listener
+   corrupted tracking.
 
-**Decisions:** `DECISIONS.md` (24). **For Greg:** `NEEDS.md` (5 copy-paste messages).
+**New on `?dev=pose`:** a move tally (do 10, read 10), threshold lines on the video.
+
+**Decisions:** `DECISIONS.md` (25). **For Greg:** `NEEDS.md` (5 copy-paste messages).
 **New session:** `HANDOFF.md`. **Real-camera checklist:** `HANDOFF.md` §6 (10 min).
 
 ## How to use it

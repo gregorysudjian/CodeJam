@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat ~07:15 (overnight autonomous session). Read this first in a new conversation._
+_Last refresh: Sat 06:55 (overnight autonomous session). Read this first in a new conversation._
 
 ## 1. Context
 
@@ -21,8 +21,8 @@ _Last refresh: Sat ~07:15 (overnight autonomous session). Read this first in a n
 - **Half-done / not done:**
   - Nothing is half-written in code. Not done: "raise both arms to start" (app-side, NEEDS.md 5),
     station setup notes (Phase 4), real-camera tuning (needs A).
-- **Last commit:** see `git log -1` (last code commit at this refresh: `bad9581`).
-- **`npm run check`:** passes (160 tests).
+- **Last commit:** see `git log -1` (last code commit at this refresh: `a499664`).
+- **`npm run check`:** passes (174 tests).
 - **Integration:** verified against `origin/main` PR #19 in a scratch worktree (not merged): `main`'s
   check passes with this `src/pose` (220 tests) and the real calibration screen works with a stubbed
   camera (see README MORNING REPORT). `main` added packages since `abdo-1` branched, so after any
