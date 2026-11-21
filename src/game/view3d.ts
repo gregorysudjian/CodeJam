@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import type { InputState, Level } from '@/contracts';
 import { feverTier, type Item } from './core';
+import { requirementMet } from './judge';
 import type { Verdict } from './judge';
+import { colorKeyFor } from './obstacles';
 import { createObstacles, type ObstacleView } from './obstacles';
 import { createPlayer } from './player';
 import { createStage, neon } from './scene';
@@ -106,6 +108,23 @@ export function create3DView(
           views.delete(item);
         }
       }
+      // Hold feedback: is the player holding the held beam or crate they are under?
+      let aura: { color: number; ok: boolean } | null = null;
+      if (phase === 'running') {
+        for (const item of views.keys()) {
+          const hold = item.spawn.holdSec ?? 0;
+          const t = item.wave.t;
+          if (hold <= 0 || item.judge.verdict !== 'pending') continue;
+          if (elapsed < t - T.WINDOW_BEFORE_SEC || elapsed > t + hold) continue;
+          aura = {
+            color: T.MOVE_COLOR[colorKeyFor(item.spawn.requires)],
+            ok: requirementMet(item.spawn, mode, state),
+          };
+          break;
+        }
+      }
+      player.setAura(aura);
+
       finish.position.z = distance - finishDistance;
       finish.visible = -finish.position.z < T.VIEW_DISTANCE && finish.position.z < T.DESPAWN_BEHIND;
 

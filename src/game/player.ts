@@ -11,6 +11,11 @@ import * as T from './tuning';
 export interface Player {
   readonly root: THREE.Group;
   readonly x: number;
+  /**
+   * Hold feedback: a light column in `color` while a held beam or crate is being held
+   * correctly, a red pulse while it is not, nothing (null) otherwise.
+   */
+  setAura(aura: { color: number; ok: boolean } | null): void;
   /** World position of each hand, for orb collect effects. */
   handPosition(side: 'left' | 'right', out: THREE.Vector3): THREE.Vector3;
   /**
@@ -110,6 +115,19 @@ export function createPlayer(): Player {
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.015;
   ground.add(shadow, ring);
+  const auraMat = new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const aura = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.3, 28, 1, true), auraMat);
+  aura.position.y = 1.15;
+  aura.visible = false;
+  ground.add(aura);
+  let auraState: { color: number; ok: boolean } | null = null;
+  let auraClock = 0;
   root.add(ground);
 
   let x = 0;
@@ -128,6 +146,12 @@ export function createPlayer(): Player {
     },
     handPosition(side, out) {
       return (side === 'left' ? armL : armR).hand.getWorldPosition(out);
+    },
+    setAura(a) {
+      if (a && (!auraState || auraState.color !== a.color || auraState.ok !== a.ok)) {
+        auraMat.color.set(a.ok ? a.color : T.COLOR_HIT);
+      }
+      auraState = a;
     },
     flashHit() {
       hitT = 0;
@@ -171,6 +195,17 @@ export function createPlayer(): Player {
       const lift = Math.min(1, jumpY / T.JUMP_HEIGHT);
       shadow.scale.setScalar(1 - lift * 0.5);
       ring.scale.setScalar(1 + lift * 0.3);
+
+      auraClock += dt;
+      const auraTarget = !auraState
+        ? 0
+        : auraState.ok
+          ? T.AURA_OPACITY
+          : T.AURA_OPACITY * (0.5 + 0.5 * Math.sin(auraClock * 18));
+      auraMat.opacity += (auraTarget - auraMat.opacity) * lerpRate(20, dt);
+      aura.visible = auraMat.opacity > 0.01;
+      aura.scale.y = crouch;
+      aura.position.y = 1.15 * crouch;
 
       hitT += dt;
       suitMat.emissiveIntensity = hitT < T.HIT_FLASH_SEC ? 1.4 * (1 - hitT / T.HIT_FLASH_SEC) : 0;

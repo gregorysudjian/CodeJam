@@ -88,6 +88,7 @@ export const RUN_BOB_HZ = 2.6;
 export const RUN_BOB_HEIGHT = 0.06;
 export const HIT_FLASH_SEC = 0.35;
 export const STUMBLE_SEC = 0.5;
+export const AURA_OPACITY = 0.28; // hold feedback column around the runner
 
 /* ── Obstacles ── */
 export const BLOCK_HEIGHT = 1.9;
