@@ -8,7 +8,7 @@ Branches are pushed with the PR text in the first commit message (`git log --rev
 
 ## Status (Sat 15:55, `main` at bb17780)
 
-Full keyboard flow at 1366×768, 1920×1080 and 1280×720 with the new game (city/tunnel/bridge zones, beat, PERFECT/GOOD/LATE, 3-2-1 intro), plus a check of every fix in #40 and #41. **No console errors, no horizontal scroll, every round finished and saved.** `npm run check`: 695 tests, none skipped.
+Full keyboard flow at 1366×768, 1920×1080 and 1280×720 with the new game (city/tunnel/bridge zones, beat, PERFECT/GOOD/LATE, 3-2-1 intro), plus a check of every fix in #40 and #41. **No console errors, no horizontal scroll, every round finished and saved.** `npm run check` on bff0541: 699 tests, none skipped.
 
 | # | Severity | Problem | Owner | Status |
 | --- | --- | --- | --- | --- |
@@ -48,7 +48,7 @@ Full keyboard flow at 1366×768, 1920×1080 and 1280×720 with the new game (cit
 ### Q15. The cue word, the milestone banner and the ghost chip overlap
 - **Steps:** `/?demo=1&store=local`, play the demo level cleanly (a ghost from an earlier run adds the chip). At streak 5 (about 0:30 left), 10 (about 0:22) and 20 (about 0:07) the game shows "N COMBO!" for 1.3 s.
 - **Expected:** the banner readable.
-- **Saw:** each milestone came while a cue was showing. At 1920×1080 "SIDESTEP" sits on "5 COMBO!" and "REACH" on "10 COMBO!"; at 1366×768 "SIDESTEP" covers "5 COMBO!" and the "EVEN VS GHOST" chip completely ([1366](qa/q15-cue-over-banner-1366.jpg), [1920 at 5](qa/q15-cue-over-banner-1920.jpg), [1920 at 10](qa/q15-cue-over-banner-10-1920.jpg)). "20 COMBO!" stays readable at 1920 (the cue sits just above it). Unchanged by #41.
+- **Saw:** each milestone came while a cue was showing. At 1920×1080 "SIDESTEP" sits on "5 COMBO!" and "REACH" on "10 COMBO!"; at 1366×768 "SIDESTEP" covers "5 COMBO!" and the "EVEN VS GHOST" chip completely ([1366](qa/q15-cue-over-banner-1366.jpg), [1920 at 5](qa/q15-cue-over-banner-1920.jpg), [1920 at 10](qa/q15-cue-over-banner-10-1920.jpg)). "20 COMBO!" stays readable at 1920 (the cue sits just above it). Re-checked on bff0541 after #41 and #42: unchanged.
 - **Cause:** the cue is in the top band (`hud-cue`, `top-[124px]`, `GameHud.tsx:238`), where the game draws its banner (`BANNER_POS` y 3.3) and race chip (`RACE_POS` y 6.2, `src/game/tuning.ts`).
 - **Owner:** `src/ui` or Patrick; needs one decision. **Fix options (untested):** move the banner and chip lower, between the cue band and the horizon; or move the cue to one side of the top band (e.g. under the score) so the centre stays free for the game's labels.
 
@@ -119,3 +119,4 @@ Open suggestions: preload the pose model on the landing page for live-URL visito
 | 15:47 | Devpost screenshots (`q-shots`) | 13 captures at 1920×1080 from scripted perfect rounds; found Q15 and Q16 |
 | 15:50 | Operator card (`q-operator`), pitch 2 (`q-pitch-2`) | Card from DEMO.md and the app; Q&A for the new features; round timed at 50.1 s START → results |
 | 15:55 | Verify #41 on bb17780 (`q-qa-2`) | Q1, Q3, Q4, Q5, Q7, Q11, A1 fixed; A3 half; Q12, Q14, Q15, Q16 open |
+| 16:04 | Loop: #42 on bff0541 | New scenery colours and bigger icons; Devpost game frames retaken (`q-shots`); Q15 re-checked, still open; 699 tests |
