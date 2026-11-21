@@ -59,11 +59,12 @@ const GOALS = {
   buildStrength: { label: "BUILD STRENGTH", icon: Dumbbell },
   cardio: { label: "CARDIO", icon: HeartPulse },
 };
+/* Ordinal — see ResultsScreen.GRADE_COLOR. */
 const GRADE_TONE = {
   S: "text-lime border-lime/40",
-  A: "text-cyan border-cyan/40",
-  B: "text-amber border-amber/40",
-  C: "text-text-muted border-glass-border",
+  A: "text-text border-line-strong",
+  B: "text-text-muted border-line",
+  C: "text-text-dim border-line",
 };
 export function DashboardScreen({
   profile,
@@ -140,7 +141,7 @@ export function DashboardScreen({
           }
           right={
             <div className="flex flex-wrap items-center gap-3">
-              <span className="flex items-center gap-2 rounded-full border border-cyan/40 bg-cyan/10 px-4 py-2 font-display-italic text-[20px] text-cyan">
+              <span className="flex items-center gap-2 rounded-full border border-line bg-bg-raised px-4 py-2 font-display-italic text-[20px] text-text-muted">
                 <GoalIcon className="size-5" />
                 {GOALS[profile.goal].label}
               </span>
@@ -193,10 +194,10 @@ export function DashboardScreen({
             <section className="min-w-0" aria-label="Day streak">
               <Eyebrow accent="muted">DAY STREAK</Eyebrow>
               <div className="my-3 flex items-center gap-4">
-                <Flame className="size-12 text-magenta" />
+                <Flame className="size-12 text-warning" />
                 <AnimatedNumber
                   value={streak}
-                  className="font-display-italic text-display-lg text-magenta"
+                  className="font-display-italic text-display-lg text-warning"
                 />
                 <span className="self-end pb-3 font-display-italic text-title text-text-muted">
                   DAYS

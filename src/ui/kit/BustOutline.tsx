@@ -16,7 +16,7 @@ export const BustOutline = React.forwardRef<SVGSVGElement, BustOutlineProps>(
       role="img"
       aria-label="Head and shoulders guide"
       className={cn("overflow-visible", className)}
-      style={{ filter: `drop-shadow(0 0 6px ${color}aa) drop-shadow(0 0 18px ${color}55)`, ...style }}
+      style={{ filter: `drop-shadow(0 2px 10px ${color}33)`, ...style }}
       {...props}
     >
       <g stroke={color} strokeWidth={4} strokeLinecap="round" strokeDasharray={dashed ? "8 8" : undefined}>

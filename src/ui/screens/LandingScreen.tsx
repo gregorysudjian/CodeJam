@@ -48,7 +48,7 @@ export function LandingScreen({
         <div className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className="grid size-12 place-items-center rounded-2xl bg-lime text-bg shadow-glow-lime"
+            className="grid size-12 place-items-center rounded-2xl bg-lime-fill text-bg"
           >
             <Play className="size-6 fill-current" strokeWidth={2.5} />
           </span>
@@ -120,24 +120,35 @@ export function LandingScreen({
                 </GameButton>
               </div>
             )}
+            {/* A reassurance, not a feature: it reads in the neutral ramp so it
+                does not compete with the call to action directly above it. */}
             <p className="flex items-center gap-2 text-caption text-text-muted">
-              <Lock aria-hidden="true" className="size-4 text-cyan" />
+              <Lock aria-hidden="true" className="size-4 text-text-dim" />
               Tracking runs on this laptop. Your video never leaves it.
             </p>
           </div>
         </div>
 
+        {/* The move demo sits on a surface rather than floating in the page.
+            Unbounded, a 280px figure in a full-saturation move colour was the
+            brightest object on the screen and beat the call to action; inside
+            a panel it reads as the diagram it is, and the hero stops having a
+            hole in the middle of it. */}
         <motion.div
-          initial={reduce ? false : { opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: reduce ? 0 : 0.6, ease: EASE_ARENA, delay: reduce ? 0 : 0.45 }}
+          initial={reduce ? false : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reduce ? 0 : 0.5, ease: EASE_ARENA, delay: reduce ? 0 : 0.35 }}
           className="min-w-0"
         >
-          <div className="flex h-full min-h-[460px] flex-col items-center justify-center gap-6">
-            <div className="flex w-full items-center justify-between">
+          <div className="glass flex h-full min-h-[460px] flex-col gap-6 p-7">
+            <div className="flex items-baseline justify-between gap-4">
               <Eyebrow>How you play</Eyebrow>
+              <span className="text-caption text-text-dim">6 moves</span>
             </div>
-            <MoveFigureCycle moves={MOVE_ORDER} size={280} className="flex-1 justify-center" />
+            <MoveFigureCycle moves={MOVE_ORDER} size={232} className="flex-1 justify-center" />
+            <p className="border-t border-line pt-5 text-caption text-text-muted">
+              Each workout mixes its own set. Hit the move before it reaches you.
+            </p>
           </div>
         </motion.div>
       </section>
@@ -146,7 +157,7 @@ export function LandingScreen({
         <section className="flex flex-wrap items-center justify-between gap-8 border-y border-glass-border py-4">
           {scores.length > 0 && (
             <div className="flex min-w-0 flex-wrap items-center gap-6">
-              <Eyebrow accent="cyan">TODAY'S TOP</Eyebrow>
+              <Eyebrow>TODAY'S TOP</Eyebrow>
               <ol className="flex flex-wrap gap-6">
                 {scores.map((entry, i) => (
                   <li
@@ -167,7 +178,7 @@ export function LandingScreen({
                 {qrSlot}
               </div>
               <div>
-                <p className="font-display-italic text-[20px] text-cyan">PLAY ON YOUR LAPTOP</p>
+                <p className="font-display-italic text-[20px] text-text">PLAY ON YOUR LAPTOP</p>
                 <p className="max-w-64 truncate text-caption text-text-muted">{publicUrl}</p>
               </div>
             </div>

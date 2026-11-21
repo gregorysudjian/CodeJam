@@ -7,23 +7,56 @@
 
 :root {
   color-scheme: dark;
-  /* Raw palette */
-  --na-bg: #07090d;
-  --na-bg-raised: #0d1118;
-  --na-glass: rgba(255, 255, 255, 0.04);
-  --na-glass-strong: rgba(255, 255, 255, 0.07);
-  --na-glass-border: rgba(255, 255, 255, 0.08);
-  --na-text: #f5f7fa;
-  --na-text-muted: #8a94a6;
-  --na-text-dim: #5b6475;
-  --na-lime: #c6ff3d;
-  --na-cyan: #22d3ee;
-  --na-magenta: #ff3dcb;
-  --na-amber: #ffb020;
-  --na-violet: #8b5cf6;
-  --na-danger: #ff4d4f;
+
+  /* ── Surfaces ────────────────────────────────────────────────────────────
+     A single hue-consistent neutral ramp (Radix Slate Dark). The page sits at
+     #111113, not near-black: on true black, bright type halates and there is
+     no room left to recess an element. Elevation is a step up this ramp —
+     never a glow. */
+  --na-bg: #111113; /* page */
+  --na-surface: #18191b; /* subtle block on the page */
+  --na-bg-raised: #212225; /* card / panel */
+  --na-hover: #272a2d;
+  --na-active: #2e3135;
+  --na-line: #363a3f; /* hairline, decorative */
+  --na-line-strong: #5a6169; /* 3.01:1 — a real UI boundary */
+
+  /* Kept for API compatibility with components that still ask for "glass".
+     These are now opaque steps on the ramp, not translucent haze. */
+  --na-glass: var(--na-surface);
+  --na-glass-strong: var(--na-bg-raised);
+  --na-glass-border: var(--na-line);
+
+  /* ── Text ──────────────────────────────────────────────────────────────── */
+  --na-text: #edeef0; /* 16.25:1 */
+  --na-text-muted: #b0b4ba; /*  9.06:1 */
+  --na-text-dim: #8b9098; /*  5.87:1 — was #5b6475 at 3.34:1, failed AA */
+
+  /* ── Brand ─────────────────────────────────────────────────────────────── */
+  /* One accent carries the brand. It sits deliberately BELOW primary text in
+     luminance (13.10 vs 16.25) so text leads and the accent points. The old
+     lime was 16.86 against text at 18.57 — a 1.10x gap, so it competed with
+     body copy instead of directing attention. */
+  --na-lime: #bde56c; /* accent as text / stroke */
+  --na-lime-fill: #bdee63; /* accent as a fill, always with a near-black label */
+  --na-lime-dim: #7fa33c; /* accent at rest: inactive track, spent progress */
+
+  /* ── Functional ────────────────────────────────────────────────────────── */
+  --na-success: #4cc38a;
+  --na-warning: #ffc53d;
+  --na-danger: #ff6369;
+
+  /* ── Move encoding ─────────────────────────────────────────────────────────
+     These five are DATA, not decoration: one hue per move type, so a glance at
+     a chip identifies the move. They appear on chips, figures and charts only,
+     and never compete with the brand accent for "what do I press". */
+  --na-cyan: #3dd5f3;
+  --na-magenta: #ff8dcc;
+  --na-amber: #ffc53d;
+  --na-violet: #baa7ff;
+
   --na-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --na-activity-bar: color-mix(in srgb, var(--na-lime) 55%, var(--na-bg));
+  --na-activity-bar: var(--na-lime-dim);
 
   /* shadcn mapping (dark only) */
   --radius: 0.75rem;
@@ -33,7 +66,7 @@
   --card-foreground: var(--na-text);
   --popover: var(--na-bg-raised);
   --popover-foreground: var(--na-text);
-  --primary: var(--na-lime);
+  --primary: var(--na-lime-fill);
   --primary-foreground: var(--na-bg);
   --secondary: var(--na-glass-strong);
   --secondary-foreground: var(--na-text);
@@ -42,9 +75,9 @@
   --accent: var(--na-glass-strong);
   --accent-foreground: var(--na-text);
   --destructive: var(--na-danger);
-  --destructive-foreground: var(--na-text);
-  --border: var(--na-glass-border);
-  --input: rgba(255, 255, 255, 0.14);
+  --destructive-foreground: var(--na-bg);
+  --border: var(--na-line);
+  --input: var(--na-line-strong);
   --ring: var(--na-lime);
   --chart-1: var(--na-lime);
   --chart-2: var(--na-cyan);
@@ -101,7 +134,12 @@
   --radius-xl: calc(var(--radius) + 4px);
 
   --color-bg: var(--na-bg);
+  --color-surface: var(--na-surface);
   --color-bg-raised: var(--na-bg-raised);
+  --color-hover: var(--na-hover);
+  --color-active: var(--na-active);
+  --color-line: var(--na-line);
+  --color-line-strong: var(--na-line-strong);
   --color-glass: var(--na-glass);
   --color-glass-strong: var(--na-glass-strong);
   --color-glass-border: var(--na-glass-border);
@@ -109,6 +147,10 @@
   --color-text-muted: var(--na-text-muted);
   --color-text-dim: var(--na-text-dim);
   --color-lime: var(--na-lime);
+  --color-lime-fill: var(--na-lime-fill);
+  --color-lime-dim: var(--na-lime-dim);
+  --color-success: var(--na-success);
+  --color-warning: var(--na-warning);
   --color-cyan: var(--na-cyan);
   --color-magenta: var(--na-magenta);
   --color-amber: var(--na-amber);
@@ -124,50 +166,65 @@
   --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
 
-  --text-display-xl: 160px;
-  --text-display-xl--line-height: 0.85;
+  /* Two ramps, each with one constant ratio.
+     Display ~1.40 (48 · 67 · 94 · 132) for poster type.
+     Text    ~1.25 (16 · 20 · 25 · 32) for everything that is read.
+     The old scale stepped 1.43 / 1.56 / 1.50 / 1.50 / 1.60 / 1.25 — no ratio,
+     so sizes never felt related. Body stays at 20px on purpose: this screen is
+     read from across a room while the player is standing, not at desk range. */
+  --text-display-xl: 132px;
+  --text-display-xl--line-height: 0.9;
   --text-display-xl--letter-spacing: -0.03em;
-  --text-display-lg: 112px;
-  --text-display-lg--line-height: 0.88;
-  --text-display-lg--letter-spacing: -0.025em;
-  --text-display-md: 72px;
-  --text-display-md--line-height: 0.9;
-  --text-display-md--letter-spacing: -0.02em;
+  --text-display-lg: 94px;
+  --text-display-lg--line-height: 0.92;
+  --text-display-lg--letter-spacing: -0.028em;
+  --text-display-md: 67px;
+  --text-display-md--line-height: 0.94;
+  --text-display-md--letter-spacing: -0.025em;
   --text-display-sm: 48px;
-  --text-display-sm--line-height: 0.95;
-  --text-display-sm--letter-spacing: -0.01em;
+  --text-display-sm--line-height: 0.98;
+  --text-display-sm--letter-spacing: -0.02em;
   --text-title: 32px;
-  --text-title--line-height: 1.05;
+  --text-title--line-height: 1.12;
+  --text-title--letter-spacing: -0.015em;
+  --text-subtitle: 25px;
+  --text-subtitle--line-height: 1.3;
   --text-body: 20px;
-  --text-body--line-height: 1.5;
+  --text-body--line-height: 1.55;
   --text-caption: 16px;
-  --text-caption--line-height: 1.4;
+  --text-caption--line-height: 1.45;
 
   --ease-arena: cubic-bezier(0.22, 1, 0.36, 1);
 
   --radius-panel: 24px;
 
-  --shadow-glow-lime:
-    0 0 0 1px color-mix(in srgb, var(--na-lime) 40%, transparent),
-    0 0 24px color-mix(in srgb, var(--na-lime) 35%, transparent),
-    0 0 64px color-mix(in srgb, var(--na-lime) 20%, transparent);
-  --shadow-glow-cyan:
-    0 0 0 1px color-mix(in srgb, var(--na-cyan) 40%, transparent),
-    0 0 24px color-mix(in srgb, var(--na-cyan) 35%, transparent),
-    0 0 64px color-mix(in srgb, var(--na-cyan) 20%, transparent);
-  --shadow-glow-magenta:
-    0 0 0 1px color-mix(in srgb, var(--na-magenta) 40%, transparent),
-    0 0 24px color-mix(in srgb, var(--na-magenta) 35%, transparent),
-    0 0 64px color-mix(in srgb, var(--na-magenta) 20%, transparent);
-  --shadow-glow-danger:
-    0 0 0 1px color-mix(in srgb, var(--na-danger) 40%, transparent),
-    0 0 24px color-mix(in srgb, var(--na-danger) 30%, transparent);
+  /* Depth, not glow.
+     A 64px coloured bloom on every surface is why nothing read as important:
+     when everything glows, glow carries no information. These are now ordinary
+     drop shadows plus a contact shadow — the cheap, correct way to say "this
+     sits above the page". The one genuine halo left in the product is
+     --shadow-live, used only where the camera is actively scoring the player. */
+  --shadow-raise:
+    0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  --shadow-float:
+    0 2px 4px rgba(0, 0, 0, 0.4), 0 12px 32px -8px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
 
-  --animate-drift-a: na-drift-a 38s ease-in-out infinite alternate;
-  --animate-drift-b: na-drift-b 46s ease-in-out infinite alternate;
-  --animate-drift-c: na-drift-c 54s ease-in-out infinite alternate;
-  --animate-cta-pulse: na-cta-pulse 2.4s ease-in-out infinite;
-  --animate-grid-scroll: na-grid-scroll 1.6s linear infinite;
+  /* Kept under their old names so components need no edit. They now read as a
+     crisp tinted edge, not a bloom. */
+  --shadow-glow-lime:
+    0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 20px -6px color-mix(in srgb, var(--na-lime-fill) 40%, transparent);
+  --shadow-glow-cyan: 0 0 0 1px color-mix(in srgb, var(--na-cyan) 55%, transparent);
+  --shadow-glow-magenta: 0 0 0 1px color-mix(in srgb, var(--na-magenta) 55%, transparent);
+  --shadow-glow-danger: 0 0 0 1px color-mix(in srgb, var(--na-danger) 60%, transparent);
+
+  /* The single earned halo: live scoring feedback. */
+  --shadow-live:
+    0 0 0 1px color-mix(in srgb, var(--na-lime-fill) 70%, transparent),
+    0 0 28px -4px color-mix(in srgb, var(--na-lime-fill) 45%, transparent);
+
+  --animate-cta-pulse: na-cta-pulse 2.6s ease-in-out infinite;
 }
 
 /* ───── Utilities ───── */
@@ -187,58 +244,51 @@
   text-transform: uppercase;
 }
 
+/* A panel is a step up the neutral ramp with a hairline edge. No blur, no
+   translucency: backdrop-filter over a busy background was what turned every
+   card into grey mush, and it costs a compositor layer per panel. */
 @utility glass {
-  background: var(--na-glass);
-  border: 1px solid var(--na-glass-border);
-  backdrop-filter: blur(24px) saturate(140%);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.09),
-    0 24px 60px -24px rgba(0, 0, 0, 0.7);
+  background: var(--na-bg-raised);
+  border: 1px solid var(--na-line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-raise);
 }
 
 @utility glass-strong {
-  background: var(--na-glass-strong);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(24px) saturate(140%);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  background: var(--na-hover);
+  border: 1px solid var(--na-line-strong);
+  box-shadow: var(--shadow-float);
 }
 
+/* "Selected", not "lit". A 2px inset edge in the accent plus a faint tint —
+   the same affordance a physical control uses, and it survives on any
+   background. */
 @utility glow-edge-lime {
-  border-color: color-mix(in srgb, var(--na-lime) 45%, transparent);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
-    0 0 32px -4px color-mix(in srgb, var(--na-lime) 30%, transparent),
-    0 0 80px -10px color-mix(in srgb, var(--na-lime) 18%, transparent);
+  border-color: color-mix(in srgb, var(--na-lime-fill) 60%, transparent);
+  background: color-mix(in srgb, var(--na-lime-fill) 6%, var(--na-bg-raised));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--na-lime-fill) 30%, transparent);
 }
 @utility glow-edge-cyan {
-  border-color: color-mix(in srgb, var(--na-cyan) 45%, transparent);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
-    0 0 32px -4px color-mix(in srgb, var(--na-cyan) 30%, transparent),
-    0 0 80px -10px color-mix(in srgb, var(--na-cyan) 18%, transparent);
+  border-color: color-mix(in srgb, var(--na-cyan) 55%, transparent);
+  background: color-mix(in srgb, var(--na-cyan) 6%, var(--na-bg-raised));
 }
 @utility glow-edge-magenta {
-  border-color: color-mix(in srgb, var(--na-magenta) 45%, transparent);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
-    0 0 32px -4px color-mix(in srgb, var(--na-magenta) 30%, transparent),
-    0 0 80px -10px color-mix(in srgb, var(--na-magenta) 18%, transparent);
+  border-color: color-mix(in srgb, var(--na-magenta) 55%, transparent);
+  background: color-mix(in srgb, var(--na-magenta) 6%, var(--na-bg-raised));
 }
 
+/* Headline glow is deleted. A 48px halo on display type eats the counters and
+   softens every stem — it actively made the most important word on the page
+   harder to read. Colour and weight do this job. The utilities stay (so no
+   component breaks) but now only lift the glyph off the background. */
 @utility text-glow-lime {
-  text-shadow:
-    0 0 18px color-mix(in srgb, var(--na-lime) 55%, transparent),
-    0 0 48px color-mix(in srgb, var(--na-lime) 30%, transparent);
+  text-shadow: 0 1px 24px color-mix(in srgb, var(--na-lime-fill) 18%, transparent);
 }
 @utility text-glow-cyan {
-  text-shadow:
-    0 0 18px color-mix(in srgb, var(--na-cyan) 55%, transparent),
-    0 0 48px color-mix(in srgb, var(--na-cyan) 30%, transparent);
+  text-shadow: 0 1px 24px color-mix(in srgb, var(--na-cyan) 18%, transparent);
 }
 @utility text-glow-magenta {
-  text-shadow:
-    0 0 18px color-mix(in srgb, var(--na-magenta) 55%, transparent),
-    0 0 48px color-mix(in srgb, var(--na-magenta) 30%, transparent);
+  text-shadow: 0 1px 24px color-mix(in srgb, var(--na-magenta) 18%, transparent);
 }
 
 /* Tinted chip driven by a --chip colour variable set by the component */
@@ -249,82 +299,72 @@
   box-shadow: 0 0 16px -4px color-mix(in srgb, var(--chip) 45%, transparent);
 }
 
+/* Grain is halved and no longer blend-mode: overlay, which was lifting the
+   black point unevenly across the page. */
 @utility grain {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  opacity: 0.04;
-  mix-blend-mode: overlay;
+  opacity: 0.02;
 }
 
 @utility pool {
   position: absolute;
   border-radius: 9999px;
-  filter: blur(min(110px, 8vw));
-  will-change: transform;
+  filter: blur(min(140px, 10vw));
 }
 
-/* Perspective floor grid with lime lane lines */
+/* Perspective floor.
+   This used to be the loudest element on every screen: two 85%-opacity lime
+   lane lines and a full cyan grid, lit from a glowing horizon. On the empty
+   leaderboard it occupied most of the viewport while the actual content was a
+   thumbnail. It is now a neutral floor that recedes — the lanes are hinted,
+   the grid is grey, and the whole thing fades out well before it reaches the
+   content. */
 @utility track-floor {
   position: absolute;
   left: -50%;
   right: -50%;
-  bottom: -10%;
-  height: 75%;
+  bottom: -12%;
+  height: 62%;
   transform-origin: 50% 0%;
-  transform: perspective(520px) rotateX(62deg);
+  transform: perspective(620px) rotateX(64deg);
   background-image:
     linear-gradient(
       to right,
       transparent calc(50% - 15% - 1px),
-      color-mix(in srgb, var(--na-lime) 85%, transparent) calc(50% - 15% - 1px),
-      color-mix(in srgb, var(--na-lime) 85%, transparent) calc(50% - 15% + 1px),
+      color-mix(in srgb, var(--na-lime) 26%, transparent) calc(50% - 15% - 1px),
+      color-mix(in srgb, var(--na-lime) 26%, transparent) calc(50% - 15% + 1px),
       transparent calc(50% - 15% + 1px)
     ),
     linear-gradient(
       to right,
       transparent calc(50% + 15% - 1px),
-      color-mix(in srgb, var(--na-lime) 85%, transparent) calc(50% + 15% - 1px),
-      color-mix(in srgb, var(--na-lime) 85%, transparent) calc(50% + 15% + 1px),
+      color-mix(in srgb, var(--na-lime) 26%, transparent) calc(50% + 15% - 1px),
+      color-mix(in srgb, var(--na-lime) 26%, transparent) calc(50% + 15% + 1px),
       transparent calc(50% + 15% + 1px)
     ),
-    linear-gradient(
-      to right,
-      transparent calc(50% - 5% - 1px),
-      color-mix(in srgb, var(--na-lime) 35%, transparent) calc(50% - 5% - 1px),
-      color-mix(in srgb, var(--na-lime) 35%, transparent) calc(50% - 5% + 1px),
-      transparent calc(50% - 5% + 1px)
-    ),
-    linear-gradient(
-      to right,
-      transparent calc(50% + 5% - 1px),
-      color-mix(in srgb, var(--na-lime) 35%, transparent) calc(50% + 5% - 1px),
-      color-mix(in srgb, var(--na-lime) 35%, transparent) calc(50% + 5% + 1px),
-      transparent calc(50% + 5% + 1px)
-    ),
-    linear-gradient(to right, rgba(34, 211, 238, 0.14) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(34, 211, 238, 0.18) 1px, transparent 1px);
+    linear-gradient(to right, rgba(176, 180, 186, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(176, 180, 186, 0.09) 1px, transparent 1px);
   background-size:
     100% 100%,
     100% 100%,
-    100% 100%,
-    100% 100%,
-    64px 64px,
-    64px 64px;
-  mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 100%);
+    72px 72px,
+    72px 72px;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 55%, rgba(0, 0, 0, 0.55) 100%);
 }
 
+/* A thin horizon line, no bloom. */
 @utility horizon-glow {
   position: absolute;
   left: 0;
   right: 0;
   top: 38%;
-  height: 2px;
+  height: 1px;
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, var(--na-lime) 70%, transparent),
+    color-mix(in srgb, var(--na-lime) 28%, transparent),
     transparent
   );
-  box-shadow: 0 0 40px 8px color-mix(in srgb, var(--na-lime) 20%, transparent);
 }
 
 @utility sheen {
@@ -341,40 +381,26 @@
   transition: transform 650ms var(--na-ease);
 }
 
+/* One unambiguous focus indicator: a solid ring with an offset gap so it
+   reads on any surface. The extra 24px bloom it used to carry made focus
+   look like decoration rather than position. */
 @utility focus-ring {
   &:focus-visible {
     outline: 2px solid var(--na-lime);
-    outline-offset: 4px;
-    box-shadow:
-      0 0 0 6px color-mix(in srgb, var(--na-lime) 18%, transparent),
-      0 0 24px color-mix(in srgb, var(--na-lime) 35%, transparent);
+    outline-offset: 3px;
   }
 }
 
+/* The animated rainbow border is gone — a hue cycling through lime, magenta
+   and cyan is the single clearest "generated" tell in the old theme, and an
+   8s infinite loop is also WCAG 2.2.2 (Level A) exposure. A static accent
+   edge says the same thing. */
 @utility gradient-edge {
-  background: linear-gradient(
-    110deg,
-    var(--na-lime),
-    var(--na-magenta),
-    var(--na-cyan),
-    var(--na-lime)
-  );
-  background-size: 300% 100%;
-  animation: na-gradient-shift 8s linear infinite;
+  background: var(--na-lime-fill);
 }
 
 @utility scanline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 30%;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    color-mix(in srgb, var(--na-lime) 10%, transparent),
-    transparent
-  );
-  animation: na-scan 3.2s ease-in-out infinite;
+  display: none;
 }
 
 /* Legible text over any camera image */
@@ -834,47 +860,11 @@
   }
 }
 
-@keyframes na-gradient-shift {
-  from {
-    background-position: 0% 50%;
-  }
-  to {
-    background-position: 300% 50%;
-  }
-}
-@keyframes na-scan {
-  0% {
-    top: -30%;
-  }
-  100% {
-    top: 100%;
-  }
-}
-
-@keyframes na-drift-a {
-  from {
-    transform: translate3d(-6%, -4%, 0) scale(1);
-  }
-  to {
-    transform: translate3d(8%, 6%, 0) scale(1.15);
-  }
-}
-@keyframes na-drift-b {
-  from {
-    transform: translate3d(5%, 3%, 0) scale(1.1);
-  }
-  to {
-    transform: translate3d(-7%, -5%, 0) scale(0.95);
-  }
-}
-@keyframes na-drift-c {
-  from {
-    transform: translate3d(0, 6%, 0) scale(0.9);
-  }
-  to {
-    transform: translate3d(-4%, -6%, 0) scale(1.1);
-  }
-}
+/* The three infinite drift loops, the scanline sweep, the rainbow shift and
+   the scrolling grid are all removed: six always-on animations behind static
+   content, which is both visual noise and WCAG 2.2.2 (Level A) exposure.
+   The CTA keeps one slow, low-amplitude breath so the primary action is still
+   findable from across the room — the whole point of this product. */
 @keyframes na-cta-pulse {
   0%,
   100% {
@@ -882,29 +872,8 @@
   }
   50% {
     box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--na-lime) 60%, transparent),
-      0 0 36px color-mix(in srgb, var(--na-lime) 50%, transparent),
-      0 0 96px color-mix(in srgb, var(--na-lime) 28%, transparent);
-  }
-}
-@keyframes na-grid-scroll {
-  from {
-    background-position:
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0;
-  }
-  to {
-    background-position:
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 64px;
+      0 1px 2px rgba(0, 0, 0, 0.5),
+      0 8px 28px -6px color-mix(in srgb, var(--na-lime-fill) 60%, transparent);
   }
 }
 

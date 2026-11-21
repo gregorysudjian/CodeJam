@@ -32,10 +32,13 @@ export interface LeaderboardScreenProps {
   onBack(): void;
   onPlay?(): void;
 }
+/* Rank is an ordered quantity, so it reads down one ramp: the winner takes the
+   accent, second and third step back through the neutrals. Cyan and violet
+   made the three places look like three unrelated categories. */
 const PODIUM = [
-  { rank: 2, tone: "text-cyan", height: "min-h-[300px]" },
+  { rank: 2, tone: "text-text", height: "min-h-[300px]" },
   { rank: 1, tone: "text-lime", height: "min-h-[350px]" },
-  { rank: 3, tone: "text-violet", height: "min-h-[280px]" },
+  { rank: 3, tone: "text-text-muted", height: "min-h-[280px]" },
 ] as const;
 function Podium({
   entries,
@@ -56,7 +59,7 @@ function Podium({
           <GlassPanel
             key={rank}
             padding="sm"
-            glow={rank === 1 ? "lime" : rank === 2 ? "cyan" : "none"}
+            glow={rank === 1 ? "lime" : "none"}
             className={cn(
               "podium-place flex min-w-0 flex-col items-center justify-center gap-3 text-center",
               tone,
@@ -241,6 +244,12 @@ export function LeaderboardScreen({
             <EmptyState
               icon={Trophy}
               title="BE THE FIRST ON THE BOARD"
+              body="No one has posted a score for this workout yet."
+              hints={[
+                "Pick a workout and the arena builds a lane of moves to match it.",
+                "Your webcam reads the move. Clean reps score; missed ones don't.",
+                "Your best run per workout lands here.",
+              ]}
               action={
                 onPlay ? (
                   <GameButton size="lg" keyHint="ENTER" leadingIcon={Play} onClick={onPlay}>
@@ -320,9 +329,10 @@ export function LeaderboardScreen({
         </div>
         {kiosk && (
           <aside className="flex flex-col items-center justify-center gap-6 border-l border-glass-border pl-8 text-center">
-            <QrCode className="size-10 text-cyan" />
-            <h2 className="font-display-italic text-title text-cyan">PLAY ON YOUR LAPTOP</h2>
-            <div className="qr-stage grid aspect-square w-full max-w-[240px] place-items-center rounded-2xl border border-cyan/40 p-4">
+            <QrCode className="size-10 text-text-muted" />
+            <h2 className="font-display-italic text-title text-text">PLAY ON YOUR LAPTOP</h2>
+            {/* White plate: a QR needs a light quiet zone to scan reliably. */}
+            <div className="qr-stage grid aspect-square w-full max-w-[240px] place-items-center rounded-2xl border border-line bg-white p-4">
               {qrSlot ?? (
                 <div className="grid size-full place-items-center rounded-xl border border-dashed border-glass-border">
                   <QrCode className="size-24 text-text-dim" />

@@ -3,15 +3,31 @@ import { cn } from "@/ui/lib/utils";
 import { ACCENT_TEXT, type AccentKey } from "./tokens";
 
 export interface EyebrowProps extends React.HTMLAttributes<HTMLParagraphElement> {
-  accent?: AccentKey | "muted";
+  accent?: AccentKey | "muted" | "neutral";
 }
 
-/** Small wide-tracked uppercase label. */
+/**
+ * Small wide-tracked uppercase label.
+ *
+ * Defaults to neutral. This used to default to `lime`, so every eyebrow on
+ * every screen was painted in the brand accent — on the landing page alone
+ * that put lime in four places and left nothing for the accent to single out.
+ * An eyebrow names the section below it; it is the quietest thing on screen.
+ * Pass an accent only where the label itself is the signal.
+ */
 export const Eyebrow = React.forwardRef<HTMLParagraphElement, EyebrowProps>(
-  ({ accent = "lime", className, ...props }, ref) => (
+  ({ accent = "neutral", className, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn("eyebrow", accent === "muted" ? "text-text-muted" : ACCENT_TEXT[accent], className)}
+      className={cn(
+        "eyebrow",
+        accent === "neutral"
+          ? "text-text-dim"
+          : accent === "muted"
+            ? "text-text-muted"
+            : ACCENT_TEXT[accent],
+        className,
+      )}
       {...props}
     />
   ),
@@ -22,7 +38,7 @@ export interface SectionTitleProps extends Omit<React.HTMLAttributes<HTMLDivElem
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   size?: "sm" | "md" | "lg";
-  accent?: AccentKey;
+  accent?: AccentKey | "muted" | "neutral";
   /** Right-aligned slot (actions, meta). */
   right?: React.ReactNode;
   as?: "h1" | "h2" | "h3";
@@ -36,7 +52,10 @@ const TITLE_SIZE = {
 
 /** Eyebrow + big italic condensed title, with an optional right-side slot. */
 export const SectionTitle = React.forwardRef<HTMLDivElement, SectionTitleProps>(
-  ({ eyebrow, title, size = "md", accent = "lime", right, as: Tag = "h2", className, ...props }, ref) => (
+  (
+    { eyebrow, title, size = "md", accent = "neutral", right, as: Tag = "h2", className, ...props },
+    ref,
+  ) => (
     <div ref={ref} className={cn("flex flex-wrap items-end justify-between gap-6", className)} {...props}>
       <div className="flex min-w-0 flex-col gap-3">
         {eyebrow ? <Eyebrow accent={accent}>{eyebrow}</Eyebrow> : null}

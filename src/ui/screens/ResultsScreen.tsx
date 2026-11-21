@@ -37,11 +37,14 @@ export interface ResultsScreenProps {
   onDashboard(): void;
   onLeaderboard?(): void;
 }
+/* A grade is ordinal, so it descends a single ramp: only the top grade earns
+   the accent, the rest step down through the neutrals. Four different hues
+   made S/A/B/C look like four categories rather than a ranking. */
 const GRADE_COLOR = {
   S: "text-lime border-lime/50",
-  A: "text-cyan border-cyan/50",
-  B: "text-amber border-amber/50",
-  C: "text-text-muted border-glass-border",
+  A: "text-text border-line-strong",
+  B: "text-text-muted border-line",
+  C: "text-text-dim border-line",
 };
 export function ResultsScreen({
   summary,

@@ -102,7 +102,10 @@ export const MoveFigure = React.forwardRef<SVGSVGElement, MoveFigureProps>(
         role="img"
         aria-label={pose === "stand" ? "Standing figure" : `Figure doing ${MOVE_LABELS[pose].toLowerCase()}`}
         className={cn("overflow-visible", className)}
-        style={{ filter: `drop-shadow(0 0 6px ${c}aa) drop-shadow(0 0 18px ${c}55)`, ...style }}
+        /* A single tight shadow to separate the figure from the floor. The
+           previous 6px + 18px double halo made this diagram the brightest
+           object on the landing page, above the primary button. */
+        style={{ filter: `drop-shadow(0 2px 10px ${c}33)`, ...style }}
         {...props}
       >
         <line x1={4} y1={144} x2={96} y2={144} stroke={c} strokeOpacity={0.35} strokeWidth={2} strokeLinecap="round" />
@@ -158,7 +161,7 @@ export const MoveFigureCycle = React.forwardRef<HTMLDivElement, MoveFigureCycleP
               exit={reduce ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -14 }}
               transition={{ duration: reduce ? 0 : 0.32, ease: EASE_ARENA }}
               className="absolute inset-x-0 text-center font-display-italic pr-[0.06em] text-display-sm"
-              style={{ color: MOVE_COLORS[move], textShadow: `0 0 24px ${MOVE_COLORS[move]}66` }}
+              style={{ color: MOVE_COLORS[move] }}
             >
               {MOVE_LABELS[move]}
             </motion.p>

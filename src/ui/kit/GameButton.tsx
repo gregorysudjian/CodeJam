@@ -10,12 +10,16 @@ export const gameButtonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-lime text-bg shadow-glow-lime hover:brightness-105",
+        /* One accent means one primary action per screen. The secondary used
+           to be cyan-bordered, which made it read as a second, competing
+           accent; it is now neutral and gains the accent edge only on hover,
+           so the eye still lands on the primary first. */
+        primary: "bg-lime-fill text-bg shadow-glow-lime hover:brightness-[1.04]",
         secondary:
-          "bg-glass backdrop-blur-xl border border-cyan/50 text-text shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] hover:border-cyan hover:shadow-glow-cyan hover:text-cyan",
-        ghost: "bg-transparent text-text-muted hover:bg-white/[0.06] hover:text-text",
+          "border border-line-strong bg-bg-raised text-text shadow-raise hover:border-lime/60 hover:bg-hover",
+        ghost: "bg-transparent text-text-muted hover:bg-hover hover:text-text",
         danger:
-          "bg-danger/15 text-danger border border-danger/60 hover:bg-danger hover:text-bg hover:shadow-glow-danger",
+          "border border-danger/50 bg-danger/12 text-danger hover:bg-danger hover:text-bg",
       },
       size: {
         md: "h-14 gap-2.5 px-6 text-[22px]",
