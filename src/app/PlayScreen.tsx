@@ -14,8 +14,7 @@ import { createGame } from '@/game';
 import { GameHud } from '@/ui/screens';
 import { createSessionTracker, generateLevel } from '@/workout';
 import { VideoSlot } from './slots';
-
-const HUD_POLL_MS = 100;
+import { FINISH_DELAY_MS, HUD_POLL_MS } from './tuning';
 
 type HudEvent = {
   kind: 'cleared' | 'hit' | 'collected';
@@ -49,6 +48,8 @@ export function PlayScreen({
   const [trackingLost, setTrackingLost] = useState(false);
   const onFinishRef = useRef(onFinish);
   const onGameRef = useRef(onGame);
+  /** True from the 'finished' event on: the round is over, the fanfare is playing. */
+  const finishedRef = useRef(false);
   useEffect(() => {
     onFinishRef.current = onFinish;
     onGameRef.current = onGame;
@@ -66,8 +67,20 @@ export function PlayScreen({
     gameRef.current = game;
 
     let cueAt: { move: MoveType; arrives: number } | null = null;
+    // The summary is taken the moment the round ends; it is delivered FINISH_DELAY_MS later.
+    let pending: SessionSummary | null = null;
+    let finishTimer: ReturnType<typeof setTimeout> | undefined;
+    const deliver = () => {
+      if (!pending) return;
+      const summary = pending;
+      pending = null; // exactly once, whichever comes first: the timer or an unmount
+      clearTimeout(finishTimer);
+      onFinishRef.current(summary);
+    };
+    finishedRef.current = false;
     let eventId = 0;
     const offEvent = game.onEvent((e) => {
+      if (finishedRef.current) return; // nothing after the end counts (no pause overlay, no hits)
       const before = tracker.getLive().score;
       tracker.handleGameEvent(e);
       switch (e.type) {
@@ -95,7 +108,11 @@ export function PlayScreen({
           setTrackingLost(false);
           break;
         case 'finished':
-          onFinishRef.current(tracker.finish(game.getElapsedSec()));
+          finishedRef.current = true;
+          setPaused(false);
+          setTrackingLost(false);
+          pending = tracker.finish(game.getElapsedSec());
+          finishTimer = setTimeout(deliver, FINISH_DELAY_MS);
           break;
       }
     });
@@ -110,6 +127,8 @@ export function PlayScreen({
     onGameRef.current(game);
     game.start();
     return () => {
+      // Replaced mid-fanfare (e.g. K swapped the input): still deliver the finished round.
+      deliver();
       clearInterval(poll);
       offEvent();
       offMove();
@@ -135,8 +154,12 @@ export function PlayScreen({
           paused={paused}
           trackingLost={trackingLost}
           cameraSlot={pose ? <VideoSlot pose={pose} /> : undefined}
-          onPause={() => gameRef.current?.pause()}
-          onResume={() => gameRef.current?.resume()}
+          onPause={() => {
+            if (!finishedRef.current) gameRef.current?.pause();
+          }}
+          onResume={() => {
+            if (!finishedRef.current) gameRef.current?.resume();
+          }}
         />
       )}
       {debug && stats && (
