@@ -1,6 +1,6 @@
 import { memo, useEffect, type ReactNode } from "react";
 import { AnimatePresence, motion, useAnimationControls, useReducedMotion } from "motion/react";
-import { Flame, Pause } from "lucide-react";
+import { Flame, Pause, PersonStanding } from "lucide-react";
 import type { LiveStats, MoveType, PlayMode } from "@/contracts";
 import { Button } from "@/ui/components/ui/button";
 import {
@@ -8,18 +8,16 @@ import {
   BustOutline,
   GameButton,
   KeyHint,
-  MoveChip,
   MoveFigure,
   ProgressRing,
   ACCENT_TEXT,
   MOVE_ACCENTS,
-  MOVE_LABELS,
-  MOVE_ORDER,
   useHotkey,
 } from "@/ui/kit";
 import { formatTime } from "@/ui/lib/format";
 import { cn } from "@/ui/lib/utils";
 import { cueProgress } from "@/ui/screens/resultsRules";
+import { hudCueLabel, raceProgress } from "@/ui/screens/hudRules";
 
 export interface GameHudProps {
   stats: LiveStats;
@@ -103,10 +101,7 @@ export function GameHud({
     if (kind === "hit" && !reduce)
       void plates.start({ x: [0, -6, 6, -3, 0], transition: { duration: 0.35 } });
   }, [eventId, kind, reduce, plates]);
-  const reps =
-    mode === "floor"
-      ? MOVE_ORDER
-      : MOVE_ORDER.filter((m) => m === "armsUp" || m === "reachLeft" || m === "reachRight");
+  const progress = raceProgress(elapsedSec, durationSec);
   return (
     <div
       className="hud-root pointer-events-none absolute inset-0 overflow-hidden text-text"
@@ -185,6 +180,48 @@ export function GameHud({
           <KeyHint keyLabel="ESC" />
         </div>
       </motion.div>
+      <div
+        className="hud-race absolute text-lime"
+        role="meter"
+        aria-label="Race progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress * 100)}
+      >
+        <div className="hud-race-track relative h-2 rounded-full bg-lime/20">
+          <div className="absolute inset-y-0 right-0 w-[10%] bg-amber/20" />
+          <motion.div
+            className="hud-race-fill absolute inset-y-0 left-0 rounded-full"
+            initial={false}
+            animate={{ width: `${progress * 100}%` }}
+            transition={{ duration: reduce ? 0 : 0.1, ease: "linear" }}
+          />
+          <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-between">
+            {Array.from({ length: 11 }, (_, i) => (
+              <span key={i} className="h-3 w-px bg-lime/85" />
+            ))}
+          </div>
+          <motion.div
+            className="hud-runner absolute top-1/2 grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-lime bg-bg shadow-glow-lime"
+            initial={false}
+            animate={{ left: `${progress * 100}%` }}
+            transition={{ duration: reduce ? 0 : 0.1, ease: "linear" }}
+          >
+            <PersonStanding className="size-8" />
+          </motion.div>
+          <div className="absolute -right-3 -top-9 flex flex-col items-center gap-1">
+            <svg viewBox="0 0 28 30" aria-hidden="true" className="hud-finish-flag size-7">
+              <path d="M4 29V2" fill="none" stroke="currentColor" strokeWidth="2" />
+              <path d="M5 2h20v16H5z" className="fill-text" />
+              <path
+                d="M5 2h5v4H5zM15 2h5v4h-5zM10 6h5v4h-5zM20 6h5v4h-5zM5 10h5v4H5zM15 10h5v4h-5zM10 14h5v4h-5zM20 14h5v4h-5z"
+                className="fill-bg"
+              />
+            </svg>
+            <span className="font-display text-caption text-text-muted">FINISH</span>
+          </div>
+        </div>
+      </div>
       <AnimatePresence mode="wait">
         {cue && !paused && !trackingLost && (
           <motion.div
@@ -200,7 +237,7 @@ export function GameHud({
           >
             <MoveFigure pose={cue.move} dashed size={180} className="hud-cue-figure shrink-0" />
             <span className="hud-cue-label hud-text-glow font-display-italic text-display-xl">
-              {MOVE_LABELS[cue.move]}
+              {hudCueLabel(cue.move)}
             </span>
             <ProgressRing
               value={cueProgress(cue.inSec)}
@@ -225,21 +262,6 @@ export function GameHud({
           </span>
         </div>
       )}
-      <div
-        className={cn(
-          "hud-reps absolute bottom-7 flex flex-wrap justify-center gap-2",
-          cameraSlot ? "hud-reps-camera right-6" : "left-1/2 -translate-x-1/2",
-        )}
-      >
-        {reps.map((move) => (
-          <div key={move} className="flex items-center gap-1">
-            <MoveChip move={move} size="sm" />
-            <span className="min-w-6 font-display-italic text-title tabular-nums">
-              {stats.reps[move]}
-            </span>
-          </div>
-        ))}
-      </div>
       <AnimatePresence>
         {(trackingLost || paused) && (
           <motion.div
@@ -284,7 +306,7 @@ export function GameHud({
                     ["D", "debug"],
                   ].map(([key, label]) => (
                     <span key={key} className="flex items-center gap-2">
-                      <KeyHint keyLabel={key ?? ""} />
+                      <span className="font-display text-text">{key}</span>
                       {label}
                     </span>
                   ))}

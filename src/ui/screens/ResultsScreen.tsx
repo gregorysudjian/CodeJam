@@ -11,6 +11,7 @@ import {
   MoveChip,
   MoveFigure,
   Screen,
+  ScreenFooter,
   StatTile,
   ACCENT_TEXT,
   MOVE_ACCENTS,
@@ -66,27 +67,29 @@ export function ResultsScreen({
     advice !== null,
   );
   const footer = (
-    <div className="results-footer flex flex-wrap items-center justify-between gap-6 border-t border-glass-border pt-6">
-      <div className="flex flex-wrap gap-4">
-        <GameButton size="xl" leadingIcon={Play} keyHint="ENTER" onClick={onPlayAgain}>
-          PLAY AGAIN
-        </GameButton>
-        <GameButton size="lg" variant="secondary" onClick={onDashboard}>
+    <ScreenFooter
+      className="results-footer"
+      left={
+        <GameButton variant="ghost" size="md" onClick={onDashboard}>
           DASHBOARD
         </GameButton>
-      </div>
+      }
+      right={
+        <GameButton size="lg" leadingIcon={Play} keyHint="ENTER" onClick={onPlayAgain}>
+          PLAY AGAIN
+        </GameButton>
+      }
+    >
       {handsFree && (
-        <div className="flex items-center gap-4 text-lime">
-          <MoveFigure pose="armsUp" size={70} animate />
-          <span className="max-w-44 font-display-italic text-[22px]">
-            RAISE BOTH ARMS TO PLAY AGAIN
-          </span>
+        <div className="flex items-center justify-center gap-3 text-lime">
+          <MoveFigure pose="armsUp" size={55} animate />
+          <span className="font-display-italic text-[20px]">RAISE BOTH ARMS TO PLAY AGAIN</span>
         </div>
       )}
-    </div>
+    </ScreenFooter>
   );
   return (
-    <Screen backdrop="arena">
+    <Screen backdrop="arena" className="results-screen polish-screen" footer={footer}>
       <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="min-w-0">
           <Eyebrow>
@@ -108,6 +111,9 @@ export function ResultsScreen({
               {grade}
             </div>
           </div>
+          <p className="mt-2 text-caption text-text-muted">
+            {formatTime(summary.activeSec)} ACTIVE
+          </p>
           <div className="mt-5 flex min-h-8 flex-wrap items-center gap-5">
             {isPersonalBest && (
               <motion.span
@@ -137,7 +143,7 @@ export function ResultsScreen({
                 </span>
               ))}
           </div>
-          <div className="results-stats mt-8 grid grid-cols-2 gap-3">
+          <div className="results-stats mt-8 grid grid-cols-3 gap-3">
             <StatTile label="BEST STREAK" value={summary.bestStreak} animate accent="magenta" />
             <StatTile
               label="ACCURACY"
@@ -145,13 +151,6 @@ export function ResultsScreen({
               format={(n) => `${Math.round(n)}%`}
               animate
               accent="cyan"
-            />
-            <StatTile
-              label="ACTIVE TIME"
-              value={summary.activeSec}
-              format={formatTime}
-              animate
-              accent="lime"
             />
             <StatTile
               label="CALORIES"
@@ -206,7 +205,7 @@ export function ResultsScreen({
         <GlassPanel
           as="aside"
           glow="lime"
-          className="results-coach flex min-w-0 flex-col gap-7 p-7"
+          className="results-coach flex min-w-0 flex-col gap-5 p-6"
         >
           <div className="flex items-center justify-between">
             <Eyebrow className="flex items-center gap-2 text-lime">
@@ -227,7 +226,7 @@ export function ResultsScreen({
           {advice ? (
             <>
               <p className="text-body leading-relaxed">{advice.recap}</p>
-              <div className="flex items-start gap-3 border-y border-glass-border py-6">
+              <div className="flex items-start gap-3 border-y border-glass-border py-4">
                 <Lightbulb className="mt-1 size-6 shrink-0 text-lime" />
                 <p className="text-body text-text-muted">{advice.tip}</p>
               </div>
@@ -260,7 +259,7 @@ export function ResultsScreen({
               </div>
               <GameButton
                 size="lg"
-                keyHint="N"
+                variant="secondary"
                 trailingIcon={ArrowRight}
                 onClick={() => onStartNext(advice.next)}
                 className="w-full px-4"
@@ -284,7 +283,6 @@ export function ResultsScreen({
           </p>
         </GlassPanel>
       </div>
-      {footer}
     </Screen>
   );
 }

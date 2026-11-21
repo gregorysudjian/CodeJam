@@ -1,7 +1,26 @@
 import * as React from "react";
-import { Check, Dices, Dumbbell, Footprints, HeartPulse, ArrowRight, ArrowLeft, type LucideIcon } from "lucide-react";
+import {
+  Check,
+  Dices,
+  Dumbbell,
+  Footprints,
+  HeartPulse,
+  ArrowRight,
+  ArrowLeft,
+  ChevronDown,
+  type LucideIcon,
+} from "lucide-react";
 import type { FitnessLevel, Goal, Profile } from "@/contracts";
-import { Eyebrow, GameButton, GlassPanel, SectionTitle, SegmentedControl, Screen, TextField, useHotkey } from "@/ui/kit";
+import {
+  Eyebrow,
+  GameButton,
+  SectionTitle,
+  SegmentedControl,
+  Screen,
+  ScreenFooter,
+  TextField,
+  useHotkey,
+} from "@/ui/kit";
 import { cn } from "@/ui/lib/utils";
 
 export type ProfileInput = Omit<Profile, "id">;
@@ -21,7 +40,12 @@ export const PROFILE_DEFAULTS: ProfileInput = {
 
 const GOALS: { value: Goal; label: string; body: string; icon: LucideIcon }[] = [
   { value: "getMoving", label: "Get moving", body: "Build a daily habit", icon: Footprints },
-  { value: "buildStrength", label: "Build strength", body: "Squats, presses, power", icon: Dumbbell },
+  {
+    value: "buildStrength",
+    label: "Build strength",
+    body: "Squats, presses, power",
+    icon: Dumbbell,
+  },
   { value: "cardio", label: "Cardio", body: "Keep the heart rate up", icon: HeartPulse },
 ];
 
@@ -83,24 +107,26 @@ function GoalPicker({ value, onChange }: { value: Goal; onChange: (g: Goal) => v
               }
             }}
             className={cn(
-              "glass focus-ring relative flex min-h-48 cursor-pointer flex-col items-start justify-between gap-6 rounded-[24px] p-6 text-left transition-[border-color,box-shadow,transform] duration-200 ease-arena active:scale-[0.98]",
+              "glass focus-ring relative flex min-h-36 cursor-pointer flex-col items-start justify-between gap-4 rounded-[24px] p-4 text-left transition-[border-color,box-shadow,transform] duration-200 ease-arena active:scale-[0.98]",
               selected ? "glow-edge-lime" : "hover:border-white/20",
             )}
           >
             <span
               className={cn(
-                "grid size-14 place-items-center rounded-2xl",
+                "grid size-10 place-items-center rounded-2xl",
                 selected ? "bg-lime text-bg" : "bg-white/[0.06] text-text-muted",
               )}
             >
-              <Icon aria-hidden="true" className="size-7" strokeWidth={2.25} />
+              <Icon aria-hidden="true" className="size-6" strokeWidth={2.25} />
             </span>
             <span className="flex flex-col gap-1">
               <span className="font-display-italic pr-[0.06em] text-title">{g.label}</span>
-              <span className="text-caption text-text-muted">{g.body}</span>
             </span>
             {selected ? (
-              <span aria-hidden="true" className="absolute right-5 top-5 grid size-8 place-items-center rounded-full bg-lime text-bg shadow-glow-lime">
+              <span
+                aria-hidden="true"
+                className="absolute right-5 top-5 grid size-8 place-items-center rounded-full bg-lime text-bg shadow-glow-lime"
+              >
                 <Check className="size-5" strokeWidth={3} />
               </span>
             ) : null}
@@ -120,7 +146,10 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
     const v = String(initial?.weeklyGoalMin ?? PROFILE_DEFAULTS.weeklyGoalMin);
     return WEEKLY.find((w) => w.value === v)?.value ?? "60";
   });
-  const [weight, setWeight] = React.useState(initial?.weightKg != null ? String(initial.weightKg) : "");
+  const [weight, setWeight] = React.useState(
+    initial?.weightKg != null ? String(initial.weightKg) : "",
+  );
+  const [more, setMore] = React.useState(false);
   const weightError = validateWeight(weight);
 
   const submit = () => {
@@ -140,14 +169,48 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
   useHotkey("s", () => onSubmit({ ...PROFILE_DEFAULTS }));
 
   return (
-    <Screen backdrop="arena">
+    <Screen
+      backdrop="arena"
+      className="profile-screen polish-screen"
+      footer={
+        <ScreenFooter
+          left={
+            <GameButton
+              variant="ghost"
+              size="md"
+              leadingIcon={ArrowLeft}
+              keyHint="ESC"
+              onClick={onBack}
+            >
+              BACK
+            </GameButton>
+          }
+          right={
+            <GameButton
+              type="submit"
+              form="profile-form"
+              size="lg"
+              trailingIcon={ArrowRight}
+              keyHint="ENTER"
+              disabled={Boolean(weightError)}
+            >
+              CONTINUE
+            </GameButton>
+          }
+        />
+      }
+    >
       <SectionTitle
         as="h1"
         size="lg"
-        eyebrow="Player setup"
         title="Who's playing?"
         right={
-          <GameButton variant="secondary" size="md" keyHint="S" onClick={() => onSubmit({ ...PROFILE_DEFAULTS })}>
+          <GameButton
+            variant="ghost"
+            size="md"
+            className="h-9 px-2 text-[20px]"
+            onClick={() => onSubmit({ ...PROFILE_DEFAULTS })}
+          >
             Skip
           </GameButton>
         }
@@ -160,9 +223,9 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
           e.preventDefault();
           submit();
         }}
-        className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] xl:gap-12"
+        className="flex flex-col gap-7"
       >
-        <GlassPanel as="section" padding="lg" className="flex flex-col gap-10">
+        <div className="flex flex-col gap-6">
           <TextField
             label="Name"
             placeholder="Guest-1234"
@@ -170,7 +233,7 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
             autoComplete="nickname"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            hint="Shown on the leaderboard. Up to 20 characters."
+            hint=""
             trailing={
               <button
                 type="button"
@@ -183,45 +246,69 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
             }
           />
           <div className="flex flex-col gap-4">
-            <Eyebrow accent="muted">Goal</Eyebrow>
+            <span className="font-display text-caption text-text-muted">GOAL</span>
             <GoalPicker value={goal} onChange={setGoal} />
           </div>
-        </GlassPanel>
+        </div>
 
-        <GlassPanel as="section" padding="lg" className="flex flex-col gap-10">
+        <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-4">
-            <Eyebrow accent="muted">Level</Eyebrow>
-            <SegmentedControl<FitnessLevel> aria-label="Level" value={level} onChange={setLevel} options={LEVELS} className="w-full [&>button]:min-w-0 [&>button]:flex-1" />
+            <span className="font-display text-caption text-text-muted">LEVEL</span>
+            <SegmentedControl<FitnessLevel>
+              aria-label="Level"
+              value={level}
+              onChange={setLevel}
+              options={LEVELS}
+              className="w-full [&>button]:min-w-0 [&>button]:flex-1"
+            />
           </div>
-          <div className="flex flex-col gap-4">
-            <Eyebrow accent="muted">Weekly goal · minutes</Eyebrow>
-            <SegmentedControl<WeeklyValue> aria-label="Weekly goal in minutes" value={weekly} onChange={setWeekly} options={WEEKLY} className="w-full [&>button]:min-w-0 [&>button]:flex-auto [&>button]:px-4" />
-            <p className="text-caption text-text-muted">Active minutes per week. Your dashboard tracks it.</p>
-          </div>
-          <TextField
-            label="Weight (optional)"
-            type="number"
-            inputMode="decimal"
-            min={30}
-            max={250}
-            placeholder="70"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            error={weightError}
-            hint="Only used to estimate calories."
-            trailing={<span className="px-4 font-display-italic text-title text-text-muted">kg</span>}
-          />
-        </GlassPanel>
+          <GameButton
+            variant="ghost"
+            size="md"
+            className="h-10 self-start px-0 text-[20px]"
+            trailingIcon={ChevronDown}
+            aria-expanded={more}
+            aria-controls="profile-more"
+            onClick={() => setMore((value) => !value)}
+          >
+            MORE OPTIONS
+          </GameButton>
+          {more && (
+            <div
+              id="profile-more"
+              className="flex flex-col gap-6 border-t border-glass-border pt-5"
+            >
+              {" "}
+              <div className="flex flex-col gap-4">
+                <Eyebrow accent="muted">Weekly goal · minutes</Eyebrow>
+                <SegmentedControl<WeeklyValue>
+                  aria-label="Weekly goal in minutes"
+                  value={weekly}
+                  onChange={setWeekly}
+                  options={WEEKLY}
+                  className="w-full [&>button]:min-w-0 [&>button]:flex-auto [&>button]:px-4"
+                />
+                <p className="text-caption text-text-muted">Your weekly active-minute target.</p>
+              </div>
+              <TextField
+                label="Weight (optional)"
+                type="number"
+                inputMode="decimal"
+                min={30}
+                max={250}
+                placeholder="70"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                error={weightError}
+                hint="For calorie estimates."
+                trailing={
+                  <span className="px-4 font-display-italic text-title text-text-muted">kg</span>
+                }
+              />
+            </div>
+          )}
+        </div>
       </form>
-
-      <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.08] pt-8">
-        <GameButton variant="ghost" size="lg" leadingIcon={ArrowLeft} keyHint="ESC" onClick={onBack}>
-          Back
-        </GameButton>
-        <GameButton type="submit" form="profile-form" size="lg" trailingIcon={ArrowRight} keyHint="ENTER" disabled={Boolean(weightError)}>
-          Continue
-        </GameButton>
-      </footer>
     </Screen>
   );
 }

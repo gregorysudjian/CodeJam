@@ -11,7 +11,7 @@ them so Lovable can pick them up.
 | --- | --- |
 | `theme.css` | Every design token (`@theme`), font imports, glass, glow, grain, grid and keyframes. Imported by `src/index.css`. |
 | `components/ui/` | shadcn primitives (button, card, badge, input, progress, skeleton, slider, switch, tooltip). |
-| `kit/` | Design system: `Screen`, `Backdrop`, `GlassPanel`, `GameButton`, `SectionTitle`, `StatTile`, `AnimatedNumber`, `MoveChip`, `MoveFigure`, `BustOutline`, `ProgressRing`, `SegmentedControl`, `ToggleRow`, `TextField`, `KeyHint`, `EmptyState`, `useHotkey`, and `tokens.ts` (move/workout labels, colours, icons). |
+| `kit/` | Design system: `Screen` (with a measured, full-bleed `footer` slot), `ScreenFooter` (standard Back · Primary bar), `CoachBanner` (one-line coach's pick), `Backdrop`, `GlassPanel`, `GameButton`, `SectionTitle`, `StatTile`, `AnimatedNumber`, `MoveChip`, `MoveFigure`, `BustOutline`, `ProgressRing`, `SegmentedControl`, `ToggleRow`, `TextField`, `KeyHint`, `EmptyState`, `useHotkey`, and `tokens.ts` (move/workout labels, colours, icons). |
 | `screens/` | Pure presentational screens: props in, callbacks out. No fetching, no global state. |
 | `lib/` | `cn()` (tailwind-merge taught our type-scale tokens) and `format.ts`. |
 
@@ -31,6 +31,17 @@ only `src/app/` wires screens to modules.
 | `ResultsScreen` | `summary`, `advice` (null while loading), `isPersonalBest?`, `rank?`, `handsFree?`, `onPlayAgain`, `onStartNext(config)`, `onDashboard`, `onLeaderboard?` | Render immediately with `advice={null}`, then set it when `store.getCoachAdvice` resolves. |
 | `DashboardScreen` | `profile`, `sessions` (newest first), `coachPick?`, `now?`, `onPlay`, `onPlayCoachPick?(config)`, `onLeaderboard`, `onEditProfile?` | `sessions = await store.listSessions(50)`. All week/streak maths is in `dashboardStats.ts` (tested). |
 | `LeaderboardScreen` | `entries`, `workout`, `mode`, `onChangeFilter(workout, mode)`, `currentName?`, `loading?`, `kiosk?`, `qrSlot?`, `onBack`, `onPlay?` | Refetch `store.getLeaderboard(workout, mode, 20)` on `onChangeFilter`. Legs + treadmill is switched to Full body before the callback. `kiosk` is the attract screen for the demo table between players. |
+
+## Layout conventions (cleanup pass)
+
+- One primary action per screen, bottom-right; back/cancel is a ghost button bottom-left
+  (`ScreenFooter`). Key caps are shown only for ENTER, ESC and Calibration's K; the other hotkeys
+  still work without a visible cap.
+- Game HUD: a race progress bar (runner marker → finish flag) is derived from
+  `elapsedSec / durationSec`, so `PlayScreen` must pass the duration that is actually being played
+  (`level.config.durationSec`, see docs/AUDIT.md #5). Reach cues read "REACH" for both arms.
+  The live rep ticker was removed (reps are on Results).
+- Screenshots of every screen are in the Lovable repo under `docs/screens/`.
 
 ## Hotkeys: avoid double handling
 

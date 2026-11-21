@@ -14,6 +14,17 @@ export interface ScreenProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Screen = React.forwardRef<HTMLDivElement, ScreenProps>(
   ({ backdrop = "arena", footer, className, children, ...props }, ref) => {
     const reduce = useReducedMotion();
+    const footerRef = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+      const bar = footerRef.current;
+      const shell = bar?.parentElement;
+      if (!bar || !shell) return;
+      const measure = () => shell.style.setProperty("--screen-footer-height", `${bar.offsetHeight}px`);
+      measure();
+      const observer = new ResizeObserver(measure);
+      observer.observe(bar);
+      return () => observer.disconnect();
+    }, [footer]);
     const container: Variants = {
       hidden: {},
       show: { transition: { staggerChildren: reduce ? 0 : STAGGER } },
@@ -23,7 +34,7 @@ export const Screen = React.forwardRef<HTMLDivElement, ScreenProps>(
       show: { opacity: 1, y: 0, transition: { duration: reduce ? 0 : DURATION.slow, ease: EASE_ARENA } },
     };
     return (
-      <div ref={ref} className={cn("relative isolate min-h-screen text-text", className)} {...props}>
+      <div ref={ref} className={cn("screen-shell relative isolate min-h-screen text-text", footer && "has-footer", className)} {...props}>
         <Backdrop variant={backdrop} />
         <motion.main
           variants={container}
@@ -37,12 +48,13 @@ export const Screen = React.forwardRef<HTMLDivElement, ScreenProps>(
         </motion.main>
         {footer ? (
           <motion.div
+            ref={footerRef}
             initial={reduce ? false : { opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: reduce ? 0 : DURATION.slow, ease: EASE_ARENA, delay: reduce ? 0 : 0.3 }}
-            className="sticky bottom-0 z-30 mx-auto w-full max-w-[1440px] px-6 pb-6 md:px-12"
+            className="screen-bottom-bar sticky bottom-0 z-30 w-full bg-bg backdrop-blur-xl"
           >
-            {footer}
+            <div className="screen-bottom-inner mx-auto w-full max-w-[1440px] px-6 md:px-12">{footer}</div>
           </motion.div>
         ) : null}
       </div>
