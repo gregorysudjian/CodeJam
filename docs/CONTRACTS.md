@@ -283,7 +283,7 @@ Body input arrives late and people move slowly, so an object is judged over a wi
 | `block` | `lane` is not in `lanes` | `hit` |
 | `hurdle` | `airborne` | `hit` |
 | `beam` | `ducking` (for the whole `holdSec` if set, with 0.3 s of grace) | `hit` |
-| `crate` | both arms up | `hit` |
+| `crate` | both arms up (for the whole `holdSec` if set, with 0.3 s of grace) | `hit` |
 | `orb`, floor mode | `lane` is in `lanes` and either arm is up | nothing, it is just missed |
 | `orb`, treadmill mode | lane `-1` needs the left arm, `+1` the right arm, `0` both | nothing |
 
