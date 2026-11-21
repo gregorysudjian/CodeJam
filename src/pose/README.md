@@ -27,6 +27,8 @@ mirrored and fills the frame, D shows the overlay (27 FPS GPU), Esc and K back t
 **Bugs found and fixed overnight (most by tests or the stubbed camera)**
 1. Camera stayed on after React StrictMode start/stop/start (leaked stream).
 2. **Pose froze for good if the app took the video off the page** (it pauses and never resumes).
+   This would have hit every new player: on `main`, calibrate → "try each move" tutorial → play,
+   and the tutorial screen shows no camera, so the video leaves the page right after calibration.
 3. Baseline never adapted after stepping ~20% closer; stepping back quickly could fire a jump.
 4. **A crouch before a jump (20% deeper than yours) became a squat and the jump was lost.** Now the
    squat rep needs 250 ms down, and after a squat a jump just has to rise higher (0.45 T).

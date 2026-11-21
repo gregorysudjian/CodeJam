@@ -63,6 +63,7 @@ or the named file.
     pose input froze for good. The engine now resumes it on `pause` while running, and a 30 ms
     watchdog processes frames when rVFC has been quiet for 100 ms (deduplicated by video time).
     After the fix: 30 FPS attached, detached, re-attached and moved; 0 after `stop()`.
+    On `main` this happens on every first round: calibrate → tutorial (no camera view) → play.
 25. **Crouch-then-jump works; the squat event needs 250 ms below the line; after a squat a jump must
     rise 0.45 T for 0.4 s** (replaces the 0.4 s jump block). Found by a test: with pre-jump crouches
     just 20% deeper than A's, the crouch counted as a squat and the 0.4 s block swallowed the jump
