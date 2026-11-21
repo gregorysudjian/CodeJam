@@ -1,4 +1,7 @@
+import * as L from './look';
 import * as T from './tuning';
+
+const V = L.MUSIC_VOICES; // each voice's level (look.ts)
 
 /**
  * The music: a synthesised beat (Web Audio, no files) that speeds up over the round and adds
@@ -124,23 +127,23 @@ export function createMusic(ctx: AudioContext, out: AudioNode, noise: AudioBuffe
   const play = (n: Note, t0: number, stepSec: number): void => {
     switch (n.voice) {
       case 'kick': {
-        const o = osc('sine', 150, t0, 0.28, 0.9);
+        const o = osc('sine', 150, t0, 0.28, V.kick);
         o.frequency.exponentialRampToValueAtTime(42, t0 + 0.12);
         break;
       }
       case 'hat':
-        hiss('highpass', 7500, t0, 0.04, 0.18);
+        hiss('highpass', 7500, t0, 0.04, V.hat);
         break;
       case 'openHat':
-        hiss('highpass', 6500, t0, 0.16, 0.16);
+        hiss('highpass', 6500, t0, 0.16, V.openHat);
         break;
       case 'clap':
-        hiss('bandpass', 1500, t0, 0.12, 0.45);
-        hiss('bandpass', 1500, t0 + 0.012, 0.1, 0.3);
+        hiss('bandpass', 1500, t0, 0.12, V.clap);
+        hiss('bandpass', 1500, t0 + 0.012, 0.1, V.clap * 0.67);
         break;
       case 'snare':
-        hiss('bandpass', 2200, t0, 0.09, 0.35);
-        osc('triangle', 190, t0, 0.07, 0.15);
+        hiss('bandpass', 2200, t0, 0.09, V.snare);
+        osc('triangle', 190, t0, 0.07, V.snare * 0.43);
         break;
       case 'bass': {
         const o = ctx.createOscillator();
@@ -151,17 +154,17 @@ export function createMusic(ctx: AudioContext, out: AudioNode, noise: AudioBuffe
         lp.type = 'lowpass';
         lp.frequency.setValueAtTime(900, t0);
         lp.frequency.exponentialRampToValueAtTime(180, t0 + stepSec * 1.6);
-        env(g, t0, 0.32, stepSec * 1.8);
+        env(g, t0, V.bass, stepSec * 1.8);
         o.connect(lp).connect(g).connect(master);
         o.start(t0);
         o.stop(t0 + stepSec * 1.8 + 0.02);
         break;
       }
       case 'arp':
-        osc('square', hz(n.semi), t0, stepSec * 0.9, 0.045);
+        osc('square', hz(n.semi), t0, stepSec * 0.9, V.arp);
         break;
       case 'stab':
-        osc('sawtooth', hz(n.semi), t0, stepSec * 2.2, 0.05);
+        osc('sawtooth', hz(n.semi), t0, stepSec * 2.2, V.stab);
         break;
     }
   };
@@ -174,7 +177,7 @@ export function createMusic(ctx: AudioContext, out: AudioNode, noise: AudioBuffe
       nextAt = now + 0.05;
       master.gain.cancelScheduledValues(now);
       master.gain.setValueAtTime(Math.max(0.0001, master.gain.value), now);
-      master.gain.linearRampToValueAtTime(T.MUSIC_VOLUME, now + T.MUSIC_FADE_SEC);
+      master.gain.linearRampToValueAtTime(L.MUSIC_VOLUME, now + T.MUSIC_FADE_SEC);
     },
     stop() {
       if (!playing) return;
