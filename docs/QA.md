@@ -42,6 +42,24 @@ No decision is waiting.
 
 ### Q12 (minor, open by choice)
 The landing "Play on your laptop" QR starts at y 748 (below the fold at 720, at the edge at 768) ([landing-1366.jpg](qa/landing-1366.jpg)). The kiosk (`?kiosk=1`) is the QR screen for the table.
+## Copy pass (Sat 17:40, `main` 56fb514)
+
+Every visible string and accessible label, read in flow order as a first-time judge (landing → profile → select → camera dialog → tutorial → HUD → results → pause → dashboard → leaderboard → kiosk). Collected from the rendered pages, not the source. Overall the copy is short and consistent: the six moves have the same names in the tutorial, chips, results and charts (SIDESTEP, JUMP, SQUAT, ARMS UP, REACH LEFT, REACH RIGHT; the HUD cue says REACH for both). Ten changes worth making:
+
+| # | Screen | Current text | Proposed text | Owner (file) |
+| --- | --- | --- | --- | --- |
+| C1 | Tutorial, squat (keyboard) | SQUAT DOWN AND HOLD: HOLD ↓ | SQUAT DOWN AND HOLD: ↓ | Greg (`src/app/tutorial.ts`, `KEYS.squat`) |
+| C2 | Tutorial, jump (camera) | title JUMP, hint "Jump" (same word twice) | hint "Jump up" | Greg (`src/app/tutorial.ts`, `BODY.jump`) |
+| C3 | Results, coach recap | Nice work, Guest-5250: 2300 points at 81% accuracy… | …: 2,300 points at 81% accuracy… (same format as the big score) | Greg (`src/data/coach.ts:97`, `toLocaleString('en-US')`) |
+| C4 | Results, coach tip (reach) | Reach your left arm high and out to the side, above head height. | Raise your left arm straight up, hand above your head. (Detection only needs the wrist above the nose; "out to the side" isn't needed, and the tutorial says "Raise your left arm") | Greg (`src/data/coach.ts`, `TIPS.reachLeft`/`reachRight`) |
+| C5 | Select, settings row | LOW IMPACT (switch, no explanation) | LOW IMPACT, with the description "No jumps" | `src/ui` (`WorkoutSelectScreen.tsx:326`, `description` prop of the toggle) |
+| C6 | Dashboard, chart header | Pace 8.6 min / day | Goal pace 8.6 min / day (it is the weekly goal ÷ 7, not the player's pace) | `src/ui` (`DashboardCharts.tsx:75`) |
+| C7 | Pause, key hints | K keyboard / camera · R recalibrate · D debug | K camera ↔ keyboard · R recalibrate (drop D: it's for the team) | `src/ui` (`GameHud.tsx`, the hint list) |
+| C8 | Landing, kiosk | PLAY ON YOUR LAPTOP + `http://localhost:5173` | the live URL (Q18) | Greg (`src/app/App.tsx:69`) |
+| C9 | Select, Camera/Keyboard switch (screen reader) | aria-label "Control" | "Input: camera or keyboard" | Greg (`src/app/InputSwitch.tsx:23`) |
+| C10 | Dashboard, day dots (screen reader) | "MON, no round" | "Monday, no round" (some screen readers read "MON" as a word; minor) | `src/ui` (`DashboardScreen.tsx`, the day-streak dots) |
+
+Checked and fine: the camera dialog ("No camera found… or play with the keyboard"), the offline banner, "Be the first on the board", "Beat 2,300 to take the crown", "General fitness encouragement, not medical advice", the coach's RULES badge. Uppercase is the app's display style (CSS), and running text (coach card, dialogs) is sentence case, so no shouting to fix. Not read: the calibration messages and the tracking-lost screen (need a camera; their text is in `src/pose/calibration.ts` and `GameHud.tsx` and reads clearly).
 ## Fixed and verified (on bb17780 unless noted)
 
 - **Q1:** at 1280×720 and 1366×768 the select screen is exactly one screen tall; Camera at y 508–556, START at 607–679 ([select-1280x720.jpg](qa/select-1280x720.jpg)).
@@ -114,3 +132,4 @@ Open suggestions: preload the pose model on the landing page for live-URL visito
 | 16:40 | Sweep script (`q-sweep`) | `docs/qa/sweep/`: one command, 3 sizes in parallel, 34 checks each; first run 102/102 passed |
 | 16:42 | Operator card (`q-operator-2`) | Camera preselected, X chest-to-chin; found Q17 (local-store kiosk saves a "Leaderboard" player) |
 | 17:07 | Re-sweep 7be4281 (`q-docs-sync`) | Sweep 105/105 (new checks: Q14, Q17 route 1); Q14, Q17 (both routes), A3 marked fixed; test count 762, shot dates, ghost chip position and doc links aligned across README, SUBMISSION, OPERATOR, DEMO; kiosk warning removed |
+| 17:36 | Copy pass (`q-copy`) | Every rendered string in flow order; 10 proposals (C1–C10) for Greg's Claude; README's move table gets the in-app names |

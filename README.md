@@ -8,13 +8,13 @@ Live site: https://codejam-jet.vercel.app (deployed from `main`). Chrome only.
 
 ## How to play
 
-| Your body | In the game | Keyboard stand-in |
+| Your body (name in the app) | In the game | Keyboard stand-in |
 | --- | --- | --- |
-| Step left or right | Change lane, dodge blocks | ← → |
-| Jump | Clear a hurdle | ↑ or Space |
-| Squat (hold it for long beams) | Duck under a beam | ↓, held |
-| Both arms up | Smash a crate | W, held |
-| One arm up | Grab an orb | Q (left) or E (right), held |
+| Step left or right (SIDESTEP) | Change lane, dodge blocks | ← → |
+| Jump (JUMP) | Clear a hurdle | ↑ or Space |
+| Squat, held for long beams (SQUAT) | Duck under a beam | ↓, held |
+| Both arms up (ARMS UP) | Smash a crate | W, held |
+| One arm up (REACH LEFT / REACH RIGHT) | Grab an orb | Q (left) or E (right), held |
 
 | Workout | Moves | Modes |
 | --- | --- | --- |
