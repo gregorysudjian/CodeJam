@@ -94,3 +94,6 @@ or the named file.
     decoded-frame count: verified in Chromium, `currentTime` keeps running on a dead stream while the
     frame count freezes (and the count still rises while the video is off the page and playing).
     After 1 s without a new frame the watchdog feeds "no body" frames.
+32. **Treadmill calibration tolerates jogging** (`CALIBRATION_STILL_T_TREADMILL = 0.4` T of centre
+    movement; size must still hold within 15%). With the floor rule (0.1 T), a player already jogging
+    (shoulders bob ±0.1 T) never finished calibrating. Floor mode is unchanged (tested).

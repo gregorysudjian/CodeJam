@@ -59,6 +59,8 @@ export const CALIBRATION_HOLD_MS = 1500;
 /** Holding still: the centre may wander this far (in T) and W/T change by this fraction. */
 export const CALIBRATION_STILL_T = 0.1;
 export const CALIBRATION_STILL_SCALE = 0.15;
+/** Treadmill: the shoulders may bob (jogging) this much; only W and T must hold still. */
+export const CALIBRATION_STILL_T_TREADMILL = 0.4;
 /** Floor mode: too far when T is under this fraction of the frame height. */
 export const CALIBRATION_MIN_T_FRAME = 0.15;
 /** Treadmill mode: too far when W is under this fraction of the frame width. */

@@ -3,7 +3,7 @@
 ## MORNING REPORT (last update: Sat 07:20 — refreshed through the night)
 
 **TL;DR:** the real pose input is done on `abdo-1` (Phase 1, most of Phase 2, Phase 3 treadmill),
-205 tests pass, and it runs end to end inside `main`'s real app (calibration → tutorial → play) on
+208 tests pass, and it runs end to end inside `main`'s real app (calibration → tutorial → play) on
 your replayed clips. Nothing touched `main`. It has **not** met a real camera since Phase 0.
 
 **Do this first (≈20 min):**
@@ -34,7 +34,8 @@ your replayed clips. Nothing touched `main`. It has **not** met a real camera si
   toes: no jump. Crouch-then-jump: a jump. Squats 4× faster or slower count. Stepping back quickly
   is not a jump; stepping closer re-baselines.
 - Background people: largest, nearest body wins; bodies far from the player's size are ignored.
-- Treadmill: shoulder calibration at 1–1.5 m, arms only; floor results unchanged.
+- Treadmill: shoulder calibration at 1–1.5 m (works while already jogging), arms only; floor results
+  unchanged.
 - **D** overlay: live values vs thresholds, 12 sliders, Reset, Copy, threshold lines on the video.
   `?dev=pose` adds calibrate buttons, a **move tally** and the clip recorder.
 
@@ -52,7 +53,7 @@ your replayed clips. Nothing touched `main`. It has **not** met a real camera si
 **Also new:** MediaPipe JS loads only when pose starts (main bundle 407 → 254 kB); `STATION.md` (demo
 setup, keys, symptom → fix table); small-room switch `CALIBRATION_FEET_IN_VIEW`.
 
-**Pointers:** decisions `DECISIONS.md` (31) · messages for Greg `NEEDS.md` (7) · new session
+**Pointers:** decisions `DECISIONS.md` (32) · messages for Greg `NEEDS.md` (7) · new session
 `HANDOFF.md` (starter prompt in §9) · demo `STATION.md`.
 
 ## How to use it

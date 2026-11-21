@@ -22,7 +22,7 @@ _Last refresh: Sat 07:20 (overnight autonomous session). Read this first in a ne
   - Nothing is half-written in code. Not done: "raise both arms to start" (app-side, NEEDS.md 5),
     station setup notes (Phase 4), real-camera tuning (needs A).
 - **Last commit:** see `git log -1`.
-- **`npm run check`:** passes (205 tests). Use its exit code; a `| grep` can hide a failure.
+- **`npm run check`:** passes (208 tests). Use its exit code; a `| grep` can hide a failure.
   A clean checkout of `origin/abdo-1` + `npm ci` + `npm run check` passes too (nothing local needed).
 - **End to end:** `main`'s full flow (calibrate → tutorial with the video off-page → play) ran on
   replayed clips with only the model swapped, in floor and treadmill mode (see §6 "Testing without
@@ -64,7 +64,7 @@ engine.ts      getState() (game polls), onMove listeners, drawSkeleton (skeleton
 
 ## 4. Decisions
 
-All in `src/pose/DECISIONS.md` (31, with reasons). The big ones: lane 0.55/0.3 W; arm up 0.4 T above
+All in `src/pose/DECISIONS.md` (32, with reasons). The big ones: lane 0.55/0.3 W; arm up 0.4 T above
 the nose, "down" back near the nose (press reps); arms ignored mid-jump; squat rep after 250 ms down,
 and a raised jump line (0.45 T) for 0.4 s after a squat instead of a block (crouch-then-jump works);
 jump speed over 150 ms > 1.0 T/s; tracking lost when hips leave the frame; baselines drift only when
@@ -168,7 +168,7 @@ Replaces the src/pose stub with the real pose input (CONTRACTS.md, unchanged int
   screen takes it off the page
 - ?dev=pose: mountPoseDebug in src/pose/debug.ts (see src/pose/NEEDS.md 1 for DevPose.tsx)
 - Thresholds tuned from recorded clips: src/pose/DECISIONS.md; station notes: src/pose/STATION.md
-- 205 tests on recorded landmark clips and synthetic variants; npm run check passes
+- 208 tests on recorded landmark clips and synthetic variants; npm run check passes
 
 Only src/pose/, public/models/, public/mediapipe/ changed. No new packages or env vars.
 

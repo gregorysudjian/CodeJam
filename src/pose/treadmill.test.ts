@@ -52,6 +52,38 @@ describe('treadmill calibration', () => {
     expect(s.calibration!.T).toBeCloseTo(1.5 * s.calibration!.W * (16 / 9), 2);
   });
 
+  test.each([0.1, 0.15])('calibrates while already jogging (shoulders bob ±%s T)', (amp) => {
+    const bounce = (p: Point[], t: number) => {
+      const dy = amp * 0.36 * Math.sin((2 * Math.PI * 2.5 * t) / 1000);
+      return near(p).map((q) => ({ ...q, y: q.y + dy }));
+    };
+    const cal = createCalibrator('treadmill');
+    let done = -1;
+    for (const f of loadClip('standing').frames) {
+      if (f.t > 5000) break;
+      if (done < 0 && cal.update(bounce(toPoints(f.pose!), f.t), f.t).result) done = f.t;
+    }
+    expect(done).toBeGreaterThan(0);
+    expect(done).toBeLessThan(2500);
+  });
+
+  test('floor calibration still wants the player to hold still (bobbing ±0.1 T never finishes)', () => {
+    const cal = createCalibrator('floor');
+    let done = false;
+    for (const f of loadClip('standing').frames) {
+      if (f.t > 5000) break;
+      const dy = 0.1 * 0.2 * Math.sin((2 * Math.PI * 2.5 * f.t) / 1000);
+      if (
+        cal.update(
+          toPoints(f.pose!).map((q) => ({ ...q, y: q.y + dy })),
+          f.t,
+        ).result
+      )
+        done = true;
+    }
+    expect(done).toBe(false);
+  });
+
   test('says tooFar at floor distance (about 2.5 m)', () => {
     expect(calibrateStanding('treadmill', (p) => p).step).toBe('tooFar');
   });

@@ -24,6 +24,7 @@ import {
   CALIBRATION_MIN_W_FRAME,
   CALIBRATION_STILL_SCALE,
   CALIBRATION_STILL_T,
+  CALIBRATION_STILL_T_TREADMILL,
   TREADMILL_T_PER_W_PX,
 } from './tuning';
 
@@ -86,6 +87,8 @@ export function createCalibrator(
   feetInView = CALIBRATION_FEET_IN_VIEW,
 ): Calibrator {
   const getAspect = typeof aspect === 'function' ? aspect : () => aspect;
+  // Treadmill players may already be jogging (shoulders bob ±0.1 T); only their size matters there.
+  const stillT = mode === 'treadmill' ? CALIBRATION_STILL_T_TREADMILL : CALIBRATION_STILL_T;
   const msg = CALIBRATION_MESSAGES[mode];
   let holdStart = -1;
   let ref: Calibration | null = null;
@@ -143,7 +146,7 @@ export function createCalibrator(
     // Holding still: restart the hold whenever the body moves or changes size too much.
     const moved =
       ref &&
-      (Math.hypot(m.centreX - ref.centreX, m.centreY - ref.centreY) > CALIBRATION_STILL_T * ref.T ||
+      (Math.hypot(m.centreX - ref.centreX, m.centreY - ref.centreY) > stillT * ref.T ||
         Math.abs(m.T / ref.T - 1) > CALIBRATION_STILL_SCALE ||
         Math.abs(m.W / ref.W - 1) > CALIBRATION_STILL_SCALE);
     if (!ref || moved) {
