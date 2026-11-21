@@ -195,11 +195,19 @@ describe('supabase store offline', () => {
   it('getLeaderboard answers from the last board it fetched', async () => {
     const { store, kv } = storeWith(offline);
     const cached: LeaderboardEntry[] = [
-      { displayName: 'Ana', score: 900, workout: 'fullBody', mode: 'floor', at: 1 },
+      {
+        displayName: 'Ana',
+        score: 900,
+        workout: 'fullBody',
+        mode: 'floor',
+        durationSec: 45,
+        at: 1,
+      },
     ];
-    kv.setItem('codejam.sb.board.fullBody.floor', JSON.stringify(cached));
+    kv.setItem('codejam.sb.board.fullBody.floor.45', JSON.stringify(cached));
 
-    expect(await store.getLeaderboard('fullBody', 'floor')).toEqual(cached);
-    expect(await store.getLeaderboard('legs', 'floor')).toEqual([]);
+    expect(await store.getLeaderboard('fullBody', 'floor', 45)).toEqual(cached);
+    expect(await store.getLeaderboard('fullBody', 'floor', 90)).toEqual([]);
+    expect(await store.getLeaderboard('legs', 'floor', 45)).toEqual([]);
   });
 });

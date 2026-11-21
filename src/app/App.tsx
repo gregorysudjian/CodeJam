@@ -35,7 +35,7 @@ import { InputSwitch, type InputKind } from './InputSwitch';
 import { createSwitchableInput } from './switchableInput';
 import { TryMoves } from './TryMoves';
 import { tutorialMoves } from './tutorial';
-import { HANDS_FREE_ARM_MS, LEADERBOARD_SIZE } from './tuning';
+import { BOARD_DEFAULT_DURATION_SEC, HANDS_FREE_ARM_MS, LEADERBOARD_SIZE } from './tuning';
 import { useOnline } from './useOnline';
 
 type Screen =
@@ -124,9 +124,16 @@ function MainApp() {
   const [board, setBoard] = useState<{
     workout: WorkoutId;
     mode: PlayMode;
+    durationSec: number;
     entries: LeaderboardEntry[];
     loading: boolean;
-  }>({ workout: 'fullBody', mode: 'floor', entries: [], loading: false });
+  }>({
+    workout: 'fullBody',
+    mode: 'floor',
+    durationSec: BOARD_DEFAULT_DURATION_SEC,
+    entries: [],
+    loading: false,
+  });
 
   const gameRef = useRef<Game | null>(null);
   const screenRef = useRef(screen);
@@ -218,7 +225,7 @@ function MainApp() {
         setSessions(list);
         setReturning({ displayName: p.displayName, bestScore: best || undefined });
       }
-      const top = await store.getLeaderboard('fullBody', 'floor', 3);
+      const top = await store.getLeaderboard('fullBody', 'floor', BOARD_DEFAULT_DURATION_SEC, 3);
       if (!cancelled) setTopScores(top.slice(0, 3));
     };
     void load();
@@ -255,15 +262,15 @@ function MainApp() {
     setSessions(await store.listSessions(50));
   }, []);
 
-  const loadBoard = useCallback(async (workout: WorkoutId, mode: PlayMode) => {
-    setBoard((b) => ({ ...b, workout, mode, loading: true }));
-    const entries = await store.getLeaderboard(workout, mode, LEADERBOARD_SIZE);
-    setBoard({ workout, mode, entries, loading: false });
+  const loadBoard = useCallback(async (workout: WorkoutId, mode: PlayMode, durationSec: number) => {
+    setBoard((b) => ({ ...b, workout, mode, durationSec, loading: true }));
+    const entries = await store.getLeaderboard(workout, mode, durationSec, LEADERBOARD_SIZE);
+    setBoard({ workout, mode, durationSec, entries, loading: false });
   }, []);
   const openLeaderboard = useCallback(() => {
     setScreen('leaderboard');
-    void loadBoard(board.workout, board.mode);
-  }, [board.workout, board.mode, loadBoard]);
+    void loadBoard(board.workout, board.mode, board.durationSec);
+  }, [board.workout, board.mode, board.durationSec, loadBoard]);
 
   // ── Guest sign-in and profile ──
   // "Play as guest" for a first visit, "New guest" when a player is saved: either way a NEW
@@ -309,12 +316,14 @@ function MainApp() {
       setAdvice(coach);
       setCoachPick(coach);
     });
-    void store.getLeaderboard(s.config.workout, s.config.mode, LEADERBOARD_SIZE).then((top) => {
-      // An empty board means offline with nothing cached, not "you are #1". When the round
-      // synced, the board includes it, so it is never empty then.
-      const better = top.filter((e) => e.score > s.score).length;
-      setRank(top.length > 0 && better < LEADERBOARD_SIZE ? better + 1 : null);
-    });
+    void store
+      .getLeaderboard(s.config.workout, s.config.mode, s.config.durationSec, LEADERBOARD_SIZE)
+      .then((top) => {
+        // An empty board means offline with nothing cached, not "you are #1". When the round
+        // synced, the board includes it, so it is never empty then.
+        const better = top.filter((e) => e.score > s.score).length;
+        setRank(top.length > 0 && better < LEADERBOARD_SIZE ? better + 1 : null);
+      });
     const list = await store.listSessions(50);
     setSessions(list);
     const previousBest = list
@@ -322,7 +331,8 @@ function MainApp() {
         (x) =>
           x.id !== saved.id &&
           x.config.workout === s.config.workout &&
-          x.config.mode === s.config.mode,
+          x.config.mode === s.config.mode &&
+          x.config.durationSec === s.config.durationSec,
       )
       .reduce((m, x) => Math.max(m, x.score), 0);
     setPersonalBest(s.score > 0 && s.score > previousBest);
@@ -488,7 +498,7 @@ function MainApp() {
           onDashboard={() => void openDashboard()}
           onLeaderboard={() => {
             setScreen('leaderboard');
-            void loadBoard(summary.config.workout, summary.config.mode);
+            void loadBoard(summary.config.workout, summary.config.mode, summary.config.durationSec);
           }}
         />
       )}
@@ -510,7 +520,8 @@ function MainApp() {
           entries={board.entries}
           workout={board.workout}
           mode={board.mode}
-          onChangeFilter={(w, m) => void loadBoard(w, m)}
+          durationSec={board.durationSec}
+          onChangeFilter={(w, m, d) => void loadBoard(w, m, d)}
           currentName={profile?.displayName}
           loading={board.loading}
           qrSlot={qr}
