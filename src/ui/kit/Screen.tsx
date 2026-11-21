@@ -34,13 +34,15 @@ export const Screen = React.forwardRef<HTMLDivElement, ScreenProps>(
       show: { opacity: 1, y: 0, transition: { duration: reduce ? 0 : DURATION.slow, ease: EASE_ARENA } },
     };
     return (
-      <div ref={ref} className={cn("screen-shell relative isolate min-h-screen text-text", footer && "has-footer", className)} {...props}>
+      <div ref={ref} className={cn("screen-shell relative isolate flex min-h-screen flex-col overflow-clip text-text", footer && "has-footer", className)} {...props}>
         <Backdrop variant={backdrop} />
+        {/* flex-1 keeps the footer on the bottom edge when the content is shorter than the screen;
+            overflow-clip (not hidden: sticky still works) stops its slide-in from adding a scroll. */}
         <motion.main
           variants={container}
           initial="hidden"
           animate="show"
-          className="mx-auto flex w-full max-w-[1440px] flex-col gap-12 px-6 py-8 md:px-12 md:py-12"
+          className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-12 px-6 py-8 md:px-12 md:py-12"
         >
           {React.Children.map(children, (child) =>
             child == null || child === false ? null : <motion.div variants={item}>{child}</motion.div>,

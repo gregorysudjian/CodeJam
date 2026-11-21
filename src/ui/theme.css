@@ -170,6 +170,11 @@
   --animate-grid-scroll: na-grid-scroll 1.6s linear infinite;
 }
 
+/* Height variants. short: 1366×768 laptops, 1280×720 projectors and a MacBook's Chrome window
+   (about 1470×830). tight: 125–150 % display scaling or browser zoom (1093×614, 1024×576). */
+@custom-variant short (@media (max-height: 900px));
+@custom-variant tight (@media (max-height: 640px));
+
 /* ───── Utilities ───── */
 
 @utility font-display-italic {
@@ -538,11 +543,6 @@
     height: 80px;
   }
 }
-@media (max-width: 1279px) {
-  .results-score {
-    font-size: 112px;
-  }
-}
 @media (max-width: 600px) {
   .results-score {
     font-size: 72px;
@@ -579,25 +579,6 @@
 
 .workout-screen [role='radiogroup'] + div {
   padding-top: 12px;
-}
-.results-screen .results-score {
-  font-size: 128px;
-}
-.results-screen .results-stats {
-  margin-top: 24px;
-}
-.results-screen .results-stats > div {
-  padding: 18px;
-}
-.results-screen section[aria-label='Reps breakdown'] {
-  margin-top: 24px;
-}
-.results-screen section[aria-label='Reps breakdown'] .space-y-3 {
-  display: grid;
-  gap: 6px;
-}
-.results-screen section[aria-label='Reps breakdown'] .space-y-3 > * {
-  margin: 0;
 }
 .leaderboard-screen:not(.leaderboard-kiosk) .podium-place {
   min-height: 260px;
@@ -962,15 +943,6 @@
   .results-screen main {
     padding-top: 24px;
     gap: 24px;
-  }
-  .results-screen .results-score {
-    font-size: 96px;
-  }
-  .results-screen .results-stats {
-    margin-top: 12px;
-  }
-  .results-screen .results-stats > div {
-    padding: 12px;
   }
 }
 

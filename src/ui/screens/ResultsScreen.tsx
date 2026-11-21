@@ -43,6 +43,7 @@ const GRADE_COLOR = {
   B: 'text-amber border-amber/50',
   C: 'text-text-muted border-glass-border',
 };
+const STAT_TILE = 'gap-2 p-5 short:p-3 tight:[&_.eyebrow]:tracking-normal';
 export function ResultsScreen({
   summary,
   advice,
@@ -91,79 +92,92 @@ export function ResultsScreen({
   );
   return (
     <Screen backdrop="arena" className="results-screen polish-screen" footer={footer}>
-      <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      {/* One screen tall at 1280×720 and 1366×768 (QA Q5): badges sit beside the score, the
+          active time on the eyebrow line, and `short:` / `tight:` shrink spacing, not text. */}
+      <div className="grid items-start gap-10 short:gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="min-w-0">
-          <Eyebrow>
-            ROUND COMPLETE · {WORKOUT_LABELS[summary.config.workout]} ·{' '}
-            {MODE_LABELS[summary.config.mode]} · {summary.config.durationSec} S
-          </Eyebrow>
-          <div className="mt-6 flex items-center gap-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+            <Eyebrow>
+              ROUND COMPLETE · {WORKOUT_LABELS[summary.config.workout]} ·{' '}
+              {MODE_LABELS[summary.config.mode]} · {summary.config.durationSec} S
+            </Eyebrow>
+            <span className="text-caption text-text-muted">
+              {formatTime(summary.activeSec)} ACTIVE
+            </span>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 short:mt-3">
             <AnimatedNumber
               value={summary.score}
-              className="results-score font-display-italic text-display-xl text-lime text-glow-lime"
+              className="results-score font-display-italic text-display-xl text-lime text-glow-lime short:text-display-lg tight:text-display-md"
             />
             <div
               className={cn(
-                'hud-text-glow grid size-24 shrink-0 -rotate-6 place-items-center rounded-2xl border font-display-italic text-display-md',
+                'hud-text-glow grid size-24 shrink-0 -rotate-6 place-items-center rounded-2xl border font-display-italic text-display-md tight:size-16 tight:text-display-sm',
                 GRADE_COLOR[grade],
               )}
               aria-label={`Grade ${grade}`}
             >
               {grade}
             </div>
-          </div>
-          <p className="mt-2 text-caption text-text-muted">
-            {formatTime(summary.activeSec)} ACTIVE
-          </p>
-          <div className="mt-5 flex min-h-8 flex-wrap items-center gap-5">
-            {isPersonalBest && (
-              <motion.span
-                initial={reduce ? false : { opacity: 0, x: -35 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: reduce ? 0 : 0.45 }}
-                className="flex items-center gap-2 bg-lime px-4 py-2 font-display-italic text-[22px] text-bg"
-              >
-                <Trophy className="size-5" />
-                NEW PERSONAL BEST
-              </motion.span>
-            )}
-            {rank != null &&
-              rank > 0 &&
-              (onLeaderboard ? (
-                <Button
-                  variant="ghost"
-                  onClick={onLeaderboard}
-                  className="focus-ring h-auto gap-2 text-caption text-cyan"
+            <div className="flex flex-col items-start gap-2 empty:hidden tight:flex-row tight:items-center">
+              {/* tight: badge and rank share one row under the score instead of stacking. */}
+              {isPersonalBest && (
+                <motion.span
+                  initial={reduce ? false : { opacity: 0, x: -35 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: reduce ? 0 : 0.45 }}
+                  className="flex items-center gap-2 bg-lime px-4 py-2 font-display-italic text-[22px] text-bg"
                 >
-                  <Trophy />#{rank} ON THE LEADERBOARD
-                  <ArrowRight />
-                </Button>
-              ) : (
-                <span className="flex items-center gap-2 text-caption text-cyan">
-                  <Trophy className="size-5" />#{rank} ON THE LEADERBOARD
-                </span>
-              ))}
+                  <Trophy className="size-5" />
+                  NEW PERSONAL BEST
+                </motion.span>
+              )}
+              {rank != null &&
+                rank > 0 &&
+                (onLeaderboard ? (
+                  <Button
+                    variant="ghost"
+                    onClick={onLeaderboard}
+                    className="focus-ring h-auto gap-2 px-2 text-caption text-cyan"
+                  >
+                    <Trophy />#{rank} ON THE LEADERBOARD
+                    <ArrowRight />
+                  </Button>
+                ) : (
+                  <span className="flex items-center gap-2 text-caption text-cyan">
+                    <Trophy className="size-5" />#{rank} ON THE LEADERBOARD
+                  </span>
+                ))}
+            </div>
           </div>
-          <div className="results-stats mt-8 grid grid-cols-3 gap-3">
-            <StatTile label="BEST STREAK" value={summary.bestStreak} animate accent="magenta" />
+          <div className="results-stats mt-6 grid grid-cols-3 gap-3 short:mt-4">
+            <StatTile
+              label="BEST STREAK"
+              value={summary.bestStreak}
+              animate
+              accent="magenta"
+              className={STAT_TILE}
+            />
             <StatTile
               label="ACCURACY"
               value={summary.accuracy * 100}
               format={(n) => `${Math.round(n)}%`}
               animate
               accent="cyan"
+              className={STAT_TILE}
             />
             <StatTile
-              label="CALORIES"
+              label="CALORIES (EST.)"
               value={summary.kcal}
               format={(n) => `≈ ${Math.round(n)}`}
-              hint="KCAL · ESTIMATE"
+              unit="KCAL"
               animate
               accent="amber"
+              className={STAT_TILE}
             />
           </div>
-          <section className="mt-8" aria-label="Reps breakdown">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+          <section className="mt-6 short:mt-4" aria-label="Reps breakdown">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <Eyebrow>YOUR MOVES</Eyebrow>
               {missed && (
                 <span className="text-caption text-danger">
@@ -171,15 +185,16 @@ export function ResultsScreen({
                 </span>
               )}
             </div>
-            <div className="space-y-3">
+            {/* At 125–150 % scaling (tight) the rows go two by two and drop the bars. */}
+            <div className="grid gap-1.5 tight:grid-cols-2 tight:gap-x-6">
               {MOVE_ORDER.filter((m) => summary.reps[m] > 0 || summary.missed[m] > 0).map(
                 (move, i) => (
                   <div
                     key={move}
-                    className="grid grid-cols-[140px_minmax(0,1fr)_36px_88px] items-center gap-3"
+                    className="grid grid-cols-[140px_minmax(0,1fr)_36px_88px] items-center gap-3 tight:grid-cols-[140px_36px_minmax(0,1fr)]"
                   >
                     <MoveChip move={move} size="sm" />
-                    <div className="h-2 overflow-hidden rounded-full bg-glass-strong">
+                    <div className="h-2 overflow-hidden rounded-full bg-glass-strong tight:hidden">
                       <motion.div
                         initial={reduce ? false : { scaleX: 0 }}
                         animate={{ scaleX: summary.reps[move] / maxReps }}
@@ -206,7 +221,7 @@ export function ResultsScreen({
         <GlassPanel
           as="aside"
           glow="lime"
-          className="results-coach flex min-w-0 flex-col gap-5 p-6"
+          className="results-coach flex min-w-0 flex-col gap-5 p-6 short:gap-4 short:p-5"
         >
           <div className="flex items-center justify-between">
             <Eyebrow className="flex items-center gap-2 text-lime">
@@ -227,7 +242,7 @@ export function ResultsScreen({
           {advice ? (
             <>
               <p className="text-body leading-relaxed">{advice.recap}</p>
-              <div className="flex items-start gap-3 border-y border-glass-border py-4">
+              <div className="flex items-start gap-3 border-y border-glass-border py-4 short:py-3">
                 <Lightbulb className="mt-1 size-6 shrink-0 text-lime" />
                 <p className="text-body text-text-muted">{advice.tip}</p>
               </div>
@@ -238,7 +253,7 @@ export function ResultsScreen({
                 )}
               >
                 <Eyebrow>NEXT UP</Eyebrow>
-                <div className="my-4 flex items-center gap-3">
+                <div className="my-3 flex items-center gap-3 short:my-1">
                   <MoveFigure
                     pose={
                       advice.next.workout === 'legs'
@@ -249,11 +264,11 @@ export function ResultsScreen({
                             ? 'armsUp'
                             : 'jump'
                     }
-                    size={95}
+                    size={72}
                   />
                   <h2 className="min-w-0 font-display-italic text-title">
                     {WORKOUT_LABELS[advice.next.workout]} · {MODE_LABELS[advice.next.mode]} ·{' '}
-                    {advice.next.durationSec} S
+                    {advice.next.durationSec}&nbsp;S
                   </h2>
                 </div>
                 <p className="text-caption leading-relaxed text-text-muted">{advice.reason}</p>
@@ -263,7 +278,7 @@ export function ResultsScreen({
                 variant="secondary"
                 trailingIcon={ArrowRight}
                 onClick={() => onStartNext(advice.next)}
-                className="w-full px-4"
+                className="w-full px-4 short:h-14"
               >
                 PLAY THIS NEXT
               </GameButton>
