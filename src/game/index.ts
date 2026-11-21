@@ -1,6 +1,7 @@
 import type { Game, InputSource, Level } from '@/contracts';
 import { createGameAudio } from './audio';
 import { createCore, feverTier, movesSeen } from './core';
+import { createQualityGovernor, type Quality } from './quality';
 import * as T from './tuning';
 import { create2DView } from './view2d';
 import { create3DView, type GameView, type Phase } from './view3d';
@@ -37,11 +38,9 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   const gfx = readGfxSetting();
   view = gfx === '2d' ? null : tryCreate3D(canvas, level, core.items);
   view ??= create2DView(canvas, level, core.items);
-  if (gfx === 'low') view.setLowGraphics(true);
-  // Auto low graphics: measured over real frame times while the round runs.
-  let autoGfx = gfx === 'auto';
-  let fpsFrames = 0;
-  let fpsTime = 0;
+  const startQuality: Quality = gfx === 'low' ? 2 : gfx === 'medium' ? 1 : 0;
+  if (startQuality > 0) view.setQuality(startQuality);
+  const quality = createQualityGovernor(startQuality, gfx === 'auto', window.devicePixelRatio || 1);
 
   let destroyed = false;
   let last = performance.now();
@@ -58,21 +57,10 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     core.step(realDt, state, now);
 
     const running = core.started() && !core.finished() && core.pauseReason() === null;
-    if (running && autoGfx) {
-      fpsTime += realDt;
-      fpsFrames++;
-      if (fpsTime < T.AUTO_LOW_GFX_SKIP_SEC) {
-        fpsFrames = 0; // ignore start-up frames
-      } else if (fpsTime > T.AUTO_LOW_GFX_SKIP_SEC + T.AUTO_LOW_GFX_WINDOW_SEC) {
-        const fps = fpsFrames / (fpsTime - T.AUTO_LOW_GFX_SKIP_SEC);
-        if (fps < T.AUTO_LOW_GFX_FPS) {
-          view!.setLowGraphics(true);
-          autoGfx = false;
-          console.info(`[game] ${fps.toFixed(0)} fps: switched to low graphics`);
-        }
-        fpsTime = T.AUTO_LOW_GFX_SKIP_SEC; // fresh window
-        fpsFrames = 0;
-      }
+    const stepped = quality.sample(realDt, running);
+    if (stepped !== null) {
+      view!.setQuality(stepped);
+      console.info(`[game] ${quality.lastFps.toFixed(0)} fps: graphics quality ${stepped}`);
     }
 
     const phase: Phase = core.finished()
@@ -99,7 +87,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       // A drawing failure must not stop the round: events and the HUD keep working.
       console.error('[game] render failed, continuing without drawing', err);
       view!.dispose();
-      view = { frame() {}, engage() {}, verdict() {}, setLowGraphics() {}, dispose() {} };
+      view = { frame() {}, engage() {}, verdict() {}, setQuality() {}, dispose() {} };
     }
   }
   raf = requestAnimationFrame(frame);
@@ -139,13 +127,13 @@ function tryCreate3D(
   }
 }
 
-/** '?gfx=low|high|2d' or localStorage 'game.gfx'; anything else means automatic. */
-function readGfxSetting(): 'low' | 'high' | '2d' | 'auto' {
+/** '?gfx=high|medium|low|2d' or localStorage 'game.gfx'; anything else means automatic. */
+function readGfxSetting(): 'high' | 'medium' | 'low' | '2d' | 'auto' {
   try {
     const v =
       new URLSearchParams(window.location.search).get('gfx') ??
       window.localStorage.getItem('game.gfx');
-    return v === 'low' || v === 'high' || v === '2d' ? v : 'auto';
+    return v === 'high' || v === 'medium' || v === 'low' || v === '2d' ? v : 'auto';
   } catch {
     return 'auto';
   }

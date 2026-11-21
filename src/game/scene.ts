@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import type { Quality } from './quality';
 import * as T from './tuning';
 
 /** A neon colour pushed above 1.0 so only neon parts pass the bloom threshold. */
@@ -25,8 +26,8 @@ export interface Stage {
   readonly camera: THREE.PerspectiveCamera;
   update(f: StageFrame): void;
   shake(): void;
-  /** Low graphics: no bloom, pixel ratio 1, no skyline. For weak laptops. */
-  setLowGraphics(on: boolean): void;
+  /** Quality ladder (quality.ts): 1 drops the pixel ratio to 1, 2 also drops bloom and skyline. */
+  setQuality(q: Quality): void;
   render(): void;
   dispose(): void;
 }
@@ -275,13 +276,13 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     composer.addPass(new OutputPass());
   }
 
-  let low = false;
+  let quality: Quality = 0;
   let baseFov = T.CAMERA_FOV;
   const resize = (): void => {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     if (w === 0 || h === 0) return;
-    const pr = low ? 1 : Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
+    const pr = quality >= 1 ? 1 : Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
     renderer.setPixelRatio(pr);
     renderer.setSize(w, h, false);
     composer?.setPixelRatio(pr);
@@ -370,7 +371,8 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
 
       // With bloom the sheet blends in linear light, before the sRGB conversion, so the same
       // perceived darkening needs a stronger sheet: 1 - (1 - d)^2.2.
-      const dimTarget = !dim ? 0 : composer && !low ? 1 - (1 - T.PAUSE_DIM) ** 2.2 : T.PAUSE_DIM;
+      const bloomOn = composer !== null && quality < 2;
+      const dimTarget = !dim ? 0 : bloomOn ? 1 - (1 - T.PAUSE_DIM) ** 2.2 : T.PAUSE_DIM;
       dimMat.opacity += (dimTarget - dimMat.opacity) * (1 - Math.exp(-8 * realDt));
       dimSheet.visible = dimMat.opacity > 0.01;
 
@@ -384,14 +386,14 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     shake() {
       if (!reduceMotion) shakeAmount = T.SHAKE_AMPLITUDE;
     },
-    setLowGraphics(on) {
-      if (on === low) return;
-      low = on;
-      for (const m of [towers, capsA, capsB]) m.visible = !on;
+    setQuality(q) {
+      if (q === quality) return;
+      quality = q;
+      for (const m of [towers, capsA, capsB]) m.visible = q < 2;
       resize();
     },
     render() {
-      if (composer && !low) composer.render();
+      if (composer && quality < 2) composer.render();
       else renderer.render(scene, camera);
     },
     dispose() {

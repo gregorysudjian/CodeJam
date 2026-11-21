@@ -10,12 +10,14 @@ export const STREAK_TIERS = [5, 10, 20] as const; // fever tiers, same steps as 
 /* ── Loop ── */
 export const MAX_DT_SEC = 0.05; // clamp: a stall or background tab never skips a window
 export const MAX_PIXEL_RATIO = 2;
-// Low graphics turns on by itself when the round runs below AUTO_LOW_GFX_FPS, averaged over
-// AUTO_LOW_GFX_WINDOW_SEC after the first AUTO_LOW_GFX_SKIP_SEC. `?gfx=low` forces it on,
-// `?gfx=high` keeps it off (also localStorage 'game.gfx').
-export const AUTO_LOW_GFX_FPS = 45;
-export const AUTO_LOW_GFX_WINDOW_SEC = 3;
-export const AUTO_LOW_GFX_SKIP_SEC = 1;
+// Quality ladder (quality.ts): in auto mode, a round that runs under QUALITY_MIN_FPS over a
+// QUALITY_WINDOW_SEC window (after QUALITY_SKIP_SEC of start-up) steps down one level.
+// `?gfx=high|medium|low` fixes the level, `?gfx=2d` forces the fallback (also localStorage 'game.gfx').
+export const QUALITY_MIN_FPS = 45;
+export const QUALITY_WINDOW_SEC = 3;
+export const QUALITY_SKIP_SEC = 1;
+export const QUALITY_PANIC_FPS = 20; // below this, step down after QUALITY_PANIC_SEC, not a full window
+export const QUALITY_PANIC_SEC = 0.5;
 
 /* ── Speed and distance (world units: 1 ≈ 1 m) ── */
 export const SPEED_MIN = 12; // units per second at intensity 0

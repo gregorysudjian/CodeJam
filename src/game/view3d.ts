@@ -6,6 +6,7 @@ import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
 import { createObstacles, type ObstacleView } from './obstacles';
 import { createPlayer } from './player';
+import type { Quality } from './quality';
 import { createStage, neon } from './scene';
 import { createTrack } from './timeline';
 import * as T from './tuning';
@@ -26,7 +27,7 @@ export interface GameView {
   frame(f: FrameInfo): void;
   engage(item: Item): void;
   verdict(item: Item, v: Verdict): void;
-  setLowGraphics(on: boolean): void;
+  setQuality(q: Quality): void;
   dispose(): void;
 }
 
@@ -157,8 +158,8 @@ export function create3DView(
         obstacles.burst(player.x, 'hit');
       }
     },
-    setLowGraphics(on) {
-      stage.setLowGraphics(on);
+    setQuality(q) {
+      stage.setQuality(q);
     },
     dispose() {
       obstacles.dispose();

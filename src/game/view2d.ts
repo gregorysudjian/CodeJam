@@ -163,7 +163,7 @@ export function create2DView(
     verdict(item, v) {
       verdicts.set(item, v);
     },
-    setLowGraphics() {},
+    setQuality() {},
     dispose() {},
   };
 }
