@@ -4,14 +4,23 @@
 
 | File | Job |
 | --- | --- |
-| `index.ts` | The loop: polls input once per frame, steps the core, draws the view, plays sounds, auto low graphics |
+| `index.ts` | The loop: polls input once per frame, steps the core, draws the view, plays sounds, steps the graphics quality |
+| `quality.ts` | The graphics quality ladder (tested) |
 | `core.ts` | The rules, with no drawing: clock, cues, judging, pause, finish (tested) |
 | `judge.ts`, `timeline.ts` | One object's collision verdict; distance and speed (tested) |
 | `view3d.ts` + `scene.ts`, `obstacles.ts`, `player.ts` | The Three.js picture |
 | `view2d.ts` | Canvas 2D fallback, used automatically when WebGL cannot start |
 | `audio.ts` | Synthesised sound effects |
 
-**URL switches** (also localStorage `game.gfx` / `game.muted`): `?gfx=low` (no bloom, pixel ratio 1), `?gfx=high` (never drop to low), `?gfx=2d` (force the fallback), `?mute=1`. Without a switch, low graphics turns on by itself under 45 fps.
+**Graphics quality** (`quality.ts`). Measured on the demo level: about 100 draw calls, 8k triangles and 0.4 ms of JavaScript per frame. So the cost is pixel fill (canvas size × bloom passes), not geometry or code. The ladder steps down one level per 3 s window under 45 fps:
+- Level 1: pixel ratio 1, bloom kept. That's 4× fewer pixels on a Retina screen, and measured 5 → 32 fps in software rendering.
+- Level 2: no bloom, no skyline.
+
+Below 20 fps it steps after 0.5 s instead of a full window, so a slow laptop never plays its first seconds in slow motion. On a 1× screen it skips straight to level 2.
+
+**URL switches** (also localStorage `game.gfx` / `game.muted`): `?gfx=high|medium|low` fixes the level (0, 1, 2), `?gfx=2d` forces the fallback, `?mute=1`. Without a switch the ladder is automatic.
+
+**Keyboard and the page:** while a round runs the game sets `<body data-game="running">` (cleared on pause, finish and `destroy()`). `src/input` only consumes its keys then, so the rest of the app keeps normal keyboard behaviour.
 
 **Failure handling:** if WebGL can't start, the 2D view takes over (tested in a Chrome with the GPU disabled). If drawing throws mid-round, the game logs it and keeps running without drawing, so events, the HUD and the results still work.
 
@@ -89,7 +98,8 @@ See the bottom of this file (kept up to date per phase).
 3. HUD cue words: orbs carry `reachLeft` / `reachRight` / `armsUp`, and a floor orb in the centre lane says `reachRight` though either arm works. Show "REACH" for both reach moves.
 4. Docs: AGENTS.md ownership (Patrick also owns `src/workout/`); CONTRACTS.md crate row: "both arms up (for the whole `holdSec` if set, with 0.3 s of grace)".
 5. Show the finish: in `PlayScreen`, wait about 1.5 s after `finished` before calling `onFinish`. The game shows a finish arch, the world coasts to a stop and the runner raises both arms, but today the results screen replaces it at once. The fanfare already rings out after `destroy()`.
-6. A pause overlay with text ("Step back into view" for `trackingLost`). The game dims the scene while paused, but shows no words.
+6. ~~A pause overlay with text~~: done in `GameHud`.
+7. The HUD cue word ("SIDESTEP" with its countdown ring) sits in the middle of the screen, exactly where the announced obstacle approaches. It covers the obstacle and the game's free-lane chevron for those 2 seconds. Move it to the top band (between score and timer) or make it much more transparent. Screenshot: the game at 2 s into the demo level.
 
 ### Checked end to end (local merge of main + p1-game + p1-workout)
 - `npm run check`: 78 tests pass.
