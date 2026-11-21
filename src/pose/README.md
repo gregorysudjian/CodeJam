@@ -1,40 +1,38 @@
 # src/pose — Vision (owner A)
 
-## MORNING REPORT (last update: Sat 06:35 — refreshed through the night)
+## MORNING REPORT (last update: Sat ~07:15 — refreshed through the night)
 
 **State:** Phase 1 (real detection), most of Phase 2 (robustness) and Phase 3 (treadmill input) are
-done and pushed to `abdo-1`. `npm run check` passes: **153 tests**. Nothing was ever pushed to `main`.
+done and pushed to `abdo-1`. `npm run check` passes: **160 tests**. Nothing was pushed to `main`.
+
+**Integration with `main` (verified, nothing merged):** in a throwaway worktree of `origin/main`
+(PR #19) with this `src/pose` copied in, `main`'s full `npm run check` passes (220 tests incl. the
+team's), and the real app with a stubbed camera works: K switches to pose, START opens Greg's
+calibration screen showing our live status message ("Step in front of the camera…"), the video is
+mirrored and fills the frame, D shows the overlay (27 FPS GPU), Esc and K back to keyboard: no errors.
 
 **What works (tested on your recorded clips, no camera needed)**
 - `createPoseInput()` is real: camera, MediaPipe, `calibrate()` with status messages, smoothing,
   lane (hysteresis), jump, squat, arms up, reach left/right, `tracking`, move events, `drawSkeleton`.
 - Every clip gives the right moves, and so do 8 synthetic variants of every clip (shorter/taller,
   closer/farther, ±0.5–1% jitter, 20–40% dropped frames) with the same timing (±100–250 ms).
-- Standing still: zero moves. Standing up out of a squat, even springing onto the toes: no jump
-  (and a test proves the guard is what prevents it). Squats up to 4× slower still count.
-- Background people: picks the largest, nearest body; ignores bodies far from the player's size
-  (so a person behind you is not tracked after you walk off). `MAX_POSES` stays 1 until you measure.
-- Treadmill mode: calibrates on the shoulders at 1–1.5 m, arms only; bouncing gives no moves.
-  Floor results are unchanged.
-- **D** toggles a debug overlay during play: live values next to thresholds, sliders, Reset, Copy.
-- `?dev=pose` page now runs the real input with calibrate buttons, overlay and recorder.
-- Browser-checked with a stubbed camera: 30 FPS GPU loop, overlay, StrictMode start/stop/start
-  leaves exactly one camera track, stop leaves none, denied camera gives a readable message.
+- Zero moves standing still. Standing up out of a squat, even springing onto the toes: no jump (a
+  test proves the guard is what prevents it). Squats up to 4× slower count. Stepping back quickly
+  is not a jump. Stepping closer re-baselines. Long overhead holds do not distort W/T.
+- Background people: largest, nearest body wins; bodies far from the player's size are ignored.
+- Treadmill mode: shoulder calibration at 1–1.5 m, arms only, bouncing gives nothing; floor unchanged.
+- **D** toggles the overlay: live values vs thresholds, sliders, Reset, Copy, and **threshold lines
+  drawn on the video** (lane, stand, squat, jump, arm-up).
 
-**Fixed overnight:** a leaked camera stream on React StrictMode start/stop/start (camera light
-would stay on); lane hysteresis when leaving a side lane; a lint error that slipped into one commit.
+**Bugs found and fixed overnight (most by tests or the stubbed camera)**
+1. Camera stayed on after React StrictMode start/stop/start (leaked stream).
+2. **Pose froze for good if the app took the video off the page** (it pauses and never resumes).
+3. Baseline never adapted after stepping ~20% closer; stepping back quickly could fire a jump.
+4. Overhead holds shrank W and T; lane hysteresis bug leaving a side lane; GPU error stopped the loop;
+   unhandled rejection when the camera failed inside `calibrate()`.
 
-**Decisions:** `DECISIONS.md` (19 items). **For Greg:** `NEEDS.md` (5 messages, copy-paste ready).
-**New session:** `HANDOFF.md`.
-
-**Needs real-camera test** (10 min checklist with exact steps in `HANDOFF.md` §6):
-1. FPS with the real input (overlay) — still ≥ 25?
-2. Calibration flow messages at your playing distance.
-3. Each move 10/10 for you; 8/10 for a teammate of a different height.
-4. Skeleton lines up in the app's calibration screen (object-cover crop).
-5. `MAX_POSES = 2`: FPS cost, and a person walking behind you.
-6. Treadmill at 1–1.5 m: jogging on the spot gives no arm moves; reaches and presses count.
-7. D overlay sliders change detection live.
+**Decisions:** `DECISIONS.md` (24). **For Greg:** `NEEDS.md` (5 copy-paste messages).
+**New session:** `HANDOFF.md`. **Real-camera checklist:** `HANDOFF.md` §6 (10 min).
 
 ## How to use it
 

@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat 06:40 (overnight autonomous session). Read this first in a new conversation._
+_Last refresh: Sat ~07:15 (overnight autonomous session). Read this first in a new conversation._
 
 ## 1. Context
 
@@ -21,9 +21,12 @@ _Last refresh: Sat 06:40 (overnight autonomous session). Read this first in a ne
 - **Half-done / not done:**
   - Nothing is half-written in code. Not done: "raise both arms to start" (app-side, NEEDS.md 5),
     station setup notes (Phase 4), real-camera tuning (needs A).
-- **Last commit:** see `git log -1` (this file is refreshed with each docs commit; at the time of
-  writing the last code commit was `260f803`).
-- **`npm run check`:** passes (153 tests).
+- **Last commit:** see `git log -1` (last code commit at this refresh: `bad9581`).
+- **`npm run check`:** passes (160 tests).
+- **Integration:** verified against `origin/main` PR #19 in a scratch worktree (not merged): `main`'s
+  check passes with this `src/pose` (220 tests) and the real calibration screen works with a stubbed
+  camera (see README MORNING REPORT). `main` added packages since `abdo-1` branched, so after any
+  merge of `main` into `abdo-1`, run `npm install`.
 
 ## 3. Architecture
 
@@ -63,10 +66,12 @@ while idle; size gate 40%; `MAX_POSES = 1`; pose handles D, app handles R.
 2. **FPS with the full input is unmeasured** (overlay shows it). Phase 0 spike: 25.9 FPS GPU.
 3. **Only one body type recorded** (A). A teammate of a different height is the Phase 1 done-check.
 4. **Treadmill was simulated** by scaling floor clips; real jogging arm swing is untested.
-5. **Video mirroring owner mismatch**: contract says UI mirrors, app says A does; pose mirrors now.
+5. **The app moves the `<video>` between screens.** Removing it pauses it; the engine now resumes it
+   and processes frames on a watchdog timer (verified in Chromium). Watch FPS in the play screen.
+6. **Video mirroring owner mismatch**: contract says UI mirrors, app says A does; pose mirrors now.
    If any screen adds `scale-x-[-1]` the video flips back (NEEDS.md 2).
-6. A real jump within 0.4 s after standing up from a squat is ignored (the guard). Probably fine.
-7. Background people with `MAX_POSES = 1`: MediaPipe may lock onto someone else; the size gate stops
+7. A real jump within 0.4 s after standing up from a squat is ignored (the guard). Probably fine.
+8. Background people with `MAX_POSES = 1`: MediaPipe may lock onto someone else; the size gate stops
    tracking a much smaller/larger person, but a same-size person beside you could be picked.
 
 ## 6. Needs real-camera test (about 10 minutes)
