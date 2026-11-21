@@ -63,9 +63,26 @@ Each spawn gets its own judge, fed the game time and the polled state every fram
 
 ## Latency compensation (`VISUAL_LEAD_SEC`, tested in `latency.test.ts`)
 
-Webcam input reaches the game 0.2 to 0.3 s after the move: camera, MediaPipe, smoothing, and the threshold itself (a squat counts only once the hips are 0.3 torso lengths down). A player who jumps exactly when the hurdle reaches the runner would be seen at about `t + 0.25`, outside the contract window `[t − 0.35, t + 0.15]`. So with pose input the picture runs 0.2 s ahead of the judging clock: objects visually reach the runner at `t − 0.2`, and reacting on sight lands inside the window for lags up to 0.35 s. Players who anticipate and move early still clear.
+Webcam input reaches the game after the move. Measured on A's recorded clips (`src/pose/fixtures` on `abdo-1`), from the first movement in the raw landmarks to his detector's state change:
 
-Judging, events and the contract are unchanged; only where things are drawn moves. Keyboard input has no lag and gets no lead. Tune the number with Abdo in front of the camera.
+| Move | Measured lag |
+| --- | --- |
+| Jump | 57–78 ms |
+| Squat | 281–286 ms (the hips must drop 0.3 torso lengths) |
+| Arms | 235–306 ms |
+| Sidestep | 209–271 ms |
+
+Camera capture and the model add about 0.1 s on top. A player who squats exactly when a beam reaches the runner would be seen near `t + 0.39`, outside the contract window `[t − 0.35, t + 0.15]`. So with pose input each object is drawn ahead of the judging clock by its move's lead (lag − 0.15 + 0.05 margin):
+
+| Move | Lead |
+| --- | --- |
+| Jump | 0.1 s |
+| Sidestep | 0.25 s |
+| Squat, arms up, reaches | 0.3 s |
+
+Reacting on sight then lands inside the window for every kind, and players who anticipate still clear. The leads differ by far less than the 1.1 s minimum wave gap, so objects never swap order. The floor and the FINISH arch use no lead, so the runner crosses the line as the clock hits 0:00.
+
+Judging, events and the contract are unchanged; only where objects are drawn moves. Keyboard input has no lag and gets no lead. Tune the table with Abdo in front of the camera.
 
 ## Placement (`timeline.ts`, pure, tested)
 

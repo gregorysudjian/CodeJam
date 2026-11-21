@@ -1,4 +1,4 @@
-import type { Level, Spawn } from '@/contracts';
+import type { Level, MoveType, Spawn } from '@/contracts';
 import type { Item } from './core';
 import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
@@ -20,7 +20,8 @@ export function create2DView(
   canvas: HTMLCanvasElement,
   level: Level,
   items: readonly Item[],
-  lead: number, // seconds the picture runs ahead of the judging clock (latency compensation)
+  /** Seconds each object is drawn ahead of the judging clock, by move (latency compensation). */
+  leads: Readonly<Record<MoveType, number>>,
 ): GameView {
   const ctx = canvas.getContext('2d');
   const track = createTrack(level.waves, level.config.durationSec);
@@ -58,7 +59,7 @@ export function create2DView(
       ctx.fillRect(0, 0, w, h);
 
       // Floor lines scrolling toward the player, then the lime lane lines.
-      const distance = track.distanceAt(elapsed + lead);
+      const distance = track.distanceAt(elapsed);
       ctx.strokeStyle = css(T.COLOR_GRID);
       ctx.lineWidth = 1;
       for (let k = 0; k < 30; k++) {
@@ -83,7 +84,10 @@ export function create2DView(
 
       // Objects, far to near.
       const visible = items
-        .map((item) => ({ item, z: track.distanceAt(item.wave.t) - distance }))
+        .map((item) => ({
+          item,
+          z: track.distanceAt(item.wave.t) - track.distanceAt(elapsed + leads[item.spawn.requires]),
+        }))
         .filter(
           ({ item, z }) => z < T.VIEW_DISTANCE && z > -4 && !isGone(item.spawn, verdicts.get(item)),
         )

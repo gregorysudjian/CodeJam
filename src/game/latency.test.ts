@@ -1,7 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import type { InputState, Spawn } from '@/contracts';
+import type { InputState, MoveType, Spawn } from '@/contracts';
 import { createJudge, type Verdict } from './judge';
 import { VISUAL_LEAD_SEC } from './tuning';
+
+/*
+ * Webcam lag per move, measured on A's recorded clips (src/pose/fixtures on abdo-1): from the
+ * first raw-landmark movement to the detector's state change, worst rep. Camera capture and
+ * the model add about CAMERA_SEC on top; that part is not in the clips' timestamps.
+ */
+const DETECTOR_LAG_SEC: Record<MoveType, number> = {
+  jump: 0.078,
+  squat: 0.286,
+  armsUp: 0.306,
+  reachLeft: 0.306,
+  reachRight: 0.306,
+  sidestep: 0.271,
+};
+const CAMERA_SEC = 0.1;
+const lagOf = (move: MoveType): number => DETECTOR_LAG_SEC[move] + CAMERA_SEC;
 
 const idle: InputState = {
   tracking: true,
@@ -11,51 +27,81 @@ const idle: InputState = {
   leftArmUp: false,
   rightArmUp: false,
 };
-const hurdle: Spawn = { kind: 'hurdle', lanes: [-1, 0, 1], requires: 'jump' };
-const beam: Spawn = { kind: 'beam', lanes: [-1, 0, 1], requires: 'squat' };
+const OBJECTS: Spawn[] = [
+  { kind: 'hurdle', lanes: [-1, 0, 1], requires: 'jump' },
+  { kind: 'beam', lanes: [-1, 0, 1], requires: 'squat' },
+  { kind: 'crate', lanes: [-1, 0, 1], requires: 'armsUp' },
+  { kind: 'block', lanes: [0, 1], requires: 'sidestep' }, // free lane: -1
+  { kind: 'orb', lanes: [1], requires: 'reachRight' }, // the player is already in lane 1
+];
+
+/** The state the game sees from `seen` on, for a player making the move that clears `spawn`. */
+function moving(spawn: Spawn, on: boolean): InputState {
+  switch (spawn.kind) {
+    case 'hurdle':
+      return { ...idle, airborne: on };
+    case 'beam':
+      return { ...idle, ducking: on };
+    case 'crate':
+      return { ...idle, leftArmUp: on, rightArmUp: on };
+    case 'block':
+      return { ...idle, lane: on ? -1 : 0 };
+    case 'orb':
+      return { ...idle, lane: 1, rightArmUp: on };
+  }
+}
 
 /**
- * A player who moves the moment the object visually reaches the runner (t - lead), seen by
- * the game `lag` seconds later. Jumps count as airborne for 450 ms; squats are held 0.6 s.
+ * The player moves `early` seconds before the object visually reaches the runner (t - lead),
+ * and the game sees it `lag` seconds later. Jumps stay airborne 450 ms; held moves 0.6 s;
+ * a lane change stays.
  */
-function reactAtArrival(spawn: Spawn, lead: number, lag: number, early = 0): Verdict {
+function play(spawn: Spawn, lead: number, lag: number, early = 0): Verdict {
   const t = 10;
   const seen = t - lead - early + lag;
-  const hold = spawn.kind === 'hurdle' ? 0.45 : 0.6;
+  const lasts = spawn.kind === 'hurdle' ? 0.45 : spawn.kind === 'block' ? Infinity : 0.6;
   const judge = createJudge(spawn, t, 'floor');
-  for (let e = t - 1; e <= t + 1; e += 1 / 60) {
-    const on = e >= seen && e < seen + hold;
-    const v = judge.sample(e, {
-      ...idle,
-      airborne: spawn.kind === 'hurdle' && on,
-      ducking: spawn.kind === 'beam' && on,
-    });
+  for (let e = t - 1.5; e <= t + 1; e += 1 / 60) {
+    const v = judge.sample(e, moving(spawn, e >= seen && e < seen + lasts));
     if (v) return v;
   }
   return judge.verdict;
 }
 
 describe('latency compensation (VISUAL_LEAD_SEC)', () => {
-  it('a webcam player reacting on sight clears with typical lag (0.1 to 0.3 s)', () => {
-    for (const lag of [0.1, 0.2, 0.25, 0.3]) {
-      expect(reactAtArrival(hurdle, VISUAL_LEAD_SEC.pose, lag), `hurdle, lag ${lag}`).toBe(
-        'cleared',
-      );
-      expect(reactAtArrival(beam, VISUAL_LEAD_SEC.pose, lag), `beam, lag ${lag}`).toBe('cleared');
+  const pose = VISUAL_LEAD_SEC.pose;
+
+  it('a webcam player who moves when the object reaches the runner clears every kind', () => {
+    for (const s of OBJECTS) {
+      const expected = s.kind === 'orb' ? 'collected' : 'cleared';
+      expect(play(s, pose[s.requires], lagOf(s.requires)), s.kind).toBe(expected);
     }
   });
 
-  it('a player who anticipates and moves 0.15 s early still clears with a short lag', () => {
-    expect(reactAtArrival(hurdle, VISUAL_LEAD_SEC.pose, 0.1, 0.15)).toBe('cleared');
-    expect(reactAtArrival(beam, VISUAL_LEAD_SEC.pose, 0.1, 0.15)).toBe('cleared');
+  it('without the leads, slow moves would be hits (why they exist)', () => {
+    for (const s of OBJECTS.filter((o) => o.kind !== 'hurdle' && o.kind !== 'orb')) {
+      expect(play(s, 0, lagOf(s.requires)), s.kind).toBe('hit');
+    }
   });
 
-  it('without the lead the same player is hit at 0.25 s of lag (why the lead exists)', () => {
-    expect(reactAtArrival(hurdle, 0, 0.25)).toBe('hit');
+  it('a player who anticipates by 0.2 s with a short lag still clears', () => {
+    for (const s of OBJECTS) {
+      const expected = s.kind === 'orb' ? 'collected' : 'cleared';
+      expect(play(s, pose[s.requires], DETECTOR_LAG_SEC.jump, 0.2), s.kind).toBe(expected);
+    }
   });
 
   it('the keyboard has no lag, so it needs no lead', () => {
-    expect(VISUAL_LEAD_SEC.keyboard).toBe(0);
-    expect(reactAtArrival(hurdle, VISUAL_LEAD_SEC.keyboard, 0)).toBe('cleared');
+    for (const move of Object.keys(VISUAL_LEAD_SEC.keyboard) as MoveType[]) {
+      expect(VISUAL_LEAD_SEC.keyboard[move]).toBe(0);
+    }
+    for (const s of OBJECTS) {
+      expect(play(s, 0, 0)).not.toBe('hit');
+    }
+  });
+
+  it('leads differ by less than the 1.1 s minimum wave gap, so objects never swap order', () => {
+    const leads = Object.values(pose);
+    expect(Math.max(...leads) - Math.min(...leads)).toBeLessThan(1.1);
   });
 });

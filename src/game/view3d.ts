@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { InputState, Level } from '@/contracts';
+import type { InputState, Level, MoveType } from '@/contracts';
 import { feverTier, type Item } from './core';
 import { requirementMet } from './judge';
 import type { Verdict } from './judge';
@@ -36,7 +36,8 @@ export function create3DView(
   canvas: HTMLCanvasElement,
   level: Level,
   items: readonly Item[],
-  lead: number, // seconds the picture runs ahead of the judging clock (latency compensation)
+  /** Seconds each object is drawn ahead of the judging clock, by move (latency compensation). */
+  leads: Readonly<Record<MoveType, number>>,
 ): GameView {
   const { mode, durationSec } = level.config;
   const track = createTrack(level.waves, durationSec);
@@ -49,6 +50,7 @@ export function create3DView(
   const finishDistance = track.distanceAt(durationSec);
 
   const views = new Map<Item, ObstacleView>();
+  const maxLead = Math.max(...Object.values(leads));
   let nextSpawn = 0;
   let clock = 0;
   let lastState: InputState | null = null;
@@ -89,12 +91,15 @@ export function create3DView(
         coast += coastSpeed * visDt;
         coastSpeed *= Math.exp(-T.COAST_DECAY * visDt);
       }
-      const distance = track.distanceAt(elapsed + lead) + coast;
+      // Scenery and the finish use the judging clock; each object runs ahead by its lead.
+      const distance = track.distanceAt(elapsed) + coast;
+      const ahead = (lead: number): number => track.distanceAt(elapsed + lead) + coast;
+      const spawnLine = ahead(maxLead);
 
       // Bring objects into view as they come within VIEW_DISTANCE (items are in time order).
       while (nextSpawn < items.length) {
         const item = items[nextSpawn]!;
-        if (track.distanceAt(item.wave.t) - distance > T.VIEW_DISTANCE) break;
+        if (track.distanceAt(item.wave.t) - spawnLine > T.VIEW_DISTANCE) break;
         nextSpawn++;
         const view = obstacles.acquire(item.spawn.kind);
         view.show(item.spawn, lengthOf(item));
@@ -102,7 +107,7 @@ export function create3DView(
         views.set(item, view);
       }
       for (const [item, view] of views) {
-        const z = distance - track.distanceAt(item.wave.t);
+        const z = ahead(leads[item.spawn.requires]) - track.distanceAt(item.wave.t);
         view.root.position.z = z;
         view.tick(visDt, clock);
         if (z - lengthOf(item) > T.DESPAWN_BEHIND && item.judge.verdict !== 'pending') {
