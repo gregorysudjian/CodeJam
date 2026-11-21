@@ -140,7 +140,8 @@ function WorkoutCard({
           opacity: selected || hover ? 1 : 0.55,
         }}
       />
-      <span className="relative flex items-start justify-between">
+      {/* tight: the check badge floats in the corner instead of taking a row. */}
+      <span className="relative flex items-start justify-between tight:absolute tight:top-3 tight:right-3 tight:z-10">
         <span />
         {selected ? (
           <span
@@ -159,7 +160,10 @@ function WorkoutCard({
           </span>
         ) : null}
       </span>
-      <span aria-hidden="true" className="relative flex flex-1 items-center justify-center py-4">
+      <span
+        aria-hidden="true"
+        className="relative flex flex-1 items-center justify-center py-4 tight:py-1"
+      >
         <MoveFigure
           pose={WORKOUT_SIGNATURE[info.id]}
           color={color}
@@ -167,18 +171,19 @@ function WorkoutCard({
           size={145}
         />
       </span>
-      <span className="relative flex flex-col gap-3">
-        <span className="font-display-italic pr-[0.06em] text-display-md leading-[0.9] xl:text-display-sm">
+      <span className="relative flex flex-col gap-3 tight:gap-2">
+        {/* md–xl: four narrow cards, so the title steps down (SHOULDERS must fit). */}
+        <span className="font-display-italic pr-[0.06em] text-display-md leading-[0.9] md:text-title xl:text-display-sm tight:text-title">
           {info.name}
         </span>
-        <span className="text-caption text-text-muted">
+        <span className="text-caption text-text-muted tight:hidden">
           {disabled
             ? info.id === 'legs' && mode === 'treadmill'
               ? 'Running is your leg work'
               : `Not available on ${MODE_LABELS[mode].toLowerCase()}`
             : info.tagline}
         </span>
-        <span className="flex flex-wrap gap-1.5 pt-1">
+        <span className="flex flex-wrap gap-1.5 pt-1 cramped:hidden">
           {info.moves.map((m) => (
             <MoveChip key={m} move={m} size="sm" showIcon={false} />
           ))}
@@ -272,7 +277,7 @@ export function WorkoutSelectScreen({
             </GameButton>
           }
         >
-          <span className="font-display-italic text-title">
+          <span className="font-display-italic text-title tight:text-body">
             {sessionLabel({ workout, mode, durationSec })}
           </span>
           {effectiveLowImpact && <span className="ml-3 text-caption text-cyan">LOW IMPACT</span>}
@@ -286,7 +291,7 @@ export function WorkoutSelectScreen({
       <div
         role="radiogroup"
         aria-label="Workout"
-        className="grid gap-6 pt-2 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid gap-4 pt-2 sm:grid-cols-2 md:grid-cols-4 xl:gap-6"
       >
         {workouts.map((w, i) => (
           <WorkoutCard
