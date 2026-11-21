@@ -2,7 +2,7 @@
 
 **A workout you play with your whole body, using only your laptop's webcam.** Built at CodeJam 16 (McGill).
 
-Pick what to train (legs, arms, shoulders or full body) and a 3-lane neon runner is generated for that workout. You stand about 2 m from the laptop: sidestep to change lane, jump hurdles, squat under beams, raise your arms to smash crates and grab orbs. Pose tracking runs in the browser, so **the video never leaves your laptop**. Every round is saved to your profile, a dashboard tracks your week, a leaderboard ranks scores, a ghost runner replays your best run beside you, and a coach recommends your next session. A treadmill mode uses upper-body moves only.
+Pick what to train (legs, arms, shoulders or full body) and a 3-lane neon runner is generated for that workout, through a city, a tunnel and a bridge, to a synthesised beat that speeds up as you go. You stand about 1.5 m from the laptop: sidestep to change lane, jump hurdles, squat under beams, raise your arms to smash crates and grab orbs. Each move is graded PERFECT, GOOD or LATE. Pose tracking runs in the browser, so **the video never leaves your laptop**. Every round is saved to your profile, a dashboard tracks your week, a leaderboard ranks scores, a ghost runner replays your best run beside you, and a coach recommends your next session. A treadmill mode uses upper-body moves only.
 
 Live site: https://codejam-jet.vercel.app (deployed from `main`). Chrome only.
 
@@ -25,7 +25,9 @@ Live site: https://codejam-jet.vercel.app (deployed from `main`). Chrome only.
 
 Treadmill mode generates only crates and orbs. "Low impact" removes hurdles. Before the first round, "Try each move" walks through every move of the coming round.
 
-**Flow:** landing → profile (or play as a guest) → pick a workout and Camera or Keyboard → calibration (camera: stand on your mark for 1.5 s) → round → results with the coach card → dashboard and leaderboard.
+**Flow:** landing → profile (or play as a guest) → pick a workout and Camera or Keyboard → calibration (camera: stand on your mark, head to knees in view, still for 1.5 s) → 3-2-1 → round → results with the coach card → dashboard and leaderboard.
+
+**Hands-free:** cross your forearms in an X at chest height for 1 s to pause; the same X resumes. On results, raise both arms to play again.
 
 **Keys during play:** `K` switches camera ↔ keyboard without restarting the round, `R` recalibrates, `Esc` pauses, `D` shows the debug overlay.
 
@@ -48,7 +50,8 @@ npm run dev        # http://localhost:5173
 | `?kiosk=1` | Leaderboard-only screen with a QR code, refreshes every 15 s |
 | `?dev=pose` | Pose debug page: live landmarks, thresholds, move tally, clip recorder |
 | `?gfx=low` / `?gfx=2d` | Lower graphics / force the Canvas 2D fallback (otherwise automatic) |
-| `?mute=1`, `?ghost=off` | No sound / no ghost runner |
+| `?mute=1`, `?music=off` | No sound / effects only, no music |
+| `?ghost=off`, `?intro=off` | No ghost runner / no 3-2-1 intro |
 
 ## Architecture
 
