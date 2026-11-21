@@ -28,6 +28,15 @@ export interface Stage {
   shake(): void;
   /** Quality ladder (quality.ts): 1 drops the pixel ratio to 1, 2 also drops bloom and skyline. */
   setQuality(q: Quality): void;
+  /**
+   * Compiles every shader the round can need, now, also for objects still hidden (pooled
+   * obstacles, speed lines, the finish arch, the end banner). Each would otherwise stall the
+   * frame it first shows: measured 60-80 ms at streak 10, as the finish arch comes into view
+   * and at the finish (software GL). Two variants each: bloom renders into a target (linear
+   * output), quality 2 straight to the screen (sRGB output), so a step down to 2 mid-round
+   * does not recompile everything at once on the very laptop that is struggling.
+   */
+  precompile(): void;
   render(): void;
   dispose(): void;
 }
@@ -395,6 +404,20 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
       quality = q;
       for (const m of [towers, capsA, capsB]) m.visible = q < 2;
       resize();
+    },
+    precompile() {
+      try {
+        if (composer && quality < 2) {
+          renderer.setRenderTarget(composer.readBuffer); // where RenderPass draws the scene
+          renderer.compile(scene, camera);
+          renderer.setRenderTarget(null);
+        }
+        renderer.compile(scene, camera); // straight to the screen (quality 2)
+      } catch (err) {
+        console.warn('[game] shader precompile failed: only first-use stalls', err);
+      } finally {
+        renderer.setRenderTarget(null);
+      }
     },
     render() {
       // A ResizeObserver misses a pixel-ratio change with the same CSS size (window dragged

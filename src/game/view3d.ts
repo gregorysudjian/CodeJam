@@ -2,10 +2,8 @@ import * as THREE from 'three';
 import type { InputState, Level } from '@/contracts';
 import { feverTier, holdFeedback, type HoldFeedback, type Item } from './core';
 import { OUTCOME_LABEL, raceLabel, type GhostOutcome, type GhostPose } from './ghost';
-import { requirementMet } from './judge';
-import type { Verdict } from './judge';
-import { colorKeyFor } from './obstacles';
-import { createObstacles, type ObstacleView } from './obstacles';
+import { requirementMet, type Verdict } from './judge';
+import { colorKeyFor, createObstacles, type ObstacleView } from './obstacles';
 import { createPlayer } from './player';
 import type { Quality } from './quality';
 import { createStage, neon } from './scene';
@@ -57,10 +55,12 @@ export function create3DView(
   const finishDistance = track.distanceAt(durationSec);
 
   const views = new Map<Item, ObstacleView>();
-  let banner: THREE.Sprite | null = null;
-  let raceChip: ReturnType<typeof createChip> | null = null;
+  // The live race chip and the end banner: built now, hidden, so their shader is precompiled.
+  const raceChip = createLabel(stage.scene, T.RACE_WIDTH, 512, T.RACE_POS, 999);
+  const banner = createLabel(stage.scene, T.BANNER_WIDTH, 1024, T.BANNER_POS, 1000);
   let raceShown: number | null = null;
-  let bannerT = 0;
+  let bannerT = -1; // seconds since the banner appeared; < 0: not shown
+  let compiled = false;
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   // The ghost runner, created the first time a ghost pose arrives; fed through one reused state.
   let ghostRunner: ReturnType<typeof createPlayer> | null = null;
@@ -168,16 +168,15 @@ export function create3DView(
       const moving = phase === 'running' || (phase === 'finished' && coastSpeed > 1);
       player.update(visDt, state, moving, phase === 'finished');
       if (race !== null && race !== raceShown) {
-        raceChip ??= createChip(stage.scene);
         raceChip.draw(raceLabel(race));
         raceShown = race;
       }
-      if (raceChip) raceChip.sprite.visible = race !== null;
-      if (banner) {
+      raceChip.sprite.visible = race !== null;
+      if (bannerT >= 0) {
         bannerT += realDt;
         const k = reduceMotion ? 1 : Math.min(1, bannerT / T.BANNER_POP_SEC);
         const pop = 1 - (1 - k) ** 3; // ease out
-        banner.scale.set(T.BANNER_WIDTH * pop, (T.BANNER_WIDTH / 5.33) * pop, 1);
+        banner.sprite.scale.set(T.BANNER_WIDTH * pop, T.BANNER_WIDTH * LABEL_ASPECT * pop, 1);
       }
       if (ghost) {
         if (!ghostRunner) {
@@ -200,6 +199,10 @@ export function create3DView(
         fever: phase === 'finished' ? 0 : feverTier(streak),
         dim: phase === 'paused',
       });
+      if (!compiled) {
+        compiled = true; // first frame: before any object reaches the runner
+        stage.precompile();
+      }
       stage.render();
     },
     engage(item) {
@@ -218,10 +221,10 @@ export function create3DView(
       }
     },
     showGhostOutcome(outcome) {
-      if (banner) return;
-      banner = createBanner(outcome);
-      bannerT = 0;
-      stage.scene.add(banner);
+      if (bannerT >= 0) return;
+      banner.draw(OUTCOME_LABEL[outcome]);
+      banner.sprite.visible = true;
+      bannerT = 0; // the next frame pops it in from nothing
     },
     setQuality(q) {
       stage.setQuality(q);
@@ -233,9 +236,9 @@ export function create3DView(
   };
 }
 
-/** A checkered finish arch, placed where the runner is when the clock hits durationSec. */
 /**
- * The finish arch. After the finish the world coasts on and the arch passes the camera; its
+ * The checkered finish arch, placed where the runner is when the clock hits durationSec.
+ * After the finish the world coasts on and the arch passes the camera; its
  * banner hangs at eye height, so it would sweep across the whole view (a giant FINISH, a lime
  * blob under bloom) during the app's 1.5 s celebration. `setFade` dissolves it as it passes
  * the runner instead.
@@ -298,72 +301,54 @@ function createFinishGate(): { group: THREE.Group; setFade(opacity: number): voi
   };
 }
 
-/** The end banner as a sprite: drawn once to a canvas, always on top, no fog. */
-function createBanner(outcome: GhostOutcome): THREE.Sprite {
-  const { text, color } = OUTCOME_LABEL[outcome];
-  const hex = `#${color.toString(16).padStart(6, '0')}`;
-  const c = document.createElement('canvas');
-  c.width = 1024;
-  c.height = 192;
-  const g = c.getContext('2d')!;
-  g.fillStyle = 'rgba(7, 9, 13, 0.78)';
-  g.strokeStyle = hex;
-  g.lineWidth = 8;
-  g.beginPath();
-  g.roundRect(8, 8, c.width - 16, c.height - 16, 40);
-  g.fill();
-  g.stroke();
-  g.fillStyle = hex;
-  g.font = 'italic 800 110px system-ui, sans-serif';
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.fillText(text, c.width / 2, c.height / 2 + 6);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const sprite = new THREE.Sprite(
-    new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, fog: false }),
-  );
-  sprite.renderOrder = 1000;
-  sprite.position.set(T.BANNER_POS.x, T.BANNER_POS.y, T.BANNER_POS.z);
-  sprite.scale.set(0.001, 0.001, 1);
-  return sprite;
-}
+/** Canvas height over width of a label (1024 x 192, 512 x 96). */
+const LABEL_ASPECT = 3 / 16;
 
-/** The live race chip: one sprite whose canvas is redrawn only when the lead changes. */
-function createChip(scene: THREE.Scene): {
-  sprite: THREE.Sprite;
-  draw(label: { text: string; color: number }): void;
-} {
+/**
+ * A text badge as a sprite (the live race chip, the end banner): a canvas redrawn only when the
+ * text changes, always on top, no fog. Built hidden with the scene, so its shader is compiled
+ * before the round (Stage.precompile) instead of stalling the frame it first shows.
+ */
+function createLabel(
+  scene: THREE.Scene,
+  width: number,
+  canvasWidth: number,
+  pos: { x: number; y: number; z: number },
+  renderOrder: number,
+): { sprite: THREE.Sprite; draw(label: { text: string; color: number }): void } {
   const c = document.createElement('canvas');
-  c.width = 512;
-  c.height = 96;
+  c.width = canvasWidth;
+  c.height = Math.round(canvasWidth * LABEL_ASPECT);
   const g = c.getContext('2d')!;
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sprite = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, fog: false }),
   );
-  sprite.renderOrder = 999;
-  sprite.position.set(T.RACE_POS.x, T.RACE_POS.y, T.RACE_POS.z);
-  sprite.scale.set(T.RACE_WIDTH, (T.RACE_WIDTH * c.height) / c.width, 1);
+  sprite.renderOrder = renderOrder;
+  sprite.position.set(pos.x, pos.y, pos.z);
+  sprite.scale.set(width, width * LABEL_ASPECT, 1);
+  sprite.visible = false;
   scene.add(sprite);
   return {
     sprite,
     draw({ text, color }) {
       const hex = `#${color.toString(16).padStart(6, '0')}`;
-      g.clearRect(0, 0, c.width, c.height);
-      g.fillStyle = 'rgba(7, 9, 13, 0.72)';
+      const h = c.height;
+      const line = Math.round(h * 0.045);
+      g.clearRect(0, 0, c.width, h);
+      g.fillStyle = 'rgba(7, 9, 13, 0.75)';
       g.strokeStyle = hex;
-      g.lineWidth = 5;
+      g.lineWidth = line;
       g.beginPath();
-      g.roundRect(4, 4, c.width - 8, c.height - 8, 30);
+      g.roundRect(line, line, c.width - 2 * line, h - 2 * line, h * 0.22);
       g.fill();
       g.stroke();
       g.fillStyle = hex;
-      g.font = 'italic 800 52px system-ui, sans-serif';
+      g.font = `italic 800 ${Math.round(h * 0.56)}px system-ui, sans-serif`;
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.fillText(text, c.width / 2, c.height / 2 + 3);
+      g.fillText(text, c.width / 2, h / 2 + h * 0.03);
       tex.needsUpdate = true;
     },
   };
