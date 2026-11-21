@@ -28,6 +28,9 @@ laptop, never behind the player.
 | **K** | **Give up on the camera:** no camera error, calibration still stuck after ~30 s, or moves still wrong after one R. The game goes on with the arrow keys/space |
 | **D** | Debug overlay (FPS, live values). Not for players |
 
+**Player stepped closer to read the screen, or backed off?** Fine: tracking adjusts within about
+half a second while they stand in the middle lane. Press R only if moves still feel off.
+
 **Game paused, "tracking lost":** the player stepped out of view or the light is too dark. Step back
 onto the mark, face the camera.
 

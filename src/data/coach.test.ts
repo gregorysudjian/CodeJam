@@ -99,6 +99,15 @@ describe('ruleBasedAdvice', () => {
     expect(a.recap).toContain('Greg');
   });
 
+  it('praises only a round that earned it', () => {
+    const recap = (accuracy: number) =>
+      ruleBasedAdvice(profile, [session({ accuracy })], NOW).recap;
+    expect(recap(0.9)).toMatch(/^Nice work/);
+    expect(recap(0.7)).toMatch(/^Good round/);
+    expect(recap(0.19)).toMatch(/^Round done/); // a judge who stood still all round
+    expect(recap(0.19)).not.toMatch(/Nice work/);
+  });
+
   it('keeps a valid duration and replaces an unknown one with 90 s', () => {
     expect(
       ruleBasedAdvice(profile, [session({ config: { durationSec: 180 } })], NOW).next.durationSec,
