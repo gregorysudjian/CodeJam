@@ -62,6 +62,7 @@ starting `17c6592d`, no rounds): include it in the cleanup.
 | `?kiosk=1` | OK: board, "Beat 1,800 to take the crown"; the game tab still offers its own player |
 | Two browsers, two players | OK: both on the same 45 s board |
 | Network cut mid-round, back after results | OK: offline banner; queue 1; on reconnect one `POST` 201, queue 0, no duplicate |
+| Whole round offline, tab closed, site reopened online in **two tabs at once** (`QA-j2-off2`) | OK: 2 POSTs failed while offline, then exactly one `POST` 201 on reopen; both tabs' queues 0; dashboard "1 round". The `id` primary key plus `on conflict do nothing` makes a double send harmless anyway |
 | **F1: Leaderboard before sign-in** | **Empty: "Be the first on the board" over a full board, and no top 3 on the landing.** The store only read the board when signed in. Every QR visitor sees this. Fix: PR j2-board (migration 0005 + store). |
 
 **Slow network** (Chrome presets, cold, then reload):
