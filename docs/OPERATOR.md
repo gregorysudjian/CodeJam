@@ -16,7 +16,7 @@ You stand at the laptop, start rounds, and fix problems. You never speak. Chrome
 
 1. Laptop plugged in, about 1 m high, level, facing a wall. Tape mark on the floor **about 1.5 m** from the laptop, 1.5 m clear around it. Light on the player, not behind them.
 2. Open the demo URL. **Continue as** the Player (the account with real rounds). For a judge: **New guest** → **S** (skip profile).
-3. On the select screen Full body · 45 s is preselected. Click **CAMERA**, then click **START** (after a mouse click, Enter re-presses that control).
+3. On the select screen Full body · 45 s is preselected, and so is **CAMERA** when the laptop has one. If the switch shows KEYBOARD, click **CAMERA** (a click on the switch is remembered on this laptop). Then click **START** (after a mouse click, Enter re-presses that control).
 
 ## A round (about 50 s from START to results)
 
@@ -30,7 +30,7 @@ You stand at the laptop, start rounds, and fix problems. You never speak. Chrome
 | Key | Where | Does |
 | --- | --- | --- |
 | **Esc** | play | Pause / resume. The pause screen's **END ROUND** leaves without saving |
-| **X gesture** | play, camera | Player crosses forearms at chest height for 1 s: pause; again: resume |
+| **X gesture** | play, camera | Player crosses forearms between chest and chin for 1 s: pause; again: resume |
 | **R** | play, camera | Recalibrate: player stands on the mark and holds still |
 | **K** | anywhere | Switch camera ↔ keyboard without restarting the round |
 | **D** | anywhere | Debug overlay (with the camera: FPS and live pose values) |
@@ -53,4 +53,4 @@ Keyboard play: ← → lane, ↑ or Space jump, ↓ squat (hold), W both arms, Q
 | Choppy (under 20 FPS) | Plug in, close tabs, more light on the player; last resort **K** |
 | App won't load | Backup video. Laptop dead: second laptop |
 
-**Don't:** click "Play this next" with `?demo=1` to show the coach's pick (it plays the same demo level). Don't use a LAN IP: the camera needs `localhost` or https.
+**Don't:** click "Play this next" with `?demo=1` to show the coach's pick (it plays the same demo level). Don't use a LAN IP: the camera needs `localhost` or https. Don't open the kiosk with `&store=local` on the demo laptop: if no player is saved yet, it creates one called "Leaderboard" (QA Q17).
