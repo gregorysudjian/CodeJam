@@ -9,7 +9,7 @@ import { BOARD_DEFAULT_DURATION_SEC, KIOSK_REFRESH_MS, LEADERBOARD_SIZE } from '
 const leaveKiosk = () => window.location.assign(`${window.location.origin}/`);
 
 export function KioskBoard({ store, qr }: { store: DataStore; qr: ReactNode }) {
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(store.kind === 'local');
   const [filter, setFilter] = useState<{
     workout: WorkoutId;
     mode: PlayMode;
@@ -20,6 +20,9 @@ export function KioskBoard({ store, qr }: { store: DataStore; qr: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    // The local store has no separate kiosk session: signing in would save "Leaderboard" as this
+    // browser's player, and the game would then offer "Continue as Leaderboard" (QA Q17).
+    if (store.kind === 'local') return;
     void store.signInGuest('Leaderboard').finally(() => {
       if (!cancelled) setReady(true);
     });

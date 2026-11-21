@@ -29,6 +29,9 @@ export function createStore(): DataStore {
         sessionName: 'kiosk',
       })
     : createSupabaseStore(url, key);
+  // If the kiosk's sign-in fails, its local fallback stays in memory too: a saved "Leaderboard"
+  // player would be offered to the next person who opens the game (QA Q17).
+  const fallback = kiosk ? createLocalStore(memoryStorage()) : local;
   let active: DataStore = remote;
 
   return {
@@ -41,10 +44,10 @@ export function createStore(): DataStore {
           return await remote.signInGuest(displayName);
         } catch (err) {
           console.warn('Guest sign-in failed; using the local store for this visit.', err);
-          active = local;
+          active = fallback;
         }
       }
-      return local.signInGuest(displayName);
+      return fallback.signInGuest(displayName);
     },
     getProfile: () => active.getProfile(),
     saveProfile: (patch) => active.saveProfile(patch),
@@ -56,7 +59,7 @@ export function createStore(): DataStore {
     // Forget the guest in both stores and give Supabase another chance for the next player
     // (the switch to the local store only lasts for one guest).
     async signOut() {
-      await Promise.all([remote.signOut(), local.signOut()]);
+      await Promise.all([remote.signOut(), fallback.signOut()]);
       active = remote;
     },
   };
