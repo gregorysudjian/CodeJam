@@ -11,6 +11,7 @@ import type { Quality } from './quality';
 import { createStage, neon } from './scene';
 import * as LK from './look';
 import {
+  endBannerBox,
   LABEL_ASPECT,
   milestoneBox,
   raceBox,
@@ -114,7 +115,7 @@ export function create3DView(
   // Screen-space labels (overlay.ts): GameHud is laid out in CSS pixels (its move cue sits in
   // the top band at every size), so these are placed in pixels too, on the camera: the race
   // chip bottom right, milestone and FINAL STRETCH banners bottom centre under the combo.
-  stage.camera.add(raceChip.sprite, milestoneLabel.sprite);
+  stage.camera.add(raceChip.sprite, milestoneLabel.sprite, banner.sprite);
   const spot: CameraSpot = { x: 0, y: 0, z: 0, height: 0 };
   const box: PixelBox = { cx: 0, cy: 0, h: 0 };
   /** Puts a label where `layout` (overlay.ts: milestoneBox, raceBox) says, in CSS pixels. */
@@ -144,6 +145,7 @@ export function create3DView(
   };
   let finaleSeen = false;
   let countT = 0;
+  let outroT = 0; // seconds since the finish
 
   // Trail motes leading into the next free lane or orb (trail.ts): one instanced mesh.
   const motes = planTrail(items, track.distanceAt);
@@ -325,9 +327,11 @@ export function create3DView(
       if (bannerT >= 0) {
         bannerT += realDt;
         const k = reduceMotion ? 1 : Math.min(1, bannerT / T.BANNER_POP_SEC);
-        const pop = 1 - (1 - k) ** 3; // ease out
-        banner.sprite.scale.set(T.BANNER_WIDTH * pop, T.BANNER_WIDTH * LABEL_ASPECT * pop, 1);
+        placeOnScreen(banner.sprite, endBannerBox, 1 - (1 - k) ** 3); // ease out
       }
+      // Outro: seconds since the finish, for the camera's swing toward the celebrating runner.
+      if (phase === 'finished') outroT += realDt;
+      const outroK = reduceMotion ? 0 : Math.min(1, outroT / LK.OUTRO_SEC);
       if (ghost) {
         if (!ghostRunner) {
           ghostRunner = createPlayer({ ghost: true });
@@ -427,6 +431,7 @@ export function create3DView(
         fever: phase === 'finished' ? 0 : feverTier(streak),
         dim: phase === 'paused',
         intro: reduceMotion || intro < 0 ? 1 : flyProgress(intro),
+        outro: outroK * outroK * outroK * (outroK * (outroK * 6 - 15) + 10), // smootherstep
       });
       if (!compiled) {
         compiled = true; // first frame: before any object reaches the runner

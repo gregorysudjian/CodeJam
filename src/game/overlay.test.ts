@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { OVERLAY_MARGIN } from './look';
 import { RACE_PULSE as RACE_PULSE_MAX } from './tuning';
 import {
+  endBannerBox,
   LABEL_ASPECT,
   labelHeight,
   milestoneBox,
@@ -97,6 +98,23 @@ describe('the banner and race chip stay clear of GameHud (Q15)', () => {
       }
     });
   }
+
+  it('the end banner sits under the score and clock plates, inside the screen', () => {
+    for (const [W, H] of SIZES) {
+      const end = rectOf(endBannerBox(W, H));
+      // Measured in Chrome: plates end 220 px from the top; the score plate is about 320 px
+      // wide at a 4-digit score, the clock plate 240 px.
+      const score = { left: 24, top: 24, right: 340, bottom: 230 };
+      const clock = { left: W - 264, top: 24, right: W - 24, bottom: 230 };
+      expect(overlaps(end, score), `${W}x${H} score plate`).toBe(false);
+      expect(overlaps(end, clock), `${W}x${H} clock plate`).toBe(false);
+      expect(end.left).toBeGreaterThanOrEqual(OVERLAY_MARGIN - 0.01);
+      expect(end.right).toBeLessThanOrEqual(W - OVERLAY_MARGIN + 0.01);
+      expect(end.bottom).toBeLessThan(H * 0.68 - 55); // above the "+100" pop's band
+    }
+    expect(endBannerBox(1280, 720, 0).h).toBe(0); // pops in from nothing
+    expect(endBannerBox(1280, 720).h).toBeGreaterThanOrEqual(100); // letters about 60 px
+  });
 
   it('they stay readable from the mark on a 1280x720 projector', () => {
     // Letters are 56 % of the plate: about 38 px and 30 px tall.

@@ -37,6 +37,22 @@ export const OVERLAY_GAP = 16; // px kept between the banner and the race chip
 export const MILESTONE_H = { share: 0.095, min: 44, max: 104 }; // banner height, px
 export const RACE_H = { share: 0.075, min: 38, max: 82 }; // race chip height, px
 
+/* ── The finish (view3d.ts, scene.ts, overlay.ts) ── */
+// The end banner (GHOST BEATEN, GHOST WINS, TIE, GHOST SAVED) is the punchline of the race. It
+// is a screen-space label in the middle, under GameHud's plates (they end 220 px from the top),
+// so the passing FINISH arch and the outro camera never hide it. Was 6.2 world units in the
+// scene (about 30 px tall letters at 1366x768).
+export const END_BANNER_H = { share: 0.15, min: 72, max: 160 }; // px
+export const END_BANNER_Y = 0.42; // its centre, as a share of the height from the top
+// After the finish the camera swings part way back along the intro's path (toward the runner's
+// front, on the right) while the runner celebrates, within the app's 1.5 s before the results.
+// None with reduced motion.
+export const OUTRO_SEC = 1.3;
+export const OUTRO_TO = 0.55; // intro progress it swings back to: 1 is the chase camera, 0 the front
+// ...looking at this point above the runner (x follows it), so the runner stands centred and
+// low in the frame, under the end banner.
+export const OUTRO_LOOK = { y: 2.6, z: -0.5 };
+
 /* ── Ghost runner (player.ts, view3d.ts) ── */
 // Silver glass with white accents: never the player's lime, and never a move colour (the old
 // cyan was the blocks'), so it reads as a runner, not an obstacle.

@@ -1,4 +1,11 @@
-import { MILESTONE_H, OVERLAY_GAP, OVERLAY_MARGIN, RACE_H } from './look';
+import {
+  END_BANNER_H,
+  END_BANNER_Y,
+  MILESTONE_H,
+  OVERLAY_GAP,
+  OVERLAY_MARGIN,
+  RACE_H,
+} from './look';
 
 /**
  * Screen-space labels: the app's HUD (GameHud) is laid out in CSS pixels at fixed offsets
@@ -55,6 +62,22 @@ export function milestoneBox(viewW: number, viewH: number, grow = 1, out?: Pixel
   b.cx = viewW / 2;
   b.cy = viewH - OVERLAY_MARGIN - h / 2;
   b.h = h * (0.6 + 0.4 * grow);
+  return b;
+}
+
+/**
+ * The end banner (GHOST BEATEN, ...): big, in the middle, under GameHud's plates. `grow` (0 to
+ * 1) is its pop-in from nothing. Never wider than the screen minus the margins.
+ */
+export function endBannerBox(viewW: number, viewH: number, grow = 1, out?: PixelBox): PixelBox {
+  const h = Math.min(
+    labelHeight(viewH, END_BANNER_H.share, END_BANNER_H.min, END_BANNER_H.max),
+    (viewW - 2 * OVERLAY_MARGIN) * LABEL_ASPECT,
+  );
+  const b = out ?? { cx: 0, cy: 0, h: 0 };
+  b.cx = viewW / 2;
+  b.cy = viewH * END_BANNER_Y;
+  b.h = h * grow;
   return b;
 }
 
