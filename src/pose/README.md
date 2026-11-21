@@ -1,6 +1,6 @@
 # src/pose — Vision (owner A)
 
-## MORNING REPORT (last update: Sat 07:40 — refreshed through the night)
+## MORNING REPORT (last update: Sat 11:06)
 
 **TL;DR:** the real pose input is done on `abdo-1` (Phase 1, most of Phase 2, Phase 3 treadmill),
 218 tests pass, and it runs end to end inside `main`'s real app (calibration → tutorial → play) on
@@ -25,6 +25,8 @@ your replayed clips. Nothing touched `main`. It has **not** met a real camera si
   lint, all **403 tests** (Patrick's 3 slow tests need a longer timeout, as Greg's audit says) and the
   build. A full 45 s `?demo=1` round of the real 3D game ran on your replayed moves: tutorial passed,
   hits scored, round complete, results and coach card shown. No console errors.
+  Re-run at 11:06 with Patrick's newest `p1-workout` and `p2-game`: still no conflicts, and the plain
+  `npm run check` passes (**417 tests**, his slow tests are fixed).
 - In a throwaway copy of `origin/main` with this `src/pose`: `main`'s `npm run check` passes (236
   tests), Greg's calibration screen shows our live messages, D shows the overlay, `?dev=pose` works
   with the `DevPose.tsx` from NEEDS.md, React StrictMode leaves exactly one camera track.

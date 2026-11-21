@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat 07:40 (overnight autonomous session). Read this first in a new conversation._
+_Last refresh: Sat 11:06. Read this first in a new conversation._
 
 ## 1. Context
 
@@ -32,6 +32,7 @@ _Last refresh: Sat 07:40 (overnight autonomous session). Read this first in a ne
 - **Whole team:** scratch merge of `main` + `p1-workout` + `p2-game` + `abdo-1`: no conflicts,
   403 tests (with `--testTimeout=120000` for Patrick's slow ones), build OK, a full round of the real
   3D game ran on replayed pose with no errors.
+  Re-run at 11:06 with Patrick's newest branches: no conflicts, plain `npm run check` 417 tests.
 - **Integration:** verified against `origin/main` PR #19 in a scratch worktree (never merged): `main`'s
   check passes with this `src/pose` (236 tests incl. the DevPose snippet from NEEDS.md 1), the real
   calibration screen and `?dev=pose` work with a stubbed camera, StrictMode leaves one camera track.
