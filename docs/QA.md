@@ -4,7 +4,7 @@
 
 Branches are pushed with the PR text in the first commit message (`git log --reverse main..<branch>`).
 
-No decision is waiting.
+**Q18 (demo risk, Greg):** on the demo Mac every QR code in the app (landing, kiosk) points to `http://localhost:5173`, a dead link on a phone. Until it's fixed, show QR codes only from the live site (`https://codejam-jet.vercel.app/?kiosk=1`).
 
 ## Status (Sat 17:07, `main` at 7be4281)
 
@@ -29,6 +29,7 @@ No decision is waiting.
 | Q15 | visible | HUD cue word overprinted the "N COMBO!" banner and the VS GHOST chip | Patrick (#46) | **fixed**, verified |
 | Q16 | minor | Local store leaderboard listed every round, not each player's best | Greg | **fixed**, verified |
 | Q17 | minor | The kiosk could save a player called "Leaderboard" (two routes) | Greg | **fixed**, verified (both routes) |
+| Q18 | visible | On localhost the QR codes encode `http://localhost:5173` | Greg | **new** |
 | A1 | visible | Results: "RAISE BOTH ARMS TO PLAY AGAIN" was 20 px | `src/ui` | **fixed** (code; camera-only screen) |
 | A2 | visible | Tutorial hint was 20 px grey | Greg | **fixed**, verified |
 | A3 | minor | Tracking-lost subtext 16 px; "Camera starting…" 14 px | `src/ui` | **fixed** (code; camera-only screen) |
@@ -40,6 +41,12 @@ No decision is waiting.
 
 ## Open findings
 
+### Q18 (new, demo risk). The QR codes point to localhost on the demo Mac
+- **Steps:** on the demo Mac, open `http://localhost:5173/?demo=1` (landing) or `http://localhost:5173/?kiosk=1`, and scan the "Play on your laptop" QR with a phone.
+- **Expected:** the live site, `https://codejam-jet.vercel.app`.
+- **Saw:** the landing prints `http://localhost:5173` under its QR, and the kiosk's QR encodes the same value ([q18-kiosk-qr-localhost.jpg](qa/q18-kiosk-qr-localhost.jpg)). On a phone that is a dead link. The demo runs on localhost (DEMO.md), so every QR shown from the demo Mac at the table or on stage is affected. The live site's own kiosk is fine (its origin is the live URL).
+- **Cause:** `src/app/App.tsx:69` `const publicUrl = window.location.origin;`, used for both QR codes and the printed URL.
+- **Owner:** Greg (`src/app/App.tsx`). **Fix:** a `PUBLIC_URL = 'https://codejam-jet.vercel.app'` in `src/app/tuning.ts`, used when `location.hostname` is `localhost` or `127.0.0.1` (keep the origin otherwise, so preview deployments still point to themselves). **Until then:** take QR codes only from `https://codejam-jet.vercel.app/?kiosk=1` or a printout (OPERATOR.md, VIDEO.md and the close slide already say so).
 ### Q12 (minor, open by choice)
 The landing "Play on your laptop" QR starts at y 748 (below the fold at 720, at the edge at 768) ([landing-1366.jpg](qa/landing-1366.jpg)). The kiosk (`?kiosk=1`) is the QR screen for the table.
 ## Fixed and verified (on bb17780 unless noted)
@@ -114,3 +121,4 @@ Open suggestions: preload the pose model on the landing page for live-URL visito
 | 16:40 | Sweep script (`q-sweep`) | `docs/qa/sweep/`: one command, 3 sizes in parallel, 34 checks each; first run 102/102 passed |
 | 16:42 | Operator card (`q-operator-2`) | Camera preselected, X chest-to-chin; found Q17 (local-store kiosk saves a "Leaderboard" player) |
 | 17:07 | Re-sweep 7be4281 (`q-docs-sync`) | Sweep 105/105 (new checks: Q14, Q17 route 1); Q14, Q17 (both routes), A3 marked fixed; test count 762, shot dates, ghost chip position and doc links aligned across README, SUBMISSION, OPERATOR, DEMO; kiosk warning removed |
+| 17:29 | New deliverables: VIDEO.md (`q-video`), slides (`q-slides`), Q18 (`q-qr`) | Fallback video recorded (67 s, 1920×1080, verified by playback; not in git). Architecture slide arrows checked in code. Found Q18: QR codes on localhost point to localhost. #50 (pose only) needs no keyboard re-sweep |
