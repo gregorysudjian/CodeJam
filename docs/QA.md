@@ -133,4 +133,4 @@ Open suggestions: preload the pose model on the landing page for live-URL visito
 | 15:16 | Performance (`q-perf`) | Report; Lighthouse panel needs a person |
 | 15:23 | Loop | Branches updated for the game-feel pass; re-sweep on 4e7db85 |
 | 15:35 | Re-sweep 5a85969 (`q-qa-2`) | 3 sizes clean; Q2, Q6, Q8, Q9, Q10, Q13, A2, perf 1 verified fixed; new Q14 |
-| 15:55 | Devpost screenshots (`q-shots`) | 13 captures at 1920×1080 from scripted perfect rounds; found Q15 (cue over banner) and Q16 |
+| 15:47 | Devpost screenshots (`q-shots`) | 13 captures at 1920×1080 from scripted perfect rounds; found Q15 (cue over banner) and Q16 |
