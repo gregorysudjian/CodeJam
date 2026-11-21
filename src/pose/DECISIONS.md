@@ -162,3 +162,19 @@ or the named file.
     and in 960 noisy replays (±0.5–2%); exactly one for an X spliced into the standing clip, also
     with ±1% noise, at 15 FPS and at 1.5 m. Not yet seen on a real camera: record one with the
     `● pauseX` button on `?dev=pose` (the tally counts `pause X`).
+42. **Real clips at ~1.4 m (A, Sat ~3:20 PM, `fixtures/near/`) corrected 40 and 41.**
+    - At 1.5 m calibration said "too close": the 1.0 T squat room (40) left A a 1.5% margin, so
+      players had to back up again. And A's real deep squat took the hips to the bottom edge
+      (y 1.04, visibility 0.32): tracking dropped for 1.2 s and the rep was lost. Fix in detection,
+      not distance: **while ducking, the shoulders are enough to count as present** (the hips'
+      estimate still gives the depth). The rooms drop to 0.5 T each (a crouch-and-jump's 0.45 T
+      line and the 0.3 T squat line stay in view), so head and knees in view set the distance.
+      No change on any older clip (their hips never left the frame); the pinned timing passes.
+    - A's real X crosses the wrists by only 0.13–0.38 W, at chin height (0.2–0.27 T above the
+      shoulders): `GESTURE_CROSS_W` 0.2 → 0.08 W, and the wrists may be anywhere from the shoulders
+      up to the nose (never above it, so it cannot overlap arms up).
+    - Checked: near clips give 4 sidesteps, 4 jumps, 2 squats, 3 presses with tracking never lost
+      (also with ±0.5% noise and at 15 FPS); the real X gives exactly 2 pauses (40/40 with noise);
+      0 false pauses in 1,440 noisy replays of every clip from all three sessions.
+    - A's `near/reach` has two low reaches (wrist only 0.2–0.3 T above the nose) that do not
+      count: that is the 0.3 T arm line Patrick's timing is tuned on, not a bug.

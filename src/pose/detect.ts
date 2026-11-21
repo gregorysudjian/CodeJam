@@ -159,7 +159,15 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
   const isPresent = (pose: Point[] | null): pose is Point[] => {
     if (!pose) return false;
     const pts = core.map((i) => pose[i]);
-    if (pts.some((q) => !q || (q.visibility ?? 1) < K.TRACKING_MIN_VISIBILITY)) return false;
+    const seen = (q: Point | undefined) => !!q && (q.visibility ?? 1) >= K.TRACKING_MIN_VISIBILITY;
+    // In a deep squat close to the camera the hips reach the bottom edge and MediaPipe grows unsure
+    // of them (A at ~1.4 m: y 1.04, visibility 0.32). While already ducking, the shoulders are
+    // enough; the hips' estimate is still used for the squat depth.
+    if (floor && state.ducking && seen(pts[0]) && seen(pts[1]) && pts[2] && pts[3]) {
+      const s = mid(pts[0], pts[1]);
+      return s.x >= 0 && s.x <= 1 && s.y >= 0 && s.y <= 1;
+    }
+    if (!pts.every(seen)) return false;
     const c = floor ? mid(pts[2], pts[3]) : mid(pts[0], pts[1]);
     return c.x >= 0 && c.x <= 1 && c.y >= 0 && c.y <= 1;
   };

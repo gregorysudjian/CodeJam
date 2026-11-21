@@ -107,17 +107,16 @@ describe('calibrator', () => {
     expect(relaxedDone).toBe(true);
   });
 
-  test('no room below the hips for a squat (body low in the frame): tooClose', () => {
-    // Knees still in view, but a deep squat would take the hips out of the frame.
-    const low = standing.map((p) => p.map((q) => ({ ...q, y: q.y + 0.15 })));
-    const cal = createCalibrator('floor');
-    let step = '';
-    low.forEach((p, i) => (step = cal.update(p, i * 33).status.step));
-    expect(step).toBe('tooClose');
+  test("A's real clip at ~1.4 m (head to knees, feet at the bottom edge) calibrates", () => {
+    const rec = loadClip('near/standing');
+    const cal = createCalibrator('floor', rec.video.width / rec.video.height);
+    let done = false;
+    for (const f of rec.frames) if (cal.update(toPoints(f.pose!), f.t).result) done = true;
+    expect(done).toBe(true);
   });
 
   test('no room above the shoulders for a jump (body high in the frame): tooClose', () => {
-    const high = standing.map((p) => p.map((q) => ({ ...q, y: q.y - 0.36 })));
+    const high = standing.map((p) => p.map((q) => ({ ...q, y: q.y - 0.39 })));
     const cal = createCalibrator('floor');
     let step = '';
     high.forEach((p, i) => (step = cal.update(p, i * 33).status.step));

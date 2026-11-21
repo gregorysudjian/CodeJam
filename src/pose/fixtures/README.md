@@ -34,3 +34,8 @@ add an expectation in `../variants.test.ts` (`CLIPS` and the expected-moves tabl
 and save the download as `extra/<move>-<N>[-name].json` (e.g. `extra/jump-4-patrick.json`; moves:
 sidestep, jump, squat, armsUp, reachLeft, reachRight). `variants.test.ts` then expects exactly N of
 that move, with no code change. An 8 s clip fits about 4–5 reps.
+
+**Closer play** (A's third session, Sat ~3:20 PM, ~1.4 m, head to knees, feet at the bottom edge;
+calibrate on `near/standing.json`): `near/` has the same eight clips plus `pauseX.json`, a real
+pause X held twice. Deep squats take the hips to the bottom edge. `near/reach` has two low reaches
+(under the 0.3 T arm line) that rightly do not count.
