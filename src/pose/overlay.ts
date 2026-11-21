@@ -5,6 +5,7 @@ import type { EngineSnapshot } from './engine';
 import {
   DETECTION,
   DETECTION_DEFAULTS,
+  COPIED_LABEL_MS,
   OVERLAY_REFRESH_MS,
   resetDetectionTuning,
   SLIDERS,
@@ -92,6 +93,9 @@ export function createOverlay(getSnapshot: () => EngineSnapshot): Overlay {
       DETECTION[key] = Number(input.value);
       value.textContent = input.value;
     };
+    // Give the keyboard back once the slider is released: the app ignores keys typed into inputs,
+    // so K (keyboard fallback) and R (recalibrate) would otherwise do nothing after tuning.
+    input.onchange = () => input.blur();
     row.append(name, input, value);
     sliders.append(row);
     return sync;
@@ -105,7 +109,10 @@ export function createOverlay(getSnapshot: () => EngineSnapshot): Overlay {
     b.textContent = label;
     b.style.cssText =
       'padding:2px 8px;border:1px solid #888;border-radius:4px;background:#222;color:#fff;font:inherit;cursor:pointer';
-    b.onclick = onClick;
+    b.onclick = () => {
+      onClick();
+      b.blur(); // so Space or Enter (game keys) do not click it again
+    };
     buttons.append(b);
     return b;
   };
@@ -121,7 +128,10 @@ export function createOverlay(getSnapshot: () => EngineSnapshot): Overlay {
     );
     const json = JSON.stringify(changed, null, 2);
     navigator.clipboard?.writeText(json).then(
-      () => (copy.textContent = 'Copied'),
+      () => {
+        copy.textContent = 'Copied';
+        setTimeout(() => (copy.textContent = 'Copy changed values'), COPIED_LABEL_MS);
+      },
       () => console.info('[pose] tuning changes', json),
     );
   });

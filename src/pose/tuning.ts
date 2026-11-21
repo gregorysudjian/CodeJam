@@ -44,8 +44,9 @@ export const WATCHDOG_STALE_MS = 100;
 /** No new camera frame for this long = the camera stalled; frames count as "no body" from then. */
 export const CAMERA_STALL_MS = 1000;
 
-/** Debug overlay text refresh interval (not every frame). */
+/** Debug overlay text refresh interval (not every frame), and how long "Copied" shows. */
 export const OVERLAY_REFRESH_MS = 150;
+export const COPIED_LABEL_MS = 1500;
 /** Moves the overlay lists. */
 export const RECENT_EVENTS = 6;
 /** Calibration progress is reported in steps of this size, not every frame. */
