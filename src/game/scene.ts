@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { buildSkyline } from './montreal';
 import type { Quality } from './quality';
 import * as T from './tuning';
 
@@ -189,8 +190,12 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     scene.add(a);
   }
 
-  /* Skyline: dark towers on both sides with neon caps, scrolling for parallax. */
-  const towerCount = T.TOWER_COUNT;
+  /* Skyline: Montreal, on both sides, scrolling for parallax.
+     The boxes come from montreal.ts at their real relative heights. Same
+     InstancedMesh as before, so the cost is unchanged — only the layout is
+     now a city instead of sine-wave noise. */
+  const skyline = buildSkyline(T.TRACK_LENGTH, halfTrack);
+  const towerCount = skyline.length;
   const towerSpan = T.TRACK_LENGTH;
   const towerGeo = new THREE.BoxGeometry(1, 1, 1);
   const towerMat = new THREE.MeshStandardMaterial({
@@ -212,19 +217,21 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     m.frustumCulled = false;
     scene.add(m);
   }
-  // Deterministic pseudo-random layout so every round looks the same.
-  const towerInfo = Array.from({ length: towerCount }, (_, i) => {
-    const r1 = wrap(Math.sin(i * 12.9898) * 43758.5453, 1);
-    const r2 = wrap(Math.sin(i * 78.233) * 12345.678, 1);
-    const side = i % 2 === 0 ? -1 : 1;
-    return {
-      x: side * (halfTrack + 13 + r1 * 22),
-      z0: (i / towerCount) * towerSpan,
-      w: 2 + r2 * 3,
-      h: 3 + r1 * r2 * 22 + r2 * 4,
-      capB: r2 > 0.62,
-    };
-  });
+  const towerInfo = skyline.map((b) => ({
+    x: b.x,
+    z0: b.z,
+    w: b.w,
+    d: b.d,
+    h: b.h,
+    cy: b.cy,
+    lean: b.lean,
+    capB: b.alt,
+    bare: b.bare,
+  }));
+  const leanQ = new THREE.Quaternion();
+  const leanAxis = new THREE.Vector3(0, 0, 1);
+  const boxScale = new THREE.Vector3();
+  const boxPos = new THREE.Vector3();
 
   /* Speed lines: streaks of light rushing past at a high streak. */
   const lineMat = new THREE.MeshBasicMaterial({
@@ -339,12 +346,28 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
       for (let i = 0; i < towerCount && towers.visible; i++) {
         const t = towerInfo[i]!;
         const z = zNear - wrap(t.z0 - parallax, towerSpan);
-        m4.makeScale(t.w, t.h, t.w).setPosition(t.x, t.h / 2, z);
+        if (t.lean) {
+          // Leaning pieces (the Montréal Tower) need a real rotation, so
+          // compose instead of the scale-only fast path the rest use.
+          leanQ.setFromAxisAngle(leanAxis, t.lean);
+          boxScale.set(t.w, t.h, t.d);
+          boxPos.set(t.x + Math.sin(t.lean) * (t.h / 2), t.cy, z);
+          m4.compose(boxPos, leanQ, boxScale);
+        } else {
+          m4.makeScale(t.w, t.h, t.d).setPosition(t.x, t.cy, z);
+        }
         towers.setMatrixAt(i, m4);
-        m4.makeScale(t.w, 1, t.w).setPosition(t.x, t.h, z);
-        (t.capB ? capsB : capsA).setMatrixAt(i, m4);
-        m4.makeScale(0, 0, 0);
-        (t.capB ? capsA : capsB).setMatrixAt(i, m4);
+        // A lit roofline marks the top, except on hillsides and bridge piers.
+        if (t.bare) {
+          m4.makeScale(0, 0, 0);
+          capsA.setMatrixAt(i, m4);
+          capsB.setMatrixAt(i, m4);
+        } else {
+          m4.makeScale(t.w, 1, t.d).setPosition(t.x, t.cy + t.h / 2, z);
+          (t.capB ? capsB : capsA).setMatrixAt(i, m4);
+          m4.makeScale(0, 0, 0);
+          (t.capB ? capsA : capsB).setMatrixAt(i, m4);
+        }
       }
       if (towers.visible) {
         towers.instanceMatrix.needsUpdate = true;
