@@ -10,6 +10,7 @@ import {
   GameButton,
   GlassPanel,
   Screen,
+  ScreenFooter,
   SegmentedControl,
   WORKOUT_LABELS,
   MODE_LABELS,
@@ -147,40 +148,71 @@ export function LeaderboardScreen({
   useHotkey("Enter", () => onPlay?.(), Boolean(onPlay) && !kiosk);
   const top = entries[0];
   return (
-    <Screen backdrop="track" className={cn("leaderboard-screen", kiosk && "leaderboard-kiosk")}>
-      <header className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <Eyebrow className="mb-3">LEADERBOARD</Eyebrow>
-          <h1 className="leaderboard-title font-display-italic text-display-md">
-            {WORKOUT_LABELS[workout]} <span className="text-text-dim">·</span> {MODE_LABELS[mode]}
-          </h1>
-        </div>
-        {!kiosk && (
-          <div className="leaderboard-filters flex flex-wrap gap-3">
-            <SegmentedControl
-              size="md"
-              aria-label="Leaderboard workout"
-              value={workout}
-              options={(["legs", "arms", "shoulders", "fullBody"] as const).map((value) => ({
-                value,
-                label: WORKOUT_LABELS[value],
-                disabled: value === "legs" && mode === "treadmill",
-              }))}
-              onChange={(value) => change(value, mode)}
-            />
-            <SegmentedControl
-              size="md"
-              aria-label="Leaderboard mode"
-              value={mode}
-              options={[
-                { value: "floor", label: "FLOOR" },
-                { value: "treadmill", label: "TREADMILL" },
-              ]}
-              onChange={(value) => change(workout, value)}
-            />
+    <Screen
+      backdrop="track"
+      className={cn("leaderboard-screen polish-screen", kiosk && "leaderboard-kiosk")}
+      footer={
+        !kiosk && (loading || entries.length > 0) ? (
+          <ScreenFooter
+            left={
+              <GameButton
+                size="md"
+                variant="ghost"
+                leadingIcon={ArrowLeft}
+                keyHint="ESC"
+                onClick={onBack}
+              >
+                BACK
+              </GameButton>
+            }
+            right={
+              onPlay ? (
+                <GameButton size="lg" keyHint="ENTER" leadingIcon={Play} onClick={onPlay}>
+                  PLAY
+                </GameButton>
+              ) : null
+            }
+          />
+        ) : null
+      }
+    >
+      {(loading || entries.length > 0) && (
+        <header className="flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <Eyebrow className="mb-3">LEADERBOARD</Eyebrow>
+            <h1 className="leaderboard-title font-display-italic text-display-md">
+              {WORKOUT_LABELS[workout]} <span className="text-text-dim">·</span> {MODE_LABELS[mode]}
+            </h1>
           </div>
-        )}
-      </header>
+          {!kiosk && (
+            <div className="leaderboard-filters flex flex-wrap items-center gap-4">
+              <SegmentedControl
+                size="md"
+                aria-label="Leaderboard workout"
+                value={workout}
+                options={(["legs", "arms", "shoulders", "fullBody"] as const).map((value) => ({
+                  value,
+                  label: WORKOUT_LABELS[value],
+                  disabled: value === "legs" && mode === "treadmill",
+                }))}
+                className="border-0 bg-transparent"
+                onChange={(value) => change(value, mode)}
+              />
+              <SegmentedControl
+                size="md"
+                aria-label="Leaderboard mode"
+                value={mode}
+                options={[
+                  { value: "floor", label: "FLOOR" },
+                  { value: "treadmill", label: "TREADMILL" },
+                ]}
+                className="border-0 bg-transparent"
+                onChange={(value) => change(workout, value)}
+              />
+            </div>
+          )}
+        </header>
+      )}
       {kiosk && top && !loading && (
         <div className="kiosk-crown-banner flex flex-wrap items-center justify-center gap-4 border-y border-lime/40 py-6 text-center text-lime">
           <Crown className="size-10" />
@@ -211,7 +243,7 @@ export function LeaderboardScreen({
               title="BE THE FIRST ON THE BOARD"
               action={
                 onPlay ? (
-                  <GameButton size="lg" leadingIcon={Play} onClick={onPlay}>
+                  <GameButton size="lg" keyHint="ENTER" leadingIcon={Play} onClick={onPlay}>
                     PLAY
                   </GameButton>
                 ) : null
@@ -300,24 +332,6 @@ export function LeaderboardScreen({
           </aside>
         )}
       </div>
-      {!kiosk && (
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-glass-border pt-6">
-          <GameButton
-            size="md"
-            variant="ghost"
-            leadingIcon={ArrowLeft}
-            keyHint="ESC"
-            onClick={onBack}
-          >
-            BACK
-          </GameButton>
-          {onPlay && (
-            <GameButton size="lg" keyHint="ENTER" leadingIcon={Play} onClick={onPlay}>
-              PLAY
-            </GameButton>
-          )}
-        </div>
-      )}
     </Screen>
   );
 }

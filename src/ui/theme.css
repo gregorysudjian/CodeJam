@@ -562,6 +562,127 @@
 }
 
 /* Personal HQ and broadcast scoreboard. Recharts takes only semantic tokens. */
+.polish-screen main {
+  gap: 32px;
+}
+.workout-screen main {
+  gap: 24px;
+  padding-top: 28px;
+  padding-bottom: 24px;
+}
+.workout-screen h1 {
+  font-size: 64px;
+}
+.workout-screen [role="radiogroup"][aria-label="Workout"] > [role="radio"] {
+  min-height: 320px;
+}
+.workout-screen [role="radiogroup"] + div {
+  padding-top: 12px;
+}
+.results-screen .results-score {
+  font-size: 128px;
+}
+.results-screen .results-stats {
+  margin-top: 24px;
+}
+.results-screen .results-stats > div {
+  padding: 18px;
+}
+.results-screen section[aria-label="Reps breakdown"] {
+  margin-top: 24px;
+}
+.results-screen section[aria-label="Reps breakdown"] .space-y-3 {
+  display: grid;
+  gap: 6px;
+}
+.results-screen section[aria-label="Reps breakdown"] .space-y-3 > * {
+  margin: 0;
+}
+.leaderboard-screen:not(.leaderboard-kiosk) .podium-place {
+  min-height: 260px;
+}
+.leaderboard-screen:not(.leaderboard-kiosk) .podium-winner {
+  min-height: 290px;
+}
+.leaderboard-screen:not(.leaderboard-kiosk) .podium-rank {
+  font-size: 112px;
+}
+.leaderboard-screen:not(.leaderboard-kiosk) .leaderboard-list {
+  max-height: 210px;
+}
+.profile-screen main {
+  max-width: 816px;
+}
+.profile-screen .screen-bottom-inner {
+  max-width: 816px;
+}
+.profile-screen h1 {
+  font-size: 64px;
+}
+.landing-screen main {
+  padding-top: 32px;
+  min-height: 100dvh;
+  justify-content: center;
+}
+.dashboard-empty {
+  min-height: calc(100dvh - 96px);
+}
+.screen-shell.has-footer > main {
+  padding-bottom: calc(var(--screen-footer-height, 136px) + 24px);
+}
+.screen-bottom-bar {
+  margin-top: calc(-1 * var(--screen-footer-height, 136px));
+}
+.screen-bottom-bar::before {
+  content: "";
+  position: absolute;
+  inset: -24px 0 100%;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--na-bg));
+}
+.hud-race-fill {
+  background: linear-gradient(to right, var(--na-activity-bar), var(--na-lime));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--na-lime) 45%, transparent);
+}
+@media (max-width: 767px) {
+  .dashboard-empty {
+    min-height: calc(100dvh - 64px);
+  }
+}
+.hud-race {
+  left: 350px;
+  right: 300px;
+  top: 94px;
+}
+.leaderboard-filters {
+  border-bottom: 1px solid var(--na-glass-border);
+  padding-bottom: 8px;
+}
+@media (max-width: 900px) {
+  .hud-race {
+    left: 270px;
+    right: 225px;
+    top: 75px;
+  }
+}
+@media (max-width: 600px) {
+  .hud-race {
+    left: 36px;
+    right: 36px;
+    top: 175px;
+  }
+  .profile-screen h1 {
+    font-size: 48px;
+  }
+  .screen-footer {
+    gap: 12px;
+  }
+  .screen-footer button {
+    padding-left: 14px;
+    padding-right: 14px;
+    font-size: 22px;
+  }
+}
 .arena-chart .recharts-cartesian-axis-tick-value {
   fill: var(--na-text-dim);
   font-family: var(--font-display);

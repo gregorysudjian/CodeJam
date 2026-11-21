@@ -14,7 +14,8 @@ export const gameButtonVariants = cva(
         secondary:
           "bg-glass backdrop-blur-xl border border-cyan/50 text-text shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] hover:border-cyan hover:shadow-glow-cyan hover:text-cyan",
         ghost: "bg-transparent text-text-muted hover:bg-white/[0.06] hover:text-text",
-        danger: "bg-danger/15 text-danger border border-danger/60 hover:bg-danger hover:text-bg hover:shadow-glow-danger",
+        danger:
+          "bg-danger/15 text-danger border border-danger/60 hover:bg-danger hover:text-bg hover:shadow-glow-danger",
       },
       size: {
         md: "h-14 gap-2.5 px-6 text-[22px]",
@@ -28,7 +29,8 @@ export const gameButtonVariants = cva(
 );
 
 export interface GameButtonProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">,
+  extends
+    Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">,
     VariantProps<typeof gameButtonVariants> {
   children: React.ReactNode;
   leadingIcon?: LucideIcon;
@@ -40,7 +42,17 @@ export interface GameButtonProps
 /** The hero call-to-action button: italic condensed type, glow, sheen sweep and press scale. */
 export const GameButton = React.forwardRef<HTMLButtonElement, GameButtonProps>(
   (
-    { variant, size, pulse, leadingIcon: Lead, trailingIcon: Trail, keyHint, className, children, ...props },
+    {
+      variant,
+      size,
+      pulse,
+      leadingIcon: Lead,
+      trailingIcon: Trail,
+      keyHint,
+      className,
+      children,
+      ...props
+    },
     ref,
   ) => (
     <Button
@@ -51,13 +63,20 @@ export const GameButton = React.forwardRef<HTMLButtonElement, GameButtonProps>(
       {...props}
     >
       {variant === "primary" || variant == null ? (
-        <span aria-hidden="true" className="sheen -z-10 group-hover:translate-x-[120%] group-focus-visible:translate-x-[120%]" />
+        <span
+          aria-hidden="true"
+          className="sheen -z-10 group-hover:translate-x-[120%] group-focus-visible:translate-x-[120%]"
+        />
       ) : null}
       {Lead ? <Lead aria-hidden="true" strokeWidth={2.75} /> : null}
       <span className="pr-[0.08em]">{children}</span>
       {Trail ? <Trail aria-hidden="true" strokeWidth={2.75} /> : null}
-      {keyHint ? (
-        <KeyHint keyLabel={keyHint} tone={variant === "primary" || variant == null ? "onLime" : "default"} className="ml-1" />
+      {keyHint && ["ENTER", "ESC", "K"].includes(keyHint.toUpperCase()) ? (
+        <KeyHint
+          keyLabel={keyHint}
+          tone={variant === "primary" || variant == null ? "onLime" : "default"}
+          className="ml-1"
+        />
       ) : null}
     </Button>
   ),

@@ -11,7 +11,7 @@ them so Lovable can pick them up.
 | --- | --- |
 | `theme.css` | Every design token (`@theme`), font imports, glass, glow, grain, grid and keyframes. Imported by `src/index.css`. |
 | `components/ui/` | shadcn primitives (button, card, badge, input, progress, skeleton, slider, switch, tooltip). |
-| `kit/` | Design system: `Screen`, `Backdrop`, `GlassPanel`, `GameButton`, `SectionTitle`, `StatTile`, `AnimatedNumber`, `MoveChip`, `MoveFigure`, `BustOutline`, `ProgressRing`, `SegmentedControl`, `ToggleRow`, `TextField`, `KeyHint`, `EmptyState`, `useHotkey`, and `tokens.ts` (move/workout labels, colours, icons). |
+| `kit/` | Design system: `Screen` (with a measured, full-bleed `footer` slot), `ScreenFooter` (standard Back · Primary bar), `CoachBanner` (one-line coach's pick), `Backdrop`, `GlassPanel`, `GameButton`, `SectionTitle`, `StatTile`, `AnimatedNumber`, `MoveChip`, `MoveFigure`, `BustOutline`, `ProgressRing`, `SegmentedControl`, `ToggleRow`, `TextField`, `KeyHint`, `EmptyState`, `useHotkey`, and `tokens.ts` (move/workout labels, colours, icons). |
 | `screens/` | Pure presentational screens: props in, callbacks out. No fetching, no global state. |
 | `lib/` | `cn()` (tailwind-merge taught our type-scale tokens) and `format.ts`. |
 
@@ -25,12 +25,23 @@ only `src/app/` wires screens to modules.
 | --- | --- | --- |
 | `LandingScreen` | `appName`, `onPlayAsGuest`, `returning?`, `onContinue?`, `onLeaderboard?`, `topScores?`, `qrSlot?`, `publicUrl?` | `qrSlot` = `<QRCodeSVG value={publicUrl} />` from `qrcode.react` (already a dependency). `topScores` = first 3 of `store.getLeaderboard`. |
 | `ProfileScreen` | `initial?`, `onSubmit(p: ProfileInput)`, `onBack` | `ProfileInput = Omit<Profile,'id'>`; pass straight to `store.saveProfile`. Skip (S) submits the defaults. |
-| `WorkoutSelectScreen` | `workouts`, `coachPick?`, `initial?`, `onStart(config)`, `onBack` | `workouts = Object.values(WORKOUTS)`. `initial` carries difficulty/seed through. |
+| `WorkoutSelectScreen` | `workouts`, `coachPick?`, `initial?`, `settingsSlot?`, `onStart(config)`, `onBack` | `workouts = Object.values(WORKOUTS)`. `initial` carries difficulty/seed through. `settingsSlot` renders last in the settings row: pass a `ToggleRow` labelled "Low graphics" (style it like Low impact: `className="min-h-14 border-0 bg-transparent p-0 shadow-none backdrop-blur-none [&_label>span]:text-[22px]"`) that writes `localStorage game.gfx`. |
 | `CalibrationScreen` | `status`, `mode`, `videoSlot?`, `skeletonSlot?`, `onCancel`, `onUseKeyboard?` | `videoSlot`: a small component that appends `pose.video` into a div via ref (already mirrored by A). `skeletonSlot`: a canvas the app redraws with `pose.drawSkeleton(ctx)` in its own rAF. |
 | `GameHud` | `stats`, `elapsedSec`, `durationSec`, `mode`, `cue?`, `lastEvent?`, `paused?`, `trackingLost?`, `cameraSlot?`, `onPause`, `onResume` | Overlay on the game canvas. Re-render it from a ~10 Hz interval reading `tracker.getLive()` and `game.getElapsedSec()`, never per frame. `cue` from the latest `'cue'` GameEvent (`move = wave.spawns[0].requires`, count `inSec` down). `lastEvent` from cleared/collected/hit events with an increasing `id`. |
 | `ResultsScreen` | `summary`, `advice` (null while loading), `isPersonalBest?`, `rank?`, `handsFree?`, `onPlayAgain`, `onStartNext(config)`, `onDashboard`, `onLeaderboard?` | Render immediately with `advice={null}`, then set it when `store.getCoachAdvice` resolves. |
 | `DashboardScreen` | `profile`, `sessions` (newest first), `coachPick?`, `now?`, `onPlay`, `onPlayCoachPick?(config)`, `onLeaderboard`, `onEditProfile?` | `sessions = await store.listSessions(50)`. All week/streak maths is in `dashboardStats.ts` (tested). |
 | `LeaderboardScreen` | `entries`, `workout`, `mode`, `onChangeFilter(workout, mode)`, `currentName?`, `loading?`, `kiosk?`, `qrSlot?`, `onBack`, `onPlay?` | Refetch `store.getLeaderboard(workout, mode, 20)` on `onChangeFilter`. Legs + treadmill is switched to Full body before the callback. `kiosk` is the attract screen for the demo table between players. |
+
+## Layout conventions (cleanup pass)
+
+- One primary action per screen, bottom-right; back/cancel is a ghost button bottom-left
+  (`ScreenFooter`). Key caps are shown only for ENTER, ESC and Calibration's K; the other hotkeys
+  still work without a visible cap.
+- Game HUD: a race progress bar (runner marker → finish flag) is derived from
+  `elapsedSec / durationSec`, so `PlayScreen` must pass the duration that is actually being played
+  (`level.config.durationSec`, see docs/AUDIT.md #5). Reach cues read "REACH" for both arms.
+  The live rep ticker was removed (reps are on Results).
+- Screenshots of every screen are in the Lovable repo under `docs/screens/`.
 
 ## Hotkeys: avoid double handling
 
