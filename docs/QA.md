@@ -4,9 +4,9 @@
 
 Branches are pushed with the PR text in the first commit message (`git log --reverse main..<branch>`).
 
-No decision is waiting.
+No decision is waiting. Q19, Q20 and the copy table (C1–C10) are with Jiscar 1, who owns `src/ui`.
 
-## Status (Sat 17:07, `main` at 7be4281)
+## Status (Sat 17:07, `main` at 7be4281; re-swept on 26692ca)
 
 `docs/qa/sweep/sweep.mjs` on 7be4281: **105 checks passed, 0 failed** (35 per size at 1366×768, 1920×1080, 1280×720): every screen, a scripted perfect demo round (4,750), no console errors, no horizontal scroll. `npm run check`: 762 tests, none skipped. Only Q12 is open, by choice: the kiosk is the QR screen.
 
@@ -29,6 +29,9 @@ No decision is waiting.
 | Q15 | visible | HUD cue word overprinted the "N COMBO!" banner and the VS GHOST chip | Patrick (#46) | **fixed**, verified |
 | Q16 | minor | Local store leaderboard listed every round, not each player's best | Greg | **fixed**, verified |
 | Q17 | minor | The kiosk could save a player called "Leaderboard" (two routes) | Greg | **fixed**, verified (both routes) |
+| Q18 | visible | On localhost the QR codes encoded `http://localhost:5173` | Greg | **fixed**, verified |
+| Q19 | visible | At 125–150 % display scaling or browser zoom, the select screen is 1,100 px tall: START and the Camera switch need scrolling | `src/ui` | **new** |
+| Q20 | minor | At 125–150 %, the leaderboard podium and the kiosk QR are below the fold | `src/ui` | **new** |
 | A1 | visible | Results: "RAISE BOTH ARMS TO PLAY AGAIN" was 20 px | `src/ui` | **fixed** (code; camera-only screen) |
 | A2 | visible | Tutorial hint was 20 px grey | Greg | **fixed**, verified |
 | A3 | minor | Tracking-lost subtext 16 px; "Camera starting…" 14 px | `src/ui` | **fixed** (code; camera-only screen) |
@@ -40,8 +43,38 @@ No decision is waiting.
 
 ## Open findings
 
+### Q19 (new). Select screen at 125–150 % scaling: two rows of tall cards, START off screen
+- **Why it matters:** Windows laptops default to 125–150 % display scaling, and browser zoom does the same. Both shrink the CSS viewport: 1366×768 at 125 % is 1093×614 CSS px, at 150 % 911×512; a 1280×720 projector at 125 % is 1024×576.
+- **Steps:** `SIZES=1093x614@1.25,911x512@1.5,1024x576@1.25,853x480@1.5 node docs/qa/sweep/sweep.mjs` (or Chrome at 1366×768 with Ctrl + "+" to 125 %) → Play as guest → Skip.
+- **Expected:** the four cards in one row with the settings row and START visible, as at 100 %.
+- **Saw:** below 1280 CSS px the cards go to a 2×2 grid of tall cards; the page is 1,102–1,109 px tall in a 480–614 px window. Only two cards are visible; Camera/Keyboard and START need scrolling ([q19-select-1366-at-125.jpg](qa/q19-select-1366-at-125.jpg)). 1920×1080 at 125 % (1536×864) is fine. Everything else in the sweep passes at all four scaled sizes: HUD ([1366 at 150 %](qa/zoom-hud-1366-at-150.jpg)), pause, results (PLAY AGAIN stays in the footer), dashboard, no horizontal scroll, no console errors.
+- **Cause:** `WorkoutSelectScreen.tsx:289` `sm:grid-cols-2 xl:grid-cols-4`; `xl` starts at 1280 CSS px.
+- **Owner:** `src/ui/screens/WorkoutSelectScreen.tsx`. **Fix:** `md:grid-cols-4` (four columns from 768 px), and under `[@media(max-height:640px)]` a smaller card figure and padding so the cards and settings fit in about 600 px. **Demo workaround:** set the demo laptop to 100 % (Windows: Settings → Display → Scale; Mac: the default is fine) and Chrome zoom to 100 % (Ctrl + 0).
+
+### Q20 (new, minor). Leaderboard and kiosk at 125–150 %: the podium is below the fold
+- **Steps:** as Q19, then Leaderboard, and `?kiosk=1`.
+- **Saw:** at 1024×576 (1280×720 at 125 %) the length filter wraps to a second row and only the top of the #1 card shows ([q20-leaderboard-1280-at-125.jpg](qa/q20-leaderboard-1280-at-125.jpg)). The kiosk at 853×480 (150 %) shows the title, "Beat 4,750 to take the crown" and the top of the podium; the **QR code is off screen** ([q20-kiosk-1280-at-150.jpg](qa/q20-kiosk-1280-at-150.jpg)).
+- **Owner:** `src/ui/screens/LeaderboardScreen.tsx`. **Fix:** under `max-height: 640px`, smaller podium cards and title, and in kiosk mode the QR beside the crown banner. **Workaround:** run the kiosk screen at 100 % (Ctrl + 0) or full screen (F11).
 ### Q12 (minor, open by choice)
 The landing "Play on your laptop" QR starts at y 748 (below the fold at 720, at the edge at 768) ([landing-1366.jpg](qa/landing-1366.jpg)). The kiosk (`?kiosk=1`) is the QR screen for the table.
+## Copy pass (Sat 17:40, `main` 56fb514)
+
+Every visible string and accessible label, read in flow order as a first-time judge (landing → profile → select → camera dialog → tutorial → HUD → results → pause → dashboard → leaderboard → kiosk). Collected from the rendered pages, not the source. Overall the copy is short and consistent: the six moves have the same names in the tutorial, chips, results and charts (SIDESTEP, JUMP, SQUAT, ARMS UP, REACH LEFT, REACH RIGHT; the HUD cue says REACH for both). Ten changes worth making:
+
+| # | Screen | Current text | Proposed text | Owner (file) |
+| --- | --- | --- | --- | --- |
+| C1 | Tutorial, squat (keyboard) | SQUAT DOWN AND HOLD: HOLD ↓ | SQUAT DOWN AND HOLD: ↓ | Greg (`src/app/tutorial.ts`, `KEYS.squat`) |
+| C2 | Tutorial, jump (camera) | title JUMP, hint "Jump" (same word twice) | hint "Jump up" | Greg (`src/app/tutorial.ts`, `BODY.jump`) |
+| C3 | Results, coach recap | Good round, Guest-5250: 2300 points at 81% accuracy… (opener per #51) | …: 2,300 points… (same format as the big score) | Greg (`src/data/coach.ts`, the `recap` line, `latest.score.toLocaleString('en-US')`) |
+| C4 | Results, coach tip (reach) | Reach your left arm high and out to the side, above head height. | Raise your left arm straight up, hand above your head. (Detection only needs the wrist above the nose; "out to the side" isn't needed, and the tutorial says "Raise your left arm") | Greg (`src/data/coach.ts`, `TIPS.reachLeft`/`reachRight`) |
+| C5 | Select, settings row | LOW IMPACT (switch, no explanation) | LOW IMPACT, with the description "No jumps" | `src/ui` (`WorkoutSelectScreen.tsx:326`, `description` prop of the toggle) |
+| C6 | Dashboard, chart header | Pace 8.6 min / day | Goal pace 8.6 min / day (it is the weekly goal ÷ 7, not the player's pace) | `src/ui` (`DashboardCharts.tsx:75`) |
+| C7 | Pause, key hints | K keyboard / camera · R recalibrate · D debug | K camera ↔ keyboard · R recalibrate (drop D: it's for the team) | `src/ui` (`GameHud.tsx`, the hint list) |
+| C8 | Landing, kiosk | PLAY ON YOUR LAPTOP + `http://localhost:5173` | the live URL: **done** with Q18 (#53) | Greg (`src/app/App.tsx`) |
+| C9 | Select, Camera/Keyboard switch (screen reader) | aria-label "Control" | "Input: camera or keyboard" | Greg (`src/app/InputSwitch.tsx:23`) |
+| C10 | Dashboard, day dots (screen reader) | "MON, no round" | "Monday, no round" (some screen readers read "MON" as a word; minor) | `src/ui` (`DashboardScreen.tsx`, the day-streak dots) |
+
+Checked and fine: the camera dialog ("No camera found… or play with the keyboard"), the offline banner, "Be the first on the board", "Beat 2,300 to take the crown", "General fitness encouragement, not medical advice", the coach's RULES badge. Uppercase is the app's display style (CSS), and running text (coach card, dialogs) is sentence case, so no shouting to fix. Not read: the calibration messages and the tracking-lost screen (need a camera; their text is in `src/pose/calibration.ts` and `GameHud.tsx` and reads clearly).
 ## Fixed and verified (on bb17780 unless noted)
 
 - **Q1:** at 1280×720 and 1366×768 the select screen is exactly one screen tall; Camera at y 508–556, START at 607–679 ([select-1280x720.jpg](qa/select-1280x720.jpg)).
@@ -56,6 +89,7 @@ The landing "Play on your laptop" QR starts at y 748 (below the fold at 720, at 
 - **Q11:** dashboard says "1 DAY" and "1 round · Best …".
 - **Q13:** the `mapping-edges` test runs and passes.
 - **Q15** (231dc4a, #46): at 1366×768 and 1920×1080 the cue stays in the top band, "5/10/20 COMBO!" appears at bottom centre and the "VS GHOST" chip at bottom right; nothing overlaps at any of the three milestones ([1366 at 5](qa/q15-fixed-1366.jpg), [1920 at 10](qa/q15-fixed-1920.jpg)). Old evidence kept: [before, 1366](qa/q15-cue-over-banner-1366.jpg).
+- **Q18** (26692ca, #53): on `http://localhost:5173` the landing prints `https://codejam-jet.vercel.app` under its QR, and both QR codes (landing, kiosk) use the same value (`App.tsx` `publicUrl`: the live site on localhost, the page's own origin elsewhere). Before: [q18-kiosk-qr-localhost.jpg](qa/q18-kiosk-qr-localhost.jpg). The workarounds in OPERATOR.md, VIDEO.md, SLIDES.md and CARDS.md are removed. Not tested: scanning with a phone.
 - **Q16** (ba46d74): a local profile with three 45 s rounds (best 4,750) shows "Sam" once on the landing top list, the leaderboard and `?kiosk=1`.
 - **Q14** (7be4281): a keyboard round → Esc: PAUSED, RESUME, END ROUND and the key hints; no "Cross your arms to resume" ([paused-1366.jpg](qa/paused-1366.jpg)). The camera-side hint (48 px, white, only with `cameraSlot`) is read from code: no camera here.
 - **Q17** (7be4281), both routes: (1) fresh browser → `?kiosk=1&store=local` → landing still "PLAY AS GUEST", no `codejam.local.profile` saved. (2) A dev server with an unreachable Supabase URL (`http://127.0.0.1:9`, set only in that process, no real project): the kiosk's sign-in fails ("Guest sign-in failed; using the local store for this visit") → landing still "PLAY AS GUEST", nothing saved. Route 1 is now a sweep check.
@@ -114,3 +148,7 @@ Open suggestions: preload the pose model on the landing page for live-URL visito
 | 16:40 | Sweep script (`q-sweep`) | `docs/qa/sweep/`: one command, 3 sizes in parallel, 34 checks each; first run 102/102 passed |
 | 16:42 | Operator card (`q-operator-2`) | Camera preselected, X chest-to-chin; found Q17 (local-store kiosk saves a "Leaderboard" player) |
 | 17:07 | Re-sweep 7be4281 (`q-docs-sync`) | Sweep 105/105 (new checks: Q14, Q17 route 1); Q14, Q17 (both routes), A3 marked fixed; test count 762, shot dates, ghost chip position and doc links aligned across README, SUBMISSION, OPERATOR, DEMO; kiosk warning removed |
+| 17:29 | New deliverables: VIDEO.md (`q-video`), slides (`q-slides`), Q18 (`q-qr`) | Fallback video recorded (67 s, 1920×1080, verified by playback; not in git). Architecture slide arrows checked in code. Found Q18: QR codes on localhost point to localhost. #50 (pose only) needs no keyboard re-sweep |
+| 17:33 | Scaling sweep (`q-zoom`) | The sweep takes `SIZES=WxH@scale`; at 1093×614@1.25, 911×512@1.5, 1024×576@1.25, 853×480@1.5: 34/35 each (select doesn't fit, Q19), 1536×864@1.25: 35/35. Q20 from the shots. Not tested: calibration screen (camera) |
+| 17:36 | Copy pass (`q-copy`) | Every rendered string in flow order; 10 proposals (C1–C10) for Greg's Claude; README's move table gets the in-app names |
+| 17:53 | Final sweep 26692ca (`q-final`) | Sweep 105/105; Q18 verified fixed (QR shows the live URL on localhost); QR workaround text removed from OPERATOR, VIDEO, SLIDES, CARDS. Q19, Q20, C1–C10 with Jiscar 1. Not tested: camera, Supabase, sound, phone scan |
