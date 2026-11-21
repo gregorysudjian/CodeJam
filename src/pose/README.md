@@ -1,5 +1,14 @@
 # src/pose — Vision (owner A)
 
+## MORNING REPORT (in progress, updated through the night)
+
+- **Done and pushed (`abdo-1`):** live-tunable detector with floor and treadmill modes, the lane
+  hysteresis fix, a pure calibrator, `pickBody` for background people, replay helpers with synthetic
+  variants. `npm run check` passes.
+- **In progress:** the real `createPoseInput()` in `index.ts`.
+- **Decisions:** `DECISIONS.md`. **For Greg:** `NEEDS.md`. **New session:** `HANDOFF.md`.
+- **Needs real-camera test:** see `HANDOFF.md` section 6.
+
 ## Phase 0: pose spike
 
 `mountPoseDebug(container: HTMLElement): () => void` in `debug.ts` starts the webcam, runs the MediaPipe
