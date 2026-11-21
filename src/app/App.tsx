@@ -25,7 +25,7 @@ import { ProfileScreen } from '@/ui/screens/ProfileScreen';
 import { ResultsScreen } from '@/ui/screens/ResultsScreen';
 import { WorkoutSelectScreen } from '@/ui/screens/WorkoutSelectScreen';
 import type { ProfileInput } from '@/ui/screens/ProfileScreen';
-import { WORKOUTS } from '@/workout';
+import { DEMO_CONFIG, WORKOUTS } from '@/workout';
 import { CalibrateStep } from './CalibrateStep';
 import { DevPose } from './DevPose';
 import { KioskBoard } from './KioskBoard';
@@ -63,6 +63,8 @@ type PoseModule = typeof import('@/pose');
 
 const store = createStore();
 const isDevPose = new URLSearchParams(window.location.search).get('dev') === 'pose';
+// ?demo=1: the workout module plays its fixed demo level; preselect it so the screen matches.
+const isDemo = new URLSearchParams(window.location.search).get('demo') === '1';
 const isKiosk = new URLSearchParams(window.location.search).get('kiosk') === '1';
 const publicUrl = window.location.origin;
 const workouts = Object.values(WORKOUTS);
@@ -263,14 +265,12 @@ function MainApp() {
       setAdvice(coach);
       setCoachPick(coach);
     });
-    void store
-      .getLeaderboard(s.config.workout, s.config.mode, LEADERBOARD_SIZE)
-      .then((top) => {
-        // An empty board means offline with nothing cached, not "you are #1". When the round
-        // synced, the board includes it, so it is never empty then.
-        const better = top.filter((e) => e.score > s.score).length;
-        setRank(top.length > 0 && better < LEADERBOARD_SIZE ? better + 1 : null);
-      });
+    void store.getLeaderboard(s.config.workout, s.config.mode, LEADERBOARD_SIZE).then((top) => {
+      // An empty board means offline with nothing cached, not "you are #1". When the round
+      // synced, the board includes it, so it is never empty then.
+      const better = top.filter((e) => e.score > s.score).length;
+      setRank(top.length > 0 && better < LEADERBOARD_SIZE ? better + 1 : null);
+    });
     const list = await store.listSessions(50);
     setSessions(list);
     const previousBest = list
@@ -370,7 +370,7 @@ function MainApp() {
         <WorkoutSelectScreen
           workouts={workouts}
           coachPick={coachPick}
-          initial={config ?? undefined}
+          initial={config ?? (isDemo ? DEMO_CONFIG : undefined)}
           settingsSlot={<InputSwitch value={inputKind} onChange={setInputKind} />}
           onStart={startSession}
           onBack={() => setScreen(sessions.length ? 'dashboard' : 'landing')}
