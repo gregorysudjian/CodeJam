@@ -45,7 +45,7 @@ Three people, four modules, one shared TypeScript contract file (`src/contracts/
 - **Backend.** Supabase anonymous sign-in and Postgres. Row-level security on every table: a player can read and insert only their own sessions, with no update or delete. A `leaderboard` view exposes only name, workout, mode, score and date. Check constraints keep stored values in sane ranges.
 - **Offline.** If the network drops, the round is still played and saved. Sessions wait in a local queue and sync later, reads time out quickly and fall back to cache, and the coach falls back to the rules. `?store=local` runs with no backend at all.
 - **Coach endpoint.** A Vercel serverless function checks the player's token, reads their history through a Supabase client that carries that token (so row-level security applies on the server too and no service key is needed), and allows at most one call per player every 10 s with an atomic Postgres function. It asks Claude for JSON matching a schema, with a 7 s timeout and no retries, and validates the answer before returning it. **For the demo no Claude key is configured**, so the coach card shows the rule-based coach (it says RULES). It recommends the workout you played least this week, raises difficulty by 0.1 above 85% accuracy and lowers it below 60%, and aims the tip at your most-missed move.
-- **Quality.** 695 automated tests (Vitest). A mutation sweep set each of the 23 detection thresholds to an extreme value, and every one breaks at least one test.
+- **Quality.** 699 automated tests (Vitest). A mutation sweep set each of the 23 detection thresholds to an extreme value, and every one breaks at least one test.
 
 ## Challenges we ran into
 
