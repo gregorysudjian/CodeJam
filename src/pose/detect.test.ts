@@ -340,6 +340,30 @@ describe('tracking', () => {
     expect(det.state.leftArmUp).toBe(false);
   });
 
+  test('in a deep squat the hips may leave the bottom edge: tracking holds on the shoulders', () => {
+    const det = standingDetector();
+    let r = run(det, pose(), 10, 0);
+    r = run(det, pose({ dy: 0.6 * T }), 5, r.t);
+    expect(det.state.ducking).toBe(true);
+    // Hips unsure (visibility 0.3) for 1 s, shoulders clear: still tracked, still ducking.
+    const unsure = pose({ dy: 0.6 * T }).map((q, i) =>
+      i === 23 || i === 24 ? { ...q, visibility: 0.3 } : q,
+    );
+    run(det, unsure, 30, r.t);
+    expect(det.state.tracking).toBe(true);
+    expect(det.state.ducking).toBe(true);
+    // Standing (not ducking), the same unsure hips do count as missing.
+    const det2 = standingDetector();
+    const r2 = run(det2, pose(), 10, 0);
+    run(
+      det2,
+      pose().map((q, i) => (i === 23 || i === 24 ? { ...q, visibility: 0.3 } : q)),
+      30,
+      r2.t,
+    );
+    expect(det2.state.tracking).toBe(false);
+  });
+
   test('lost after the lost time with no body, regained after the regained time', () => {
     const det = standingDetector();
     let r = run(det, null, Math.floor(K.TRACKING_LOST_MS / FRAME_MS) - 1, 0);

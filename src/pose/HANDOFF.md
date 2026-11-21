@@ -78,7 +78,7 @@ engine.ts      getState() (game polls), onMove, drawSkeleton (skeleton.ts), D â†
 
 ## 4. Decisions
 
-`src/pose/DECISIONS.md` (41 entries, each with its reason). The ones that matter most:
+`src/pose/DECISIONS.md` (42 entries, each with its reason). The ones that matter most:
 
 - Lane line 0.55 / 0.3 W.
 - **Arm up 0.3 T** above the nose (kept: Patrick's game latency leads were tuned on it; 0.4 added

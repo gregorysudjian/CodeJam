@@ -17,6 +17,10 @@ const CLIP_LABELS = [
   'leaveFrame',
   'mixed',
   'pauseX',
+  // Near-misses that must NOT pause: arms folded low, hands touching in front, an X overhead.
+  'xLow',
+  'xTouch',
+  'xOverhead',
 ];
 
 const BUTTON_CSS =

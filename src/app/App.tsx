@@ -81,6 +81,24 @@ export default function App() {
   return <MainApp />;
 }
 
+/** The player's last explicit Camera/Keyboard choice on the select screen (null if none). */
+const INPUT_CHOICE_KEY = 'app.input';
+function readInputChoice(): InputKind | null {
+  try {
+    const v = window.localStorage.getItem(INPUT_CHOICE_KEY);
+    return v === 'pose' || v === 'keyboard' ? v : null;
+  } catch {
+    return null;
+  }
+}
+function saveInputChoice(kind: InputKind): void {
+  try {
+    window.localStorage.setItem(INPUT_CHOICE_KEY, kind);
+  } catch {
+    // private mode or blocked storage: the choice just isn't remembered
+  }
+}
+
 function MainApp() {
   const [screen, setScreen] = useState<Screen>('landing');
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -165,6 +183,27 @@ function MainApp() {
   }, [notice]);
 
   const switchToKeyboard = useCallback(() => setInputKind('keyboard'), []);
+
+  // A body game should not start on the keyboard by surprise (pose NEEDS 12): on the select screen,
+  // switch to the camera if one exists, unless the player chose the keyboard on the switch before.
+  // Once per page load, so a fallback after a camera error (or K) sticks. The permission prompt
+  // still comes on the select screen, as with the switch.
+  const autoCameraTried = useRef(false);
+  useEffect(() => {
+    if (screen !== 'select' || inputKind === 'pose' || autoCameraTried.current) return;
+    autoCameraTried.current = true;
+    if (readInputChoice() === 'keyboard') return;
+    navigator.mediaDevices
+      ?.enumerateDevices?.()
+      .then((devices) => {
+        if (devices.some((d) => d.kind === 'videoinput')) setInputKind('pose');
+      })
+      .catch(() => {});
+  }, [screen, inputKind]);
+  const chooseInput = useCallback((kind: InputKind) => {
+    saveInputChoice(kind);
+    setInputKind(kind);
+  }, []);
 
   // ── Returning player and top scores for the landing screen ──
   useEffect(() => {
@@ -402,7 +441,7 @@ function MainApp() {
           workouts={workouts}
           coachPick={coachPick}
           initial={config ?? (isDemo ? DEMO_CONFIG : undefined)}
-          settingsSlot={<InputSwitch value={inputKind} onChange={setInputKind} />}
+          settingsSlot={<InputSwitch value={inputKind} onChange={chooseInput} />}
           onStart={startSession}
           onBack={() => setScreen(sessions.length ? 'dashboard' : 'landing')}
         />
