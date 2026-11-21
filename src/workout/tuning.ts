@@ -54,14 +54,21 @@ export const HOLD_MAX_SEC = { atD0: 1.6, atD1: 3.0 };
 export const COMBO_CHANCE = { atD0: 0.15, atD1: 0.45 }; // full body: a block with an orb in the free lane
 export const ALTERNATE_REACH_CHANCE = 0.8; // treadmill orbs switch arm, for fast left-right reaches
 
-/* ── The demo round (DEMO.md: same level every time, so the Player can practise it) ── */
+/* ── The demo round (docs/DEMO.md): the same level every time, so the Player can practise it ── */
+/**
+ * The app preselects DEMO_CONFIG with ?demo=1; its low-impact toggle plays the same seed
+ * without hurdles. Seed 41492 was searched against both test files: every move at least
+ * twice (low-impact too), three easy waves at each end, no hurdle right after a beam
+ * (demo.test.ts), and all five objects in the first five waves with a held squat and a
+ * block-and-orb combo (level.test.ts). If the generator changes, search again.
+ */
+export const DEMO_SEED = 41492;
 export const DEMO_CONFIG: SessionConfig = {
   workout: 'fullBody',
   mode: 'floor',
   durationSec: 45,
   difficulty: 0.5,
-  lowImpact: false,
-  seed: 594, // opens block, hurdle, orb, beam, crate; has a held beam and a combo (level.test.ts)
+  seed: DEMO_SEED,
 };
 
 /* ── Scoring (CONTRACTS.md "Scoring") ── */

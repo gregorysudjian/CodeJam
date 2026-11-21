@@ -294,7 +294,13 @@ describe('demo level', () => {
 
   it('is the same every time and lasts 45 s', () => {
     expect(generateLevel(T.DEMO_CONFIG)).toEqual(demo);
-    expect(demo.config).toEqual(T.DEMO_CONFIG);
+    expect(demo.config).toEqual(completeConfig(T.DEMO_CONFIG));
+    expect(demo.config).toMatchObject({
+      workout: 'fullBody',
+      mode: 'floor',
+      durationSec: 45,
+      seed: T.DEMO_SEED,
+    });
   });
 
   it('introduces all five objects in its first five waves, then a held squat and a combo', () => {

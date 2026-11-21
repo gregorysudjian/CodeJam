@@ -193,6 +193,7 @@ export interface DataStore {
   listSessions(limit?: number): Promise<SavedSession[]>; // newest first
   getLeaderboard(workout: WorkoutId, mode: PlayMode, limit?: number): Promise<LeaderboardEntry[]>;
   getCoachAdvice(session: SavedSession): Promise<CoachAdvice>; // never rejects; falls back to rules
+  signOut(): Promise<void>; // forgets the current guest; the next signInGuest creates a new user
 }
 
 // src/data/index.ts      export function createStore(): DataStore

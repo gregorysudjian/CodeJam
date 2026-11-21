@@ -1,6 +1,6 @@
 # src/workout — levels and scoring (owner: Patrick, who also owns the game)
 
-Exports from `index.ts`: `generateLevel`, `createSessionTracker`, `WORKOUTS` (all from the contract), plus `DEMO_CONFIG` for the demo round. All numbers live in `tuning.ts`.
+Exports from `index.ts`: `generateLevel`, `createSessionTracker`, `WORKOUTS` (all from the contract), plus `DEMO_CONFIG` and `DEMO_SEED` for the demo round. All numbers live in `tuning.ts`.
 
 ## generateLevel(config) — `level.ts`
 
@@ -23,7 +23,7 @@ Pure and seeded (mulberry32): the same complete config always gives the same lev
    - The last object finishes 1 s before the round ends, so every object is judged before `finished`.
    - Orb labels: floor uses `reachLeft` on lane −1 and `reachRight` otherwise (either arm works on the floor). Treadmill uses the arm the lane needs (−1 left, +1 right, 0 `armsUp`).
 
-**Demo round:** open the app with `?demo=1` (for example `https://<deploy>/?demo=1`) and every round is the demo level, whatever card is picked. No app change needed. Without the flag, `generateLevel(DEMO_CONFIG)` is Full body, floor, 45 s, seed 594. Its first five waves are block, hurdle, orb, beam, crate. It also has a held squat and a combo. A test locks this, so a tuning change that alters the demo fails CI and has to be done on purpose. The Player should rehearse it after any such change.
+**Demo round:** the app preselects `DEMO_CONFIG` (Full body, floor, 45 s, seed 41492) when opened with `?demo=1`; its low-impact toggle plays the same seed without hurdles. The seed satisfies Greg's `demo.test.ts` (every move at least twice, also in the low-impact version; three easy waves at each end; no hurdle right after a beam) and `level.test.ts` (all five objects in the first five waves, a held squat, a combo). Its waves open block, orb, crate, hurdle, held beam and close on two crates. A tuning change that alters the demo fails CI, so it has to be done on purpose, and the Player should rehearse again after it.
 
 ## createSessionTracker(config, opts) — `tracker.ts`
 

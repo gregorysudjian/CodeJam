@@ -22,14 +22,16 @@ Vite, React, TypeScript (strict), Tailwind, shadcn/ui, Recharts, plain Three.js,
 
 ## Folder ownership
 
+The team is three people. Role C (backend and workout logic) was split between Patrick and Greg.
+
 | Folder | Owner | Contents |
 | --- | --- | --- |
-| `src/pose/` | A | Camera, MediaPipe, calibration, move detection |
-| `src/game/`, `src/input/` | B | Three.js runner, keyboard input, game audio |
-| `src/workout/` | C | Level generation, scoring, stats |
-| `src/data/`, `supabase/`, `api/` | C | Data store (Supabase and local), SQL migrations, server endpoint |
-| `src/app/`, `src/ui/` | D | Screens, HUD, dashboard, wiring |
-| `src/contracts/` and all config | D only | Shared types and project setup |
+| `src/pose/` | Abdo (A) | Camera, MediaPipe, calibration, move detection |
+| `src/game/`, `src/input/` | Patrick (B) | Three.js runner, keyboard input, game audio |
+| `src/workout/` | Patrick | Level generation, scoring, stats |
+| `src/data/`, `supabase/`, `api/` | Greg | Data store (Supabase and local), SQL migrations, server endpoint |
+| `src/app/`, `src/ui/` | Greg (D) | Screens, HUD, dashboard, wiring |
+| `src/contracts/` and all config | Greg only | Shared types and project setup |
 
 ## Rules
 
