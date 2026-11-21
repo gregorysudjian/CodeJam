@@ -6,6 +6,7 @@ Replays the whole keyboard flow at 1366×768, 1920×1080 and 1280×720 in parall
 npm run dev                                   # in one terminal
 node docs/qa/sweep/sweep.mjs                  # in another; exit 0 = all checks passed
 node docs/qa/sweep/sweep.mjs http://localhost:5173/ ./my-out   # base URL and output folder
+SIZES=1093x614@1.25,911x512@1.5 node docs/qa/sweep/sweep.mjs     # display scaling / browser zoom (CSS size @ scale)
 ```
 
 Needs Node 22+ (built-in WebSocket) and Chrome (`CHROME=/path/to/chrome` to override). No packages. Must be the dev server: the autoplayer imports the level generator from `/src/workout/index.ts`.
