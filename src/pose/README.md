@@ -1,6 +1,6 @@
 # src/pose — Vision (owner A)
 
-## MORNING REPORT (last update: Sat 07:12 — refreshed through the night)
+## MORNING REPORT (last update: Sat 07:13 — refreshed through the night)
 
 **State:** Phase 1 (real detection), most of Phase 2 (robustness) and Phase 3 (treadmill input) are
 done and pushed to `abdo-1`. `npm run check` passes: **205 tests**. Nothing was pushed to `main`.
@@ -46,11 +46,11 @@ orbs collected in play, lane stays 0, bouncing gave no moves. No console errors 
 
 **New on `?dev=pose`:** a move tally (do 10, read 10), threshold lines on the video.
 
-**Also new:** `STATION.md` (demo setup, keys, symptom → fix table); a small-room switch if the feet
+**Also new:** MediaPipe's JS now loads only when pose starts (main bundle 407 → 254 kB); `STATION.md` (demo setup, keys, symptom → fix table); a small-room switch if the feet
 cannot be in view (`CALIBRATION_FEET_IN_VIEW`); arm-up line 0.4 T so hands resting on the head are
 not "arms up"; a verified `DevPose.tsx` for Greg (NEEDS.md 1); a ready PR description (HANDOFF §8).
 
-**Decisions:** `DECISIONS.md` (29). **For Greg:** `NEEDS.md` (7 copy-paste messages).
+**Decisions:** `DECISIONS.md` (30). **For Greg:** `NEEDS.md` (7 copy-paste messages).
 **New session:** `HANDOFF.md`. **Real-camera checklist:** `HANDOFF.md` §6 (10 min).
 
 ## How to use it

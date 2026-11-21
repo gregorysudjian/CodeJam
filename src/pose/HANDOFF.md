@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat 07:12 (overnight autonomous session). Read this first in a new conversation._
+_Last refresh: Sat 07:13 (overnight autonomous session). Read this first in a new conversation._
 
 ## 1. Context
 
@@ -60,7 +60,7 @@ engine.ts      getState() (game polls), onMove listeners, drawSkeleton (skeleton
 
 ## 4. Decisions
 
-All in `src/pose/DECISIONS.md` (29, with reasons). The big ones: lane 0.55/0.3 W; arm up 0.4 T above
+All in `src/pose/DECISIONS.md` (30, with reasons). The big ones: lane 0.55/0.3 W; arm up 0.4 T above
 the nose, "down" back near the nose (press reps); arms ignored mid-jump; squat rep after 250 ms down,
 and a raised jump line (0.45 T) for 0.4 s after a squat instead of a block (crouch-then-jump works);
 jump speed over 150 ms > 1.0 T/s; tracking lost when hips leave the frame; baselines drift only when
