@@ -42,6 +42,34 @@ describe('calibrator', () => {
     expect(cal.update(null, 99999).status).toMatchObject({ step: 'done', progress: 1 });
   });
 
+  test('feet flickering at the frame edge (1 frame in 4) pause the hold but do not restart it', () => {
+    const cal = createCalibrator('floor');
+    let done = -1;
+    standing.forEach((p, i) => {
+      const pose =
+        i % 4 === 3 ? p.map((q, k) => (k === 27 || k === 28 ? { ...q, y: 1.03 } : q)) : p;
+      if (done < 0 && cal.update(pose, i * 33).result) done = i * 33;
+    });
+    expect(done).toBeGreaterThan(0);
+    expect(done).toBeLessThan(CALIBRATION_HOLD_MS + 200);
+  });
+
+  test('a lasting problem (feet out for 0.4 s) restarts the hold and says why', () => {
+    const cal = createCalibrator('floor');
+    const steps: string[] = [];
+    let done = -1;
+    standing.forEach((p, i) => {
+      const t = i * 33;
+      const out = t > 900 && t < 1300;
+      const pose = out ? p.map((q, k) => (k === 27 || k === 28 ? { ...q, y: 1.03 } : q)) : p;
+      const u = cal.update(pose, t);
+      steps.push(u.status.step);
+      if (done < 0 && u.result) done = t;
+    });
+    expect(steps).toContain('tooClose');
+    expect(done).toBeGreaterThanOrEqual(1300 + CALIBRATION_HOLD_MS - 33);
+  });
+
   test('every step has a message in both modes', () => {
     for (const mode of ['floor', 'treadmill'] as const) {
       for (const step of ['noBody', 'tooFar', 'tooClose', 'holdStill', 'done'] as const) {

@@ -68,6 +68,8 @@ export const CALIBRATION_MIN_W_FRAME = 0.12;
 export const CALIBRATION_FEET_IN_VIEW = true;
 /** A landmark counts as in frame inside this margin (fraction of the frame). */
 export const CALIBRATION_EDGE_MARGIN = 0;
+/** A problem shorter than this (a flicker) pauses the hold instead of restarting it. */
+export const CALIBRATION_GRACE_MS = 250;
 /** Visibility a landmark needs to count during calibration. */
 export const CALIBRATION_MIN_VISIBILITY = 0.5;
 /** Treadmill mode without visible hips: T estimated from W, in pixels (A's clips: T ≈ 1.5 W). */

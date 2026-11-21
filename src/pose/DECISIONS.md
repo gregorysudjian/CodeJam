@@ -79,3 +79,7 @@ or the named file.
 28. **Bodies far from the player's size are dropped before picking**, not after: a bigger stranger
     right in front of the camera used to win the "largest" pick, get rejected, and hide the real
     player. A throwing `onStatus` (UI bug) is isolated like `onMove` listeners.
+29. **Calibration grace of 250 ms:** a brief problem (feet flickering at the frame edge, one dropped
+    detection) pauses the hold instead of restarting it; a lasting one restarts it and shows its
+    message. In A's squat session the ankles sat at the bottom edge (40 frames with y > 1), so the
+    old rule could have kept restarting the 1.5 s hold.

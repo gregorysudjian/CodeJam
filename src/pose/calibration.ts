@@ -17,6 +17,7 @@ import {
 import {
   CALIBRATION_EDGE_MARGIN,
   CALIBRATION_FEET_IN_VIEW,
+  CALIBRATION_GRACE_MS,
   CALIBRATION_HOLD_MS,
   CALIBRATION_MIN_T_FRAME,
   CALIBRATION_MIN_VISIBILITY,
@@ -102,39 +103,42 @@ export function createCalibrator(
     samples = [];
   };
 
-  function update(pose: Point[] | null, t: number): CalibrationUpdate {
-    if (finished) return { status: status('done', 1) };
-    if (!pose || !coreLandmarks(mode).every((i) => visible(pose[i]))) {
-      resetHold();
-      return { status: status('noBody') };
-    }
-    const m = measureForMode(pose, mode, getAspect());
+  let badSince = -1;
 
+  /** Why this frame cannot be used, or null. */
+  function problem(pose: Point[] | null, m: Calibration | null): CalibrationStatus['step'] | null {
+    if (!pose || !m) return 'noBody';
     if (mode === 'floor') {
-      if (m.T < CALIBRATION_MIN_T_FRAME) {
-        resetHold();
-        return { status: status('tooFar') };
-      }
+      if (m.T < CALIBRATION_MIN_T_FRAME) return 'tooFar';
       // Head and feet in view (contract). In a small room, CALIBRATION_FEET_IN_VIEW = false
       // asks only for the knees: detection itself uses the hips.
       const ends = feetInView
         ? [pose[NOSE], pose[L_ANKLE], pose[R_ANKLE]]
         : [pose[NOSE], pose[L_KNEE], pose[R_KNEE]];
-      if (!ends.every((p) => visible(p) && inFrameY(p))) {
-        resetHold();
-        return { status: status('tooClose') };
-      }
+      if (!ends.every((p) => visible(p) && inFrameY(p))) return 'tooClose';
     } else {
-      if (m.W < CALIBRATION_MIN_W_FRAME) {
-        resetHold();
-        return { status: status('tooFar') };
-      }
-      const nose = pose[NOSE];
-      if (!visible(nose) || !inFrameY(nose)) {
-        resetHold();
-        return { status: status('tooClose') };
-      }
+      if (m.W < CALIBRATION_MIN_W_FRAME) return 'tooFar';
+      if (!visible(pose[NOSE]) || !inFrameY(pose[NOSE])) return 'tooClose';
     }
+    return null;
+  }
+
+  function update(pose: Point[] | null, t: number): CalibrationUpdate {
+    if (finished) return { status: status('done', 1) };
+    const usable = pose && coreLandmarks(mode).every((i) => visible(pose[i]));
+    const m = usable ? measureForMode(pose, mode, getAspect()) : null;
+    const bad = problem(usable ? pose : null, m);
+    if (bad || !m) {
+      // A brief flicker (feet at the frame edge, one dropped detection) pauses the hold instead of
+      // restarting it; a lasting problem restarts it and tells the player.
+      if (badSince < 0) badSince = t;
+      if (ref && t - badSince < CALIBRATION_GRACE_MS) {
+        return { status: status('holdStill', Math.min(1, (t - holdStart) / CALIBRATION_HOLD_MS)) };
+      }
+      resetHold();
+      return { status: status(bad ?? 'noBody') };
+    }
+    badSince = -1;
 
     // Holding still: restart the hold whenever the body moves or changes size too much.
     const moved =
