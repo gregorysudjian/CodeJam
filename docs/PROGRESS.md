@@ -28,7 +28,9 @@ _Updated after every PR._
 
 **Requests:** none open (see below).
 
-**Next 3:** full A-to-Z audit (docs/AUDIT.md) → per-user rate limit on /api/coach → panic keys, including K mid-round without restarting.
+**Next 3:** HUD uses `level.config` (audit #5) → K mid-round without a restart (audit #4) → per-user rate limit on /api/coach (audit #6).
+
+**Audit:** see `docs/AUDIT.md` (top 10 problems with owners).
 
 ## Log
 
@@ -66,6 +68,14 @@ _Updated after every PR._
 
 ## Requests
 
-_For things outside my folders: src/ui (Lovable Claude), src/pose (Abdo), src/game and src/input (Patrick), packages, keys._
+_For things outside my folders: src/ui (Lovable Claude), src/pose (Abdo), src/game, src/input and src/workout (Patrick), packages, keys._
 
-- none yet
+- **Abdo:** wire `detect.ts` and calibration into `createPoseInput()`, which is still the stub on `abdo-1`, and open the PR. Export `mountPoseDebug` from `src/pose/index.ts` so the app can wire `?dev=pose`.
+- **Patrick:** open PRs for `p1-workout`, then `p2-game`. Fix the 3 slow fairness tests in `src/workout/level.test.ts` (5 s vitest timeout; they take 6.5–57 s here) so `npm run check` stays green.
+- **Lovable UI:** the "REACH" label on the HUD (Patrick's request #3).
+
+## Needs Greg
+
+- Add `ANTHROPIC_API_KEY` in Vercel, but only after the coach rate limit is merged.
+- Pick the demo laptop. Record the backup video. Prepare the localhost preview tab and the second laptop (DEMO.md).
+- After the hackathon: restore the paused Supabase project "dailydle".
