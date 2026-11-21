@@ -6,7 +6,8 @@
 | --- | --- |
 | `index.ts` | The loop: polls input once per frame, steps the core, draws the view, plays sounds, steps the graphics quality |
 | `quality.ts` | The graphics quality ladder (tested) |
-| `timing.ts` | Timing probe for tuning the latency leads, `?debug=timing` (tested) |
+| `timing.ts` | Timing probe for tuning the latency leads, `?debug=timing`, per round and combined (tested) |
+| `glyph.ts` | The move icons, painted for both views |
 | `ghost.ts`, `ghostStore.ts`, `ghostRace.ts` | Ghost runner: recording, replay, ranking, on-device storage, live race (tested) |
 | `core.ts` | The rules, with no drawing: clock, cues, judging, pause, finish (tested) |
 | `judge.ts`, `timeline.ts` | One object's collision verdict; distance and speed (tested) |
@@ -28,7 +29,7 @@ A frame longer than 0.25 s (a hidden tab, a hitch) counts as 0.25 s, so switchin
 
 **Keyboard and the page:** while a round runs the game sets `<body data-game="running">` (cleared on pause, finish and `destroy()`). `src/input` only consumes its keys then, so the rest of the app keeps normal keyboard behaviour.
 
-**Failure handling:** if WebGL can't start, the 2D view takes over (tested in a Chrome with the GPU disabled). If drawing throws mid-round, the game logs it and keeps running without drawing, so events, the HUD and the results still work.
+**Failure handling:** if WebGL can't start, the 2D view takes over, with the same move icons (tested in a Chrome with the GPU disabled). If drawing throws mid-round, the game logs it and keeps running without drawing, so events, the HUD and the results still work.
 
 ## How to use it (for D)
 
@@ -134,7 +135,7 @@ Judging, events and the contract are unchanged; only where objects are drawn mov
 - the share inside the judging window;
 - the current lead, and the lead that would put the median in the middle of the window.
 
-Objects the player did not have to move for are skipped (already standing in the free lane). Copy `suggestedLeadSec` values that hold over two or three rounds into `VISUAL_LEAD_SEC.pose`. The same report is in `window.__gameTiming`. Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
+Objects the player did not have to move for are skipped (already standing in the free lane). From the second round on (no page reload in between, "play again" is fine), a second table combines every round of this page load with the same input. Rounds where K was pressed are left out. The demo level has only 2 to 5 of each move, so copy the combined table's `suggestedLeadSec` into `VISUAL_LEAD_SEC.pose` after two or three rounds. The same reports are in `window.__gameTiming` (last round) and `window.__gameTimingAll` (combined). Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
 
 ## Placement (`timeline.ts`, pure, tested)
 
@@ -155,7 +156,13 @@ A fresh read of every file in `src/game`, `src/input` and `src/workout`. Found a
 - **A hidden tab lowered the graphics for the rest of the round.** `requestAnimationFrame` stops in a hidden tab, so the first frame back spans the whole absence. The governor read it as about 2 fps and dropped straight to level 2. In Chrome, one 2 s freeze at 60 fps did exactly that; now it changes nothing.
 - **K mid-round could store an unbeatable ghost.** A round started on the camera and finished on the keyboard was saved as a camera ghost. Checked over three rounds: the switched round beat the ghost but was not stored.
 - **Shaders compiled mid-round.** Programs compiled mid-round went from 4 to 0; a forced step to level 2 compiled 9, now 0 (worst frame 47 → 25 ms). The first frame got heavier (about 1 s in software GL, before any object arrives).
+- **K slid every object on screen by up to 6 m.** The drawn leads now follow a switch at a limited rate (see Latency compensation).
 - Also: the race chip and the end banner share one drawing function, plus small tidying in `view3d.ts`.
+
+Then, smaller additions:
+- The race chip pops when the lead over the ghost changes.
+- The 2D fallback shows the same move icons as 3D.
+- `?debug=timing` adds a combined table over all rounds, for the camera session with A.
 
 Rechecked: `npm run check` on main + `p1-workout` + `p2-game` (201 tests pass). In the real app, a demo round driven by keyboard on the game's own clock scored 4,750, 100 %, best streak 23, every move inside its window (timing probe), no console errors. The ghost worked across two rounds (above). Not tested: a real GPU and a real webcam.
 
