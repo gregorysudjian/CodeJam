@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat ~2 PM, after opening PR #27. Read this first in a new conversation._
+_Last refresh: Sat ~2:20 PM, after a self-check pass (low FPS, visibility flicker). Read this first in a new conversation._
 
 ## 1. Context
 
@@ -18,28 +18,29 @@ _Last refresh: Sat ~2 PM, after opening PR #27. Read this first in a new convers
 - **PR #27 is open:** https://github.com/gregorysudjian/CodeJam/pull/27 (`abdo-1` → `main`),
   mergeable, changes only the three A folders. `main` (with Patrick's game and workout already
   merged, and `vercel.json`) was merged into `abdo-1` at ~1:50 PM with no conflicts.
-- **Last commit:** see `git log -1` (this handoff's own commit). **`npm run check` passes:** 530 tests
-  with the whole team's code, 317 of them in `src/pose`. This was verified in a clean scratch
-  checkout.
+- **Last commit:** see `git log -1` (this handoff's own commit). **`npm run check` passes:** 564 tests
+  with the whole team's code, 351 of them in `src/pose`. A's local `node_modules` is fixed (`npm ci`
+  worked once the old dev server was gone).
+- **Self-check, Sat ~2 PM** (DECISIONS 37–38): at a steady 15 FPS a crouch-and-jump read as a
+  squat, and a one-frame visibility flicker made the next frame raw (lost a quick reach). Both
+  fixed, with new variants "15 FPS steady" and "hip visibility flicker". State timing for the
+  game is unchanged (pinned test). Combined-variant probe: at 15 FPS everything holds except
+  Greg's marginal half step under ±1% jitter; at 10 FPS crouch-and-jumps and quick reaches fail.
 - **Works:** real `createPoseInput()` (contract-exact): camera, MediaPipe, `calibrate()` with status
   messages, lane, jump, squat, armsUp, reachLeft/reachRight, `tracking`, move events,
   `drawSkeleton`. Also treadmill mode, the D-key debug overlay (sliders, threshold lines on the
   video), and `?dev=pose` (`mountPoseDebug`, exported from `src/pose`) with calibrate buttons, a move
   tally and a clip recorder.
 - **Evidence:**
-  - Clips from two bodies (A and Greg) plus 11 synthetic variants each.
+  - Clips from two bodies (A and Greg) plus 13 synthetic variants each.
   - Full app flows with replayed clips: calibration → tutorial → real 3D game round. Also the
     `vite preview` production build.
   - Greg ran it on his machine too (his README on branch `greg-clips`).
 - **Real camera, Sat ~1:30 PM:** 25.7 FPS on GPU (camera 30 fps, 640×480); calibrated W 0.107,
-  T 0.214; threshold lines line up with the body. **Not done yet:** step 3 onwards of §6 (10 of
-  each move).
-- **Half-done:** nothing in code.
-  - A's **local `node_modules` is broken**: `npm ci` after the merge hit `EPERM` because an old dev
-    server (PID 19480, started 3:35 AM, port 5173) locks a file.
-  - Fix: Task Manager → Details → end `node.exe` PID 19480 (or any `node.exe` running vite from
-    CodeJam), then `npm ci` in `C:\Users\kalla\CodeJam`. Until then `npm run dev` / `check` fail
-    locally.
+  T 0.214; threshold lines line up with the body. Sat ~2 PM A tried the moves (§6 step 3) and
+  reported "seems good so far", without per-move tallies. Steps 4–9 are left for the full check
+  with everything integrated.
+- **Half-done:** nothing.
 
 ## 3. Architecture of `src/pose/`
 
@@ -74,7 +75,7 @@ engine.ts      getState() (game polls), onMove, drawSkeleton (skeleton.ts), D �
 
 ## 4. Decisions
 
-`src/pose/DECISIONS.md` (36 entries, each with its reason). The ones that matter most:
+`src/pose/DECISIONS.md` (38 entries, each with its reason). The ones that matter most:
 
 - Lane line 0.55 / 0.3 W.
 - **Arm up 0.3 T** above the nose (kept: Patrick's game latency leads were tuned on it; 0.4 added
@@ -89,22 +90,24 @@ engine.ts      getState() (game polls), onMove, drawSkeleton (skeleton.ts), D �
 
 ## 5. Known bugs and risks (ranked)
 
-1. **The move check on the real camera (§6 step 3+) is not done yet**, and neither is a teammate check
-   on a real camera (Greg's recorded clips pass).
-2. **A's local `node_modules` is broken** until the old dev server is ended (§2).
+1. **The real-camera checklist is only partly done** (§6 step 3 looked fine, no tallies; steps 4–9
+   open), and there is no teammate check on a real camera yet (Greg's recorded clips pass).
+2. (fixed) A's local `node_modules`.
 3. **Combined FPS** of pose plus the 3D game on the demo laptop is unmeasured (pose alone: 25.7 GPU).
 4. **Treadmill was simulated** by scaling clips. A runner drifting on the belt → press R.
 5. Hands resting on the head can count as arms up (trade-off for the game's timing, DECISIONS 33).
 6. Known limits: a half press on a camera tilted 3° can read as a reach; very quick left/right
    reaches can lose a rep at ±1% jitter or ≥ 30% dropped frames.
 7. A jump out of a deep crouch registers ~0.17 s later (raised jump line after a squat).
+   **At 10 FPS** it reads as a squat (smoothing flattens the peak under the raised line); 15 FPS is
+   fine. So measure combined FPS (§8 task 4) and use `?gfx=low` if pose drops under ~20.
 8. Video mirroring: the pose module mirrors its own `<video>`. If a screen adds `scale-x-[-1]` it
    flips back (NEEDS 2).
 
 ## 6. Needs real-camera test (10 minutes)
 
 **Setup**
-1. End the old dev server and run `npm ci` (§2).
+1. `npm ci` if `node_modules` is missing (fixed on A's laptop Sat ~2 PM).
 2. `npm run dev`, leave it running, and open the printed URL + `?dev=pose` in Chrome (for example
    `http://localhost:5173/?dev=pose`).
 3. F12 → Console (type `allow pasting` if asked), paste:
@@ -142,7 +145,7 @@ gives JSON to put into `DETECTION_DEFAULTS`.
 ## 7. Waiting on teammates (copy-paste, full text in `NEEDS.md`)
 
 - **To Greg:**
-  > PR #27 is up (main merged in, vercel.json included, check green with everything: 530 tests).
+  > PR #27 is up (main merged in, vercel.json included, check green with everything: 564 tests).
   > Your clips are in `src/pose/fixtures/greg/` and both findings are fixed: the half press is not
   > a reach, and the crouch before a jump is not a squat (`src/pose/DECISIONS.md` 34–36). After
   > merging, please wire `?dev=pose` with the ready `DevPose.tsx` in `src/pose/NEEDS.md` item 1
@@ -155,7 +158,7 @@ gives JSON to put into `DETECTION_DEFAULTS`.
 
 ## 8. Next tasks (priority, PLAN.md phase)
 
-1. Fix the local `node_modules` (§2), then finish §6 steps 3–8 on the real camera (Phase 1 done-check).
+1. Finish §6 steps 4–8 on the real camera, ideally in the full app (Phase 1 done-check).
 2. Teammate check, 8/10 (Phase 1 done-check). Save clips as `fixtures/extra/` tests.
 3. Answer review comments on PR #27. Greg merges.
 4. After the merge: play full rounds with pose plus the 3D game on the demo laptop and measure
