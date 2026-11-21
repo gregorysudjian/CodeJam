@@ -47,6 +47,55 @@ Left on purpose: the anonymous `auth.users` rows behind those profiles (no name,
 any board) and the kiosk's `Leaderboard` profiles (no rounds; count them with
 `select count(*) from public.profiles where display_name = 'Leaderboard';`).
 
+## Expo evening readiness (Saturday 8 PM)
+
+### Is the live build current?
+
+Yes, as of `main` cd780f0. The live main script holds the device notice (#61) and the "leaderboard
+server is busy" notice (#64), and a phone user agent (Pixel 7) on https://codejam-jet.vercel.app
+gets "Play on a laptop in Chrome". (An earlier "#64 is not live" was my mistake: PowerShell split
+the downloaded script into lines, so a text search missed it.)
+
+Re-run on that build: `live-probes.mjs` (guests `QA-j2sat8-*`) gives the same results as after
+0004: every cheat refused, `created_at` 2099 stored as 2026, only L5 (duplicate names, left open)
+flagged. One real keyboard round (`QA-j2-sat8round`): profile 201, session 201, board 200, rank
+shown (#7), coach card from the rules after the 503.
+
+**Test players on the visible board.** That #7 means the 45 s Full body board, which the landing
+page and the kiosk show to everyone, is now mostly `QA-` players (mine and the team's). If the expo
+is tonight, consider running the cleanup (above) before it rather than Sunday. My further test
+rounds go to Shoulders treadmill, the least-watched board.
+
+### Kiosk (`?kiosk=1`) for 10 minutes
+
+| | Result |
+| --- | --- |
+| Board refreshes | 40 in 10 min (every 15 s), all 200 |
+| Console errors, page errors | 0, 0 |
+| Anonymous users created | 1 per page load (plus a `Leaderboard` profile), none while it stays open |
+| Supabase traffic | 39 KB in 10 min (about 0.25 MB an hour) |
+
+Not yet covered: the access token expires after an hour, and a kiosk open all evening relies on
+supabase-js refreshing it. A 70-minute run is going (result in the next update). With #58's 0005,
+the kiosk would not need a guest at all.
+
+### Supabase free plan: limits for an expo evening
+
+From supabase.com/pricing and the Auth rate-limit docs (checked Saturday night):
+
+| Limit | Free plan | Our use tonight | Risk |
+| --- | --- | --- | --- |
+| **Anonymous sign-ins** | **30 per hour per IP by default** (configurable in Authentication → Rate Limits) | Every visitor on the venue wifi shares one public IP. Each new guest, each kiosk page load and each test run counts | **High if still at the default.** Guest 31 in an hour falls back to the local store (#64 now says "server busy"), so their rounds never reach the board. The brief assumes 1000/h. **Greg's Claude: confirm the configured value in the dashboard**; I can't read it from outside (no rate-limit headers). All of today's sign-ups from this campus network succeeded, about 20 within one hour. Also stop scripted tests from the venue wifi during the expo. |
+| Token refresh | 150 per 5 min per IP | One per player per hour | Low |
+| Monthly active users | 50,000 | Hundreds at most | None |
+| Database size | 500 MB | A session row is under 1 KB; 10,000 rounds is under 10 MB | None |
+| Egress | 5 GB (+5 GB cached) | About 50 KB per player (sign-in, profile, 50-row history, boards); kiosk 0.25 MB/h | None: 5 GB is about 100,000 players |
+| API requests | Unlimited | | None |
+| Pausing | After 1 week without activity | | None this weekend |
+
+The 9 MB pose model and WASM come from Vercel, not Supabase. Vercel's Hobby plan includes 100 GB
+of transfer a month: about 10,000 camera visitors.
+
 ## Leaderboard cheating (Saturday 6 PM)
 
 **Setup a visitor has:** the anon key (public, in the bundle) and a guest token from
