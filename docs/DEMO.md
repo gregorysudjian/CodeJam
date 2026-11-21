@@ -1,6 +1,6 @@
 # Demo and pitch plan
 
-Target length: 2 minutes 40 seconds. Shorter talk means more Q&A, and Q&A is where a judge plays.
+Target length: 2 minutes 40 seconds for the judges. Shorter talk means more Q&A, and Q&A is where a judge plays. Popular Vote has its own 2-minute version (see Popular Vote below).
 
 ## Roles
 
@@ -40,14 +40,17 @@ Decide these in advance so nobody improvises in front of judges.
 
 1. Detection misbehaves: Operator presses `R` to recalibrate. Presenter keeps talking.
 2. Still bad: Operator presses `K`. The Player keeps moving while the Operator plays on the keyboard. Say so openly if asked.
-3. The network or the backend is down: reload with `?store=local`. The round, results and rule-based coach all work offline.
+3. The backend is down but the page loads: reload the Vercel URL with `?store=local`. No network at all: switch to the localhost preview tab, already open with `?store=local`. The round, results and rule-based coach all work offline.
 4. The app will not load: play the backup video and narrate over it.
 5. The laptop dies: the second laptop already has the build open.
 
 ## Station checklist (Sunday 8:00 AM)
 
 - Demo laptop on power, brightness at maximum, notifications off, sleep disabled
-- Chrome only, camera permission already granted, the app running from `npm run preview`
+- Chrome only. The app open on the **Vercel URL**, because only Vercel serves the coach endpoint: under `npm run preview` every coach call silently becomes the rule-based coach
+- A second tab with `npm run preview` on localhost, opened with `?store=local`, as the offline backup. Camera permission granted on both origins
+- One round played on the Vercel URL at the station, and `/api/coach` returned 200 in the network tab (the coach card came from Claude, not the rules)
+- Supabase anonymous sign-in rate limit raised (Auth → Rate Limits), and a fresh guest sign-in tested on the venue wifi
 - Laptop about 1 m high with the screen tilted back, facing a wall rather than the crowd
 - Tape mark on the floor 2.2 m away; 2 m clear around it; no cables on the floor
 - External screen or speaker connected if available, volume tested
@@ -58,11 +61,34 @@ Decide these in advance so nobody improvises in front of judges.
 
 ## Popular Vote
 
-- Let people play. A queue at the table is the best advertisement.
-- Keep the leaderboard on screen between players. "Beat the high score" brings people back with friends.
-- Put the QR code where a waiting person can scan it, so they can try it on their own laptop.
-- Keep one teammate at the table at all times to reset the round and explain the floor mark.
-- Record a 10-second clip of someone playing for the submission page.
+Per the opening slides, Popular Vote is a 2-minute demo, then the audience ranks the finalists. It is not a queue at your table, so the script must fit 2:00 and the webcam has to work on a stage you have not tested yet.
+
+### 2-minute script
+
+| Time | Who | What |
+| --- | --- | --- |
+| 0:00 to 0:15 | Presenter | Hook and the one-sentence description from the main script |
+| 0:15 to 1:05 | Player and Presenter | The 45-second seeded demo round. Calibrate during setup, before the clock starts. Presenter names the moves |
+| 1:05 to 1:35 | Presenter | Results, coach card, leaderboard: one line each. Skip the dashboard |
+| 1:35 to 1:50 | Presenter | How it works in one line: tracking on the laptop, video never leaves it, Claude builds your next level |
+| 1:50 to 2:00 | Presenter | Close on the QR code: "Scan it and play on your own laptop." |
+
+No architecture slide in this version. Rehearse it with a timer at least twice.
+
+### Check the stage on Saturday
+
+- Ask the organisers: is there a stage or a table, how far can the player stand from the laptop (2.2 m plus 2 m clear is the plan), and how long is setup between finalists
+- Lighting: stage lights behind or above the player can break tracking. Test at the real spot if you are allowed to
+- Projector: plug in the HDMI during a test round and check the frame rate and that Chrome stays full screen
+- Wifi on stage: the Vercel URL needs it; the localhost tab is the backup
+- Not enough room: demo the Arms workout or treadmill mode at 1 to 1.5 m. Keyboard (`K`) stays the last resort; say so openly if used
+
+### If there is also an expo table
+
+- Let people play, and keep the leaderboard on screen between players
+- Put the QR code where people can scan it. Everyone on the venue wifi shares one IP, so the raised anonymous sign-in limit matters here
+- Keep one teammate at the table to reset the round and explain the floor mark
+- Record a 10-second clip of someone playing for the submission page
 
 ## Likely judge questions
 

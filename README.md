@@ -36,4 +36,4 @@ npm install
 npm run dev
 ```
 
-Open the printed URL in Chrome and allow camera access. Add `?dev=pose` for the pose debug page, or `?store=local` to run without the backend.
+Open the printed URL in Chrome and allow camera access. The AI coach endpoint (`api/`) runs only on Vercel or under `vercel dev`; locally the rule-based coach answers instead. Add `?dev=pose` for the pose debug page, or `?store=local` to run without the backend.

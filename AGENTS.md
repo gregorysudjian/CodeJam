@@ -41,7 +41,7 @@ Vite, React, TypeScript (strict), Tailwind, shadcn/ui, Recharts, plain Three.js,
 6. Keep the game loop out of React. No React state updates per frame.
 7. Every outside dependency keeps its stand-in working: keyboard for the camera, local store for Supabase, rule-based coach for Claude. `saveSession` and `getCoachAdvice` never reject.
 8. Secrets: never write a key into code, tests or docs. The Claude key is read only in `api/` from `process.env.ANTHROPIC_API_KEY`. Nothing secret gets a `VITE_` prefix.
-9. Database changes are new numbered files in `supabase/migrations/`. Every table has row-level security.
+9. Database changes are new numbered files in `supabase/migrations/`. Every table has row-level security. The `leaderboard` view deliberately bypasses it: never add `security_invoker` to it, even if a linter or the Supabase Security Advisor suggests it (see `docs/CONTRACTS.md`).
 10. Every tunable number lives in a `tuning.ts` in its module, not inline.
 11. Load the pose model and WASM from `public/`, never from a CDN.
 12. Prefer the simplest thing that works. There is one day. Do not add abstractions, options or features that the task did not ask for.
@@ -53,7 +53,7 @@ Vite, React, TypeScript (strict), Tailwind, shadcn/ui, Recharts, plain Three.js,
 npm install
 npm run dev      # dev server
 npm run check    # typecheck, lint, test, build
-npm run preview  # serve the production build locally (used for the demo)
+npm run preview  # serve the production build locally (offline demo backup; no /api, so the coach falls back to rules)
 ```
 
 Add `?dev=pose` for the pose debug page and `?store=local` to run without the backend.

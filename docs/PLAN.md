@@ -41,7 +41,7 @@ Four decisions keep this safe to build in one day:
 | Server code | Vercel serverless functions in `api/` (TypeScript) | Deployed by `git push` with the frontend; keeps the Claude key off the client |
 | AI | Claude API, a small fast model, called only from `api/` | Cheap, quick, and you already have credits |
 | Tests | Vitest, for workout logic and server validation | Pure functions, cheap to test |
-| Hosting | Vercel, plus `npm run preview` on the demo laptop | Public link for voters, local copy for the demo |
+| Hosting | Vercel for the demo and for voters, plus `npm run preview` on the demo laptop as the offline backup | Only Vercel serves `/api/coach`; the local copy covers a wifi failure, with the rule-based coach |
 
 Put the model file and the MediaPipe WASM files in `public/` so nothing loads from a CDN during the demo. Use Chrome only.
 
@@ -161,11 +161,11 @@ Each phase has four tasks in separate folders, built against the contracts with 
 
 **Together, 30 minutes, one screen, D drives:**
 
-1. Scaffold Vite + React + TypeScript, add Tailwind and shadcn/ui, install `three`, `@types/three`, `@mediapipe/tasks-vision`, `@supabase/supabase-js`, `recharts`, `vitest`, Prettier. Add `.gitattributes` with `* text=auto eol=lf`.
+1. Scaffold with `npm create vite@latest` (React + TypeScript template, which already ships ESLint), add Tailwind and shadcn/ui, install `three`, `@types/three`, `@mediapipe/tasks-vision`, `@supabase/supabase-js`, `recharts`, `qrcode.react` (Phase 3 QR code), `vitest`, `@types/node` (for `api/`) and Prettier. Keep the template's ESLint config and give `api/**` Node globals. The coach endpoint calls the Claude API with plain `fetch`, so there is no Anthropic SDK. Add `.gitattributes` with `* text=auto eol=lf`. This is the full planned package list; anything else still goes through D (AGENTS.md rule 4).
 2. Paste the code from CONTRACTS.md into `src/contracts/index.ts`. Read it together, take 10 minutes of objections, then freeze it.
 3. Commit a stub `index.ts` in each module folder that satisfies the contract, so everything compiles from the first minute.
-4. Create the Supabase project and the Vercel project. Commit `.env.example`; share the real values in the group chat and keep them in `.env.local`, which is git-ignored.
-5. Add `npm run check` (typecheck, lint, test, build). Push to `main`. Everyone clones and runs `npm run dev`.
+4. Create the Supabase project and the Vercel project. In Supabase, enable anonymous sign-ins and raise Auth → Rate Limits → anonymous sign-ins from the default 30 per hour per IP to about 1000: everyone on the venue wifi shares one IP, and Popular Vote players scanning the QR code would hit the default. Commit `.env.example`; share the real values in the group chat and keep them in `.env.local`, which is git-ignored.
+5. Add `npm run check` (typecheck, lint, test, build). The typecheck must cover `api/`, not only `src/`: the Vite template's `tsconfig.app.json` includes only `src`, so add a `tsconfig.api.json` (includes `api`, `types: ["node"]`) and list it in the root `tsconfig.json` references so `tsc -b` checks it. Push to `main`. Everyone clones and runs `npm run dev`.
 6. Assign roles, pick the demo laptop, pick a name (2 minutes, not 20).
 
 **Then in parallel, 60 minutes:**
@@ -221,7 +221,7 @@ This is the MVP. Tag `mvp`.
 | --- | --- |
 | A | Treadmill mode input: upper-body calibration on the shoulders, reach left, reach right, both arms up, working 1 to 1.5 m from the camera. Floor mode must behave exactly as before |
 | B | Treadmill mode game: orbs collected by reaching, crates smashed, no hurdles or beams. Performance pass: cap the pixel ratio, reuse geometry, pool objects |
-| C | "Coach's pick": the advice's next session becomes a `SessionConfig` the player starts with one tap. Treadmill levels. Harden the endpoint: token check, input and output validation, a per-user rate limit, tests. Stretch item 1 if time allows |
+| C | "Coach's pick": the advice's next session becomes a `SessionConfig` the player starts with one tap. Treadmill levels. Harden the endpoint: token check, input and output validation, tests. No per-user rate limit: serverless functions keep no state between calls and the schema has no table for it, so cost is capped by the key's spend limit, a small model and a low `max_tokens`. Stretch item 1 if time allows |
 | D | "Coach's pick" button on the select and results screens, a 15-second skippable "try each move" tutorial before the first round, dashboard polish, QR code to the public URL on the landing screen |
 
 **Merge 3 (45 min).**
@@ -249,7 +249,7 @@ This is the MVP. Tag `mvp`.
 | --- | --- |
 | A and B | Fresh-eyes playtest, then fix only bugs that crash the app or make it unplayable. A second person reads every fix before it merges |
 | C | Final README and submission, verify the GitHub repo, clear test rows from the database, prepare the Q&A cheat sheet from DEMO.md |
-| D | Set up the demo station, run three timed rehearsals |
+| D | Set up the demo station, run three timed rehearsals of the judge pitch and two of the 2-minute Popular Vote version (DEMO.md) |
 
 **Done when:** `v1.0` is tagged by 11:30 AM, the submission is in, and three rehearsals came in under 3 minutes.
 
@@ -401,7 +401,7 @@ Port only the components and Tailwind classes into `src/ui/`. Do not let Lovable
 | A key leaks into a public repo | `.env.local` git-ignored from the first commit; Claude key only in Vercel; separate key with a spend limit for the product | Revoke and rotate the key; it takes two minutes |
 | Row-level security is wrong and users see each other's data | C tests with two browsers in Phase 1 and again in Phase 4 | Leaderboard view exposes only name, workout and score |
 | The coach is slow, fails, or says something unsuitable | 8-second timeout, strict JSON validation, a prompt limited to general fitness encouragement, a visible "not medical advice" line | Rule-based coach |
-| Server functions are awkward to run locally | Test against the Vercel preview deployment of your branch, or use `vercel dev` | Client works without the endpoint |
+| Server functions are awkward to run locally | Test against the Vercel preview deployment of your branch, or use `vercel dev`. `npm run dev` and `npm run preview` do not serve `/api`, so the coach silently falls back to rules there | Client works without the endpoint |
 | Detection is unreliable at the venue (lighting, crowd behind the player) | Test at the station on Sunday 8:00 AM. Face the laptop toward a wall. Tape a mark on the floor at 2.2 m. Track only the largest, most central person | `R` to recalibrate, `D` to adjust thresholds live, `K` for keyboard |
 | Jump or squat misfires | Thresholds scale with the calibrated body, hysteresis, cooldowns, generous hit windows | Low-impact toggle removes jumps; widen windows in `tuning.ts` |
 | Demo laptop too slow for pose plus 3D | Test on it from Phase 0. Lite model, 640×480 video, capped pixel ratio, no shadows | Low-graphics toggle; run pose at every second frame |

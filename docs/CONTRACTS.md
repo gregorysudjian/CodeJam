@@ -35,7 +35,7 @@ export interface SessionConfig {
   durationSec: number; // 45 demo, 90 standard, 180 long
   difficulty?: number; // 0 to 1, default 0.5; the coach sets it from history
   lowImpact?: boolean; // true = no hurdles
-  seed?: number; // same seed, same level
+  seed?: number; // same seed, same level; integer 0 to 2^31 - 1 (stored as Postgres int)
 }
 
 /* ───────── Input: owner A (pose) and B (keyboard) ───────── */
@@ -99,6 +99,10 @@ export interface Level {
 }
 
 // src/workout/index.ts   export function generateLevel(config: SessionConfig): Level
+//                        Always returns a complete level.config: fills difficulty (0.5),
+//                        lowImpact (false) and seed (random when missing). The app passes
+//                        level.config, not its own config, to createSessionTracker, so the
+//                        saved session records the seed that was actually played.
 //                        export const WORKOUTS: Record<WorkoutId, WorkoutInfo>
 
 export interface WorkoutInfo {
@@ -200,7 +204,8 @@ export interface CoachAdvice {
 
 export interface DataStore {
   readonly kind: 'supabase' | 'local';
-  signInGuest(displayName?: string): Promise<Profile>; // reuses the existing user if there is one
+  signInGuest(displayName?: string): Promise<Profile>; // reuses the existing user if there is one;
+  //   always ensures the profiles row exists before resolving (defaults below)
   getProfile(): Promise<Profile | null>;
   saveProfile(patch: Partial<Omit<Profile, 'id'>>): Promise<Profile>;
   saveSession(summary: SessionSummary): Promise<SavedSession>; // never rejects; queues when offline
@@ -213,6 +218,20 @@ export interface DataStore {
 //                        Returns the Supabase store, or the local store when the URL has
 //                        ?store=local or the Supabase environment variables are missing.
 ```
+
+## Guest profile defaults (C)
+
+`sessions.user_id` references `profiles`, and the profile step can be skipped, so `signInGuest` always creates the `profiles` row (or reuses it) before it resolves. Missing fields get these defaults, in the store and as column defaults in SQL:
+
+| Field | Default |
+| --- | --- |
+| `displayName` | `Guest-` plus four random digits, for example `Guest-1234` |
+| `goal` | `'getMoving'` |
+| `level` | `'beginner'` |
+| `weightKg` | not set (70 kg is assumed for calories) |
+| `weeklyGoalMin` | `60` |
+
+The profile step only calls `saveProfile` with what the player entered. If `signInGuest` fails (for example on the anonymous sign-in rate limit), the app switches to the local store, as with `?store=local`, so the round can still be played and saved.
 
 ## Database (C)
 
@@ -228,7 +247,10 @@ Row-level security, enabled on both tables:
 
 - `profiles`: a user can select, insert and update only the row where `id = auth.uid()`.
 - `sessions`: a user can insert and select only rows where `user_id = auth.uid()`. No update, no delete.
-- `leaderboard`: readable by any signed-in user. It is the only way one user sees anything about another, and it carries no reps, calories or weight.
+- `leaderboard`: readable by any signed-in user. It is the only way one user sees anything about another, and it carries no reps, calories or weight. It works **because** it is a plain view: Postgres views run with the owner's rights by default, so it reads every user's best score even though `sessions` RLS hides other users' rows. Keep it that way:
+  - **Never add `security_invoker = true`** to this view. That makes it obey `sessions` RLS, and every player then sees only their own scores. Supabase's Security Advisor flags it as "Security Definer View"; for this view that finding is expected and stays.
+  - Grant access explicitly in the migration: `revoke all on public.leaderboard from public, anon;` then `grant select on public.leaderboard to authenticated;`. Guests sign in anonymously, which still uses the `authenticated` role.
+  - It selects only `display_name`, `workout`, `mode`, `score` and `created_at`. Adding a column is a contract change.
 
 Add check constraints for the enum-like text columns and for sane ranges (`score >= 0`, `duration_sec` between 10 and 600).
 
@@ -237,14 +259,15 @@ Add check constraints for the enum-like text columns and for sane ranges (`score
 `POST /api/coach`, in `api/coach.ts`.
 
 - **Request:** header `Authorization: Bearer <Supabase access token>`, body `{ "sessionId": "<uuid>" }`.
-- **Steps:** reject without a valid token (401). Create a Supabase client that carries the user's token, so row-level security applies on the server too and no service key is needed. Load the profile and the last ten sessions. Ask Claude for JSON matching `CoachAdvice`. Validate it: known workout, `durationSec` one of 45, 90, 180, `difficulty` clamped to 0 to 1, text lengths capped. Return it with `source: 'ai'`.
+- **Steps:** reject without a valid token (401). Create a Supabase client that carries the user's token, so row-level security applies on the server too and no service key is needed. Load the profile and the last ten sessions. Ask Claude for JSON matching `CoachAdvice`, with plain `fetch` to the Messages API (no SDK), aborted after 7 seconds. Validate it: known workout, `durationSec` one of 45, 90, 180, `difficulty` clamped to 0 to 1, text lengths capped. Return it with `source: 'ai'`.
 - **Response:** 200 with `CoachAdvice`, or an error status. The client waits at most 8 seconds, then calls the rule-based coach.
-- **Limits:** at most one call per user every 10 seconds, a small fast model, and a low `max_tokens`.
+- **Limits:** a small fast model, a low `max_tokens` (about 400), and a spend limit on the product's API key. No per-user rate limit: Vercel functions keep no state between calls and the schema has no table for one.
+- **Where it runs:** only on Vercel (production, a preview deployment, or `vercel dev`). The client calls the relative path `/api/coach`. `npm run dev` and `npm run preview` do not serve `/api`, so there every coach call falls back to the rules. This is why the demo runs from the Vercel URL (DEMO.md).
 - **Prompt rules:** general fitness encouragement only, no medical or diet advice, no comments on the body, plain friendly language, and the numbers must come from the data provided.
 
 The rule-based coach lives in `src/data/` as a pure function `ruleBasedAdvice(profile, sessions): CoachAdvice`. Starting rules: recommend the workout played least this week; raise `difficulty` by 0.1 after accuracy above 85%, lower it by 0.1 after accuracy below 60%; point the tip at the move with the highest `missed` count.
 
-Environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (client and server), `ANTHROPIC_API_KEY` (server only, set in Vercel, never prefixed with `VITE_`).
+Environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (client and server; set them in Vercel too, the function reads them from `process.env`), `ANTHROPIC_API_KEY` (server only, set in Vercel, never prefixed with `VITE_`).
 
 ## Collision rules (B implements, C relies on them)
 
