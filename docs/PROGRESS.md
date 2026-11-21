@@ -9,7 +9,6 @@ _Updated after every PR._
 **Merged and live**
 - #2 UI (Neon Arena screens) · #3 backend (schema, store with offline queue, coach endpoint) · #4 wiring (all 8 screens on real data)
 - #5 `signOut`: "New guest" now starts a new player
-- #6 Demo preset: `?demo=1` preselects the fixed 45 s demo level (seed 189), with a low-impact version via the toggle
 
 **How it was tested:** `npm run check` on every PR. Click-throughs by keyboard in Chrome against live Supabase, plus `?store=local`. Security rules tested with two anonymous users. Offline save tested with the network cut. `/api/coach` tested on a Vercel preview.
 
@@ -17,13 +16,13 @@ _Updated after every PR._
 
 **Open problems, ranked by demo risk**
 1. Body control isn't on `main` (Abdo's `createPoseInput`), and the 3D game isn't on `main` (Patrick's `p0-game`). No PRs open yet.
-2. No error screens for camera denied, no camera, or offline (backlog item 3, next).
-3. The demo seed belongs to the current placeholder generator. If the generator changes (item 8 or Patrick), the seed must be searched again (see `src/workout/demo.test.ts`).
+2. No demo preset (fixed seed) yet. That's backlog item 2, next.
+3. No error screens for camera denied, no camera, or offline (backlog item 3).
 4. An offline save waits up to about 10 s before falling back. The results screen already shows meanwhile, so only the coach card and rank arrive late.
 
 **Requests:** none open (see below).
 
-**Next 3:** error states → kiosk leaderboard (`?kiosk=1`) → panic keys check.
+**Next 3:** demo preset (`?demo=1`) → error states → kiosk leaderboard.
 
 ## Log
 
@@ -32,12 +31,6 @@ _Updated after every PR._
 - **Supabase store:** sends queued sessions first, then `auth.signOut({ scope: 'local' })` (works offline), then clears the cached profile, sessions and queue. **Local store:** clears the saved player and sessions. **`createStore`** signs out of both and retries Supabase for the next guest.
 - **App:** "New guest" (and "Play as guest" when a player is saved) signs out and resets per-player state before the profile step. "Continue as …" keeps the player.
 - **Tested:** the new unit test passes (42 total). In Chrome against live Supabase: Alpha → reload → "Continue as Alpha" → New guest → fresh guest name → Beta → reload → "Continue as Beta". The database holds exactly two players. The same flow works with `?store=local`. A fresh player gets the empty leaderboard state ("Be the first on the board") with no console errors.
-
-### #6 Demo preset
-- `DEMO_CONFIG` lives in `src/workout/tuning.ts` (Full body, floor, 45 s, seed 189), exported from `@/workout`. The generator's inline numbers moved into `tuning.ts` too, with no behaviour change.
-- Seed 189 was found by searching for a level that shows every move at least twice, opens and closes on three easy waves (block, crate or orb) so the round ends on a streak, and never puts a hurdle right after a beam. Its low-impact version (same seed, no hurdles) shows every other move at least twice. `src/workout/demo.test.ts` checks all of this.
-- **App:** with `?demo=1`, the workout screen starts on the demo level. "Play again" keeps the seed and otherwise still gives a fresh level. DEMO.md explains how to use it.
-- **Tested:** 46 tests pass. In Chrome with `?demo=1&store=local`: Enter → S → Enter starts the demo round. Played it twice and both saved sessions have seed 189. No console errors.
 
 ## Requests
 
