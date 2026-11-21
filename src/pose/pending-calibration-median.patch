@@ -1,0 +1,69 @@
+diff --git a/src/pose/calibration.ts b/src/pose/calibration.ts
+index 043204b..f99eb1b 100644
+--- a/src/pose/calibration.ts
++++ b/src/pose/calibration.ts
+@@ -28,6 +28,7 @@ import {
+   CALIBRATION_STILL_SCALE,
+   CALIBRATION_STILL_T,
+   CALIBRATION_STILL_T_TREADMILL,
++  CALIBRATION_STILL_WINDOW,
+   CALIBRATION_SQUAT_ROOM_T,
+   DEFAULT_ASPECT,
+   TREADMILL_T_PER_W_PX,
+@@ -114,10 +115,12 @@ export function createCalibrator(
+     progress,
+     message: msg[step],
+   });
++  let recent: Calibration[] = []; // the last few frames, for the stillness check
+   const resetHold = () => {
+     holdStart = -1;
+     ref = null;
+     samples = [];
++    recent = [];
+   };
+ 
+   let badSince = -1;
+@@ -163,15 +166,25 @@ export function createCalibrator(
+     }
+     badSince = -1;
+ 
+-    // Holding still: restart the hold whenever the body moves or changes size too much.
++    // Holding still: restart the hold whenever the body moves or changes size too much. Judged on
++    // the median of the last few frames, so one frame of landmark jitter is not a move (a real
++    // move or bob lasts longer than the window).
++    recent.push(m);
++    if (recent.length > CALIBRATION_STILL_WINDOW) recent.shift();
++    const now: Calibration = {
++      centreX: median(recent.map((r) => r.centreX)),
++      centreY: median(recent.map((r) => r.centreY)),
++      W: median(recent.map((r) => r.W)),
++      T: median(recent.map((r) => r.T)),
++    };
+     const moved =
+       ref &&
+-      (Math.hypot(m.centreX - ref.centreX, m.centreY - ref.centreY) > stillT * ref.T ||
+-        Math.abs(m.T / ref.T - 1) > CALIBRATION_STILL_SCALE ||
+-        Math.abs(m.W / ref.W - 1) > CALIBRATION_STILL_SCALE);
++      (Math.hypot(now.centreX - ref.centreX, now.centreY - ref.centreY) > stillT * ref.T ||
++        Math.abs(now.T / ref.T - 1) > CALIBRATION_STILL_SCALE ||
++        Math.abs(now.W / ref.W - 1) > CALIBRATION_STILL_SCALE);
+     if (!ref || moved) {
+       holdStart = t;
+-      ref = m;
++      ref = now;
+       samples = [];
+     }
+     samples.push(m);
+diff --git a/src/pose/tuning.ts b/src/pose/tuning.ts
+index 39b73ad..28a5685 100644
+--- a/src/pose/tuning.ts
++++ b/src/pose/tuning.ts
+@@ -87,6 +87,8 @@ export const CALIBRATION_HOLD_MS = 1500;
+ /** Holding still: the centre may wander this far (in T) and W/T change by this fraction. */
+ export const CALIBRATION_STILL_T = 0.1;
+ export const CALIBRATION_STILL_SCALE = 0.15;
++/** Stillness is judged on the median of this many recent frames (~165 ms at 30 FPS), not one frame. */
++export const CALIBRATION_STILL_WINDOW = 5;
+ /** Treadmill: the shoulders may bob (jogging) this much; only W and T must hold still. */
+ export const CALIBRATION_STILL_T_TREADMILL = 0.4;
+ /** Floor mode: too far when T is under this fraction of the frame height. */
