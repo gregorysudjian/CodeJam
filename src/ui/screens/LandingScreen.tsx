@@ -1,7 +1,7 @@
-import * as React from "react";
-import { motion, useReducedMotion } from "motion/react";
-import { Lock, Trophy, ArrowRight, Play, UserPlus } from "lucide-react";
-import type { LeaderboardEntry } from "@/contracts";
+import * as React from 'react';
+import { motion, useReducedMotion } from 'motion/react';
+import { Lock, Trophy, ArrowRight, Play, UserPlus } from 'lucide-react';
+import type { LeaderboardEntry } from '@/contracts';
 import {
   EASE_ARENA,
   Eyebrow,
@@ -10,9 +10,9 @@ import {
   MoveFigureCycle,
   Screen,
   useHotkey,
-} from "@/ui/kit";
-import { formatNumber } from "@/ui/lib/format";
-import { cn } from "@/ui/lib/utils";
+} from '@/ui/kit';
+import { formatNumber } from '@/ui/lib/format';
+import { cn } from '@/ui/lib/utils';
 
 export interface LandingScreenProps {
   appName: string;
@@ -38,7 +38,7 @@ export function LandingScreen({
 }: LandingScreenProps) {
   const reduce = useReducedMotion();
   const isReturning = Boolean(returning && onContinue);
-  useHotkey("Enter", () => (isReturning && onContinue ? onContinue() : onPlayAsGuest()));
+  useHotkey('Enter', () => (isReturning && onContinue ? onContinue() : onPlayAsGuest()));
   const scores = (topScores ?? []).slice(0, 3);
 
   return (
@@ -153,7 +153,7 @@ export function LandingScreen({
                     key={`${entry.displayName}-${entry.at}`}
                     className="flex items-baseline gap-2 font-display-italic text-[22px]"
                   >
-                    <span className={cn(i === 0 ? "text-lime" : "text-text-dim")}>{i + 1}</span>
+                    <span className={cn(i === 0 ? 'text-lime' : 'text-text-dim')}>{i + 1}</span>
                     <span className="max-w-36 truncate">{entry.displayName}</span>
                     <span className="text-lime">{formatNumber(entry.score)}</span>
                   </li>

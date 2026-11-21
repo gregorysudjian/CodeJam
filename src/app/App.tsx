@@ -433,6 +433,7 @@ function MainApp() {
             onGame={handleGame}
             onFinish={(s) => void handleFinish(s)}
             onUseKeyboard={switchToKeyboard}
+            onQuit={() => setScreen('select')}
           />
         </Suspense>
       )}

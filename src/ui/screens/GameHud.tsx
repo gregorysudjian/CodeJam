@@ -36,6 +36,8 @@ export interface GameHudProps {
   cameraSlot?: ReactNode;
   onPause(): void;
   onResume(): void;
+  /** Leave the round without saving it (from the pause screen). */
+  onQuit?(): void;
 }
 type FeedbackEvent = NonNullable<GameHudProps['lastEvent']>;
 const Feedback = memo(
@@ -89,6 +91,7 @@ export function GameHud({
   cameraSlot,
   onPause,
   onResume,
+  onQuit,
 }: GameHudProps) {
   const reduce = useReducedMotion();
   const plates = useAnimationControls();
@@ -285,9 +288,7 @@ export function GameHud({
                 <h1 className="hud-tracking-title max-w-[1100px] font-display-italic text-display-lg text-amber">
                   STEP BACK INTO THE FRAME
                 </h1>
-                <p className="text-caption text-text-muted">
-                  The round is paused until we can see you.
-                </p>
+                <p className="text-title text-text">The round is paused until we can see you.</p>
               </>
             ) : (
               <>
@@ -301,6 +302,16 @@ export function GameHud({
                 >
                   RESUME
                 </GameButton>
+                {onQuit && (
+                  <GameButton
+                    size="md"
+                    variant="ghost"
+                    onClick={onQuit}
+                    className="pointer-events-auto"
+                  >
+                    END ROUND
+                  </GameButton>
+                )}
                 <div className="mt-5 flex flex-wrap justify-center gap-6 text-caption text-text-muted">
                   {[
                     ['K', 'keyboard / camera'],
