@@ -84,3 +84,8 @@ or the named file.
     detection) pauses the hold instead of restarting it; a lasting one restarts it and shows its
     message. In A's squat session the ankles sat at the bottom edge (40 frames with y > 1), so the
     old rule could have kept restarting the 1.5 s hold.
+30. **MediaPipe's JS is loaded only when the pose input starts** (dynamic import in `landmarker.ts`).
+    On `abdo-1` the main bundle drops from 407 kB to 254 kB (MediaPipe becomes a 154 kB chunk), so the
+    landing page loads faster on venue wifi and keyboard players never download it. Verified: dev
+    page runs at 30 FPS GPU with a stubbed camera; the production build references the chunk and
+    copies the model and WASM.

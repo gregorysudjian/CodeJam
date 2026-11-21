@@ -1,5 +1,7 @@
 // Owner: A. Creates the MediaPipe Pose Landmarker from files in public/.
-import { FilesetResolver, type NormalizedLandmark, PoseLandmarker } from '@mediapipe/tasks-vision';
+// The MediaPipe JS (~150 kB) is loaded only when the pose input starts, so the first page load
+// stays small and keyboard players never download it.
+import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import {
   MAX_POSES,
   MIN_DETECTION_CONFIDENCE,
@@ -19,6 +21,7 @@ export interface Landmarker {
 
 /** Tries the GPU delegate first and falls back to CPU if it fails to start. */
 async function create(): Promise<Landmarker> {
+  const { FilesetResolver, PoseLandmarker } = await import('@mediapipe/tasks-vision');
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
   const make = (delegate: Delegate) =>
     PoseLandmarker.createFromOptions(fileset, {
@@ -29,7 +32,7 @@ async function create(): Promise<Landmarker> {
       minPosePresenceConfidence: MIN_PRESENCE_CONFIDENCE,
       minTrackingConfidence: MIN_TRACKING_CONFIDENCE,
     });
-  let model: PoseLandmarker;
+  let model: Awaited<ReturnType<typeof PoseLandmarker.createFromOptions>>;
   let delegate: Delegate = 'GPU';
   try {
     model = await make('GPU');
