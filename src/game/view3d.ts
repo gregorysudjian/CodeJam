@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { InputState, Level } from '@/contracts';
 import { feverTier, holdFeedback, type HoldFeedback, type Item } from './core';
+import type { GhostPose } from './ghost';
 import { requirementMet } from './judge';
 import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
@@ -21,6 +22,8 @@ export interface FrameInfo {
   state: InputState;
   phase: Phase;
   streak: number;
+  /** The ghost runner's pose at this moment, or null when there is no ghost to race. */
+  ghost: GhostPose | null;
 }
 
 export interface GameView {
@@ -50,6 +53,16 @@ export function create3DView(
   const finishDistance = track.distanceAt(durationSec);
 
   const views = new Map<Item, ObstacleView>();
+  // The ghost runner, created the first time a ghost pose arrives; fed through one reused state.
+  let ghostRunner: ReturnType<typeof createPlayer> | null = null;
+  const ghostInput: InputState = {
+    tracking: true,
+    lane: 0,
+    airborne: false,
+    ducking: false,
+    leftArmUp: false,
+    rightArmUp: false,
+  };
   const seenHolds = new WeakSet<Item>(); // held objects whose move has been seen
   let nextSpawn = 0;
   let clock = 0;
@@ -79,7 +92,7 @@ export function create3DView(
   };
 
   return {
-    frame({ elapsed, visDt, realDt, state, phase, streak }) {
+    frame({ elapsed, visDt, realDt, state, phase, streak, ghost }) {
       lastState = state;
       clock += visDt;
       if (phase === 'finished') {
@@ -138,6 +151,18 @@ export function create3DView(
       obstacles.tick(visDt);
       const moving = phase === 'running' || (phase === 'finished' && coastSpeed > 1);
       player.update(visDt, state, moving, phase === 'finished');
+      if (ghost) {
+        if (!ghostRunner) {
+          ghostRunner = createPlayer({ ghost: true });
+          stage.scene.add(ghostRunner.root);
+        }
+        ghostInput.lane = ghost.lane;
+        ghostInput.airborne = ghost.airborne;
+        ghostInput.ducking = ghost.ducking;
+        ghostInput.leftArmUp = ghost.leftArmUp;
+        ghostInput.rightArmUp = ghost.rightArmUp;
+        ghostRunner.update(visDt, ghostInput, moving);
+      }
       stage.update({
         distance,
         playerX: player.x,

@@ -29,26 +29,37 @@ export interface Player {
 
 const lerpRate = (rate: number, dt: number): number => 1 - Math.exp(-rate * dt);
 
-export function createPlayer(): Player {
+/**
+ * `ghost`: the ghost runner's look (ghost.ts). See-through light cyan glass with cyan accents
+ * instead of lime, so it never reads as the player; slightly larger, so in the same lane it
+ * wraps the player as a shell; no shadow, aura or hit flash.
+ */
+export function createPlayer(opts: { ghost?: boolean } = {}): Player {
+  const ghost = opts.ghost ?? false;
   const R = T.PLAYER_RADIUS;
   const L = T.PLAYER_BODY_LENGTH;
   const root = new THREE.Group();
   const body = new THREE.Group(); // pivot at the feet, squashed when crouching
   root.add(body);
+  if (ghost) body.scale.setScalar(T.GHOST_SCALE);
 
+  const glass = (): Partial<THREE.MeshStandardMaterialParameters> =>
+    ghost ? { transparent: true, opacity: T.GHOST_OPACITY, depthWrite: false } : {};
   const suitMat = new THREE.MeshStandardMaterial({
-    color: 0xd9e1ec,
+    color: ghost ? T.GHOST_COLOR : 0xd9e1ec,
     roughness: 0.35,
     metalness: 0.15,
-    emissive: new THREE.Color(T.COLOR_HIT),
-    emissiveIntensity: 0,
+    emissive: new THREE.Color(ghost ? T.GHOST_COLOR : T.COLOR_HIT),
+    emissiveIntensity: ghost ? 0.25 : 0,
+    ...glass(),
   });
-  const darkMat = new THREE.MeshStandardMaterial({
-    color: 0x1a2230,
-    roughness: 0.5,
-    metalness: 0.4,
+  const darkMat = ghost
+    ? suitMat
+    : new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.5, metalness: 0.4 });
+  const limeMat = new THREE.MeshBasicMaterial({
+    color: neon(ghost ? T.GHOST_ACCENT : T.COLOR_LIME),
+    ...(ghost ? { transparent: true, opacity: T.GHOST_ACCENT_OPACITY, depthWrite: false } : {}),
   });
-  const limeMat = new THREE.MeshBasicMaterial({ color: neon(T.COLOR_LIME) });
 
   const torso = new THREE.Mesh(new THREE.CapsuleGeometry(R, L, 6, 18), suitMat);
   torso.position.y = R + L / 2;
@@ -96,9 +107,10 @@ export function createPlayer(): Player {
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(0.55, 0.64, 40),
     new THREE.MeshBasicMaterial({
-      color: neon(T.COLOR_LIME, T.NEON_BOOST * 0.7),
+      color: neon(ghost ? T.GHOST_ACCENT : T.COLOR_LIME, T.NEON_BOOST * 0.7),
       transparent: true,
-      opacity: 0.9,
+      opacity: ghost ? T.GHOST_ACCENT_OPACITY : 0.9,
+      depthWrite: !ghost,
     }),
   );
   ring.rotation.x = -Math.PI / 2;
@@ -114,6 +126,7 @@ export function createPlayer(): Player {
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.015;
+  shadow.visible = !ghost;
   ground.add(shadow, ring);
   const auraMat = new THREE.MeshBasicMaterial({
     transparent: true,
@@ -149,12 +162,14 @@ export function createPlayer(): Player {
       return (side === 'left' ? armL : armR).hand.getWorldPosition(out);
     },
     setAura(a) {
+      if (ghost) return;
       if (a && (!auraState || auraState.color !== a.color || auraState.mode !== a.mode)) {
         auraMat.color.set(a.mode === 'warn' ? T.COLOR_HIT : a.color);
       }
       auraState = a;
     },
     flashHit() {
+      if (ghost) return;
       hitT = 0;
     },
     update(dt, s, moving, celebrate = false) {
@@ -215,7 +230,8 @@ export function createPlayer(): Player {
       aura.position.y = 1.15 * crouch;
 
       hitT += dt;
-      suitMat.emissiveIntensity = hitT < T.HIT_FLASH_SEC ? 1.4 * (1 - hitT / T.HIT_FLASH_SEC) : 0;
+      if (!ghost)
+        suitMat.emissiveIntensity = hitT < T.HIT_FLASH_SEC ? 1.4 * (1 - hitT / T.HIT_FLASH_SEC) : 0;
       // Stumble: jolt back, then a damped wobble.
       const st = hitT / T.STUMBLE_SEC;
       body.rotation.x = st < 1 ? 0.45 * Math.sin(st * Math.PI * 3) * (1 - st) : 0;

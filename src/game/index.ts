@@ -4,7 +4,9 @@ import { createCore, feverTier, movesSeen } from './core';
 import {
   compareRuns,
   createGhostRecorder,
+  ghostPoseAt,
   levelFingerprint,
+  neutralPose,
   type GhostOutcome,
   type GhostResult,
 } from './ghost';
@@ -58,6 +60,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   const fingerprint = levelFingerprint(level);
   const ghost = ghostStore?.load(fingerprint) ?? null;
   const recorder = ghostStore ? createGhostRecorder() : null;
+  const ghostPose = neutralPose(); // reused every frame
   let currentState = input.getState();
 
   // ?debug=timing: record move timing for tuning VISUAL_LEAD_SEC; printed when the round ends.
@@ -161,7 +164,15 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     // Everything freezes while paused; before start the runner copies the player in place.
     const visDt = phase === 'paused' ? 0 : Math.min(realDt, T.MAX_DT_SEC);
     try {
-      view!.frame({ elapsed: core.elapsed(), visDt, realDt, state, phase, streak: core.streak() });
+      view!.frame({
+        elapsed: core.elapsed(),
+        visDt,
+        realDt,
+        state,
+        phase,
+        streak: core.streak(),
+        ghost: ghost ? ghostPoseAt(ghost.samples, ghost.hz, core.elapsed(), ghostPose) : null,
+      });
     } catch (err) {
       // A drawing failure must not stop the round: events and the HUD keep working.
       console.error('[game] render failed, continuing without drawing', err);
