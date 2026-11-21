@@ -103,7 +103,7 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > - `docs/DEMO.md`: the tape mark "2.2 m away" (and "2.2 m plus 2 m clear" in the organiser
 >   questions) → about 1.5 m.
 
-## 11. A way to end the round from the pause menu (found testing the X, Sat ~4 PM)
+## 11. ✅ Done (Greg, #41: END ROUND, back to select without saving) — A way to end the round from the pause menu (found testing the X, Sat ~4 PM)
 
 > The X works in the app: it opens the pause menu. But that menu only has RESUME (GameHud ~line
 > 295–302), and Esc toggles pause/resume, so a player or the station operator who wants to stop
@@ -112,7 +112,7 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > round should not be saved)? Your call on saving. Please keep it a button/key, not a body gesture:
 > a "quit" gesture would be too easy to trigger by accident mid-round. Pose needs no change.
 
-## 12. Start with the camera, not the keyboard (found testing, Sat ~4 PM)
+## 12. ✅ Done (Abdo, in src/app with Greg's OK pending: auto camera on the select screen, remembered choice) — Start with the camera, not the keyboard (found testing, Sat ~4 PM)
 
 > `App.tsx` starts with `useState<InputKind>('keyboard')`, so unless the player picks **Camera**
 > on the select screen (or presses K), the whole round runs on the keyboard: no calibration, no
