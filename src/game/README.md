@@ -78,7 +78,16 @@ Do the steps in this order: the frame rate changes the webcam lag, and the ghost
    - Note any combo that feels unfair or tiring. The hit report gives its time.
    - Low impact already gives the hurdles' share to sidesteps and reaches, and no level has holds in its cool-down (`src/workout/README.md`).
    - `npm run check` keeps `demo.test.ts` honest after any change.
-5. **Ghost rehearsals, last**, on the demo set-up, after the last change to the level generator.
+5. **Look and sound, 10 minutes**, on the Mac's own display and speakers at the volume the demo will use, the browser at the size the demo will use. Headless Chrome can't check any of this. Tick each box, and note any "no" with the fix next to it:
+   - [ ] **Music against a voice** (3 min). Play a demo round while someone talks from where the presenter will stand, at pitch volume. Can you follow every word? If not, lower `MUSIC_VOLUME` in `look.ts` (0.35 → 0.25), or turn the beat off on this laptop: `localStorage.setItem('game.music', 'off')` (effects stay). Can you still hear the cue beeps and the hit thud over the voice? If not, raise `AUDIO_VOLUME` in `tuning.ts` rather than single effects (`mix.test.ts` pins the effect levels).
+   - [ ] **No crackle at full volume.** At the Mac's top volume, reach the 20 combo and the finish (the loudest moments). Any crackle or pumping: lower `AUDIO_VOLUME`, never the limiter.
+   - [ ] **First sound in a fresh tab.** Reload, click through, and start a round: the 3-2-1 beeps play. If they don't, click the page once before START.
+   - [ ] **PERFECT / GOOD / LATE from the mark** (2 min). From 1.5 m, with the camera, read the word for five clears in a row. Readable? If not, raise `GRADE_WIDTH` in `look.ts` (3.5). Does it match how it felt? If on-time moves mostly say LATE or GOOD, the camera's grade bands are off: note it for `GRADE_BANDS.pose` in `tuning.ts`, with the hit table from step 3.
+   - [ ] **The rest from the mark:** the move icons on far objects, the `5 COMBO!` banner (bottom centre), the race chip (bottom right) and `YOUR BEST` under the ghost. Anything you can't read: its size is in `look.ts`.
+   - [ ] **The finish on this display** (2 min). Play to 0:00 twice, racing a ghost. The FINISH arch passes, the camera swings smoothly to the celebrating runner, and the verdict (`GHOST BEATEN`, `GHOST WINS`, `TIE`) sits big in the middle, under the score and clock plates and clear of them. The results come after the swing has settled (it takes 1.3 s of the app's 1.5 s). Any stutter in the swing: check the frame rate line in the console. A cut-off banner: note the window size.
+   - [ ] **Pause with the X** mid-round: the beat fades out and comes back on resume, no note left ringing.
+   - [ ] **Reduce motion** (macOS Settings → Accessibility → Display): if it's on, the game drops the fly-in, the finish swing, shake and flying pieces. Is that what you want on stage?
+6. **Ghost rehearsals, last**, on the demo set-up, after the last change to the level generator.
    - A ghost belongs to one exact level, and the generator changes on this branch already made a new low-impact demo level. Changing the latency leads or the look keeps ghosts valid.
    - On exactly `http://localhost:5173/?demo=1` with the camera, play the demo level once in normal and once in low impact. Extra flags like `&debug=timing` don't matter; the origin does.
    - Each round start prints `[game] ghost: racing …` or `none yet …`.
