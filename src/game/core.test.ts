@@ -344,3 +344,114 @@ describe('holdFeedback', () => {
     expect(holdFeedback(10, 2, 12.1, false, true)).toBeNull(); // over
   });
 });
+
+describe('holds across pauses, input switches, tracking loss and the end of the round', () => {
+  const beam: Spawn = { kind: 'beam', lanes: [-1, 0, 1], requires: 'squat', holdSec: 1.6 };
+  const down: InputState = { ...idle, ducking: true };
+  const arms: InputState = { ...idle, leftArmUp: true, rightArmUp: true };
+  const DT = 1 / 60;
+  /** Steps the core frame by frame; `step(sec, state)` plays `sec` of frames with one state. */
+  function drive(lv: Level) {
+    const verdicts: Verdict[] = [];
+    const events: string[] = [];
+    const core = createCore(lv, { verdict: (_i, v) => verdicts.push(v) });
+    core.onEvent((e) => events.push(e.type === 'paused' ? `paused:${e.reason}` : e.type));
+    core.start();
+    let now = 0;
+    const step = (sec: number, state: InputState): void => {
+      for (let k = 0; k < Math.round(sec / DT); k++) core.step(DT, state, (now += DT * 1000));
+    };
+    return { core, verdicts, events, step };
+  }
+
+  it('a pause mid-hold freezes it: squat again on resume and the beam clears', () => {
+    const d = drive(level([w(5, beam)], 10));
+    d.step(4.8, idle);
+    d.step(0.8, down); // down from 4.8 to 5.6
+    d.core.pause();
+    const frozen = d.core.elapsed();
+    d.step(3, idle); // standing during the pause changes nothing
+    expect(d.core.elapsed()).toBe(frozen);
+    d.core.resume();
+    d.step(2, down);
+    expect(d.verdicts).toEqual(['cleared']);
+  });
+
+  it('standing up during the pause and staying up after resume is a hit (after the grace)', () => {
+    const d = drive(level([w(5, beam)], 10));
+    d.step(4.8, idle);
+    d.step(0.8, down);
+    d.core.pause();
+    d.core.resume();
+    d.step(0.2, idle);
+    expect(d.verdicts).toEqual([]); // still inside the 0.3 s grace
+    d.step(0.3, idle);
+    expect(d.verdicts).toEqual(['hit']);
+  });
+
+  it('tracking lost mid-hold pauses the round; the hold goes on when tracking returns', () => {
+    const d = drive(level([w(5, beam)], 10));
+    d.step(4.8, idle);
+    d.step(0.8, down);
+    const at = d.core.elapsed();
+    d.step(2, { ...idle, tracking: false });
+    expect(d.core.elapsed()).toBe(at);
+    expect(d.core.pauseReason()).toBe('trackingLost');
+    d.step(2, down);
+    expect(d.verdicts).toEqual(['cleared']);
+    expect(d.events.filter((e) => e !== 'cue')).toEqual([
+      'paused:trackingLost',
+      'resumed',
+      'cleared',
+    ]);
+  });
+
+  it('K mid-hold: the new input must show the move within the 0.3 s grace', () => {
+    // From the camera (down) to the keyboard: Down must be pressed within 0.3 s of game time.
+    const quick = drive(level([w(5, beam)], 10));
+    quick.step(4.8, idle);
+    quick.step(0.8, down);
+    quick.step(0.2, idle); // the keyboard, before Down is pressed
+    quick.step(2, down);
+    expect(quick.verdicts).toEqual(['cleared']);
+    const slow = drive(level([w(5, beam)], 10));
+    slow.step(4.8, idle);
+    slow.step(0.8, down);
+    slow.step(0.4, idle);
+    slow.step(2, down);
+    expect(slow.verdicts).toEqual(['hit']);
+  });
+
+  it('a pause while a held crate needs both arms up (the X gesture cannot fire then) is safe', () => {
+    const d = drive(level([w(5, heldCrate)], 10));
+    d.step(4.8, idle);
+    d.step(0.7, arms);
+    d.core.pause(); // e.g. Esc or a hidden tab
+    d.step(1, idle); // arms down during the pause: not judged
+    d.core.resume();
+    d.step(0.1, idle); // lowering the X, then arms back up within the grace
+    d.step(2, arms);
+    expect(d.verdicts).toEqual(['cleared']);
+  });
+
+  it('End round from the pause screen: a paused core never finishes, so nothing is saved', () => {
+    // END ROUND unmounts the play screen and destroys the game; summary and ghost are only
+    // stored on 'finished', which a paused core never emits however long it is stepped.
+    const d = drive(level([w(5, beam)], 10));
+    d.step(5.2, down);
+    d.core.pause();
+    d.step(30, down);
+    expect(d.events).not.toContain('finished');
+    expect(d.core.finished()).toBe(false);
+  });
+
+  it('the round ending during a hold: no verdict for that object, one finished, no crash', () => {
+    // The generator never does this (every object ends 1 s before the round); a hand-made
+    // level that does leaves the object undecided: neither a hit nor a clear.
+    const d = drive(level([w(9, beam)], 10));
+    d.step(8.8, idle);
+    d.step(3, down);
+    expect(d.verdicts).toEqual([]);
+    expect(d.events.filter((e) => e === 'finished')).toHaveLength(1);
+  });
+});
