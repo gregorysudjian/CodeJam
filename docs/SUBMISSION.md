@@ -98,7 +98,7 @@ Record on the demo laptop at `http://localhost:5173/?demo=1` with real sessions 
 
 ## Screenshots
 
-Real captures at 1920×1080 from `main` (5a85969 and bb17780), in [docs/submission/](submission/), ready to upload. All are from `http://localhost:5173/?demo=1&store=local` (the 45 s demo level) played **with the keyboard** by a script, so no camera preview appears; the ghost is an earlier, weaker run of the same level.
+Real captures at 1920×1080 from `main` (bb17780 and bff0541), in [docs/submission/](submission/), ready to upload. All are from `http://localhost:5173/?demo=1&store=local` (the 45 s demo level) played **with the keyboard** by a script, so no camera preview appears; the ghost is an earlier, weaker run of the same level.
 
 | File | Screen | Shows |
 | --- | --- | --- |
@@ -120,4 +120,4 @@ Real captures at 1920×1080 from `main` (5a85969 and bb17780), in [docs/submissi
 - One shot with the **camera**, showing the preview and skeleton in the corner, and `?dev=pose` (landmarks and threshold lines). This machine has no camera.
 - The leaderboard and kiosk on the **live site** after the team's real rounds: the local store holds one player, so the podium shows a single name.
 
-Select, results and dashboard were retaken on `main` bb17780 after the UI fixes in #41.
+Select, results and dashboard were retaken on `main` bb17780 after the UI fixes in #41; the game frames (04–09) on bff0541 after the new scenery colours and icons in #42.
