@@ -70,7 +70,7 @@ setup, keys, symptom → fix table); small-room switch `CALIBRATION_FEET_IN_VIEW
 const host = document.createElement('div');
 host.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#111;overflow:auto';
 document.body.append(host);
-const { mountPoseDebug } = await import('/src/pose/debug.ts');
+const { mountPoseDebug } = await import('/src/pose/index.ts');
 mountPoseDebug(host);
 ```
 
@@ -78,7 +78,7 @@ mountPoseDebug(host);
 
 | File | What |
 | --- | --- |
-| `index.ts` | `createPoseInput()` — the only export the contract names |
+| `index.ts` | `createPoseInput()` (the contract) and `mountPoseDebug` (Greg asked for it here) |
 | `engine.ts` | Browser side: camera, `requestVideoFrameCallback` loop, D key, overlay, `PoseInputSource` |
 | `session.ts` | Pure core per frame: pick the player, calibrate or detect, status throttling, listeners |
 | `calibration.ts` | Pure calibrator: noBody / tooFar / tooClose / holdStill / done, median over 1.5 s |

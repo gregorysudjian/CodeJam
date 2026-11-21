@@ -5,15 +5,16 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 ## 1. Wire `?dev=pose` to the debug view (src/app/DevPose.tsx)
 
 > Hi Greg, the pose debug page is ready on `abdo-1` (calibrate buttons, live overlay with sliders,
-> move tally, clip recorder). Once `abdo-1` is merged, could you replace `src/app/DevPose.tsx` with
-> this? It is plain DOM, owns its own camera, and cleans up fully on unmount (StrictMode-safe). It
-> imports `@/pose/debug`, the one extra export from `src/pose` that PLAN.md planned for this page.
+> move tally, clip recorder). `mountPoseDebug` is now exported from `src/pose/index.ts`, as you
+> asked in PROGRESS.md / AUDIT.md #7. Once `abdo-1` is merged, could you replace
+> `src/app/DevPose.tsx` with this? It is plain DOM, owns its own camera, and cleans up fully on
+> unmount (StrictMode-safe).
 > (Checked against `main` PR #19 in a scratch copy: your `npm run check` passes and the page runs.)
 >
 > ```tsx
 > // ?dev=pose: A's pose debug view (src/pose/debug.ts).
 > import { useEffect, useRef } from 'react';
-> import { mountPoseDebug } from '@/pose/debug';
+> import { mountPoseDebug } from '@/pose';
 >
 > export function DevPose() {
 >   const ref = useRef<HTMLDivElement>(null);

@@ -50,7 +50,8 @@ detect.ts      EMA smoothing → lane / jump / squat / arms / tracking / drift �
 engine.ts      getState() (game polls), onMove listeners, drawSkeleton (skeleton.ts), D → overlay.ts
 ```
 
-- `index.ts` — `createPoseInput()` = `createPoseEngine().source`.
+- `index.ts` — `createPoseInput()` = `createPoseEngine().source`; also exports `mountPoseDebug`
+  (Greg asked for it in `main`'s docs/PROGRESS.md and docs/AUDIT.md #7).
 - `engine.ts` — browser glue; StrictMode-safe start/stop; `calibrate()` before `start()` works;
   a 30 ms watchdog keeps frames flowing when the app takes the video off the page (it pauses) and
   turns a stalled camera into "no body" after 1 s; frames are deduplicated by decoded-frame count.
@@ -179,7 +180,7 @@ Replaces the src/pose stub with the real pose input (CONTRACTS.md, unchanged int
 - D toggles a pose debug overlay (live values, threshold lines, sliders); R stays in the app
 - The pose module mirrors its own <video> (slots.tsx expects that) and keeps it playing when a
   screen takes it off the page
-- ?dev=pose: mountPoseDebug in src/pose/debug.ts (see src/pose/NEEDS.md 1 for DevPose.tsx)
+- ?dev=pose: mountPoseDebug exported from src/pose (see src/pose/NEEDS.md 1 for DevPose.tsx)
 - Thresholds tuned from recorded clips: src/pose/DECISIONS.md; station notes: src/pose/STATION.md
 - 212 tests on recorded landmark clips and synthetic variants; npm run check passes
 
