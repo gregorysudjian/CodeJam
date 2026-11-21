@@ -14,8 +14,8 @@ import { createGame } from '@/game';
 import { GameHud } from '@/ui/screens';
 import { createSessionTracker, generateLevel } from '@/workout';
 import { VideoSlot } from './slots';
-
-const HUD_POLL_MS = 100;
+import { TrackingLostHint } from './ErrorStates';
+import { FINISH_DELAY_MS, HUD_POLL_MS, TRACKING_LOST_HINT_MS } from './tuning';
 
 type HudEvent = {
   kind: 'cleared' | 'hit' | 'collected';
@@ -31,6 +31,7 @@ export function PlayScreen({
   debug,
   onGame,
   onFinish,
+  onUseKeyboard,
 }: {
   config: SessionConfig;
   input: InputSource;
@@ -38,6 +39,8 @@ export function PlayScreen({
   debug: boolean;
   onGame: (game: Game | null) => void;
   onFinish: (summary: SessionSummary) => void;
+  /** Switch to keyboard input (offered when the camera has lost the player for a while). */
+  onUseKeyboard: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
@@ -47,8 +50,19 @@ export function PlayScreen({
   const [lastEvent, setLastEvent] = useState<HudEvent | null>(null);
   const [paused, setPaused] = useState(false);
   const [trackingLost, setTrackingLost] = useState(false);
+  const [lostLong, setLostLong] = useState(false);
+  useEffect(() => {
+    if (!trackingLost) return;
+    const t = setTimeout(() => setLostLong(true), TRACKING_LOST_HINT_MS);
+    return () => {
+      clearTimeout(t);
+      setLostLong(false);
+    };
+  }, [trackingLost]);
   const onFinishRef = useRef(onFinish);
   const onGameRef = useRef(onGame);
+  /** True from the 'finished' event on: the round is over, the fanfare is playing. */
+  const finishedRef = useRef(false);
   useEffect(() => {
     onFinishRef.current = onFinish;
     onGameRef.current = onGame;
@@ -66,8 +80,20 @@ export function PlayScreen({
     gameRef.current = game;
 
     let cueAt: { move: MoveType; arrives: number } | null = null;
+    // The summary is taken the moment the round ends; it is delivered FINISH_DELAY_MS later.
+    let pending: SessionSummary | null = null;
+    let finishTimer: ReturnType<typeof setTimeout> | undefined;
+    const deliver = () => {
+      if (!pending) return;
+      const summary = pending;
+      pending = null; // exactly once, whichever comes first: the timer or an unmount
+      clearTimeout(finishTimer);
+      onFinishRef.current(summary);
+    };
+    finishedRef.current = false;
     let eventId = 0;
     const offEvent = game.onEvent((e) => {
+      if (finishedRef.current) return; // nothing after the end counts (no pause overlay, no hits)
       const before = tracker.getLive().score;
       tracker.handleGameEvent(e);
       switch (e.type) {
@@ -95,7 +121,11 @@ export function PlayScreen({
           setTrackingLost(false);
           break;
         case 'finished':
-          onFinishRef.current(tracker.finish(game.getElapsedSec()));
+          finishedRef.current = true;
+          setPaused(false);
+          setTrackingLost(false);
+          pending = tracker.finish(game.getElapsedSec());
+          finishTimer = setTimeout(deliver, FINISH_DELAY_MS);
           break;
       }
     });
@@ -110,6 +140,8 @@ export function PlayScreen({
     onGameRef.current(game);
     game.start();
     return () => {
+      // Replaced mid-fanfare (e.g. K swapped the input): still deliver the finished round.
+      deliver();
       clearInterval(poll);
       offEvent();
       offMove();
@@ -135,10 +167,15 @@ export function PlayScreen({
           paused={paused}
           trackingLost={trackingLost}
           cameraSlot={pose ? <VideoSlot pose={pose} /> : undefined}
-          onPause={() => gameRef.current?.pause()}
-          onResume={() => gameRef.current?.resume()}
+          onPause={() => {
+            if (!finishedRef.current) gameRef.current?.pause();
+          }}
+          onResume={() => {
+            if (!finishedRef.current) gameRef.current?.resume();
+          }}
         />
       )}
+      {trackingLost && lostLong && <TrackingLostHint onUseKeyboard={onUseKeyboard} />}
       {debug && stats && (
         <pre className="absolute bottom-4 left-4 z-50 rounded bg-black/70 p-3 text-xs text-white">
           {JSON.stringify({ input: input.kind, state: input.getState(), stats }, null, 2)}
