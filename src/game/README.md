@@ -6,6 +6,7 @@
 | --- | --- |
 | `index.ts` | The loop: polls input once per frame, steps the core, draws the view, plays sounds, steps the graphics quality |
 | `quality.ts` | The graphics quality ladder (tested) |
+| `timing.ts` | Timing probe for tuning the latency leads, `?debug=timing` (tested) |
 | `core.ts` | The rules, with no drawing: clock, cues, judging, pause, finish (tested) |
 | `judge.ts`, `timeline.ts` | One object's collision verdict; distance and speed (tested) |
 | `view3d.ts` + `scene.ts`, `obstacles.ts`, `player.ts` | The Three.js picture |
@@ -82,7 +83,14 @@ Camera capture and the model add about 0.1 s on top. A player who squats exactly
 
 Reacting on sight then lands inside the window for every kind, and players who anticipate still clear. The leads differ by far less than the 1.1 s minimum wave gap, so objects never swap order. The floor and the FINISH arch use no lead, so the runner crosses the line as the clock hits 0:00.
 
-Judging, events and the contract are unchanged; only where objects are drawn moves. Keyboard input has no lag and gets no lead. Tune the table with Abdo in front of the camera.
+Judging, events and the contract are unchanged; only where objects are drawn moves. Keyboard input has no lag and gets no lead. The HUD countdown (`cue.inSec`) runs to the visual arrival too, so following the ring and following the picture agree.
+
+**Tuning with the camera (`?debug=timing`, `timing.ts`).** Play a round with pose input and the browser console open. At the end the game prints one row per move:
+- when the move was first seen relative to its judging time (median, negative = early);
+- the share inside the judging window;
+- the current lead, and the lead that would put the median in the middle of the window.
+
+Objects the player did not have to move for are skipped (already standing in the free lane). Copy `suggestedLeadSec` values that hold over two or three rounds into `VISUAL_LEAD_SEC.pose`. The same report is in `window.__gameTiming`. Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
 
 ## Placement (`timeline.ts`, pure, tested)
 

@@ -2,6 +2,7 @@ import type { Game, InputSource, Level } from '@/contracts';
 import { createGameAudio } from './audio';
 import { createCore, feverTier, movesSeen } from './core';
 import { createQualityGovernor, type Quality } from './quality';
+import { createTimingProbe } from './timing';
 import * as T from './tuning';
 import { create2DView } from './view2d';
 import { create3DView, type GameView, type Phase } from './view3d';
@@ -36,8 +37,20 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     leads,
   );
 
+  // ?debug=timing: record move timing for tuning VISUAL_LEAD_SEC; printed when the round ends.
+  const probe =
+    readFlag('debug') === 'timing' ? createTimingProbe(core.items, level.config.mode, leads) : null;
   core.onEvent((e) => {
-    if (e.type === 'finished') audio.finish();
+    if (e.type !== 'finished') return;
+    audio.finish();
+    if (probe) {
+      const report = probe.report();
+      (window as unknown as { __gameTiming?: unknown }).__gameTiming = report;
+      console.info(
+        `[game] move timing, input: ${input.kind} (negative = early; window -0.35..+0.15 s)`,
+      );
+      console.table(report);
+    }
   });
 
   const gfx = readGfxSetting();
@@ -69,6 +82,8 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     last = now;
     const state = input.getState(); // polled once per frame
     core.step(realDt, state, now);
+    if (probe && core.started() && !core.finished() && core.pauseReason() === null)
+      probe.sample(core.elapsed(), state);
 
     const running = core.started() && !core.finished() && core.pauseReason() === null;
     const stepped = quality.sample(realDt, running);
@@ -146,12 +161,18 @@ function tryCreate3D(
 
 /** '?gfx=high|medium|low|2d' or localStorage 'game.gfx'; anything else means automatic. */
 function readGfxSetting(): 'high' | 'medium' | 'low' | '2d' | 'auto' {
+  const v = readFlag('gfx');
+  return v === 'high' || v === 'medium' || v === 'low' || v === '2d' ? v : 'auto';
+}
+
+/** A URL parameter, else localStorage 'game.<name>'; null when neither is set or readable. */
+function readFlag(name: string): string | null {
   try {
-    const v =
-      new URLSearchParams(window.location.search).get('gfx') ??
-      window.localStorage.getItem('game.gfx');
-    return v === 'high' || v === 'medium' || v === 'low' || v === '2d' ? v : 'auto';
+    return (
+      new URLSearchParams(window.location.search).get(name) ??
+      window.localStorage.getItem(`game.${name}`)
+    );
   } catch {
-    return 'auto';
+    return null;
   }
 }
