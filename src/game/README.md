@@ -12,12 +12,19 @@
 | `core.ts` | The rules, with no drawing: clock, cues, judging, pause, finish (tested) |
 | `judge.ts`, `timeline.ts` | One object's collision verdict; distance and speed (tested) |
 | `view3d.ts` + `scene.ts`, `obstacles.ts`, `player.ts` | The Three.js picture |
+| `runnerPose.ts` | The runner's joint angles: run cycle, jump arc and landing squash, squat and slide, lean, arm raises (tested) |
+| `world.ts` | The zones the track travels through and their colour blend (tested) |
+| `feedback.ts` | Timing grades (PERFECT / GOOD / LATE) and combo milestones (tested) |
+| `intro.ts` | The 3-2-1 countdown and the camera fly-in path (tested) |
+| `trail.ts` | Trail motes leading into the next free lane or orb (tested) |
 | `view2d.ts` | Canvas 2D fallback, used automatically when WebGL cannot start |
-| `audio.ts` | Synthesised sound effects |
+| `audio.ts`, `music.ts` | Synthesised sound effects; the synthesised beat (its plan is tested) |
 
-**Graphics quality** (`quality.ts`). Measured on the demo level: about 100 draw calls, 8k triangles and 0.4 ms of JavaScript per frame. So the cost is pixel fill (canvas size × bloom passes), not geometry or code. The ladder steps down one level per 3 s window under 45 fps:
-- Level 1: pixel ratio 1, bloom kept. That's 4× fewer pixels on a Retina screen, and measured 5 → 32 fps in software rendering.
-- Level 2: no bloom, no skyline.
+**Graphics quality** (`quality.ts`). The ladder steps down one level per 3 s window under 45 fps:
+- Level 1: pixel ratio 1, bloom kept, half the particles. That's 4× fewer pixels on a Retina screen, and measured 5 → 32 fps in software rendering.
+- Level 2: no bloom, and none of the extras (towers, far skyline, particles, water glints, tunnel light strips). The track, obstacles, cues, tunnel and bridge structure all stay.
+
+The cost is pixel fill (canvas size × bloom passes), not geometry or code. Measured on the demo level (Sat afternoon, the game-feel PR, Intel UHD 770 in Chrome, dev build): 60 fps at level 0 for the whole round, also with MediaPipe running on a fake camera next to it. The game's JavaScript took 1.9 ms per frame (median; 1.3 ms on main before it). The console prints the round's frame rate at the finish (`[game] frame rate this round: …`, also `window.__gameFps`).
 
 Below 20 fps it steps after 0.5 s instead of a full window, so a slow laptop never plays its first seconds in slow motion. On a 1× screen it skips straight to level 2.
 
@@ -25,7 +32,7 @@ A frame longer than 0.25 s (a hidden tab, a hitch) counts as 0.25 s, so switchin
 
 **No shader stalls mid-round:** every shader is compiled on the first frame, about 4 s before the first object arrives. That covers objects that only show later (speed lines at streak 10, the finish arch, the end banner) and both render paths, so a step down to level 2 doesn't recompile every material at once on a laptop that is already struggling.
 
-**URL switches** (also localStorage `game.gfx` / `game.muted` / `game.ghost`): `?gfx=high|medium|low` fixes the level (0, 1, 2), `?gfx=2d` forces the fallback, `?mute=1`, `?ghost=off|reset`, `?debug=timing`. Without a switch the ladder is automatic.
+**URL switches** (also localStorage `game.gfx` / `game.muted` / `game.ghost` / `game.music` / `game.intro`): `?gfx=high|medium|low` fixes the level (0, 1, 2), `?gfx=2d` forces the fallback, `?mute=1`, `?music=off` (effects only), `?intro=off` (no countdown), `?ghost=off|reset`, `?debug=timing`. Without a switch the ladder is automatic.
 
 **Keyboard and the page:** while a round runs the game sets `<body data-game="running">` (cleared on pause, finish and `destroy()`). `src/input` only consumes its keys then, so the rest of the app keeps normal keyboard behaviour.
 
@@ -36,10 +43,12 @@ A frame longer than 0.25 s (a hidden tab, a hitch) counts as 0.25 s, so switchin
 ```ts
 const game = createGame(canvas, level, input); // renders right away, time stands still
 const off = game.onEvent((e) => tracker.handleGameEvent(e));
-game.start(); // after your countdown
+game.start(); // runs the 3 s intro (3, 2, 1, GO), then the round clock starts
 // Esc: game.pause() / game.resume()
 // unmount: off(); game.destroy();
 ```
+
+- **`start()` includes a 3 s intro.** The camera flies in from the runner's front to the chase position while 3, 2, 1 count down (with beeps), then GO, and only then does game time start. `getElapsedSec()` stays 0 and no events fire during the intro, so the HUD shows the full time. `pause()` during the intro skips it into a paused round. With reduced motion the camera does not fly; the countdown still shows. `?intro=off` starts at once, as before.
 
 - The canvas is sized by CSS. The game watches it with a `ResizeObserver` and caps the pixel ratio at 2.
 - The game only calls `input.getState()`, once per frame. The app owns `input.start()` and `input.stop()`, and wires `input.onMove` to the tracker.
@@ -151,6 +160,20 @@ All numbers are in `tuning.ts`.
 ## Status
 
 Newest first.
+
+### Game feel pass (`p4-game-feel`, Sat afternoon)
+Judging, events and `src/contracts` are unchanged: a scripted perfect run of the demo level still gives 16 cleared, 7 collected, 0 hits, with the camera leads or without.
+- **Runner** (`player.ts`, `runnerPose.ts`): a jointed figure with knees, elbows and shoes. It has a run cycle whose cadence follows the speed, a jump arc with a take-off stretch, a tuck and a landing squash, a squat when standing still and a slide when running, a lean into lane changes, and each arm raised with the player's. The ground ring flashes on every detected move, so the player sees the camera caught it. Tests check that the ducking head clears every beam, the jumping feet clear the hurdle and the feet stay planted.
+- **World** (`world.ts`, `scene.ts`): the round travels through a neon city (towers with lit windows), a tunnel (walls, ceiling, a neon ring every 5 m, darker fog), a bridge (pylons, fanned cables, white railings, water glints, a far skyline at slow parallax) and, for the last 10 s, the finale (a sunset glow, gold gates). Zones are fixed stretches of track, so a border comes toward the runner like an object; scenery rises out of the ground at a border, and the sky, fog and particle colours blend over 30 m. Backgrounds stay near black and the lane lines stay lime, so obstacles read the same in every zone. Particles stay off the track (a dot over a lane could read as an orb).
+- **Timing feedback** (`feedback.ts`): PERFECT, GOOD (early) or LATE beside the runner for each clear and collect, from when the move was first seen (`core` now reports it). The camera's bands are shifted for its lag (see `GRADE_BANDS`). There is a combo counter on the floor behind the runner, and at 5, 10, 20, then every 10 a banner in the sky band, a shockwave from the runner, a lane flash and a field-of-view punch. A cleared object's move icon now disappears, so it no longer covers the runner as it passes.
+- **Music** (`music.ts`): a synthesised beat (kick, hats, bass on an Am–F–C–G loop) from 118 to 138 BPM over the round, with claps from streak 5, an arpeggio from 10 and chord stabs from 20. The finale adds everything, a snare fill and 6 BPM. A hit muffles it for a moment and a pause fades it. It is scheduled on the audio clock, never on frame timing.
+- **Variety:** three looks per obstacle kind (block: stripe, hazard slats, container ribs; hurdle: bar, laser fence, low wall with chevrons; beam: slab, truss, pipe; crate: 6 crates, 9 cubes, glass panes; orb: faceted orb, crystal in rings, gem). The shape that tells the move, its colour, icon and floor marker never change; the look comes from a hash of the wave time, so a level and its ghost always look the same. Trail motes lead into the next block's free lane or orb lane, and the runner pops them in passing (decoration, never judged). A FINAL STRETCH banner marks the last 10 s.
+- **Intro** (`intro.ts`): see "How to use it".
+- **Reduced motion:** no fly-in, shake, field-of-view punch, label pops, grade rise, particle sway, mote bob, celebration hop or shockwave expansion.
+
+**How it was checked:** `npm run check`. In Chrome (headless, real Intel UHD 770 GPU), with screenshots of the demo level by a scripted player at each zone, each pose, each grade, both milestones, the finale banner, reduced motion, `?gfx=low` and `?gfx=2d`. Sound on: no console errors (headless, so not listened to). Frame rate: see "Graphics quality" above.
+
+**Not tested:** a real webcam with a person in front of it, the demo laptop, and how the music sounds (balance against the effects: `MUSIC_VOLUME`).
 
 ### Review pass (Sat midday)
 A fresh read of every file in `src/game`, `src/input` and `src/workout`. Found and fixed, each proven by a test that fails without the fix or by a measurement in Chrome:

@@ -43,14 +43,28 @@ export function CameraErrorOverlay({
 }
 
 /** Banner while the browser is offline. Rounds keep saving on this laptop and sync later. */
-export function OfflineBanner({ onUseKeyboard }: { onUseKeyboard?: () => void }) {
+export function OfflineBanner({
+  onUseKeyboard,
+  placement = 'top',
+  syncs = true,
+}: {
+  onUseKeyboard?: () => void;
+  /** 'bottom' during play, so the banner doesn't cover the HUD's score and timer (QA Q9). */
+  placement?: 'top' | 'bottom';
+  /** False on the local store: rounds stay on this laptop and never sync (QA Q10). */
+  syncs?: boolean;
+}) {
   return (
     <div
       role="status"
-      className="fixed inset-x-0 top-0 z-[80] flex flex-wrap items-center justify-center gap-3 bg-amber/15 px-4 py-2 text-sm text-text backdrop-blur"
+      className={`fixed inset-x-0 ${placement === 'bottom' ? 'bottom-0' : 'top-0'} z-[80] flex flex-wrap items-center justify-center gap-3 bg-amber/15 px-4 py-2 text-sm text-text backdrop-blur`}
     >
       <WifiOff aria-hidden="true" className="size-4 text-amber" />
-      <span>Offline. Your rounds are saved on this laptop and sync when the wifi is back.</span>
+      <span>
+        {syncs
+          ? 'Offline. Your rounds are saved on this laptop and sync when the wifi is back.'
+          : 'Offline. Your rounds are saved on this laptop.'}
+      </span>
       {onUseKeyboard && (
         <GameButton variant="ghost" size="md" leadingIcon={Keyboard} onClick={onUseKeyboard}>
           Use keyboard

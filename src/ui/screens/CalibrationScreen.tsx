@@ -1,7 +1,7 @@
-import * as React from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowBigDown, ArrowBigUp, Check, Keyboard, X } from "lucide-react";
-import type { CalibrationStatus, PlayMode } from "@/contracts";
+import * as React from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { ArrowBigDown, ArrowBigUp, Check, Keyboard, X } from 'lucide-react';
+import type { CalibrationStatus, PlayMode } from '@/contracts';
 import {
   ACCENT_HEX,
   BustOutline,
@@ -13,9 +13,9 @@ import {
   ProgressRing,
   Screen,
   useHotkey,
-} from "@/ui/kit";
-import { formatPercent } from "@/ui/lib/format";
-import { cn } from "@/ui/lib/utils";
+} from '@/ui/kit';
+import { formatPercent } from '@/ui/lib/format';
+import { cn } from '@/ui/lib/utils';
 
 export interface CalibrationScreenProps {
   status: CalibrationStatus;
@@ -28,46 +28,46 @@ export interface CalibrationScreenProps {
   onUseKeyboard?(): void;
 }
 
-type Step = CalibrationStatus["step"];
-type CheckState = "todo" | "active" | "done";
+type Step = CalibrationStatus['step'];
+type CheckState = 'todo' | 'active' | 'done';
 
-const DIM = "#5B6475";
+const DIM = '#5B6475';
 
 function guideColor(step: Step): string {
-  if (step === "noBody") return DIM;
-  if (step === "tooClose" || step === "tooFar") return ACCENT_HEX.amber;
+  if (step === 'noBody') return DIM;
+  if (step === 'tooClose' || step === 'tooFar') return ACCENT_HEX.amber;
   return ACCENT_HEX.lime;
 }
 
 /** Checklist state for IN FRAME / RIGHT DISTANCE / HOLD STILL. */
 export function calibrationChecklist(step: Step): [CheckState, CheckState, CheckState] {
   switch (step) {
-    case "noBody":
-      return ["active", "todo", "todo"];
-    case "tooClose":
-    case "tooFar":
-      return ["done", "active", "todo"];
-    case "holdStill":
-      return ["done", "done", "active"];
-    case "done":
-      return ["done", "done", "done"];
+    case 'noBody':
+      return ['active', 'todo', 'todo'];
+    case 'tooClose':
+    case 'tooFar':
+      return ['done', 'active', 'todo'];
+    case 'holdStill':
+      return ['done', 'done', 'active'];
+    case 'done':
+      return ['done', 'done', 'done'];
   }
 }
 
 const ease = { ease: EASE_ARENA } as const;
 
 function Corners() {
-  const base = "pointer-events-none absolute size-14 border-lime";
+  const base = 'pointer-events-none absolute size-14 border-lime';
   return (
     <div
       aria-hidden="true"
       className="pointer-events-none absolute inset-5 z-40"
       style={{ filter: `drop-shadow(0 0 8px ${ACCENT_HEX.lime}88)` }}
     >
-      <span className={cn(base, "left-0 top-0 rounded-tl-2xl border-l-4 border-t-4")} />
-      <span className={cn(base, "right-0 top-0 rounded-tr-2xl border-r-4 border-t-4")} />
-      <span className={cn(base, "bottom-0 left-0 rounded-bl-2xl border-b-4 border-l-4")} />
-      <span className={cn(base, "bottom-0 right-0 rounded-br-2xl border-b-4 border-r-4")} />
+      <span className={cn(base, 'left-0 top-0 rounded-tl-2xl border-l-4 border-t-4')} />
+      <span className={cn(base, 'right-0 top-0 rounded-tr-2xl border-r-4 border-t-4')} />
+      <span className={cn(base, 'bottom-0 left-0 rounded-bl-2xl border-b-4 border-l-4')} />
+      <span className={cn(base, 'bottom-0 right-0 rounded-br-2xl border-b-4 border-r-4')} />
     </div>
   );
 }
@@ -86,22 +86,22 @@ export function CalibrationScreen({
   const { step } = status;
   const color = guideColor(step);
   const checks = calibrationChecklist(step);
-  const distance = step === "tooClose" || step === "tooFar";
+  const distance = step === 'tooClose' || step === 'tooFar';
 
-  useHotkey("Escape", onCancel);
-  useHotkey("k", () => onUseKeyboard?.(), Boolean(onUseKeyboard));
+  useHotkey('Escape', onCancel);
+  useHotkey('k', () => onUseKeyboard?.(), Boolean(onUseKeyboard));
 
   const items = [
-    { label: "In frame", state: checks[0] },
-    { label: "Distance", state: checks[1] },
-    { label: "Still", state: checks[2] },
+    { label: 'In frame', state: checks[0] },
+    { label: 'Distance', state: checks[1] },
+    { label: 'Still', state: checks[2] },
   ];
 
   return (
     <Screen backdrop="plain">
       <header className="flex flex-wrap items-end justify-between gap-6">
         <div className="flex flex-col gap-3">
-          <Eyebrow>{mode === "floor" ? "Floor" : "Treadmill"}</Eyebrow>
+          <Eyebrow>{mode === 'floor' ? 'Floor' : 'Treadmill'}</Eyebrow>
           <h1 className="font-display-italic pr-[0.06em] text-display-sm">Get in position</h1>
         </div>
       </header>
@@ -129,23 +129,23 @@ export function CalibrationScreen({
           <div className="pointer-events-none absolute inset-0 z-10 flex justify-center">
             <motion.div
               className={cn(
-                "flex justify-center",
-                mode === "floor"
-                  ? "h-full items-start pt-[3%]"
-                  : "h-[55%] w-[46%] items-end pt-[6%]",
+                'flex justify-center',
+                mode === 'floor'
+                  ? 'h-full items-start pt-[3%]'
+                  : 'h-[55%] w-[46%] items-end pt-[6%]',
               )}
               animate={
-                step === "noBody" && !reduce
+                step === 'noBody' && !reduce
                   ? { opacity: [0.35, 0.8, 0.35] }
-                  : { opacity: step === "done" ? 0.35 : 1 }
+                  : { opacity: step === 'done' ? 0.35 : 1 }
               }
               transition={
-                step === "noBody" && !reduce
-                  ? { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
+                step === 'noBody' && !reduce
+                  ? { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }
                   : t(0.3)
               }
             >
-              {mode === "floor" ? (
+              {mode === 'floor' ? (
                 <MoveFigure
                   pose="stand"
                   dashed
@@ -164,30 +164,30 @@ export function CalibrationScreen({
             {distance ? (
               <motion.div
                 key={step}
-                initial={reduce ? false : { opacity: 0, y: step === "tooClose" ? -24 : 24 }}
+                initial={reduce ? false : { opacity: 0, y: step === 'tooClose' ? -24 : 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={
                   reduce
                     ? { opacity: 0, transition: { duration: 0 } }
-                    : { opacity: 0, y: step === "tooClose" ? 24 : -24 }
+                    : { opacity: 0, y: step === 'tooClose' ? 24 : -24 }
                 }
                 transition={t(0.35)}
                 className="absolute left-[5%] top-[12%] z-20 flex"
               >
                 <span className="flex items-center gap-3 rounded-2xl border border-amber/60 bg-bg/80 px-6 py-3 font-display-italic text-display-sm text-amber shadow-[0_0_40px_-6px_var(--na-amber)] backdrop-blur-md">
-                  {step === "tooClose" ? (
+                  {step === 'tooClose' ? (
                     <ArrowBigDown aria-hidden="true" className="size-10 fill-current" />
                   ) : (
                     <ArrowBigUp aria-hidden="true" className="size-10 fill-current" />
                   )}
                   <span className="pr-[0.06em]">
-                    {step === "tooClose" ? "Step back" : "Step closer"}
+                    {step === 'tooClose' ? 'Step back' : 'Step closer'}
                   </span>
                 </span>
               </motion.div>
             ) : null}
 
-            {step === "holdStill" ? (
+            {step === 'holdStill' ? (
               <motion.div
                 key="hold"
                 initial={reduce ? false : { opacity: 0, scale: 0.9 }}
@@ -215,7 +215,7 @@ export function CalibrationScreen({
               </motion.div>
             ) : null}
 
-            {step === "done" ? (
+            {step === 'done' ? (
               <motion.div
                 key="done"
                 initial={false}
@@ -242,7 +242,7 @@ export function CalibrationScreen({
                   initial={reduce ? false : { scale: 0.6, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={
-                    reduce ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 18 }
+                    reduce ? { duration: 0 } : { type: 'spring', stiffness: 320, damping: 18 }
                   }
                 >
                   <span className="grid size-20 place-items-center rounded-full bg-lime text-bg shadow-glow-lime">
@@ -284,32 +284,32 @@ export function CalibrationScreen({
             </Eyebrow>
             <ol className="flex flex-col gap-2">
               {items.map((it, i) => {
-                const active = it.state === "active";
-                const accent = i === 1 ? "amber" : "lime";
+                const active = it.state === 'active';
+                const accent = i === 1 ? 'amber' : 'lime';
                 return (
                   <li
                     key={it.label}
                     className={cn(
-                      "flex items-center gap-4 rounded-2xl border px-4 py-3 transition-colors duration-300",
+                      'flex items-center gap-4 rounded-2xl border px-4 py-3 transition-colors duration-300',
                       active
-                        ? accent === "amber"
-                          ? "border-amber/50 bg-amber/10"
-                          : "border-lime/50 bg-lime/10"
-                        : "border-transparent",
+                        ? accent === 'amber'
+                          ? 'border-amber/50 bg-amber/10'
+                          : 'border-lime/50 bg-lime/10'
+                        : 'border-transparent',
                     )}
                   >
                     <span
                       className={cn(
-                        "grid size-9 shrink-0 place-items-center rounded-full border-2 font-display-italic text-[18px] transition-colors duration-300",
-                        it.state === "done" && "border-lime bg-lime text-bg",
+                        'grid size-9 shrink-0 place-items-center rounded-full border-2 font-display-italic text-[18px] transition-colors duration-300',
+                        it.state === 'done' && 'border-lime bg-lime text-bg',
                         active &&
-                          (accent === "amber"
-                            ? "border-amber text-amber"
-                            : "border-lime text-lime"),
-                        it.state === "todo" && "border-white/15 text-text-dim",
+                          (accent === 'amber'
+                            ? 'border-amber text-amber'
+                            : 'border-lime text-lime'),
+                        it.state === 'todo' && 'border-white/15 text-text-dim',
                       )}
                     >
-                      {it.state === "done" ? (
+                      {it.state === 'done' ? (
                         <Check className="size-5" strokeWidth={3} aria-hidden="true" />
                       ) : (
                         i + 1
@@ -317,8 +317,8 @@ export function CalibrationScreen({
                     </span>
                     <span
                       className={cn(
-                        "flex-1 font-display-italic text-title leading-none",
-                        it.state === "todo" ? "text-text-dim" : "text-text",
+                        'flex-1 font-display-italic text-title leading-none',
+                        it.state === 'todo' ? 'text-text-dim' : 'text-text',
                       )}
                     >
                       {it.label}
@@ -329,7 +329,7 @@ export function CalibrationScreen({
                       </span>
                     ) : null}
                     <span className="sr-only">
-                      {it.state === "done" ? "done" : active ? "in progress" : "not yet"}
+                      {it.state === 'done' ? 'done' : active ? 'in progress' : 'not yet'}
                     </span>
                   </li>
                 );
@@ -337,11 +337,11 @@ export function CalibrationScreen({
             </ol>
           </GlassPanel>
           <GlassPanel padding="md" glow="cyan" className="flex flex-col gap-3">
-            <Eyebrow accent="cyan">{mode === "floor" ? "Floor setup" : "Treadmill setup"}</Eyebrow>
+            <Eyebrow accent="cyan">{mode === 'floor' ? 'Floor setup' : 'Treadmill setup'}</Eyebrow>
             <p className="text-body text-text">
-              {mode === "floor"
-                ? "About 2 m back. Whole body in view."
-                : "1–1.5 m back. Head and shoulders in view."}
+              {mode === 'floor'
+                ? 'About 1.5 m back. Head to knees in view.'
+                : '1–1.5 m back. Head and shoulders in view.'}
             </p>
           </GlassPanel>
         </div>

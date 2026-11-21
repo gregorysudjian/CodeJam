@@ -69,6 +69,8 @@ export function PlayScreen({
   const onGameRef = useRef(onGame);
   /** True from the 'finished' event on: the round is over, the fanfare is playing. */
   const finishedRef = useRef(false);
+  /** Paused by the player (Esc, the HUD button or the gesture), not by losing tracking. */
+  const pausedByPlayerRef = useRef(false);
   useEffect(() => {
     onFinishRef.current = onFinish;
     onGameRef.current = onGame;
@@ -118,10 +120,12 @@ export function PlayScreen({
           });
           break;
         case 'paused':
+          pausedByPlayerRef.current = e.reason === 'user';
           setPaused(true);
           setTrackingLost(e.reason === 'trackingLost');
           break;
         case 'resumed':
+          pausedByPlayerRef.current = false;
           setPaused(false);
           setTrackingLost(false);
           break;
@@ -155,6 +159,28 @@ export function PlayScreen({
       onGameRef.current(null);
     };
   }, [level, input, weightKg]);
+
+  // Switching tab or window mid-round: pause, so the player comes back to the PAUSED screen
+  // instead of being thrown straight back in (QA Q8). Esc, RESUME or the X gesture resume.
+  useEffect(() => {
+    const onHide = () => {
+      if (document.hidden && !finishedRef.current) gameRef.current?.pause();
+    };
+    document.addEventListener('visibilitychange', onHide);
+    return () => document.removeEventListener('visibilitychange', onHide);
+  }, []);
+
+  // Arms crossed in an X (the pose 'pause' gesture): pause the round, or resume a pause the
+  // player made. A pause for lost tracking ends when the player is seen again, as before.
+  useEffect(() => {
+    if (!pose?.onGesture) return;
+    return pose.onGesture((g) => {
+      const game = gameRef.current;
+      if (g !== 'pause' || !game || finishedRef.current) return;
+      if (pausedByPlayerRef.current) game.resume();
+      else game.pause();
+    });
+  }, [pose]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-bg">

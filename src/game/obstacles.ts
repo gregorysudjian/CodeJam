@@ -46,10 +46,24 @@ function makePalette(hex: number): Palette {
   };
 }
 
+/** Looks per kind (obstacles.ts builders); the shape, colour and icon that tell the move stay. */
+export const VARIANTS = 3;
+
+/**
+ * Which look an object gets: a hash of its time, so a level (and its ghost) always looks the
+ * same, and neighbours rarely repeat.
+ */
+export function variantFor(t: number, kind: ObstacleKind): number {
+  const salt = { block: 1, hurdle: 2, beam: 3, crate: 4, orb: 5 }[kind];
+  const h = Math.sin(Math.round(t * 100) * 12.9898 + salt * 78.233) * 43758.5453;
+  return Math.floor((h - Math.floor(h)) * VARIANTS) % VARIANTS;
+}
+
 export interface ObstacleView {
   readonly kind: ObstacleKind;
   readonly root: THREE.Group;
-  show(spawn: Spawn, length: number): void;
+  /** `variant`: 0 to VARIANTS - 1, from variantFor. */
+  show(spawn: Spawn, length: number, variant: number): void;
   /**
    * The move was seen in the window: smash the crate, start collecting the orb.
    * `attractor` gives the world position the orb flies to (the hand that grabbed it).
@@ -164,6 +178,21 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     pillar: new THREE.CylinderGeometry(0.035, 0.035, 1, 6),
   };
   orbShellSource.dispose();
+  const pipeGeo = new THREE.CylinderGeometry(0.27, 0.27, W + 0.6, 16, 1);
+  const bandGeo = new THREE.TorusGeometry(0.3, 0.035, 6, 24);
+  const crystalSource = new THREE.OctahedronGeometry(T.ORB_RADIUS * 1.25, 0);
+  const crystalGeo = {
+    core: new THREE.OctahedronGeometry(T.ORB_RADIUS * 0.9, 0),
+    shell: new THREE.EdgesGeometry(crystalSource),
+    ring: new THREE.TorusGeometry(T.ORB_RADIUS * 1.6, 0.025, 6, 40),
+  };
+  crystalSource.dispose();
+  const gemSource = new THREE.DodecahedronGeometry(T.ORB_RADIUS * 1.35, 0);
+  const gemGeo = {
+    core: new THREE.SphereGeometry(T.ORB_RADIUS * 0.7, 16, 12),
+    shell: new THREE.EdgesGeometry(gemSource),
+  };
+  gemSource.dispose();
 
   /**
    * What a builder returns. `makeView` turns it into a pooled ObstacleView: it colours the
@@ -171,8 +200,8 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
    */
   interface Parts {
     root: THREE.Group;
-    /** Reset for reuse and fit to this spawn (lanes, hold length). */
-    configure(spawn: Spawn, length: number): void;
+    /** Reset for reuse and fit to this spawn (lanes, hold length, look). */
+    configure(spawn: Spawn, length: number, variant: number): void;
     /** The move icon; its glyph comes from GLYPH by kind. */
     icon?: THREE.Sprite;
     engage?(attractor?: () => THREE.Vector3): void;
@@ -188,17 +217,20 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     return {
       kind,
       root,
-      show(spawn, length) {
+      show(spawn, length, variant) {
         const key = colorKeyFor(spawn.requires);
         applyPalette(root, palettes[key]);
         if (icon && glyph) icon.material = iconMaterial(glyph, key);
-        parts.configure(spawn, length);
+        if (icon) icon.visible = true;
+        parts.configure(spawn, length, variant % VARIANTS);
         root.visible = true;
       },
       engage(attractor) {
         parts.engage?.(attractor);
       },
       setVerdict(v) {
+        // A cleared object's icon goes: it would pass over the runner and hide the move.
+        if ((v === 'cleared' || v === 'collected') && icon) icon.visible = false;
         if (v !== 'hit') return;
         applyPalette(root, hitPalette);
         if (icon && glyph) icon.material = iconMaterial(glyph, 'hit');
@@ -212,16 +244,58 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
 
   /* ── Builders, one per kind ── */
 
+  /** A thin glowing bar, rotated in the front plane by `angle`. */
+  const slat = (w: number, h: number, angle: number): THREE.Mesh => {
+    const m = glowBox(w, h, 0.05);
+    m.rotation.z = angle;
+    return m;
+  };
+  /** Shows look `variant` of a list of look groups, hides the rest. */
+  const pickLook = (looks: readonly THREE.Object3D[], variant: number): void =>
+    looks.forEach((g, i) => (g.visible = i === variant));
+  const looksOf = (parent: THREE.Object3D, n = VARIANTS): THREE.Group[] =>
+    Array.from({ length: n }, () => {
+      const g = new THREE.Group();
+      parent.add(g);
+      return g;
+    });
+
   function buildBlock(): Parts {
     const root = new THREE.Group();
+    const H = T.BLOCK_HEIGHT;
+    const w = L * 0.86;
+    const looks: THREE.Group[][] = [];
+    // Every look is the same solid wall (it must read as "not this lane"); only its lights differ.
     const walls = [-1, 0, 1].map((lane) => {
       const g = new THREE.Group();
       g.position.x = laneX(lane);
-      const wall = neonBox(L * 0.86, T.BLOCK_HEIGHT, T.BLOCK_DEPTH);
-      wall.position.set(0, T.BLOCK_HEIGHT / 2, -T.BLOCK_DEPTH / 2);
-      const stripe = glowBox(L * 0.86, 0.08, 0.06);
-      stripe.position.set(0, T.BLOCK_HEIGHT * 0.62, 0.02);
-      g.add(wall, stripe);
+      const wall = neonBox(w, H, T.BLOCK_DEPTH);
+      wall.position.set(0, H / 2, -T.BLOCK_DEPTH / 2);
+      g.add(wall);
+      const [a, b, c] = looksOf(g);
+      // 0: one bright stripe.
+      const stripe = glowBox(w, 0.08, 0.06);
+      stripe.position.set(0, H * 0.62, 0.02);
+      a!.add(stripe);
+      // 1: hazard barrier, diagonal slats and a lit top edge.
+      for (let k = -1; k <= 1; k++) {
+        const s = slat(0.09, H * 0.62, 0.55);
+        s.position.set(k * w * 0.3, H * 0.45, 0.03);
+        b!.add(s);
+      }
+      const lip = glowBox(w, 0.07, 0.07);
+      lip.position.set(0, H + 0.02, 0.02);
+      b!.add(lip);
+      // 2: cargo container, vertical ribs and a beacon on top.
+      for (let k = 0; k < 4; k++) {
+        const rib = glowBox(0.05, H * 0.8, 0.05);
+        rib.position.set(-w * 0.375 + (k * w * 0.75) / 3, H / 2, 0.03);
+        c!.add(rib);
+      }
+      const beacon = glowBox(0.3, 0.14, 0.3);
+      beacon.position.set(0, H + 0.08, -T.BLOCK_DEPTH / 2);
+      c!.add(beacon);
+      looks.push([a!, b!, c!]);
       root.add(g);
       return g;
     });
@@ -235,9 +309,10 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     return {
       root,
       icon: sprite,
-      configure(spawn) {
+      configure(spawn, _length, variant) {
         const free = ([-1, 0, 1] as const).find((l) => !spawn.lanes.includes(l)) ?? 0;
         walls.forEach((g, i) => (g.visible = spawn.lanes.includes((i - 1) as -1 | 0 | 1)));
+        for (const l of looks) pickLook(l, variant);
         guide.position.x = sprite.position.x = laneX(free);
       },
     };
@@ -245,38 +320,94 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
 
   function buildHurdle(): Parts {
     const root = new THREE.Group();
-    const bar = glowBox(W, 0.12, 0.12);
-    bar.position.y = T.HURDLE_HEIGHT;
-    const bar2 = glowBox(W, 0.05, 0.05);
-    bar2.position.y = T.HURDLE_HEIGHT * 0.45;
+    const H = T.HURDLE_HEIGHT;
+    // Every look keeps the full-width panel at the same height: "jump this".
     const panel = tag(new THREE.Mesh(planeGeo, placeholder.tele), 'tele');
-    panel.scale.set(W, T.HURDLE_HEIGHT, 1);
-    panel.position.y = T.HURDLE_HEIGHT / 2;
-    root.add(bar, bar2, panel);
+    panel.scale.set(W, H, 1);
+    panel.position.y = H / 2;
+    root.add(panel);
+    const [a, b, c] = looksOf(root);
+    // 0: a bar on two posts.
+    const bar = glowBox(W, 0.12, 0.12);
+    bar.position.y = H;
+    const bar2 = glowBox(W, 0.05, 0.05);
+    bar2.position.y = H * 0.45;
+    a!.add(bar, bar2);
     for (const s of [-1, 1]) {
-      const post = neonBox(0.18, T.HURDLE_HEIGHT + 0.15, 0.18);
-      post.position.set((s * W) / 2, (T.HURDLE_HEIGHT + 0.15) / 2, 0);
-      root.add(post);
+      const post = neonBox(0.18, H + 0.15, 0.18);
+      post.position.set((s * W) / 2, (H + 0.15) / 2, 0);
+      a!.add(post);
     }
+    // 1: a laser fence, three beams between emitter boxes.
+    for (const y of [H * 0.3, H * 0.65, H]) {
+      const beam = glowBox(W, 0.045, 0.045);
+      beam.position.y = y;
+      b!.add(beam);
+    }
+    for (const s of [-1, 1]) {
+      const emitter = neonBox(0.3, H + 0.2, 0.3);
+      emitter.position.set((s * (W + 0.3)) / 2, (H + 0.2) / 2, 0);
+      b!.add(emitter);
+    }
+    // 2: a low solid wall with jump chevrons on its face.
+    const wall = neonBox(W, H, 0.35);
+    wall.position.set(0, H / 2, -0.175);
+    const lip = glowBox(W, 0.07, 0.07);
+    lip.position.set(0, H, 0.02);
+    c!.add(wall, lip);
+    for (let lane = -1; lane <= 1; lane++)
+      for (const s of [-1, 1]) {
+        const arm = slat(0.06, 0.3, s * 0.8);
+        arm.position.set(laneX(lane) + s * 0.1, H * 0.5, 0.03);
+        c!.add(arm);
+      }
     const plate = floorPlate();
     plate.scale.set(W, 2.5, 1);
     plate.position.z = 1.25;
     const sprite = makeIcon();
     sprite.position.y = T.ICON_HEIGHT.hurdle;
     root.add(plate, sprite);
-    return { root, icon: sprite, configure() {} };
+    const looks = [a!, b!, c!];
+    return { root, icon: sprite, configure: (_s, _l, v) => pickLook(looks, v) };
   }
 
   function buildBeam(): Parts {
     const root = new THREE.Group();
     const top = T.BEAM_HEIGHT;
-    // Front: a solid slab. A long (held) beam continues as an open frame of rails and
-    // ribs, so the camera, which sits above the beam, still sees the runner underneath.
+    // Front: a solid piece whose underside is always at BEAM_HEIGHT. A long (held) beam
+    // continues as an open frame of rails and ribs, so the camera, which sits above the beam,
+    // still sees the runner underneath.
+    const [a, b, c] = looksOf(root);
+    // 0: a slab.
     const slab = neonBox(W + 0.6, 0.45, T.BEAM_MIN_DEPTH);
     slab.position.set(0, top + 0.225, -T.BEAM_MIN_DEPTH / 2);
+    a!.add(slab);
+    // 1: a truss gantry with lamps hanging under it.
+    const truss = neonBox(W + 0.6, 0.12, T.BEAM_MIN_DEPTH);
+    truss.position.set(0, top + 0.06, -T.BEAM_MIN_DEPTH / 2);
+    const trussTop = neonBox(W + 0.6, 0.12, T.BEAM_MIN_DEPTH);
+    trussTop.position.set(0, top + 0.58, -T.BEAM_MIN_DEPTH / 2);
+    b!.add(truss, trussTop);
+    for (let k = 0; k < 6; k++) {
+      const strut = slat(0.06, 0.62, k % 2 === 0 ? 0.75 : -0.75);
+      strut.position.set(-W / 2 + (k + 0.5) * (W / 6), top + 0.32, 0.03);
+      b!.add(strut);
+    }
+    // 2: a fat pipe with glowing bands.
+    const pipe = tag(new THREE.Mesh(pipeGeo, placeholder.body), 'body');
+    pipe.rotation.z = Math.PI / 2;
+    pipe.position.set(0, top + 0.27, -0.27);
+    c!.add(pipe);
+    for (let k = -2; k <= 2; k++) {
+      const band = tag(new THREE.Mesh(bandGeo, placeholder.glow), 'glow');
+      band.rotation.y = Math.PI / 2;
+      band.position.set(k * L * 0.6, top + 0.27, -0.27);
+      c!.add(band);
+    }
     const lip = glowBox(W + 0.6, 0.07, 0.07);
     lip.position.set(0, top, 0.02);
-    root.add(slab, lip);
+    root.add(lip);
+    const looks = [a!, b!, c!];
 
     const span = new THREE.Group(); // unit length along -z, scaled by the hold length
     const plate = floorPlate();
@@ -311,7 +442,8 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     return {
       root,
       icon: sprite,
-      configure(_spawn, length) {
+      configure(_spawn, length, variant) {
+        pickLook(looks, variant);
         const long = length > T.BEAM_MIN_DEPTH;
         const depth = Math.max(T.BEAM_MIN_DEPTH, length);
         span.visible = long;
@@ -330,28 +462,50 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
 
   function buildCrate(): Parts {
     const root = new THREE.Group();
+    type Piece = { obj: THREE.Group; home: THREE.Vector3; vel: THREE.Vector3; spin: THREE.Vector3 };
+    // Every look fills the whole track up to CRATE_HEIGHT ("smash this"), in pieces that fly.
+    const looks = looksOf(root);
+    const lookPieces: Piece[][] = looks.map(() => []);
+    const addPiece = (look: number, obj: THREE.Group, col: number, row: number, rows: number) => {
+      const home = obj.position.clone();
+      looks[look]!.add(obj);
+      lookPieces[look]!.push({
+        obj,
+        home,
+        vel: new THREE.Vector3(col * 3.2 + (row - 0.5) * 0.8, 3.5 + (row / rows) * 5, -2 - row),
+        spin: new THREE.Vector3(2 + col, 3 - row * 2, col * 2.5 + 1),
+      });
+    };
+    // 0: two rows of three crates with a cross on each.
     const h = crateRow;
-    const pieces: {
-      obj: THREE.Group;
-      home: THREE.Vector3;
-      vel: THREE.Vector3;
-      spin: THREE.Vector3;
-    }[] = [];
-    for (let row = 0; row < 2; row++) {
+    for (let row = 0; row < 2; row++)
       for (let lane = -1; lane <= 1; lane++) {
         const obj = neonBox(L * 0.92, h - 0.08, 0.8);
         obj.add(tag(new THREE.LineSegments(crossGeo, placeholder.edge), 'edge'));
-        const home = new THREE.Vector3(laneX(lane), row * h + h / 2, -0.4);
-        obj.position.copy(home);
-        root.add(obj);
-        pieces.push({
-          obj,
-          home,
-          vel: new THREE.Vector3(lane * 3.2 + (row - 0.5) * 0.8, 3.5 + row * 2.5, -2 - row),
-          spin: new THREE.Vector3(2 + lane, 3 - row * 2, lane * 2.5 + 1),
-        });
+        obj.position.set(laneX(lane), row * h + h / 2, -0.4);
+        addPiece(0, obj, lane, row, 2);
       }
-    }
+    // 1: a stack of nine smaller cubes.
+    const h3 = T.CRATE_HEIGHT / 3;
+    for (let row = 0; row < 3; row++)
+      for (let lane = -1; lane <= 1; lane++) {
+        const obj = neonBox(L * 0.9, h3 - 0.07, 0.7);
+        obj.position.set(laneX(lane), row * h3 + h3 / 2, -0.35);
+        addPiece(1, obj, lane, row, 3);
+      }
+    // 2: a wall of glass panes with glowing frames.
+    for (let row = 0; row < 2; row++)
+      for (let lane = -1; lane <= 1; lane++) {
+        const obj = neonBox(L * 0.95, h - 0.05, 0.16);
+        const bar = glowBox(L * 0.95, 0.05, 0.05);
+        bar.position.set(0, (h - 0.05) / 2, 0.06);
+        const mid = slat(0.04, h * 0.8, 0.35);
+        mid.position.z = 0.09;
+        obj.add(bar, mid);
+        obj.position.set(laneX(lane), row * h + h / 2, -0.08);
+        addPiece(2, obj, lane, row, 2);
+      }
+    let pieces = lookPieces[0]!;
     // Long crates (overhead hold): rails above the track for the hold length.
     const rails = new THREE.Group();
     for (const s of [-1, 1]) {
@@ -376,9 +530,11 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     return {
       root,
       icon: sprite,
-      configure(spawn, length) {
+      configure(spawn, length, variant) {
         smashT = -1;
         sprite.visible = true;
+        pickLook(looks, variant);
+        pieces = lookPieces[variant]!;
         for (const p of pieces) {
           p.obj.position.copy(p.home);
           p.obj.rotation.set(0, 0, 0);
@@ -415,10 +571,25 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       g.position.x = laneX(lane);
       const float = new THREE.Group();
       float.position.y = T.ORB_HEIGHT;
-      const core = tag(new THREE.Mesh(orbGeo.core, placeholder.glow), 'glow');
+      // Same size and height in every look: a glowing thing to grab.
+      const looks = looksOf(float);
+      // 0: a faceted orb in a wire shell with a halo.
       const shell = tag(new THREE.LineSegments(orbGeo.shell, placeholder.edge), 'edge');
       const halo = tag(new THREE.Mesh(orbGeo.halo, placeholder.glow), 'glow');
-      float.add(core, shell, halo);
+      looks[0]!.add(tag(new THREE.Mesh(orbGeo.core, placeholder.glow), 'glow'), shell, halo);
+      // 1: a crystal in two crossed rings.
+      const crystalShell = tag(new THREE.LineSegments(crystalGeo.shell, placeholder.edge), 'edge');
+      const ringA = tag(new THREE.Mesh(crystalGeo.ring, placeholder.glow), 'glow');
+      const ringB = tag(new THREE.Mesh(crystalGeo.ring, placeholder.glow), 'glow');
+      ringB.rotation.y = Math.PI / 2;
+      const rings = new THREE.Group();
+      rings.add(ringA, ringB);
+      looks[1]!.add(tag(new THREE.Mesh(crystalGeo.core, placeholder.glow), 'glow'));
+      looks[1]!.add(crystalShell, rings);
+      // 2: a gem: a bright core in a dodecahedral cage.
+      const cage = tag(new THREE.LineSegments(gemGeo.shell, placeholder.edge), 'edge');
+      looks[2]!.add(tag(new THREE.Mesh(gemGeo.core, placeholder.glow), 'glow'), cage);
+      const spinners = [shell, crystalShell, cage];
       const pillar = tag(new THREE.Mesh(orbGeo.pillar, placeholder.tele), 'tele');
       pillar.scale.y = T.ORB_HEIGHT;
       pillar.position.y = T.ORB_HEIGHT / 2;
@@ -426,17 +597,18 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       plate.scale.set(L * 0.7, L * 0.7, 1);
       g.add(float, pillar, plate);
       root.add(g);
-      return { g, float, shell, halo };
+      return { g, float, looks, spinners, halo, rings };
     });
     let collectT = -1;
     let attract: (() => THREE.Vector3) | null = null;
     const local = new THREE.Vector3();
     return {
       root,
-      configure(spawn) {
+      configure(spawn, _length, variant) {
         collectT = -1;
         attract = null;
         orbs.forEach((o, i) => {
+          pickLook(o.looks, variant);
           o.g.visible = spawn.lanes.includes((i - 1) as -1 | 0 | 1);
           o.float.scale.setScalar(1);
           o.float.position.set(0, T.ORB_HEIGHT, 0);
@@ -451,8 +623,9 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
         if (collectT >= 0) collectT += dt;
         const k = collectT >= 0 ? Math.min(1, collectT / T.COLLECT_SEC) : 0;
         for (const o of orbs) {
-          o.shell.rotation.set(time * 0.9, time * 1.3, 0);
+          for (const s of o.spinners) s.rotation.set(time * 0.9, time * 1.3, 0);
           o.halo.rotation.set(Math.PI / 2 + Math.sin(time * 2) * 0.3, 0, time);
+          o.rings.rotation.set(time * 1.1, time * 0.7, 0);
           if (collectT < 0) {
             o.float.position.y = T.ORB_HEIGHT + Math.sin(time * 3) * 0.08;
             continue;
@@ -531,7 +704,14 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       }
       planeGeo.dispose();
       crossGeo.dispose();
-      for (const g of Object.values(orbGeo)) g.dispose();
+      for (const g of [
+        ...Object.values(orbGeo),
+        ...Object.values(crystalGeo),
+        ...Object.values(gemGeo),
+        pipeGeo,
+        bandGeo,
+      ])
+        g.dispose();
       for (const p of [...Object.values(palettes), hitPalette])
         for (const m of Object.values(p)) m.dispose();
       for (const m of iconMats.values()) {
