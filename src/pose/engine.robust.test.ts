@@ -14,7 +14,13 @@ function deferred<T>() {
 }
 
 function camera() {
-  const track = { stop: vi.fn(), getSettings: () => ({}) };
+  const track = Object.assign(new EventTarget(), {
+    readyState: 'live',
+    stop: vi.fn(() => {
+      track.readyState = 'ended';
+    }),
+    getSettings: () => ({}),
+  });
   const stream = {
     getTracks: () => [track],
     getVideoTracks: () => [track],
@@ -32,13 +38,17 @@ const video = Object.assign(new EventTarget(), {
 const nextTurn = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 beforeEach(() => {
+  getUserMedia.mockReset();
+  video.play.mockReset().mockResolvedValue(undefined);
   vi.stubGlobal(
     'window',
     Object.assign(new EventTarget(), { isSecureContext: true, setInterval, clearInterval }),
   );
   vi.stubGlobal('document', { createElement: () => video });
   vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } });
-  vi.mocked(getLandmarker).mockResolvedValue({ delegate: 'GPU', detect: () => [] });
+  vi.mocked(getLandmarker)
+    .mockReset()
+    .mockResolvedValue({ delegate: 'GPU', detect: () => [] });
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -95,6 +105,45 @@ test('a model 404 releases the stream and a new start retries successfully', asy
   source.stop();
   expect(second.track.stop).toHaveBeenCalledOnce();
 });
+
+test.each(['already ended', 'while attaching video', 'while loading model'])(
+  'an ended camera rejects startup before calibration waits for frames: %s',
+  async (phase) => {
+    const { source } = createPoseEngine();
+    const first = camera();
+    const retry = camera();
+    const playing = deferred<void>();
+    const loading = deferred<Awaited<ReturnType<typeof getLandmarker>>>();
+    getUserMedia.mockResolvedValueOnce(first.stream).mockResolvedValueOnce(retry.stream);
+    if (phase === 'already ended') first.track.readyState = 'ended';
+    if (phase === 'while attaching video') video.play.mockReturnValueOnce(playing.promise);
+    if (phase === 'while loading model')
+      vi.mocked(getLandmarker).mockReturnValueOnce(loading.promise);
+    const result = source.start().then(
+      () => 'started',
+      (error: Error) => error.message,
+    );
+    try {
+      await nextTurn();
+      if (phase !== 'already ended') {
+        first.track.readyState = 'ended';
+        first.track.dispatchEvent(new Event('ended'));
+      }
+      expect(await Promise.race([result, nextTurn().then(() => 'still waiting')])).toMatch(
+        /camera stopped/i,
+      );
+      expect(video.srcObject).toBeNull();
+      expect(video.requestVideoFrameCallback).not.toHaveBeenCalled();
+      await source.start();
+      expect(video.srcObject).toBe(retry.stream);
+    } finally {
+      playing.resolve();
+      loading.resolve({ delegate: 'CPU', detect: () => [] });
+      await result;
+      source.stop();
+    }
+  },
+);
 test('StrictMode stop/start during a pending model load keeps only the current stream and loop', async () => {
   const { source } = createPoseEngine();
   const first = camera();

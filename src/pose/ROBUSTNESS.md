@@ -113,3 +113,9 @@ const sample = () => ({ frames, track: track.readyState });
 ```
 
 Read `sample()` before and after switching foreground tabs, stop the second with `engine.source.stop()`, and sample the first again. Stop the first stream at the end. An exclusive physical camera or another application can still reject acquisition; the injected busy-error test above covers that UI path. Physical device sharing on Patrick’s Mac is **not tested**.
+
+## Camera ends while setup is starting
+
+**Possible on a cold start, before frame 0.** On `ed6098f`, Chrome granted the file-backed camera and DevTools held the model response for 3.5 s. Revoking camera permission during that window ended the track. After the response was released, calibration still asked the player to stand in frame. The manual keyboard button was visible, but the app never surfaced a camera error during the observation. Chrome also resolved `video.play()` on an already-ended stream.
+
+The engine now observes the track until video playback and model startup finish. An ended track rejects startup and runs the existing cleanup and app error handling. `engine.robust.test.ts` covers an already-ended track and loss during either pending operation, followed by a successful retry. Removing the fix reproduced all three failures. In five production-browser runs with real permission revocation, the camera error overlay appeared while the model response was still held. Use keyboard dismissed it each time, and Chrome reported zero page exceptions. A physical unplug during startup is **not tested**.
