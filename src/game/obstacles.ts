@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { MoveType, ObstacleKind, Spawn } from '@/contracts';
 import { GLYPH, paintGlyph, type Glyph } from './glyph';
+import * as LK from './look';
 import type { Verdict } from './judge';
 import { neon } from './scene';
 import * as T from './tuning';
@@ -26,12 +27,12 @@ interface Palette {
 
 function makePalette(hex: number): Palette {
   return {
-    body: new THREE.MeshStandardMaterial({
+    // Lambert, not standard: the dark bodies look the same, and near the camera they fill a
+    // large part of the screen, so the cheaper shading pays.
+    body: new THREE.MeshLambertMaterial({
       color: T.COLOR_BODY,
       emissive: new THREE.Color(hex),
       emissiveIntensity: 0.22,
-      roughness: 0.45,
-      metalness: 0.5,
     }),
     edge: new THREE.LineBasicMaterial({ color: neon(hex) }),
     glow: new THREE.MeshBasicMaterial({ color: neon(hex) }),
@@ -57,6 +58,14 @@ export function variantFor(t: number, kind: ObstacleKind): number {
   const salt = { block: 1, hurdle: 2, beam: 3, crate: 4, orb: 5 }[kind];
   const h = Math.sin(Math.round(t * 100) * 12.9898 + salt * 78.233) * 43758.5453;
   return Math.floor((h - Math.floor(h)) * VARIANTS) % VARIANTS;
+}
+
+/**
+ * How much a move icon grows at `fromCamera` world units from the camera: 1 up close, then in
+ * proportion to the distance (a constant size on screen), capped at ICON_GROW_MAX.
+ */
+export function iconGrow(fromCamera: number): number {
+  return Math.min(LK.ICON_GROW_MAX, Math.max(1, fromCamera / LK.ICON_GROW_FROM));
 }
 
 export interface ObstacleView {
@@ -119,6 +128,15 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
   const glowBox = (w: number, h: number, d: number): THREE.Mesh =>
     tag(new THREE.Mesh(box(w, h, d).geo, placeholder.glow), 'glow');
   const planeGeo = new THREE.PlaneGeometry(1, 1);
+  const guideTex = chevronTexture();
+  const guideMat = new THREE.MeshBasicMaterial({
+    map: guideTex,
+    color: neon(T.MOVE_COLOR.sidestep, 1.2),
+    transparent: true,
+    opacity: LK.GUIDE_OPACITY,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
   /** Floor marker: unit plane on the ground, scaled by the caller. */
   const floorPlate = (): THREE.Mesh => {
     const m = tag(new THREE.Mesh(planeGeo, placeholder.tele), 'tele');
@@ -237,6 +255,15 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
         parts.onHit?.();
       },
       tick(dt, time) {
+        if (icon) {
+          // Far away the icon grows, so it keeps a readable size on screen (look.ts); it grows
+          // upward from its base, so it never sinks into its own object. A block's icon stays
+          // centred in the free lane.
+          const size = T.ICON_SIZE * iconGrow(T.CAMERA_POS.z - root.position.z);
+          icon.scale.setScalar(size);
+          const base = kind === 'block' || kind === 'orb' ? 0 : T.ICON_HEIGHT[kind];
+          if (base > 0) icon.position.y = base + (size - T.ICON_SIZE) / 2;
+        }
         parts.tick?.(dt, time);
       },
     };
@@ -300,9 +327,12 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       return g;
     });
     // The free lane gets the floor marker and the "go here" icon.
-    const guide = floorPlate();
-    guide.scale.set(L * 0.8, T.TELEGRAPH_LENGTH, 1);
-    guide.position.z = -T.TELEGRAPH_LENGTH / 2 + 1;
+    // The free lane: bright chevrons on the floor pointing ahead, "go here" (look.ts).
+    const guide = new THREE.Mesh(planeGeo, guideMat);
+    guide.rotation.x = -Math.PI / 2;
+    guide.position.y = 0.025;
+    guide.scale.set(L * 0.8, T.TELEGRAPH_LENGTH * 1.4, 1);
+    guide.position.z = -(T.TELEGRAPH_LENGTH * 1.4) / 2 + 1;
     const sprite = makeIcon();
     sprite.position.y = T.ICON_HEIGHT.block;
     root.add(guide, sprite);
@@ -703,6 +733,8 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
         g.edges.dispose();
       }
       planeGeo.dispose();
+      guideTex.dispose();
+      guideMat.dispose();
       crossGeo.dispose();
       for (const g of [
         ...Object.values(orbGeo),
@@ -736,11 +768,60 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
   };
 }
 
-/** The badge texture for one glyph and colour (glyph.ts paints it). */
+/**
+ * The badge texture for one glyph and colour. glyph.ts paints it (the same icon as the 2D
+ * fallback); here it is painted at a higher resolution and thickened by stamping it in a small
+ * circle, so strokes read bolder from 2 m and the dark disc behind it is more solid.
+ */
 function drawGlyph(glyph: Glyph, hex: number): THREE.CanvasTexture {
+  const size = LK.ICON_TEXTURE;
+  const k = size / 128; // glyph.ts draws in a 128-pixel box
+  const grow = LK.ICON_STROKE_BOOST * k;
+  const base = document.createElement('canvas');
+  base.width = base.height = size;
+  const r = size / 2 - grow;
+  paintGlyph(
+    base.getContext('2d')!,
+    glyph,
+    `#${hex.toString(16).padStart(6, '0')}`,
+    size / 2,
+    size / 2,
+    r,
+  );
   const c = document.createElement('canvas');
-  c.width = c.height = 128;
-  paintGlyph(c.getContext('2d')!, glyph, `#${hex.toString(16).padStart(6, '0')}`, 64, 64, 64);
+  c.width = c.height = size;
+  const g = c.getContext('2d')!;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    g.drawImage(base, Math.cos(a) * grow, Math.sin(a) * grow);
+  }
+  g.drawImage(base, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/** White chevrons pointing ahead (up the texture = toward the horizon once laid on the floor). */
+function chevronTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 256;
+  const g = c.getContext('2d')!;
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = 18;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  const n = LK.GUIDE_CHEVRONS;
+  for (let i = 0; i < n; i++) {
+    const y = 40 + (i * (c.height - 80)) / Math.max(1, n - 1);
+    // The canvas top lies furthest down the track: the nearest chevron (bottom) is the brightest.
+    g.globalAlpha = 1 - ((n - 1 - i) / n) * 0.45;
+    g.beginPath();
+    g.moveTo(18, y + 34);
+    g.lineTo(64, y - 6);
+    g.lineTo(110, y + 34);
+    g.stroke();
+  }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;

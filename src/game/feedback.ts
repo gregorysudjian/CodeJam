@@ -1,3 +1,4 @@
+import { GRADE_GOOD_COLOR } from './look';
 import * as T from './tuning';
 
 /**
@@ -16,7 +17,7 @@ export function gradeFor(offset: number, input: 'pose' | 'keyboard'): Grade {
 
 export const GRADE_LABEL: Record<Grade, { text: string; color: number }> = {
   perfect: { text: 'PERFECT', color: T.COLOR_LIME },
-  good: { text: 'GOOD', color: T.MOVE_COLOR.sidestep },
+  good: { text: 'GOOD', color: GRADE_GOOD_COLOR },
   late: { text: 'LATE', color: T.MOVE_COLOR.squat },
 };
 
