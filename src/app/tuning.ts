@@ -17,6 +17,8 @@ export const KIOSK_REFRESH_MS = 15000;
 export const LEADERBOARD_SIZE = 20;
 /** The board shown first (landing top 3, kiosk, leaderboard): judges play the 45 s demo round. */
 export const BOARD_DEFAULT_DURATION_SEC = 45;
+/** Where QR codes point when the app runs on localhost (the demo Mac): a phone can't open localhost (QA Q18). */
+export const PUBLIC_SITE_URL = 'https://codejam-jet.vercel.app';
 
 /** "Try each move" tutorial before a player's first round: time per move (about 15 s in total). */
 export const TUTORIAL_STEP_MS = 2500;
