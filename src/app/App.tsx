@@ -31,6 +31,7 @@ import { DevPose } from './DevPose';
 import { KioskBoard } from './KioskBoard';
 import { CameraErrorOverlay, OfflineBanner } from './ErrorStates';
 import { classifyCameraError, type CameraErrorInfo } from './errors';
+import { InputSwitch, type InputKind } from './InputSwitch';
 import { createSwitchableInput } from './switchableInput';
 import { TryMoves } from './TryMoves';
 import { tutorialMoves } from './tutorial';
@@ -82,7 +83,7 @@ function MainApp() {
   const [screen, setScreen] = useState<Screen>('landing');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [config, setConfig] = useState<SessionConfig | null>(null);
-  const [inputKind, setInputKind] = useState<'keyboard' | 'pose'>('keyboard');
+  const [inputKind, setInputKind] = useState<InputKind>('keyboard');
   const [debug, setDebug] = useState(false);
   const [notice, setNotice] = useState('');
   const [cameraError, setCameraError] = useState<CameraErrorInfo | null>(null);
@@ -256,14 +257,22 @@ function MainApp() {
     setScreen('results');
 
     const saved = await store.saveSession(s);
-    const [list, coach, top] = await Promise.all([
-      store.listSessions(50),
-      store.getCoachAdvice(saved),
-      store.getLeaderboard(s.config.workout, s.config.mode, LEADERBOARD_SIZE),
-    ]);
+    // Each result shows as soon as it arrives: on slow wifi the coach card must not wait for the
+    // session list and leaderboard to time out too.
+    void store.getCoachAdvice(saved).then((coach) => {
+      setAdvice(coach);
+      setCoachPick(coach);
+    });
+    void store
+      .getLeaderboard(s.config.workout, s.config.mode, LEADERBOARD_SIZE)
+      .then((top) => {
+        // An empty board means offline with nothing cached, not "you are #1". When the round
+        // synced, the board includes it, so it is never empty then.
+        const better = top.filter((e) => e.score > s.score).length;
+        setRank(top.length > 0 && better < LEADERBOARD_SIZE ? better + 1 : null);
+      });
+    const list = await store.listSessions(50);
     setSessions(list);
-    setAdvice(coach);
-    setCoachPick(coach);
     const previousBest = list
       .filter(
         (x) =>
@@ -273,8 +282,6 @@ function MainApp() {
       )
       .reduce((m, x) => Math.max(m, x.score), 0);
     setPersonalBest(s.score > 0 && s.score > previousBest);
-    const better = top.filter((e) => e.score > s.score).length;
-    setRank(better < LEADERBOARD_SIZE ? better + 1 : null);
   }, []);
 
   const handleGame = useCallback((g: Game | null) => {
@@ -364,6 +371,7 @@ function MainApp() {
           workouts={workouts}
           coachPick={coachPick}
           initial={config ?? undefined}
+          settingsSlot={<InputSwitch value={inputKind} onChange={setInputKind} />}
           onStart={startSession}
           onBack={() => setScreen(sessions.length ? 'dashboard' : 'landing')}
         />

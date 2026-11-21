@@ -16,3 +16,6 @@ export * from "./useHotkey";
 export * from "./MoveFigure";
 export * from "./TextField";
 export * from "./BustOutline";
+
+export * from "./ScreenFooter";
+export * from "./CoachBanner";

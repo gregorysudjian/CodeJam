@@ -1,3 +1,4 @@
+import { Button } from "@/ui/components/ui/button";
 import { useState } from "react";
 import {
   CloudOff,
@@ -7,16 +8,15 @@ import {
   Footprints,
   HeartPulse,
   Play,
-  Sparkles,
   Trophy,
 } from "lucide-react";
 import type { CoachAdvice, Profile, SavedSession, SessionConfig } from "@/contracts";
 import {
   AnimatedNumber,
-  EmptyState,
   Eyebrow,
   GameButton,
-  GlassPanel,
+  CoachBanner,
+  ScreenFooter,
   MoveFigure,
   ProgressRing,
   Screen,
@@ -96,44 +96,70 @@ export function DashboardScreen({
     Boolean(coachPick && onPlayCoachPick),
   );
   return (
-    <Screen backdrop="arena" className="dashboard-screen">
-      <SectionTitle
-        as="h1"
-        size="lg"
-        eyebrow="YOUR WEEK"
-        title={
-          <span className="break-words">
-            WELCOME BACK, <span className="text-lime">{profile.displayName}</span>
-          </span>
-        }
-        right={
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="flex items-center gap-2 rounded-full border border-cyan/40 bg-cyan/10 px-4 py-2 font-display-italic text-[20px] text-cyan">
-              <GoalIcon className="size-5" />
-              {GOALS[profile.goal].label}
-            </span>
-            {onEditProfile && (
-              <GameButton variant="ghost" size="md" leadingIcon={Edit3} onClick={onEditProfile}>
-                EDIT PROFILE
-              </GameButton>
-            )}
-          </div>
-        }
-      />
-      {sessions.length === 0 ? (
-        <div className="flex min-h-[440px] flex-col items-center justify-center">
-          <MoveFigure pose="jump" size={160} />
-          <EmptyState
-            icon={Footprints}
-            title="NO ROUNDS YET"
-            body="Your first round takes 90 seconds."
-            action={
-              <GameButton size="lg" onClick={onPlay} leadingIcon={Play}>
-                PLAY NOW
+    <Screen
+      backdrop="arena"
+      className="dashboard-screen polish-screen"
+      footer={
+        sessions.length > 0 ? (
+          <ScreenFooter
+            left={
+              <GameButton variant="ghost" size="md" leadingIcon={Trophy} onClick={onLeaderboard}>
+                LEADERBOARD
               </GameButton>
             }
-            className="pt-6"
+            right={
+              <GameButton size="lg" leadingIcon={Play} keyHint="ENTER" onClick={onPlay}>
+                PLAY
+              </GameButton>
+            }
           />
+        ) : null
+      }
+    >
+      {sessions.length > 0 && (
+        <SectionTitle
+          as="h1"
+          size="lg"
+          eyebrow="YOUR WEEK"
+          title={
+            <span className="break-words">
+              WELCOME BACK, <span className="text-lime">{profile.displayName}</span>
+              {onEditProfile && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Edit profile"
+                  aria-label="Edit profile"
+                  onClick={onEditProfile}
+                  className="ml-3 align-middle text-text-muted"
+                >
+                  <Edit3 className="size-5" />
+                </Button>
+              )}
+            </span>
+          }
+          right={
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="flex items-center gap-2 rounded-full border border-cyan/40 bg-cyan/10 px-4 py-2 font-display-italic text-[20px] text-cyan">
+                <GoalIcon className="size-5" />
+                {GOALS[profile.goal].label}
+              </span>
+            </div>
+          }
+        />
+      )}
+      {sessions.length === 0 ? (
+        <div className="dashboard-empty flex flex-col items-center justify-center gap-5 text-center">
+          <h1 className="font-display-italic text-title text-text-muted">WELCOME, {profile.displayName}</h1>
+          <MoveFigure pose="jump" size={160} />
+          <h2 className="font-display-italic text-display-sm">NO ROUNDS YET</h2>
+          <p className="text-body text-text-muted">Your first round takes 90 seconds.</p>
+          <GameButton size="lg" keyHint="ENTER" onClick={onPlay} leadingIcon={Play}>
+            PLAY NOW
+          </GameButton>
+          <GameButton variant="ghost" size="md" onClick={onLeaderboard} leadingIcon={Trophy}>
+            LEADERBOARD
+          </GameButton>
         </div>
       ) : (
         <>
@@ -237,50 +263,14 @@ export function DashboardScreen({
             now={now}
           />
           {coachPick && (
-            <GlassPanel
-              className={cn(
-                "flex flex-wrap items-center gap-6 border-l-4 p-6",
-                ACCENT_TEXT[WORKOUT_ACCENTS[coachPick.next.workout]],
-              )}
-            >
-              <MoveFigure
-                pose={
-                  coachPick.next.workout === "legs"
-                    ? "squat"
-                    : coachPick.next.workout === "arms"
-                      ? "reachRight"
-                      : coachPick.next.workout === "shoulders"
-                        ? "armsUp"
-                        : "jump"
-                }
-                size={110}
-              />
-              <div className="min-w-0 flex-1">
-                <Eyebrow className="mb-3 flex items-center gap-2 text-current">
-                  <Sparkles className="size-4" />
-                  UP NEXT
-                </Eyebrow>
-                <h2 className="font-display-italic text-title">
-                  {WORKOUT_LABELS[coachPick.next.workout]} · {MODE_LABELS[coachPick.next.mode]} ·{" "}
-                  {coachPick.next.durationSec} S
-                </h2>
-                <p className="mt-3 max-w-xl text-body text-text-muted">{coachPick.reason}</p>
-              </div>
-              {onPlayCoachPick && (
-                <GameButton
-                  size="lg"
-                  keyHint="C"
-                  onClick={() => onPlayCoachPick(coachPick.next)}
-                  className="px-5"
-                >
-                  PLAY COACH'S PICK
-                </GameButton>
-              )}
-            </GlassPanel>
+            <CoachBanner
+              advice={coachPick}
+              {...(onPlayCoachPick ? { onPlay: onPlayCoachPick } : {})}
+            />
           )}
           <section aria-label="Session history">
             <div className="mb-6 flex items-center justify-between gap-4">
-              <SectionTitle eyebrow="RECENT ROUNDS" title="YOUR TRACK RECORD" size="sm" />
+              <SectionTitle title="RECENT ROUNDS" size="sm" />
               <span className="text-caption text-text-muted">
                 {total.sessions} rounds · Best {total.bestScore.toLocaleString("en-US")}
               </span>
@@ -340,20 +330,6 @@ export function DashboardScreen({
           </section>
         </>
       )}
-      <div className="flex flex-wrap items-center gap-4 border-t border-glass-border pt-7">
-        <GameButton size="xl" leadingIcon={Play} keyHint="ENTER" onClick={onPlay}>
-          PLAY
-        </GameButton>
-        <GameButton
-          variant="secondary"
-          size="lg"
-          leadingIcon={Trophy}
-          keyHint="L"
-          onClick={onLeaderboard}
-        >
-          LEADERBOARD
-        </GameButton>
-      </div>
     </Screen>
   );
 }
