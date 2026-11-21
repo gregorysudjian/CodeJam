@@ -50,7 +50,7 @@ Every visible string and accessible label, read in flow order as a first-time ju
 | --- | --- | --- | --- | --- |
 | C1 | Tutorial, squat (keyboard) | SQUAT DOWN AND HOLD: HOLD ↓ | SQUAT DOWN AND HOLD: ↓ | Greg (`src/app/tutorial.ts`, `KEYS.squat`) |
 | C2 | Tutorial, jump (camera) | title JUMP, hint "Jump" (same word twice) | hint "Jump up" | Greg (`src/app/tutorial.ts`, `BODY.jump`) |
-| C3 | Results, coach recap | Nice work, Guest-5250: 2300 points at 81% accuracy… | …: 2,300 points at 81% accuracy… (same format as the big score) | Greg (`src/data/coach.ts:97`, `toLocaleString('en-US')`) |
+| C3 | Results, coach recap | Good round, Guest-5250: 2300 points at 81% accuracy… (opener per #51) | …: 2,300 points… (same format as the big score) | Greg (`src/data/coach.ts`, the `recap` line, `latest.score.toLocaleString('en-US')`) |
 | C4 | Results, coach tip (reach) | Reach your left arm high and out to the side, above head height. | Raise your left arm straight up, hand above your head. (Detection only needs the wrist above the nose; "out to the side" isn't needed, and the tutorial says "Raise your left arm") | Greg (`src/data/coach.ts`, `TIPS.reachLeft`/`reachRight`) |
 | C5 | Select, settings row | LOW IMPACT (switch, no explanation) | LOW IMPACT, with the description "No jumps" | `src/ui` (`WorkoutSelectScreen.tsx:326`, `description` prop of the toggle) |
 | C6 | Dashboard, chart header | Pace 8.6 min / day | Goal pace 8.6 min / day (it is the weekly goal ÷ 7, not the player's pace) | `src/ui` (`DashboardCharts.tsx:75`) |
