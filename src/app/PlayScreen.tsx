@@ -1,6 +1,6 @@
 // The game canvas with the GameHud overlay. The game loop lives in src/game; React only
 // re-renders the HUD from a 10 Hz poll (AGENTS.md rule 6).
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   Game,
   InputSource,
@@ -43,6 +43,9 @@ export function PlayScreen({
   onUseKeyboard: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // The level actually played. generateLevel may change the config (fills the seed; with ?demo=1
+  // it plays the 45 s demo level), so the HUD reads level.config, never the app's choice.
+  const level = useMemo(() => generateLevel(config), [config]);
   const gameRef = useRef<Game | null>(null);
   const [stats, setStats] = useState<LiveStats | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -73,7 +76,6 @@ export function PlayScreen({
     // Match the drawing buffer to the CSS size (the Three.js game also tracks resizes itself).
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
-    const level = generateLevel(config);
     // Pass level.config so the saved session records the seed actually played (CONTRACTS.md).
     const tracker = createSessionTracker(level.config, { weightKg });
     const game = createGame(canvas, level, input);
@@ -149,7 +151,7 @@ export function PlayScreen({
       gameRef.current = null;
       onGameRef.current(null);
     };
-  }, [config, input, weightKg]);
+  }, [level, input, weightKg]);
 
   const pose = input.kind === 'pose' ? (input as PoseInputSource) : null;
 
@@ -160,8 +162,8 @@ export function PlayScreen({
         <GameHud
           stats={stats}
           elapsedSec={elapsed}
-          durationSec={config.durationSec}
-          mode={config.mode}
+          durationSec={level.config.durationSec}
+          mode={level.config.mode}
           cue={cue}
           lastEvent={lastEvent}
           paused={paused}
