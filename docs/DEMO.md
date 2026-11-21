@@ -34,6 +34,7 @@ Before the pitch, the Player's account should already hold a few real sessions f
 - It should show each move at least twice, end on a streak, and avoid the hardest combos.
 - For a judge's turn, use the same preset with the low-impact toggle offered up front.
 - Open the app with `?demo=1`: every round is the fixed 45 s demo level (seed 41492), and the select screen preselects it.
+- A round opens with a 3 s camera fly-in and 3-2-1 before GO: allow about 50 s from Start to results.
 
 **Ghost runner.** Players race their best run of the same level. Ghosts live in the browser, so:
 - **One ghost per origin.** Ghosts are stored per URL: rehearse on the exact URL the demo uses (`http://localhost:5173/?demo=1` on Patrick's Mac), or there is no ghost.
@@ -45,6 +46,7 @@ Before the pitch, the Player's account should already hold a few real sessions f
 Decide these in advance so nobody improvises in front of judges.
 
 1. Detection misbehaves: Operator presses `R` to recalibrate. Presenter keeps talking.
+   To pause without touching the laptop, the Player crosses their forearms in an X at chest height for 1 s; the same X resumes.
 2. Still bad: Operator presses `K`. The Player keeps moving while the Operator plays on the keyboard. Say so openly if asked.
 3. The backend is down or there is no network: reload with `?store=local` (same localhost URL). The round, results and rule-based coach all work offline.
 4. The app will not load: play the backup video and narrate over it.
@@ -59,7 +61,7 @@ Decide these in advance so nobody improvises in front of judges.
 - The Vercel URL is only for the QR code and people playing on their own devices; check it shows the latest `main`
 - Supabase anonymous sign-in rate limit raised (Auth → Rate Limits), and a fresh guest sign-in tested on the venue wifi
 - Laptop about 1 m high with the screen tilted back, facing a wall rather than the crowd
-- Tape mark on the floor 2.2 m away; 2 m clear around it; no cables on the floor
+- Tape mark on the floor about 1.5 m away (calibration needs head to knees, not the feet; closer than about 1.2 m it says step back); 1.5 m clear around it; no cables on the floor
 - External screen or speaker connected if available, volume tested
 - Leaderboard and the Player's dashboard filled with the team's real sessions; test rows deleted
 - Wifi checked at the station; `?store=local` tested as the offline path
@@ -84,7 +86,7 @@ No architecture slide in this version. Rehearse it with a timer at least twice.
 
 ### Check the stage on Saturday
 
-- Ask the organisers: is there a stage or a table, how far can the player stand from the laptop (2.2 m plus 2 m clear is the plan), and how long is setup between finalists
+- Ask the organisers: is there a stage or a table, how far can the player stand from the laptop (1.5 m plus 1.5 m clear is the plan), and how long is setup between finalists
 - Lighting: stage lights behind or above the player can break tracking. Test at the real spot if you are allowed to
 - Projector: plug in the HDMI during a test round and check the frame rate and that Chrome stays full screen
 - Wifi on stage: Supabase (saving, leaderboard) needs it; without it, use `?store=local`

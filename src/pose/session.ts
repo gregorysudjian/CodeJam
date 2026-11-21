@@ -14,6 +14,7 @@ import {
   R_SHOULDER,
   toPlayerX,
 } from './detect';
+import { createGestureDetector, type Gesture } from './gesture';
 import { CALIBRATION_STATUS_STEP, PICK_SIZE_TOLERANCE, RECENT_EVENTS } from './tuning';
 
 export const NEUTRAL_STATE: InputState = Object.freeze({
@@ -50,6 +51,10 @@ export interface Session {
   cancel(reason: string): void;
   getState(): InputState;
   onMove(cb: (e: MoveEvent) => void): () => void;
+  /** The pause X (gesture.ts), once per hold. Returns unsubscribe. */
+  onGesture(cb: (g: Gesture) => void): () => void;
+  /** How far the current X hold is, 0 to 1 (debug overlay). */
+  readonly gestureProgress: number;
   /** The player's latest raw landmarks, or null. */
   readonly player: Point[] | null;
   readonly mode: PlayMode;
@@ -80,6 +85,8 @@ export function createSession(): Session {
   let bodies = 0;
   const recent: MoveEvent[] = [];
   const listeners = new Set<(e: MoveEvent) => void>();
+  let gesture = createGestureDetector();
+  const gestureListeners = new Set<(g: Gesture) => void>();
 
   function sendStatus(p: Pending, s: CalibrationStatus) {
     const prev = p.lastSent;
@@ -108,6 +115,7 @@ export function createSession(): Session {
     cancel('Calibration restarted.');
     mode = m;
     detector = null;
+    gesture = createGestureDetector();
     return new Promise<void>((resolve, reject) => {
       pending = {
         calibrator: createCalibrator(m, () => aspect),
@@ -171,6 +179,17 @@ export function createSession(): Session {
         }
       });
     }
+    // The pause X, after the moves (it only reads the detector, so moves are unchanged).
+    const g = gesture.update(player, t, detector.state, detector.readout);
+    if (g) {
+      gestureListeners.forEach((cb) => {
+        try {
+          cb(g);
+        } catch (err) {
+          console.error('[pose] onGesture listener failed', err);
+        }
+      });
+    }
   }
 
   return {
@@ -183,6 +202,15 @@ export function createSession(): Session {
       return () => {
         listeners.delete(cb);
       };
+    },
+    onGesture(cb) {
+      gestureListeners.add(cb);
+      return () => {
+        gestureListeners.delete(cb);
+      };
+    },
+    get gestureProgress() {
+      return gesture.progress;
     },
     get player() {
       return player;

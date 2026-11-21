@@ -241,11 +241,16 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
 
       // Jump: above standing height and still rising; fixed airtime, then a cooldown. Right after
       // a squat it must rise higher, so standing back up is not a jump; that line is near the top
-      // of the jump, so a fast rise just before crossing it counts too (low FPS).
+      // of the jump, so a fast rise just before crossing it counts too (low FPS). With both arms up
+      // (the arm state from the last frame) it must rise higher too: raised arms lift the hips.
       const fastRise = upSpeed > K.JUMP_MIN_UP_SPEED_T;
       if (fastRise) fastRiseAt = t;
       const afterSquat = t < highJumpUntil;
-      const jumpLine = afterSquat ? K.JUMP_AFTER_SQUAT_ON_T : K.JUMP_ON_T;
+      const armsUp = state.leftArmUp && state.rightArmUp;
+      const jumpLine = Math.max(
+        afterSquat ? K.JUMP_AFTER_SQUAT_ON_T : K.JUMP_ON_T,
+        armsUp ? K.JUMP_ARMS_UP_ON_T : 0,
+      );
       const rising =
         fastRise || (afterSquat && t - fastRiseAt <= K.JUMP_AFTER_SQUAT_SPEED_WINDOW_MS);
       if (!state.airborne && !state.ducking && t >= jumpAllowedAt && -drop > jumpLine && rising) {

@@ -134,3 +134,31 @@ or the named file.
     Tried and rejected: letting short gaps not restart the 0.3 s tracking regain count. On Greg's
     real `leaveFrame` it regained tracking while he was half out at the frame edge (a false squat
     and extra sidesteps), so the strict regain stays. New variant: "hip visibility flicker".
+39. **With both arms up, a jump must rise 0.3 T** (`JUMP_ARMS_UP_ON_T`). Patrick's replay of
+    `greg/armsUp` with ±1% landmark noise (20 seeds) set `airborne` mid-press for 3 seeds: raising
+    both arms lifts the hip landmarks 0.10–0.16 T, right at `JUMP_ON_T`, and the noisy speed passed.
+    A false jump turns both arms off, so a held crate became a hit. In every real jump (both
+    bodies) the arms are down at take-off and the hips peak at 0.49–0.70 T, so the raised line
+    never applies to them: 0 real jumps lost in 560 noisy replays, and the pinned state timing is
+    unchanged. Tried: the same for either arm up, to also catch a false jump in Greg's reach swap
+    (±1% noise, 2 of 20 seeds, already there before). It does not help (mid-swap neither arm counts
+    as up), so it was left out; that case is a known limit.
+40. **Floor calibration is head to knees, about 1.5 m** (`CALIBRATION_FEET_IN_VIEW = false`).
+    Players backed up so far to show their feet that they could not read the screen; detection uses
+    the hips, never the feet. Knees alone would let a player stand so close that a deep squat takes
+    the hips out of the frame (A's hips drop 1.03 T) or a jump the shoulders (A's rise 0.68 T), so
+    calibration also wants that room: `CALIBRATION_JUMP_ROOM_T = 0.7` above the shoulders and
+    `CALIBRATION_SQUAT_ROOM_T = 1.0` below the hips. That makes ~1.2 m the closest. Detection
+    numbers are all in W and T, so none assumed the feet; the new "closer, head to knees (~1.5 m)"
+    variant (1.45×, out-of-frame landmarks at low visibility) gives the same moves, times and
+    tracking on every clip. Messages say "about 1.5 m … head and knees in view".
+41. **Pause gesture: forearms crossed in an X in front of the chest, held 1 s** (`gesture.ts`).
+    A fist is invisible to the pose model. Crossed = the player's left wrist at least 0.2 W to the
+    right of the right wrist, both between 0.3 T above and 0.7 T below the shoulders (under the
+    nose, above the hips) and within 1.2 W of the centre line. Fires once per hold; re-arms after
+    the arms are uncrossed for 0.2 s (a shorter wobble neither restarts nor re-arms). Never while
+    airborne, ducking or with an arm up. It runs after the move detector and only reads it, so move
+    detection and the pinned timing are unchanged. Checked: 0 pauses on every clip × every variant
+    and in 960 noisy replays (±0.5–2%); exactly one for an X spliced into the standing clip, also
+    with ±1% noise, at 15 FPS and at 1.5 m. Not yet seen on a real camera: record one with the
+    `● pauseX` button on `?dev=pose` (the tally counts `pause X`).

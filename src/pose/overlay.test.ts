@@ -13,6 +13,7 @@ const base = {
   detector: null,
   bodies: 1,
   events: [],
+  gesture: 0,
 };
 
 describe('overlay text', () => {
