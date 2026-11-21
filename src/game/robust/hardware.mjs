@@ -1,4 +1,4 @@
-// Exercise the real canvas, WebGL context and page lifecycle. Requires the Vite dev server.
+// Exercise the real canvas, WebGL context and page lifecycle on a local preview.
 import assert from 'node:assert/strict';
 import { sleep } from '../../../docs/qa/sweep/cdp.mjs';
 
@@ -18,6 +18,7 @@ async function inspectFrame(label) {
   }))`);
   console.log(label, frame);
   assert(frame.colours > 1, label + ' produced a uniform canvas');
+  return frame;
 }
 try {
   await firstRound(b);
@@ -35,7 +36,11 @@ try {
       mobile: false,
     });
     await sleep(200);
-    await inspectFrame(width + 'x' + height + ' @' + deviceScaleFactor);
+    const frame = await inspectFrame(width + 'x' + height + ' @' + deviceScaleFactor);
+    assert.equal(frame.dpr, deviceScaleFactor);
+    const scale = frame.width / width;
+    assert(scale === 1 || scale === deviceScaleFactor, 'unexpected drawing-buffer width');
+    assert.equal(frame.height, height * scale, 'drawing-buffer aspect ratio changed');
   }
   await b.send('Emulation.clearDeviceMetricsOverride');
   await b.send('Browser.setPermission', {

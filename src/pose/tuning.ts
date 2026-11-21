@@ -206,6 +206,8 @@ export const DETECTION_DEFAULTS = Object.freeze({
   RESCALE_MIN: 0.2,
   RESCALE_SHAPE_TOL: 0.12,
   RESCALE_CONFIRM_MS: 300,
+  /** ... without travelling sideways more than this (W) meanwhile (walking in or across is not a distance change). */
+  RESCALE_MAX_SHIFT_W: 0.25,
 });
 
 export type DetectionTuning = { -readonly [K in keyof typeof DETECTION_DEFAULTS]: number };

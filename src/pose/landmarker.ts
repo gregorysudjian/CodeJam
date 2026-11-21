@@ -23,8 +23,10 @@ export interface Landmarker {
 async function create(): Promise<Landmarker> {
   const { FilesetResolver, PoseLandmarker } = await import('@mediapipe/tasks-vision');
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
+  const gpuCanvas = document.createElement('canvas');
   const make = (delegate: Delegate) =>
     PoseLandmarker.createFromOptions(fileset, {
+      canvas: delegate === 'GPU' ? gpuCanvas : undefined,
       baseOptions: { modelAssetPath: MODEL_PATH, delegate },
       runningMode: 'VIDEO',
       numPoses: MAX_POSES,
@@ -41,10 +43,29 @@ async function create(): Promise<Landmarker> {
     delegate = 'CPU';
     model = await make('CPU');
   }
+  let lost = false;
+  if (delegate === 'GPU') {
+    // A lost context can return empty detections forever. Leave the active round in its
+    // tracking-lost state and give the next camera session a fresh model.
+    gpuCanvas.addEventListener(
+      'webglcontextlost',
+      () => {
+        lost = true;
+        shared = null;
+        try {
+          model.close();
+        } catch (err) {
+          console.warn('[pose] Could not close the lost GPU context', err);
+        }
+      },
+      { once: true },
+    );
+  }
   let lastTs = -1;
   return {
     delegate,
     detect(video) {
+      if (lost) return [];
       // VIDEO mode needs strictly increasing timestamps, even across pose inputs sharing the model.
       const ts = Math.max(performance.now(), lastTs + 1);
       lastTs = ts;
@@ -58,7 +79,7 @@ let shared: Promise<Landmarker> | null = null;
 /**
  * One model for the whole page. The app creates a new pose input each time the player switches
  * input (and React StrictMode starts it twice), so loading once avoids repeated 1–2 s loads and
- * leaked GPU contexts. A failed load is retried on the next call.
+ * leaked GPU contexts. A failed load or lost GPU context is retried on the next call.
  */
 export function getLandmarker(): Promise<Landmarker> {
   if (!shared) {
