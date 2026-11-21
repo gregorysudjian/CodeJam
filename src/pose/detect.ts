@@ -93,6 +93,10 @@ export interface Readout {
   rightArmT: number;
   W: number;
   T: number;
+  // Baselines and the nose, in player coordinates, for the on-video guides.
+  centreX: number; // lane centre
+  standY: number; // standing height of the centre
+  noseY: number;
 }
 
 export interface Detector {
@@ -121,6 +125,9 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
     rightArmT: 0,
     W: cal.W,
     T: cal.T,
+    centreX: cal.centreX,
+    standY: cal.centreY,
+    noseY: cal.centreY,
   };
 
   // Baselines. Standing height, T and W drift slowly while the player stands still; the lane
@@ -304,6 +311,9 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
     readout.rightArmT = rightT;
     readout.W = W;
     readout.T = T;
+    readout.centreX = centreX;
+    readout.standY = standY;
+    readout.noseY = p(NOSE).y;
     return events;
   }
 

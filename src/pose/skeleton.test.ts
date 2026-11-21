@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { coverMap } from './skeleton';
+import { coverMap, guides } from './skeleton';
+import { DETECTION } from './tuning';
 
 describe('coverMap (skeleton over an object-cover, mirrored video)', () => {
   test('same aspect: plain scale, mirrored', () => {
@@ -22,5 +23,45 @@ describe('coverMap (skeleton over an object-cover, mirrored video)', () => {
   test('no video size yet: does not divide by zero', () => {
     const [x, y] = coverMap(100, 100, 0, 0)({ x: 0.5, y: 0.5 });
     expect(Number.isFinite(x) && Number.isFinite(y)).toBe(true);
+  });
+});
+
+describe('threshold guides (debug overlay)', () => {
+  const readout = {
+    offsetW: 0,
+    dropT: 0,
+    upSpeedT: 0,
+    leftArmT: 0,
+    rightArmT: 0,
+    W: 0.1,
+    T: 0.2,
+    centreX: 0.5,
+    standY: 0.68,
+    noseY: 0.41,
+  };
+
+  test('floor: lane lines either side of the centre, squat below and jump above standing height', () => {
+    const g = guides(readout, 'floor');
+    const xs = g
+      .filter((x) => x.axis === 'x' && !x.dashed)
+      .map((x) => x.at - 0.5)
+      .sort((a, b) => a - b);
+    expect(xs[0]).toBeCloseTo(-DETECTION.LANE_ON_W * 0.1);
+    expect(xs[1]).toBeCloseTo(DETECTION.LANE_ON_W * 0.1);
+    const y = (label: string) => g.find((x) => x.label === label)!.at;
+    expect(y('squat')).toBeGreaterThan(y('stand'));
+    expect(y('jump')).toBeLessThan(y('stand'));
+    expect(y('arm up')).toBeLessThan(0.41);
+  });
+
+  test('treadmill: only the arm line', () => {
+    expect(guides(readout, 'treadmill').map((x) => x.label)).toEqual(['arm up']);
+  });
+
+  test('a guide at player x lands where a landmark at that player x is drawn', () => {
+    const map = coverMap(640, 480, 640, 480);
+    const playerX = 0.7; // player's right = screen right
+    const landmark = { x: 1 - playerX, y: 0.5 }; // raw MediaPipe x
+    expect(map(landmark)[0]).toBeCloseTo(playerX * 640);
   });
 });

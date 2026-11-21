@@ -7,7 +7,7 @@ import type { Calibration, Detector, Point } from './detect';
 import { type Delegate, getLandmarker, type Landmarker } from './landmarker';
 import { createOverlay, type Overlay } from './overlay';
 import { createSession } from './session';
-import { drawPose } from './skeleton';
+import { drawGuides, drawPose, guides } from './skeleton';
 import { FPS_WINDOW_MS } from './tuning';
 
 /** Everything the debug overlay shows. */
@@ -178,6 +178,9 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     drawSkeleton(ctx) {
       const pose = session.player;
       if (pose) drawPose(ctx, pose, video.videoWidth, video.videoHeight);
+      const d = session.detector;
+      if (overlay.visible && d)
+        drawGuides(ctx, guides(d.readout, d.mode), video.videoWidth, video.videoHeight);
     },
   };
 
