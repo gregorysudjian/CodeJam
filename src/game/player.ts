@@ -330,7 +330,9 @@ export function createPlayer(opts: { ghost?: boolean } = {}): Player {
         suitMat.emissiveIntensity = hitT < T.HIT_FLASH_SEC ? 1.4 * (1 - hitT / T.HIT_FLASH_SEC) : 0;
       // Stumble: jolt back, then a damped wobble.
       const st = hitT / T.STUMBLE_SEC;
-      body.rotation.x = st < 1 ? 0.45 * Math.sin(st * Math.PI * 3) * (1 - st) : 0;
+      // Reduced motion: one small tilt back that settles, no wobble (the red flash says "hit").
+      const wobble = reduceMotion ? 0.35 : Math.sin(st * Math.PI * 3);
+      body.rotation.x = st < 1 ? 0.45 * wobble * (1 - st) : 0;
     },
   };
 }
