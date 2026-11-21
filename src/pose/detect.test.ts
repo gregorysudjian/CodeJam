@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { MoveEvent } from '@/contracts';
-import { createDetector, measureBody, type Point } from './detect';
+import { createDetector, measureBody, pickBody, type Point } from './detect';
 import { replay } from './fixtures';
 import { DETECTION as K } from './tuning';
 
@@ -57,6 +57,27 @@ describe('measureBody', () => {
     expect(cal.W).toBeCloseTo(W);
     expect(cal.T).toBeCloseTo(T);
     expect(cal.centreX).toBeCloseTo(0.6);
+  });
+});
+
+describe('pickBody', () => {
+  const at = (dx: number, scale = 1) =>
+    pose({ dx }).map((p) => ({ ...p, x: 0.5 + (p.x - 0.5) * scale, y: 0.5 + (p.y - 0.5) * scale }));
+
+  test("equal size: the body nearest the player's last position wins", () => {
+    const stranger = at(-0.3);
+    const player = at(0);
+    expect(pickBody([stranger, player], { x: 0.5, y: 0.48 })).toBe(1);
+  });
+
+  test("a bigger body far from the player's last position does not win", () => {
+    const big = at(-0.4, 1.5);
+    const player = at(0);
+    expect(pickBody([big, player], { x: 0.5, y: 0.48 })).toBe(1);
+  });
+
+  test('with no last position, the largest body near the centre wins', () => {
+    expect(pickBody([at(0.2, 0.6), at(0)], null)).toBe(1);
   });
 });
 

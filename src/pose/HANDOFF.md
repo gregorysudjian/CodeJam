@@ -22,9 +22,10 @@ _Last refresh: Sat 07:29 (overnight autonomous session). Read this first in a ne
   - Nothing is half-written in code. Not done: "raise both arms to start" (app-side, NEEDS.md 5),
     station setup notes (Phase 4), real-camera tuning (needs A).
 - **Last commit:** see `git log -1`.
-- **`npm run check`:** passes (208 tests). Use its exit code; a `| grep` can hide a failure.
+- **`npm run check`:** passes (212 tests). Use its exit code; a `| grep` can hide a failure.
   A clean checkout of `origin/abdo-1` + `npm ci` + `npm run check` passes too (nothing local needed).
-  Mutation sweep: each of the 23 `DETECTION` thresholds set to an extreme breaks at least one test.
+  Mutation sweep: each of the 23 `DETECTION` thresholds and the calibration / body-picking constants
+  set to an extreme breaks at least one test (only the overlay's list length is cosmetic).
 - **End to end:** `main`'s full flow (calibrate → tutorial with the video off-page → play) ran on
   replayed clips with only the model swapped, in floor and treadmill mode (see §6 "Testing without
   a camera"). Phase 3's "treadmill round playable" holds on replayed data.
@@ -180,7 +181,7 @@ Replaces the src/pose stub with the real pose input (CONTRACTS.md, unchanged int
   screen takes it off the page
 - ?dev=pose: mountPoseDebug in src/pose/debug.ts (see src/pose/NEEDS.md 1 for DevPose.tsx)
 - Thresholds tuned from recorded clips: src/pose/DECISIONS.md; station notes: src/pose/STATION.md
-- 208 tests on recorded landmark clips and synthetic variants; npm run check passes
+- 212 tests on recorded landmark clips and synthetic variants; npm run check passes
 
 Only src/pose/, public/models/, public/mediapipe/ changed. No new packages or env vars.
 

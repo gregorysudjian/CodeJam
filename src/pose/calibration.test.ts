@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { CALIBRATION_MESSAGES, createCalibrator } from './calibration';
+import type { Point } from './detect';
 import { loadClip, toPoints } from './fixtures';
 import { CALIBRATION_HOLD_MS } from './tuning';
 
@@ -68,6 +69,20 @@ describe('calibrator', () => {
     });
     expect(steps).toContain('tooClose');
     expect(done).toBeGreaterThanOrEqual(1300 + CALIBRATION_HOLD_MS - 33);
+  });
+
+  test('a size change during the hold (shoulders 30% wider, same centre) restarts it', () => {
+    const cal = createCalibrator('floor');
+    const wider = (p: Point[]) => {
+      const cx = (p[23].x + p[24].x) / 2;
+      return p.map((q) => ({ ...q, x: cx + (q.x - cx) * 1.3 }));
+    };
+    let done = -1;
+    standing.forEach((p, i) => {
+      const t = i * 33;
+      if (done < 0 && cal.update(t >= 1000 ? wider(p) : p, t).result) done = t;
+    });
+    expect(done).toBeGreaterThanOrEqual(1000 + CALIBRATION_HOLD_MS - 33);
   });
 
   test('every step has a message in both modes', () => {
