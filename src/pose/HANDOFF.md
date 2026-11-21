@@ -21,12 +21,13 @@ _Last refresh: Sat 06:55 (overnight autonomous session). Read this first in a ne
 - **Half-done / not done:**
   - Nothing is half-written in code. Not done: "raise both arms to start" (app-side, NEEDS.md 5),
     station setup notes (Phase 4), real-camera tuning (needs A).
-- **Last commit:** see `git log -1` (last code commit at this refresh: `a499664`).
-- **`npm run check`:** passes (174 tests).
-- **Integration:** verified against `origin/main` PR #19 in a scratch worktree (not merged): `main`'s
-  check passes with this `src/pose` (220 tests) and the real calibration screen works with a stubbed
-  camera (see README MORNING REPORT). `main` added packages since `abdo-1` branched, so after any
-  merge of `main` into `abdo-1`, run `npm install`.
+- **Last commit:** see `git log -1`.
+- **`npm run check`:** passes (176 tests). Use its exit code; a `| grep` can hide a failure.
+- **Integration:** verified against `origin/main` PR #19 in a scratch worktree (never merged): `main`'s
+  check passes with this `src/pose` (236 tests incl. the DevPose snippet from NEEDS.md 1), the real
+  calibration screen and `?dev=pose` work with a stubbed camera, StrictMode leaves one camera track.
+  `main` added packages since `abdo-1` branched: after any merge of `main` into `abdo-1`, run
+  `npm install`.
 
 ## 3. Architecture
 
@@ -56,9 +57,11 @@ engine.ts      getState() (game polls), onMove listeners, drawSkeleton (skeleton
 
 ## 4. Decisions
 
-All in `src/pose/DECISIONS.md` (with reasons). The big ones: lane 0.55/0.3 W; arm "down" near the
-nose (press reps); arms ignored mid-jump; tracking lost when hips leave the frame; T/W drift only
-while idle; size gate 40%; `MAX_POSES = 1`; pose handles D, app handles R.
+All in `src/pose/DECISIONS.md` (26, with reasons). The big ones: lane 0.55/0.3 W; arm up 0.4 T above
+the nose, "down" back near the nose (press reps); arms ignored mid-jump; squat rep after 250 ms down,
+and a raised jump line (0.45 T) for 0.4 s after a squat instead of a block (crouch-then-jump works);
+jump speed over 150 ms > 1.0 T/s; tracking lost when hips leave the frame; baselines drift only when
+still; size gate 40%; `MAX_POSES = 1`; pose handles D, app handles R; video kept playing off-page.
 
 ## 5. Known bugs and risks (ranked)
 
@@ -104,6 +107,15 @@ README "How to use it". Stand at playing distance (feet in view).
 
 Recording a new clip for a failing case: use the `● …` buttons, then put the JSON in
 `src/pose/fixtures/` and add an expectation in `variants.test.ts`.
+
+**Testing without a camera (how the overnight session verified things):**
+- Detection: replay clips in Vitest (`fixtures.ts`: `replay(clip, { transform, dropFraction, … })`).
+- Browser lifecycle: in Playwright, `page.addInitScript` replacing `navigator.mediaDevices.getUserMedia`
+  with a `canvas.captureStream(30)`; MediaPipe runs (no body found), so start/stop, FPS, overlay,
+  calibration status and the app's screens can be checked. Never use the real webcam unattended.
+- Against `main` without merging: `git worktree add --detach <scratch dir> origin/main`, copy
+  `src/pose` and `public/models`, `public/mediapipe` in, `npm ci`, `npm run check`, then
+  `git worktree remove --force <dir>`. Never commit there.
 
 ## 7. Waiting on teammates
 
