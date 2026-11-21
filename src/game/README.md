@@ -20,6 +20,10 @@
 
 Below 20 fps it steps after 0.5 s instead of a full window, so a slow laptop never plays its first seconds in slow motion. On a 1× screen it skips straight to level 2.
 
+A frame longer than 0.25 s (a hidden tab, a hitch) counts as 0.25 s, so switching to the slides and back never lowers the graphics. A GPU that really draws 2 frames a second still steps down at once.
+
+**No shader stalls mid-round:** every shader is compiled on the first frame, about 4 s before the first object arrives. That covers objects that only show later (speed lines at streak 10, the finish arch, the end banner) and both render paths, so a step down to level 2 doesn't recompile every material at once on a laptop that is already struggling.
+
 **URL switches** (also localStorage `game.gfx` / `game.muted` / `game.ghost`): `?gfx=high|medium|low` fixes the level (0, 1, 2), `?gfx=2d` forces the fallback, `?mute=1`, `?ghost=off|reset`, `?debug=timing`. Without a switch the ladder is automatic.
 
 **Keyboard and the page:** while a round runs the game sets `<body data-game="running">` (cleared on pause, finish and `destroy()`). `src/input` only consumes its keys then, so the rest of the app keeps normal keyboard behaviour.
@@ -55,7 +59,7 @@ At the finish a banner says GHOST SAVED (first run of a level), GHOST BEATEN, GH
 **For the demo:** the presenter plays the demo level (`?demo=1`) once on the demo laptop. Every judge after that races the presenter's ghost. A judge who beats it becomes the new ghost.
 
 - **Ranking:** cleared + collected, then fewer hits. The game counts these itself. A tie keeps the stored ghost.
-- **Per input:** camera and keyboard ghosts are kept apart (the input at the start of the round). A keyboard run has no webcam lag, so as a ghost it would be unbeatable for people playing with their body.
+- **Per input:** camera and keyboard ghosts are kept apart (the input at the start of the round). A keyboard run has no webcam lag, so as a ghost it would be unbeatable for people playing with their body. A round that switches input with K mid-round is never stored; its banner still compares it with the ghost it raced.
 - **Level identity:** a ghost only replays on the identical level. A 64-bit fingerprint covers duration, mode and every wave (time, kinds, lanes, holds), so a new seed or a changed generator never shows a wrong ghost.
 - **Storage:** browser localStorage on this device, `game.ghost.<fingerprint>`, about 1 KB per 45 s level (one base64 character per sample). The 10 most recent levels are kept. Private mode, a full quota or corrupt data mean no ghost, never a crash.
 - **Privacy:** only those five game states. No video, no landmarks, nothing sent anywhere (AGENTS.md rule 5).
@@ -73,6 +77,8 @@ At the finish a banner says GHOST SAVED (first run of a level), GHOST BEATEN, GH
   - parsing of corrupt data;
   - store cap, tie, blocked or full storage, clear.
 - In the browser, two rounds in one context: perfect play saved a 1,032-character ghost, then an idle round showed the ghost sidestepping (4.0 s), pressing (8.3 s), jumping (10.5 s) and squatting (13.0 s) while the player stood, and ended on GHOST WINS. The same in the 2D fallback.
+
+In the real app (main + `p1-workout` + `p2-game`, keyboard): a rehearsal round saved a ghost, the next round showed it beside the player with "+4 VS GHOST", ended on GHOST BEATEN and stored the better run.
 
 **Ghost status:** done: (a)–(g), three review loops, and the live race. Measured on the demo level with the ghost and race on: judging unchanged (16/7/0, TIE against a perfect ghost), draw calls avg 91 → 103, JavaScript median 0.2 → 0.3 ms per frame. Not tested: a real webcam, a real GPU.
 
@@ -140,7 +146,16 @@ All numbers are in `tuning.ts`.
 
 ## Status
 
-See the bottom of this file (kept up to date per phase).
+Newest first.
+
+### Review pass (Sat midday)
+A fresh read of every file in `src/game`, `src/input` and `src/workout`. Found and fixed, each proven by a test that fails without the fix or by a measurement in Chrome:
+- **A hidden tab lowered the graphics for the rest of the round.** `requestAnimationFrame` stops in a hidden tab, so the first frame back spans the whole absence. The governor read it as about 2 fps and dropped straight to level 2. In Chrome, one 2 s freeze at 60 fps did exactly that; now it changes nothing.
+- **K mid-round could store an unbeatable ghost.** A round started on the camera and finished on the keyboard was saved as a camera ghost. Checked over three rounds: the switched round beat the ghost but was not stored.
+- **Shaders compiled mid-round.** Programs compiled mid-round went from 4 to 0; a forced step to level 2 compiled 9, now 0 (worst frame 47 → 25 ms). The first frame got heavier (about 1 s in software GL, before any object arrives).
+- Also: the race chip and the end banner share one drawing function, plus small tidying in `view3d.ts`.
+
+Rechecked: `npm run check` on main + `p1-workout` + `p2-game` (201 tests pass). In the real app, a demo round driven by keyboard on the game's own clock scored 4,750, 100 %, best streak 23, every move inside its window (timing probe), no console errors. The ghost worked across two rounds (above). Not tested: a real GPU and a real webcam.
 
 ### Phase 0 + 1 status (Sat ~4:30 AM)
 
@@ -163,10 +178,10 @@ See the bottom of this file (kept up to date per phase).
 1. A "Demo" entry point. `?demo=1` already works without any change (see `src/workout/README.md`).
 2. Optional: a low-graphics toggle on the select screen that writes localStorage `game.gfx` = `low` or `high`.
 3. HUD cue words: orbs carry `reachLeft` / `reachRight` / `armsUp`, and a floor orb in the centre lane says `reachRight` though either arm works. Show "REACH" for both reach moves.
-4. Docs: AGENTS.md ownership (Patrick also owns `src/workout/`); CONTRACTS.md crate row: "both arms up (for the whole `holdSec` if set, with 0.3 s of grace)".
-5. Show the finish: in `PlayScreen`, wait about 1.5 s after `finished` before calling `onFinish`. The game shows a finish arch, the world coasts to a stop and the runner raises both arms, but today the results screen replaces it at once. The fanfare already rings out after `destroy()`.
+4. ~~Docs: AGENTS.md ownership and the CONTRACTS.md crate row~~: done.
+5. ~~Show the finish~~: done (`FINISH_DELAY_MS`). Was: show the finish: in `PlayScreen`, wait about 1.5 s after `finished` before calling `onFinish`. The game shows a finish arch, the world coasts to a stop and the runner raises both arms, but today the results screen replaces it at once. The fanfare already rings out after `destroy()`.
 6. ~~A pause overlay with text~~: done in `GameHud`.
-7. The HUD cue word ("SIDESTEP" with its countdown ring) sits in the middle of the screen, exactly where the announced obstacle approaches. It covers the obstacle and the game's free-lane chevron for those 2 seconds. Move it to the top band (between score and timer) or make it much more transparent. Screenshot: the game at 2 s into the demo level.
+7. The HUD cue word ("SIDESTEP" with its countdown ring) sits in the middle of the screen, exactly where the announced obstacle approaches. It covers the obstacle and the game's free-lane chevron for those 2 seconds. Move it to the top band (between score and timer) or make it much more transparent. Screenshot: the game at 2 s into the demo level. Still open on Sat midday: in the real app "SQUAT" covers the incoming beam.
 
 ### Checked end to end (local merge of main + p1-game + p1-workout)
 - `npm run check`: 78 tests pass.
