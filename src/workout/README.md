@@ -42,6 +42,33 @@ Scoring per CONTRACTS.md:
 - Calories are an estimate: MET 8 for legs and full body, 6 for arms and shoulders, 9 on the treadmill, with 70 kg assumed when no weight is given.
 - Change from the stub: live calories now count only running time, from the first game event, without pauses. `finish(activeSec)` uses the app's number as before. The optional `opts.now` exists for tests.
 
+## Leaderboard fairness: longer rounds always win (proposal for D)
+
+The board (`public.leaderboard`, `supabase/migrations/0001_init.sql`) keeps each player's best score per **workout and mode**, whatever the duration, difficulty or low impact. Judges play 45 s.
+
+**Measured:** every level replayed through the real scorer (`createSessionTracker`), difficulty 0.5, 20 seeds each. "Perfect" clears everything; "typical" succeeds on each object with 80 % chance (seeded).
+
+| Workout, mode | 45 s perfect / typical | 90 s perfect / typical | 180 s perfect / typical |
+| --- | --- | --- | --- |
+| Full body, floor | 5,033 / 2,570 | 13,785 / 6,065 | 30,790 / 10,695 |
+| Legs, floor | 4,653 / 2,390 | 13,280 / 5,330 | 30,528 / 10,060 |
+| Arms, floor | 4,300 / 2,548 | 11,925 / 5,505 | 27,043 / 10,750 |
+| Shoulders, floor | 3,675 / 2,110 | 10,603 / 5,240 | 25,060 / 9,655 |
+| Full body, treadmill | 3,698 / 2,168 | 10,705 / 5,228 | 24,688 / 9,635 |
+| Arms, treadmill | 3,780 / 2,250 | 10,830 / 5,455 | 24,910 / 10,260 |
+| Shoulders, treadmill | 3,353 / 2,200 | 9,923 / 4,748 | 22,973 / 9,058 |
+
+- **180 s scores about 6× more than 45 s** with perfect play. An 80 % run at 180 s still beats a perfect 45 s run by 2×. A judge can never top a board that holds one long round.
+- **Points per minute is not a fix:** perfect play earns 6,710 → 9,190 → 10,263 points a minute (Full body, floor), because long rounds reach the ×3 and ×4 streak multipliers that 45 s rarely does.
+- **Low impact** scores about 5 % less than normal (no hurdles; more sidesteps and orbs, which are worth half). It is not stored, so it can't be split out today.
+
+**Proposal (D's folders, no scoring change):** rank per duration as well.
+- The sessions table already stores `duration_sec`. A new migration recreates the view with `duration_sec` in the `distinct on` and in the select list. `create or replace view` can only add columns at the end, so drop and recreate it; keep it a plain view, never `security_invoker`.
+- `LeaderboardEntry` (contract) gains `durationSec`.
+- The leaderboard screen filters by it, defaulting to 45 s for the demo.
+
+Saved sessions keep their scores, and nothing in the formula changes. Until then: on the demo laptop, play only 45 s rounds, so the board compares like with like.
+
 ## Settled: crates with `holdSec`
 
 A crate with `holdSec` is judged like a held beam: both arms must go up inside `[t − 0.35, t + 0.15]`, then stay up until `t + holdSec`. A drop longer than 0.3 s is a hit. The game smashes the crate front on contact and shows magenta rails for the hold. Proposed wording for the crate row in the CONTRACTS.md collision table: "both arms up (for the whole `holdSec` if set, with 0.3 s of grace)".
