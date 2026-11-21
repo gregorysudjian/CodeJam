@@ -23,3 +23,8 @@ Raw MediaPipe landmarks only (no images), recorded on the `?dev=pose` page: 8 s 
 
 To add a clip: record it with a `● …` button on `?dev=pose`, rename it to `<name>.json` here, and
 add an expectation in `../variants.test.ts` (`CLIPS` and the expected-moves table).
+
+**Quick regression clips (e.g. a teammate's):** stand still for the first second, do N of one move,
+and save the download as `extra/<move>-<N>[-name].json` (e.g. `extra/jump-4-patrick.json`; moves:
+sidestep, jump, squat, armsUp, reachLeft, reachRight). `variants.test.ts` then expects exactly N of
+that move, with no code change. An 8 s clip fits about 4–5 reps.

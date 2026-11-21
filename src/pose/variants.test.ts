@@ -201,3 +201,24 @@ describe('when states turn on (the game pose latency leads depend on it)', () =>
     got.forEach((t, i) => expect(Math.abs(t - times[i])).toBeLessThanOrEqual(FRAME));
   });
 });
+
+/*
+ * Extra clips (e.g. a teammate's): save as fixtures/extra/<move>-<count>[-name].json, standing still
+ * for the first second (the clip calibrates on its first 300 ms). Each one expects exactly <count>
+ * moves of type <move> (sidestep, jump, squat, armsUp, reachLeft, reachRight).
+ */
+describe('extra clips named <move>-<count>', () => {
+  const names = Object.keys(
+    import.meta.glob('./fixtures/extra/*.json', { eager: true, import: 'default' }),
+  ).map((path) => path.replace('./fixtures/', '').replace('.json', ''));
+
+  if (names.length === 0) {
+    test('none recorded yet', () => expect(names).toEqual([]));
+    return;
+  }
+  test.each(names)('%s', (name) => {
+    const [move, count] = name.replace('extra/', '').split('-');
+    const got = kinds(replay(name, { calibrate: 'self' }).events).filter((k) => k === move);
+    expect(got).toHaveLength(Number(count));
+  });
+});

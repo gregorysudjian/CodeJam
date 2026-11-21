@@ -134,7 +134,10 @@ README "How to use it". Stand at playing distance (feet in view).
    the skeleton over you; the tutorial counts your moves; press **D** in play for the overlay, **R**
    to recalibrate. Afterwards: `cd ../CodeJam && git worktree remove --force ../codejam-main-try`.
    Never commit in that folder.
-10. **Teammate** of a different height: repeat step 3; target 8/10.
+10. **Teammate** of a different height: repeat step 3; target 8/10. Keep evidence: they record a
+    clip per move with the `● …` buttons (still for the first second, ~4 reps) and you save each as
+    `src/pose/fixtures/extra/<move>-<N>-<name>.json`; tests then expect exactly N (see
+    `fixtures/README.md`). A failing one is a real bug to tune against.
 11. Optional: set `MAX_POSES = 2` in `tuning.ts`, check FPS, have someone walk behind you.
 
 Recording a new clip for a failing case: use the `● …` buttons, then put the JSON in
