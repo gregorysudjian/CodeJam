@@ -36,7 +36,7 @@ Before the pitch, the Player's account should already hold a few real sessions f
 - Open the app with `?demo=1`: every round is the fixed 45 s demo level (seed 41492), and the select screen preselects it.
 
 **Ghost runner.** Players race their best run of the same level. Ghosts live in the browser, so:
-- **One ghost per origin.** The Vercel tab and the localhost backup tab each need their own rehearsal round, or the backup has no ghost.
+- **One ghost per origin.** Ghosts are stored per URL: rehearse on the exact URL the demo uses (`http://localhost:3000`), or there is no ghost.
 - **Low impact is a different level** (same seed, no hurdles) with its own ghost. Rehearse it once if judges will get it.
 - **One ghost per input.** Rehearse with the camera, since judges play with their body. A round where the Operator pressed K is never stored.
 
@@ -46,17 +46,18 @@ Decide these in advance so nobody improvises in front of judges.
 
 1. Detection misbehaves: Operator presses `R` to recalibrate. Presenter keeps talking.
 2. Still bad: Operator presses `K`. The Player keeps moving while the Operator plays on the keyboard. Say so openly if asked.
-3. The backend is down but the page loads: reload the Vercel URL with `?store=local`. No network at all: switch to the localhost preview tab, already open with `?store=local`. The round, results and rule-based coach all work offline.
+3. The backend is down or there is no network: reload with `?store=local` (same localhost URL). The round, results and rule-based coach all work offline.
 4. The app will not load: play the backup video and narrate over it.
 5. The laptop dies: the second laptop already has the build open.
 
 ## Station checklist (Sunday 8:00 AM)
 
 - Demo laptop on power, brightness at maximum, notifications off, sleep disabled
-- Chrome only. The app open on the **Vercel URL**, because only Vercel serves the coach endpoint: under `npm run preview` every coach call silently becomes the rule-based coach
-- A second tab with `npm run preview` on localhost, opened with `?store=local`, as the offline backup. Camera permission granted on both origins
-- A camera rehearsal round of the demo level on each tab (Vercel and localhost; also low impact), so the ghost is there
-- One round played on the Vercel URL at the station, and `/api/coach` returned 200 in the network tab (the coach card came from Claude, not the rules)
+- Chrome only. **The demo runs on the laptop, not the Vercel URL:** `git pull`, then `npx vercel dev` and open `http://localhost:3000/?demo=1`. It serves the app and the coach endpoint without deploying (the Vercel Hobby deploy limit can't block it). `ANTHROPIC_API_KEY` goes in `.env.local` (never `VITE_`, never committed); `npm run dev` or `npm run preview` have no coach endpoint, so the card would be rules
+- Camera permission granted on `localhost:3000`
+- A camera rehearsal round of the demo level on `localhost:3000` (also low impact), so the ghost is there
+- One round played at the station, and `/api/coach` returned 200 in the network tab (the coach card says AI, not rules)
+- The Vercel URL is only for the QR code and people playing on their own devices; check it shows the latest `main`
 - Supabase anonymous sign-in rate limit raised (Auth → Rate Limits), and a fresh guest sign-in tested on the venue wifi
 - Laptop about 1 m high with the screen tilted back, facing a wall rather than the crowd
 - Tape mark on the floor 2.2 m away; 2 m clear around it; no cables on the floor
@@ -87,7 +88,7 @@ No architecture slide in this version. Rehearse it with a timer at least twice.
 - Ask the organisers: is there a stage or a table, how far can the player stand from the laptop (2.2 m plus 2 m clear is the plan), and how long is setup between finalists
 - Lighting: stage lights behind or above the player can break tracking. Test at the real spot if you are allowed to
 - Projector: plug in the HDMI during a test round and check the frame rate and that Chrome stays full screen
-- Wifi on stage: the Vercel URL needs it; the localhost tab is the backup
+- Wifi on stage: Supabase and the Claude coach need it; without it, use `?store=local`
 - Not enough room: demo the Arms workout or treadmill mode at 1 to 1.5 m. Keyboard (`K`) stays the last resort; say so openly if used
 
 ### If there is also an expo table
