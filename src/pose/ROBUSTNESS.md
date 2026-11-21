@@ -127,3 +127,11 @@ The engine now observes the track until video playback and model startup finish.
 The first crossed frame is at replay 497 ms, the last at 1348 ms. The wrists have visibly released by source frame 58, 1522 ms into the replay, below both shoulders and uncrossed by 0.09 shoulder widths. The session emits a pause on that frame. Expected only the second pause on frame 123; observed frames 58 and 123. Both full holds fire while crossed in the original recording. Removing one more stationary frame (646 ms total) suppresses the early pause.
 
 The release is recorded movement with a synthetically shortened hold. A real short-hold recording is **not tested**. Abdo has the evidence and a proposed check that the arms are currently crossed when the pause fires. [Finding sent to Abdo](https://github.com/gregorysudjian/CodeJam/commit/fdb1105279795dac341abf87fb03646d5559ad87#commitcomment-211232510).
+
+## What was in the SDK metrics request
+
+> In five local Chrome captures, MediaPipe 1.2.3 reported SDK and environment identifiers, the task and running mode, and aggregate timing and inference counts. We decoded each payload end to end. None contained an image, video frame or landmark array.
+
+Chrome ran the production pose engine code on the public sample fed through a fake camera. Every measured inference returned a pose. On a separate run from the production HAR, a local fetch interceptor captured the SDK's request body and returned HTTP 204. DevTools blocked its Google endpoint as a backstop. Closing the model triggered the SDK's flush. Across runs targeting 40 or 80 frames, the captures contained 40–81 processed frames; the per-mode counter matched the measured inference count. One 40-frame run produced a 138-byte protobuf with startup, usage and close records. The SDK also flushes on its periodic timer during normal use.
+
+`metrics.robust.test.ts` checks the optional local capture at `<OS temp>/codejam-pose-sdk-flush.bin`, consuming every field using the serializer layout in the installed `vision_bundle.mjs.map`. The recognized free-text fields were empty or the SDK version. An unexpected field, including an unrecognized binary field inside an envelope, fails inspection. This evidence covers the tested SDK version, backend mode and camera input. The ordinary round trace still contains the external request.
