@@ -2,7 +2,9 @@
 
 ## Needs Greg
 
-Nothing blocking. Branches are pushed with the PR text in the first commit message (`git log --reverse main..<branch>`).
+Branches are pushed with the PR text in the first commit message (`git log --reverse main..<branch>`).
+
+1. **Decide Q15:** the HUD cue word, the "N COMBO!" banner and the "VS GHOST" chip now share the top-centre band and overprint each other. Either the UI moves the cue, or Patrick moves the banner and chip (details below).
 
 ## Status (Sat 15:35, `main` at 5a85969)
 
@@ -24,6 +26,8 @@ Full keyboard flow re-run at 1366×768, 1920×1080 and 1280×720 with the new ga
 | Q12 | minor | Landing QR below the fold at 1366/1280 | `src/ui` | open (use `?kiosk=1`) |
 | Q13 | minor | One NaN row would block the offline queue | Greg | **fixed** (test now runs and passes) |
 | Q14 | visible | "Cross your arms to resume" is small, grey, and shown to keyboard players | `src/ui` | **new** |
+| Q15 | visible | HUD cue word overprints the "5 COMBO!" banner and the VS GHOST chip | `src/ui` or Patrick | **new**, needs a decision |
+| Q16 | minor | Local store leaderboard lists every round, not each player's best | Greg | **new** |
 | A1 | visible | Results: "RAISE BOTH ARMS TO PLAY AGAIN" is 20 px | `src/ui` | open (in progress) |
 | A2 | visible | Tutorial hint was 20 px grey | Greg | **fixed**, verified |
 | A3 | minor | Tracking-lost subtext 16 px; "Camera starting…" 14 px | `src/ui` | open (in progress) |
@@ -66,6 +70,18 @@ Full keyboard flow re-run at 1366×768, 1920×1080 and 1280×720 with the new ga
 - **Expected:** the gesture hint only for camera players, readable from the mark (1.5 m).
 - **Saw:** "Cross your arms to resume" for a keyboard player, at 20 px in muted grey (`text-body text-text-muted`, `GameHud.tsx:295`) ([paused-1366.jpg](qa/paused-1366.jpg)). A camera player who just paused with the X reads it from 1.5 m.
 - **Owner:** `src/ui/screens/GameHud.tsx`. **Fix:** show it only when `cameraSlot` is set, as `font-display-italic text-display-sm text-text` (48 px, white).
+
+### Q15 (new). The cue word, the milestone banner and the ghost chip overlap
+- **Steps:** `/?demo=1&store=local`, play the demo level cleanly (or let a ghost exist and play it again). At streak 5 (about 0:30 left), streak 10 (about 0:22) and streak 20 (about 0:07) the game shows "N COMBO!" for 1.3 s.
+- **Expected:** the banner readable.
+- **Saw:** each milestone came while a cue was showing. At 1920×1080 "SIDESTEP" sits on "5 COMBO!" and "REACH" on "10 COMBO!"; at 1366×768 "SIDESTEP" covers "5 COMBO!" and the "EVEN VS GHOST" chip completely ([1366](qa/q15-cue-over-banner-1366.jpg), [1920 at 5](qa/q15-cue-over-banner-1920.jpg), [1920 at 10](qa/q15-cue-over-banner-10-1920.jpg)). The "20 COMBO!" banner stays readable at 1920 (the cue sits just above it).
+- **Cause:** the cue moved to the top band (`hud-cue`, `top-[124px]`, `GameHud.tsx:235`), where the game draws its banner (`BANNER_POS` y 3.3) and race chip (`RACE_POS` y 6.2) in `src/game/tuning.ts`.
+- **Owner:** `src/ui` or Patrick; needs one decision. **Fix options (untested):** move the banner and chip lower, between the cue band and the horizon (smaller `BANNER_POS.y` / `RACE_POS.y`); or put the cue to one side of the top band (e.g. left of centre, under the score) so the centre stays free for the game's own labels.
+
+### Q16 (new). Local store leaderboard shows the same player twice
+- **Steps:** `?store=local`, play two rounds with one guest → Leaderboard (or `?kiosk=1`).
+- **Saw:** "Sam" at #1 (4,750) and #2 (1,750). The Supabase `leaderboard` view keeps each user's best only (CONTRACTS.md), so only the offline path differs.
+- **Owner:** Greg (`src/data/local.ts` `getLeaderboard`). **Fix:** keep the best session per display name before sorting. Minor: only seen on the local store.
 
 ### A1, A3 (reading from the mark)
 - **A1:** results "RAISE BOTH ARMS TO PLAY AGAIN" is `text-[20px]` with a 55 px figure (`ResultsScreen.tsx:85-86`). Fix: `text-display-sm`, figure 96.
@@ -117,3 +133,4 @@ Open suggestions: preload the pose model on the landing page for live-URL visito
 | 15:16 | Performance (`q-perf`) | Report; Lighthouse panel needs a person |
 | 15:23 | Loop | Branches updated for the game-feel pass; re-sweep on 4e7db85 |
 | 15:35 | Re-sweep 5a85969 (`q-qa-2`) | 3 sizes clean; Q2, Q6, Q8, Q9, Q10, Q13, A2, perf 1 verified fixed; new Q14 |
+| 15:55 | Devpost screenshots (`q-shots`) | 13 captures at 1920×1080 from scripted perfect rounds; found Q15 (cue over banner) and Q16 |
