@@ -61,6 +61,12 @@ Each spawn gets its own judge, fed the game time and the polled state every fram
 - `beam` and `crate` with `holdSec > 0` must engage in the window and then hold until `t + holdSec`. A gap longer than 0.3 s counts as a hit. **Assumption:** the contract only spells out the hold rule for beams; crates use the same rule (ask C).
 - Orbs: floor mode needs the orb's lane plus either arm. Treadmill mode: lane −1 needs the left arm, +1 the right arm, 0 both.
 
+## Latency compensation (`VISUAL_LEAD_SEC`, tested in `latency.test.ts`)
+
+Webcam input reaches the game 0.2 to 0.3 s after the move: camera, MediaPipe, smoothing, and the threshold itself (a squat counts only once the hips are 0.3 torso lengths down). A player who jumps exactly when the hurdle reaches the runner would be seen at about `t + 0.25`, outside the contract window `[t − 0.35, t + 0.15]`. So with pose input the picture runs 0.2 s ahead of the judging clock: objects visually reach the runner at `t − 0.2`, and reacting on sight lands inside the window for lags up to 0.35 s. Players who anticipate and move early still clear.
+
+Judging, events and the contract are unchanged; only where things are drawn moves. Keyboard input has no lag and gets no lead. Tune the number with Abdo in front of the camera.
+
 ## Placement (`timeline.ts`, pure, tested)
 
 Speed comes from wave `intensity` (interpolated between waves). Each object sits at `D(wave.t) − D(elapsed)` ahead of the runner, where `D` is the distance travelled. That equals `speed × (wave.t − elapsed)` when speed is constant, and keeps objects and floor moving together when it changes.

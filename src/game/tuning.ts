@@ -5,6 +5,15 @@ export const WINDOW_BEFORE_SEC = 0.35; // cleared if the move happens from t - 0
 export const WINDOW_AFTER_SEC = 0.15; // ... to t + 0.15 s
 export const HOLD_GRACE_SEC = 0.3; // a held beam / crate tolerates a gap this long
 export const CUE_LEAD_SEC = 2.0; // 'cue' fires this long before a wave arrives
+/**
+ * Latency compensation: the world is drawn this far ahead of the judging clock, so an object
+ * visually reaches the runner this much before its judging time t. Webcam input arrives
+ * 0.2 to 0.3 s after the move (camera, MediaPipe, smoothing, threshold: a squat only counts
+ * once the hips are 0.3 torso lengths down); with this lead a
+ * player who moves when the object reaches the runner still lands inside [t - 0.35, t + 0.15].
+ * The keyboard has no lag, so no lead. Judging itself never changes (contract).
+ */
+export const VISUAL_LEAD_SEC = { pose: 0.2, keyboard: 0 } as const; // pose: lags up to 0.35 s
 export const STREAK_TIERS = [5, 10, 20] as const; // fever tiers, same steps as the multiplier
 
 /* ── Loop ── */

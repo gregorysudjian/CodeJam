@@ -36,8 +36,9 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   });
 
   const gfx = readGfxSetting();
-  view = gfx === '2d' ? null : tryCreate3D(canvas, level, core.items);
-  view ??= create2DView(canvas, level, core.items);
+  const lead = T.VISUAL_LEAD_SEC[input.kind];
+  view = gfx === '2d' ? null : tryCreate3D(canvas, level, core.items, lead);
+  view ??= create2DView(canvas, level, core.items, lead);
   const startQuality: Quality = gfx === 'low' ? 2 : gfx === 'medium' ? 1 : 0;
   if (startQuality > 0) view.setQuality(startQuality);
   const quality = createQualityGovernor(startQuality, gfx === 'auto', window.devicePixelRatio || 1);
@@ -129,9 +130,10 @@ function tryCreate3D(
   canvas: HTMLCanvasElement,
   level: Level,
   items: Parameters<typeof create3DView>[2],
+  lead: number,
 ): GameView | null {
   try {
-    return create3DView(canvas, level, items);
+    return create3DView(canvas, level, items, lead);
   } catch (err) {
     console.warn('[game] WebGL unavailable, using the 2D view', err);
     return null;

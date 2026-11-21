@@ -36,6 +36,7 @@ export function create3DView(
   canvas: HTMLCanvasElement,
   level: Level,
   items: readonly Item[],
+  lead: number, // seconds the picture runs ahead of the judging clock (latency compensation)
 ): GameView {
   const { mode, durationSec } = level.config;
   const track = createTrack(level.waves, durationSec);
@@ -88,7 +89,7 @@ export function create3DView(
         coast += coastSpeed * visDt;
         coastSpeed *= Math.exp(-T.COAST_DECAY * visDt);
       }
-      const distance = track.distanceAt(elapsed) + coast;
+      const distance = track.distanceAt(elapsed + lead) + coast;
 
       // Bring objects into view as they come within VIEW_DISTANCE (items are in time order).
       while (nextSpawn < items.length) {
