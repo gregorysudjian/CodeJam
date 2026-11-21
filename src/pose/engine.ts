@@ -6,7 +6,7 @@ import { attachStream, cameraErrorMessage, getCameraStream, stopStream } from '.
 import type { Calibration, Detector, Point } from './detect';
 import { type Delegate, getLandmarker, type Landmarker } from './landmarker';
 import { createOverlay, type Overlay } from './overlay';
-import { createSession } from './session';
+import { createSession, NEUTRAL_STATE } from './session';
 import { drawGuides, drawPose, guides } from './skeleton';
 import { FPS_WINDOW_MS, WATCHDOG_INTERVAL_MS, WATCHDOG_STALE_MS } from './tuning';
 
@@ -187,7 +187,8 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     video,
     start,
     stop,
-    getState: () => session.getState(),
+    // A stopped camera means nobody is tracked, whatever the last frame said.
+    getState: () => (running ? session.getState() : { ...NEUTRAL_STATE }),
     onMove: (cb) => session.onMove(cb),
     async calibrate(mode, onStatus) {
       const done = session.calibrate(mode, onStatus);
