@@ -8,11 +8,21 @@ export interface ScreenProps extends React.HTMLAttributes<HTMLDivElement> {
   backdrop?: BackdropVariant;
   /** Sticky bottom bar rendered outside the staggered column (stays pinned while scrolling). */
   footer?: React.ReactNode;
+  /**
+   * Centre the column in the viewport instead of letting it hang from the top.
+   *
+   * `main` had no height, so a short screen sat in the top third and left the
+   * rest of the page empty — which is how the backdrop ended up carrying the
+   * composition on the single-focus screens. Use this for screens with one
+   * idea on them (a tutorial step, an empty state); leave it off for screens
+   * that scroll.
+   */
+  center?: boolean;
 }
 
 /** Layout wrapper for every non-game screen: backdrop + centred 1440px column with staggered child entrance. */
 export const Screen = React.forwardRef<HTMLDivElement, ScreenProps>(
-  ({ backdrop = "arena", footer, className, children, ...props }, ref) => {
+  ({ backdrop = "arena", footer, center = false, className, children, ...props }, ref) => {
     const reduce = useReducedMotion();
     const footerRef = React.useRef<HTMLDivElement>(null);
     React.useEffect(() => {
@@ -40,7 +50,10 @@ export const Screen = React.forwardRef<HTMLDivElement, ScreenProps>(
           variants={container}
           initial="hidden"
           animate="show"
-          className="mx-auto flex w-full max-w-[1440px] flex-col gap-12 px-6 py-8 md:px-12 md:py-12"
+          className={cn(
+            "mx-auto flex w-full max-w-[1440px] flex-col gap-12 px-6 py-8 md:px-12 md:py-12",
+            center && "min-h-[100dvh] justify-center",
+          )}
         >
           {React.Children.map(children, (child) =>
             child == null || child === false ? null : <motion.div variants={item}>{child}</motion.div>,

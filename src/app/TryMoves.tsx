@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Play } from 'lucide-react';
 import type { InputSource, MoveType } from '@/contracts';
 import { GameButton, MOVE_COLORS, MOVE_LABELS, MoveFigure, Screen, useHotkey } from '@/ui/kit';
+import { cn } from '@/ui/lib/utils';
 import { moveHint } from './tutorial';
 import { TUTORIAL_STEP_MS } from './tuning';
 
@@ -55,6 +56,7 @@ export function TryMoves({
   return (
     <Screen
       backdrop="arena"
+      center
       footer={
         <div className="flex w-full items-center justify-between gap-4">
           <GameButton variant="ghost" size="md" keyHint="ESC" onClick={onDone}>
@@ -66,16 +68,37 @@ export function TryMoves({
         </div>
       }
     >
-      <div className="flex flex-col items-center gap-6 py-6 text-center">
-        <p className="text-sm uppercase tracking-[0.2em] text-text-muted">
+      <div className="flex flex-col items-center justify-center gap-6 py-6 text-center">
+        <p className="eyebrow text-text-dim">
           Try each move · {step + 1} / {moves.length}
         </p>
         <MoveFigure pose={move} color={color} animate size={260} />
-        <h2 className="font-display-italic text-display-sm" style={{ color }}>
-          {MOVE_LABELS[move]}
-          {done.includes(move) ? ' ✓' : ''}
-        </h2>
-        <p className="text-body text-text-muted">{moveHint(move, input.kind)}</p>
+        <div className="flex flex-col items-center gap-2">
+          <h2 className="font-display-italic text-display-sm" style={{ color }}>
+            {MOVE_LABELS[move]}
+            {done.includes(move) ? ' ✓' : ''}
+          </h2>
+          <p className="text-body text-text-muted">{moveHint(move, input.kind)}</p>
+        </div>
+        {/* Progress through the six moves, so the screen says where you are. */}
+        <ol className="mt-2 flex items-center gap-2" aria-label="Move progress">
+          {moves.map((m, i) => (
+            <li
+              key={m}
+              aria-current={i === step ? 'step' : undefined}
+              className={cn(
+                'h-1.5 rounded-full transition-[width,background-color] duration-300',
+                i === step
+                  ? 'w-8 bg-lime-fill'
+                  : done.includes(m)
+                    ? 'w-4 bg-lime-dim'
+                    : 'w-4 bg-line-strong',
+              )}
+            >
+              <span className="sr-only">{MOVE_LABELS[m]}</span>
+            </li>
+          ))}
+        </ol>
       </div>
     </Screen>
   );

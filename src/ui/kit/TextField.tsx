@@ -24,7 +24,7 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
         </label>
         <div
           className={cn(
-            "glass flex h-16 items-center gap-2 rounded-[18px] pr-2 transition-[border-color,box-shadow] duration-200 focus-within:border-lime/70 focus-within:shadow-glow-lime",
+            "glass flex h-16 items-center gap-2 rounded-[18px] pr-2 transition-[border-color] duration-200 focus-within:border-lime/70",
             error && "border-danger/70 focus-within:border-danger focus-within:shadow-glow-danger",
           )}
         >

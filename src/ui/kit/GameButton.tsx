@@ -21,10 +21,14 @@ export const gameButtonVariants = cva(
         danger:
           "border border-danger/50 bg-danger/12 text-danger hover:bg-danger hover:text-bg",
       },
+      /* Sizes step up at `sm`. Fixed at the desktop size, the xl button was
+         443px wide inside a 390px viewport and pushed the landing page into
+         53px of horizontal scroll. Every size stays at or above a 44px tap
+         target at phone width. */
       size: {
-        md: "h-14 gap-2.5 px-6 text-[22px]",
-        lg: "h-[72px] gap-3 px-8 text-[28px]",
-        xl: "h-[88px] gap-3.5 px-10 text-[36px]",
+        md: "h-11 gap-2 px-4 text-[18px] sm:h-14 sm:gap-2.5 sm:px-6 sm:text-[22px]",
+        lg: "h-14 gap-2.5 px-5 text-[22px] sm:h-[72px] sm:gap-3 sm:px-8 sm:text-[28px]",
+        xl: "h-16 gap-3 px-6 text-[26px] sm:h-[88px] sm:gap-3.5 sm:px-10 sm:text-[36px]",
       },
       pulse: { true: "animate-cta-pulse", false: "" },
     },
@@ -79,7 +83,9 @@ export const GameButton = React.forwardRef<HTMLButtonElement, GameButtonProps>(
         <KeyHint
           keyLabel={keyHint}
           tone={variant === "primary" || variant == null ? "onLime" : "default"}
-          className="ml-1"
+          /* Hidden on phones: there is no keyboard to press, and the cap was
+             part of what pushed this button past the viewport edge. */
+          className="ml-1 hidden sm:inline-flex"
         />
       ) : null}
     </Button>

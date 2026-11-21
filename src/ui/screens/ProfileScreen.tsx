@@ -125,7 +125,7 @@ function GoalPicker({ value, onChange }: { value: Goal; onChange: (g: Goal) => v
             {selected ? (
               <span
                 aria-hidden="true"
-                className="absolute right-5 top-5 grid size-8 place-items-center rounded-full bg-lime text-bg shadow-glow-lime"
+                className="absolute right-5 top-5 grid size-8 place-items-center rounded-full bg-lime-fill text-bg"
               >
                 <Check className="size-5" strokeWidth={3} />
               </span>
@@ -208,7 +208,9 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
           <GameButton
             variant="ghost"
             size="md"
-            className="h-9 px-2 text-[20px]"
+            /* min-h-11 = 44px: these overrides had shrunk the control to 36px,
+               under the comfortable touch minimum. */
+            className="h-auto min-h-11 px-3 text-[20px]"
             onClick={() => onSubmit({ ...PROFILE_DEFAULTS })}
           >
             Skip
@@ -265,7 +267,7 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
           <GameButton
             variant="ghost"
             size="md"
-            className="h-10 self-start px-0 text-[20px]"
+            className="h-auto min-h-11 self-start px-2 text-[20px]"
             trailingIcon={ChevronDown}
             aria-expanded={more}
             aria-controls="profile-more"

@@ -88,7 +88,9 @@ export function SegmentedControl<T extends string>({
             {selected ? (
               <motion.span
                 layoutId={`seg-${id}`}
-                className="absolute inset-0 rounded-[14px] bg-lime shadow-glow-lime"
+                /* A selected segment is a position indicator, not a call to
+                   action: flat fill, no halo. */
+                className="absolute inset-0 rounded-[14px] bg-lime-fill"
                 transition={{ duration: reduce ? 0 : DURATION.base, ease: EASE_ARENA }}
               />
             ) : null}

@@ -153,6 +153,9 @@ export function LeaderboardScreen({
   return (
     <Screen
       backdrop="track"
+      /* With no scores there is one idea on the page, so centre it rather
+         than leaving the lower half to the backdrop. */
+      center={!loading && entries.length === 0}
       className={cn("leaderboard-screen polish-screen", kiosk && "leaderboard-kiosk")}
       footer={
         !kiosk && (loading || entries.length > 0) ? (

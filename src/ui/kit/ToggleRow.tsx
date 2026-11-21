@@ -35,7 +35,7 @@ export const ToggleRow = React.forwardRef<HTMLDivElement, ToggleRowProps>(
           onCheckedChange={onCheckedChange}
           disabled={disabled}
           size="lg"
-          className="focus-ring data-[state=checked]:shadow-glow-lime data-[state=unchecked]:bg-white/15"
+          className="focus-ring data-[state=unchecked]:bg-line-strong"
         />
       </div>
     );
