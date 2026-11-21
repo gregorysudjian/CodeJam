@@ -212,6 +212,31 @@ describe('people in the background', () => {
     expect(moves).toEqual([]);
   });
 
+  test('a much bigger stranger right in front of the camera does not hide the player', async () => {
+    const s = createSession();
+    const { t } = await calibrateOnStanding(s);
+    const moves: MoveEvent[] = [];
+    s.onMove((e) => moves.push(e));
+    for (const f of loadClip('jump').frames) {
+      if (f.t > 7200) break;
+      const pose = toPoints(f.pose!);
+      const stranger = scaleAbout(0.5, 0.5, 2)(pose); // twice the size, centred
+      s.frame([stranger, pose], t + f.t);
+    }
+    expect(moves.map((e) => e.type)).toEqual(['jump', 'jump', 'jump', 'jump']);
+  });
+
+  test('a UI onStatus that throws does not stop calibration', async () => {
+    const s = createSession();
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const done = s.calibrate('floor', () => {
+      throw new Error('ui bug');
+    });
+    feed(s, 'standing', 0, { upToMs: 2500 });
+    spy.mockRestore();
+    await expect(done).resolves.toBeUndefined();
+  });
+
   test('when the player walks off and only a smaller background person is left, tracking is lost', async () => {
     const s = createSession();
     const { t } = await calibrateOnStanding(s);

@@ -92,7 +92,12 @@ export function createSession(): Session {
     )
       return;
     p.lastSent = s;
-    if (!p.silent) p.onStatus(s);
+    if (p.silent) return;
+    try {
+      p.onStatus(s);
+    } catch (err) {
+      console.error('[pose] calibration onStatus failed', err); // a UI bug must not stop tracking
+    }
   }
 
   function calibrate(
@@ -126,10 +131,12 @@ export function createSession(): Session {
   function frame(poses: Point[][], t: number, videoAspect?: number) {
     if (videoAspect && Number.isFinite(videoAspect)) aspect = videoAspect;
     bodies = poses.length;
-    const i = poses.length > 1 ? pickBody(poses, lastCentre) : poses.length - 1;
-    player = i >= 0 ? poses[i] : null;
-    // Once calibrated, someone much bigger or smaller than the player is not the player.
-    if (player && detector && !isPlayerSized(player, detector.readout.W)) player = null;
+    // Once calibrated, someone much bigger or smaller than the player is not the player: drop them
+    // first, then pick the largest, nearest of the rest.
+    const d = detector;
+    const candidates = d ? poses.filter((pose) => isPlayerSized(pose, d.readout.W)) : poses;
+    const i = candidates.length > 1 ? pickBody(candidates, lastCentre) : candidates.length - 1;
+    player = i >= 0 ? candidates[i] : null;
     if (player && player[L_SHOULDER] && player[R_SHOULDER]) {
       const s = mid(player[L_SHOULDER], player[R_SHOULDER]);
       lastCentre = { x: toPlayerX(s.x), y: s.y };

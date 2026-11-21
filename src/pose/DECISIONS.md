@@ -76,3 +76,6 @@ or the named file.
 27. **`CALIBRATION_FEET_IN_VIEW` switch (default true, as the contract says).** A's feet were at 0.97
     of the frame height at home; a smaller venue room could leave calibration stuck on `tooClose`
     although detection only needs the hips. Setting it to false asks for head and knees only.
+28. **Bodies far from the player's size are dropped before picking**, not after: a bigger stranger
+    right in front of the camera used to win the "largest" pick, get rejected, and hide the real
+    player. A throwing `onStatus` (UI bug) is isolated like `onMove` listeners.
