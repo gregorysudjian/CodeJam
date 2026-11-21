@@ -35,7 +35,7 @@ import { InputSwitch, type InputKind } from './InputSwitch';
 import { createSwitchableInput } from './switchableInput';
 import { TryMoves } from './TryMoves';
 import { tutorialMoves } from './tutorial';
-import { LEADERBOARD_SIZE } from './tuning';
+import { HANDS_FREE_ARM_MS, LEADERBOARD_SIZE } from './tuning';
 import { useOnline } from './useOnline';
 
 type Screen =
@@ -312,6 +312,32 @@ function MainApp() {
   useEffect(() => {
     recalibrateRef.current = recalibrate;
   }, [recalibrate]);
+
+  // K switched to the camera mid-round: the new pose input isn't calibrated yet, so the game would
+  // sit paused with no message. Calibrate it with on-screen guidance, as R does (pose NEEDS 7).
+  const prevInputKind = useRef(input.kind);
+  useEffect(() => {
+    const was = prevInputKind.current;
+    prevInputKind.current = input.kind;
+    if (was === 'keyboard' && input.kind === 'pose' && screenRef.current === 'play') {
+      recalibrateRef.current();
+    }
+  }, [input]);
+
+  // Results with the camera say "raise both arms to play again": do it (pose NEEDS 5).
+  useEffect(() => {
+    if (screen !== 'results' || !summary || input.kind !== 'pose') return;
+    let off: (() => void) | undefined;
+    const arm = setTimeout(() => {
+      off = input.onMove((e) => {
+        if (e.type === 'armsUp') startSession({ ...summary.config, seed: undefined });
+      });
+    }, HANDS_FREE_ARM_MS);
+    return () => {
+      clearTimeout(arm);
+      off?.();
+    };
+  }, [screen, summary, input, startSession]);
 
   // ── Global keys (owned by the app): K switch input, R recalibrate, D debug, Esc pause.
   // The screens bind their own keys too, so to avoid double handling:

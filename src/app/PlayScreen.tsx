@@ -13,7 +13,7 @@ import type {
 import { createGame } from '@/game';
 import { GameHud } from '@/ui/screens/GameHud';
 import { createSessionTracker, generateLevel } from '@/workout';
-import { VideoSlot } from './slots';
+import { SkeletonSlot, VideoSlot } from './slots';
 import { TrackingLostHint } from './ErrorStates';
 import { FINISH_DELAY_MS, HUD_POLL_MS, TRACKING_LOST_HINT_MS } from './tuning';
 
@@ -169,7 +169,15 @@ export function PlayScreen({
           lastEvent={lastEvent}
           paused={paused}
           trackingLost={trackingLost}
-          cameraSlot={pose ? <VideoSlot pose={pose} /> : undefined}
+          cameraSlot={
+            pose ? (
+              // The skeleton over the preview shows the player they are tracked (pose NEEDS 6).
+              <div className="relative h-full w-full">
+                <VideoSlot pose={pose} />
+                <SkeletonSlot pose={pose} />
+              </div>
+            ) : undefined
+          }
           onPause={() => {
             if (!finishedRef.current) gameRef.current?.pause();
           }}
