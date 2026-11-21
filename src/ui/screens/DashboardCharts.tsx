@@ -1,4 +1,4 @@
-import { useReducedMotion } from "motion/react";
+import { useReducedMotion } from 'motion/react';
 import {
   BarChart,
   Bar,
@@ -9,20 +9,20 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts";
-import type { MoveType } from "@/contracts";
-import { Eyebrow, GlassPanel, MoveChip, MOVE_ORDER, MOVE_LABELS } from "@/ui/kit";
-import type { ActivityDay } from "@/ui/screens/dashboardStats";
-import { localDay } from "@/ui/screens/dashboardStats";
+} from 'recharts';
+import type { MoveType } from '@/contracts';
+import { Eyebrow, GlassPanel, MoveChip, MOVE_ORDER, MOVE_LABELS } from '@/ui/kit';
+import type { ActivityDay } from '@/ui/screens/dashboardStats';
+import { localDay } from '@/ui/screens/dashboardStats';
 
-const tick = { fill: "var(--na-text-dim)", fontFamily: "var(--font-display)", fontSize: 16 };
+const tick = { fill: 'var(--na-text-dim)', fontFamily: 'var(--font-display)', fontSize: 16 };
 const MOVE_TOKEN: Record<MoveType, string> = {
-  sidestep: "var(--na-cyan)",
-  jump: "var(--na-lime)",
-  squat: "var(--na-amber)",
-  armsUp: "var(--na-magenta)",
-  reachLeft: "var(--na-violet)",
-  reachRight: "var(--na-violet)",
+  sidestep: 'var(--na-cyan)',
+  jump: 'var(--na-lime)',
+  squat: 'var(--na-amber)',
+  armsUp: 'var(--na-magenta)',
+  reachLeft: 'var(--na-violet)',
+  reachRight: 'var(--na-violet)',
 };
 function ChartTip({ title, value, unit }: { title: string; value: number; unit: string }) {
   return (
@@ -78,7 +78,7 @@ export function DashboardCharts({
         <div
           className="arena-chart h-[260px] w-full"
           role="img"
-          aria-label={days.map((d) => `${d.label}: ${d.activeMin} minutes`).join(", ")}
+          aria-label={days.map((d) => `${d.label}: ${d.activeMin} minutes`).join(', ')}
         >
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <BarChart
@@ -112,7 +112,7 @@ export function DashboardCharts({
                 strokeDasharray="6 6"
               />
               <Tooltip
-                cursor={{ fill: "var(--na-glass)" }}
+                cursor={{ fill: 'var(--na-glass)' }}
                 content={({ active, payload, label }) =>
                   active && payload?.[0] ? (
                     <ChartTip title={String(label)} value={Number(payload[0].value)} unit="MIN" />
@@ -129,8 +129,8 @@ export function DashboardCharts({
                 {days.map((day) => (
                   <Cell
                     key={day.date}
-                    fill={day.date === localDay(now) ? "var(--na-lime)" : "var(--na-activity-bar)"}
-                    className={day.date === localDay(now) ? "chart-today-bar" : ""}
+                    fill={day.date === localDay(now) ? 'var(--na-lime)' : 'var(--na-activity-bar)'}
+                    className={day.date === localDay(now) ? 'chart-today-bar' : ''}
                   />
                 ))}
               </Bar>
@@ -143,7 +143,7 @@ export function DashboardCharts({
         <div
           className="arena-chart h-[260px] w-full"
           role="img"
-          aria-label={repRows.map((r) => `${MOVE_LABELS[r.move]}: ${r.reps} reps`).join(", ")}
+          aria-label={repRows.map((r) => `${MOVE_LABELS[r.move]}: ${r.reps} reps`).join(', ')}
         >
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <BarChart
@@ -173,7 +173,7 @@ export function DashboardCharts({
                 tickLine={false}
               />
               <Tooltip
-                cursor={{ fill: "var(--na-glass)" }}
+                cursor={{ fill: 'var(--na-glass)' }}
                 content={({ active, payload }) => {
                   const row = payload?.[0];
                   const move = MOVE_ORDER.find((m) => m === row?.payload?.move);

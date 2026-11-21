@@ -1,5 +1,5 @@
-import * as React from "react";
-import { ArrowLeft, Check, Gauge, Lock, PersonStanding, Play } from "lucide-react";
+import * as React from 'react';
+import { ArrowLeft, Check, Gauge, Lock, PersonStanding, Play } from 'lucide-react';
 import type {
   CoachAdvice,
   MoveType,
@@ -7,7 +7,7 @@ import type {
   SessionConfig,
   WorkoutId,
   WorkoutInfo,
-} from "@/contracts";
+} from '@/contracts';
 import {
   GameButton,
   CoachBanner,
@@ -22,8 +22,8 @@ import {
   WORKOUT_COLORS,
   WORKOUT_LABELS,
   useHotkey,
-} from "@/ui/kit";
-import { cn } from "@/ui/lib/utils";
+} from '@/ui/kit';
+import { cn } from '@/ui/lib/utils';
 
 export interface WorkoutSelectScreenProps {
   workouts: WorkoutInfo[];
@@ -37,26 +37,26 @@ export interface WorkoutSelectScreenProps {
 
 /** Signature move drawn on each workout card. */
 export const WORKOUT_SIGNATURE: Record<WorkoutId, MoveType> = {
-  legs: "squat",
-  arms: "reachRight",
-  shoulders: "armsUp",
-  fullBody: "jump",
+  legs: 'squat',
+  arms: 'reachRight',
+  shoulders: 'armsUp',
+  fullBody: 'jump',
 };
 
 const MODES = [
-  { value: "floor", label: "Floor", icon: PersonStanding },
-  { value: "treadmill", label: "Treadmill", icon: Gauge },
+  { value: 'floor', label: 'Floor', icon: PersonStanding },
+  { value: 'treadmill', label: 'Treadmill', icon: Gauge },
 ] as const satisfies readonly { value: PlayMode; label: string; icon: typeof Gauge }[];
 
 const DURATIONS = [
-  { value: "45", label: "45 S" },
-  { value: "90", label: "90 S" },
-  { value: "180", label: "180 S" },
+  { value: '45', label: '45 S' },
+  { value: '90', label: '90 S' },
+  { value: '180', label: '180 S' },
 ] as const;
-type DurationValue = (typeof DURATIONS)[number]["value"];
+type DurationValue = (typeof DURATIONS)[number]['value'];
 
 /** "LEGS · FLOOR · 90 S" */
-export function sessionLabel(c: Pick<SessionConfig, "workout" | "mode" | "durationSec">): string {
+export function sessionLabel(c: Pick<SessionConfig, 'workout' | 'mode' | 'durationSec'>): string {
   return `${WORKOUT_LABELS[c.workout]} · ${MODE_LABELS[c.mode]} · ${c.durationSec} S`;
 }
 
@@ -96,7 +96,7 @@ function WorkoutCard({
       type="button"
       role="radio"
       aria-checked={selected}
-      aria-label={`${index + 1}. ${info.name}. ${disabled ? (info.id === "legs" && mode === "treadmill" ? "Running is your leg work" : "Unavailable in this mode") : info.tagline}`}
+      aria-label={`${index + 1}. ${info.name}. ${disabled ? (info.id === 'legs' && mode === 'treadmill' ? 'Running is your leg work' : 'Unavailable in this mode') : info.tagline}`}
       aria-disabled={disabled || undefined}
       disabled={disabled}
       tabIndex={selected ? 0 : -1}
@@ -104,10 +104,10 @@ function WorkoutCard({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onKeyDown={(e) => {
-        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
           e.preventDefault();
           onKeyNav(1);
-        } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
           e.preventDefault();
           onKeyNav(-1);
         }
@@ -120,11 +120,11 @@ function WorkoutCard({
           : undefined
       }
       className={cn(
-        "glass focus-ring group relative flex min-h-[360px] cursor-pointer flex-col overflow-hidden rounded-[28px] p-6 text-left transition-[transform,box-shadow,border-color,filter,opacity] duration-300 ease-arena",
+        'glass focus-ring group relative flex min-h-[360px] cursor-pointer flex-col overflow-hidden rounded-[28px] p-6 text-left transition-[transform,box-shadow,border-color,filter,opacity] duration-300 ease-arena',
         selected
-          ? "-translate-y-2 border-transparent"
-          : "hover:-translate-y-1 hover:border-white/20",
-        disabled && "cursor-not-allowed opacity-45 grayscale hover:translate-y-0",
+          ? '-translate-y-2 border-transparent'
+          : 'hover:-translate-y-1 hover:border-white/20',
+        disabled && 'cursor-not-allowed opacity-45 grayscale hover:translate-y-0',
       )}
     >
       <span
@@ -173,8 +173,8 @@ function WorkoutCard({
         </span>
         <span className="text-caption text-text-muted">
           {disabled
-            ? info.id === "legs" && mode === "treadmill"
-              ? "Running is your leg work"
+            ? info.id === 'legs' && mode === 'treadmill'
+              ? 'Running is your leg work'
               : `Not available on ${MODE_LABELS[mode].toLowerCase()}`
             : info.tagline}
         </span>
@@ -197,13 +197,13 @@ export function WorkoutSelectScreen({
   onStart,
   onBack,
 }: WorkoutSelectScreenProps) {
-  const [mode, setMode] = React.useState<PlayMode>(initial?.mode ?? "floor");
+  const [mode, setMode] = React.useState<PlayMode>(initial?.mode ?? 'floor');
   const [workout, setWorkout] = React.useState<WorkoutId>(() =>
-    firstAvailable(workouts, initial?.mode ?? "floor", initial?.workout ?? "fullBody"),
+    firstAvailable(workouts, initial?.mode ?? 'floor', initial?.workout ?? 'fullBody'),
   );
   const [duration, setDuration] = React.useState<DurationValue>(() => {
     const v = String(initial?.durationSec ?? 90);
-    return DURATIONS.find((d) => d.value === v)?.value ?? "90";
+    return DURATIONS.find((d) => d.value === v)?.value ?? '90';
   });
   const [lowImpact, setLowImpact] = React.useState(initial?.lowImpact ?? false);
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
@@ -232,7 +232,7 @@ export function WorkoutSelectScreen({
   };
 
   const durationSec = Number(duration);
-  const effectiveLowImpact = mode === "floor" && lowImpact;
+  const effectiveLowImpact = mode === 'floor' && lowImpact;
 
   const start = () => {
     const config: SessionConfig = { workout, mode, durationSec, lowImpact: effectiveLowImpact };
@@ -241,13 +241,13 @@ export function WorkoutSelectScreen({
     onStart(config);
   };
 
-  useHotkey("Enter", start);
-  useHotkey("Escape", onBack);
-  useHotkey("c", () => coachPick && onStart(coachPick.next), Boolean(coachPick));
-  useHotkey("1", () => select(0));
-  useHotkey("2", () => select(1));
-  useHotkey("3", () => select(2));
-  useHotkey("4", () => select(3));
+  useHotkey('Enter', start);
+  useHotkey('Escape', onBack);
+  useHotkey('c', () => coachPick && onStart(coachPick.next), Boolean(coachPick));
+  useHotkey('1', () => select(0));
+  useHotkey('2', () => select(1));
+  useHotkey('3', () => select(2));
+  useHotkey('4', () => select(3));
 
   return (
     <Screen
@@ -305,7 +305,7 @@ export function WorkoutSelectScreen({
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-5 border-t border-glass-border pt-5">
+      <div className="workout-settings flex flex-wrap items-center justify-between gap-3 border-t border-glass-border pt-5 xl:gap-5">
         <SegmentedControl<PlayMode>
           aria-label="Play mode"
           value={mode}
@@ -320,7 +320,7 @@ export function WorkoutSelectScreen({
           options={DURATIONS}
           size="md"
         />
-        {mode === "floor" && (
+        {mode === 'floor' && (
           <ToggleRow
             className="min-h-14 border-0 bg-transparent p-0 shadow-none backdrop-blur-none [&_label>span]:text-[22px]"
             label="Low impact"
