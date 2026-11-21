@@ -97,11 +97,14 @@ r = await req('POST', '/rest/v1/sessions', { token: A.token, body: row(A.uid, { 
 log('insert ~300 KB reps jsonb', r, r.status === 201 ? 'HOLE' : 'ok');
 
 // 4. created_at in the future (wins nothing, but shows a bogus date)
-r = await req('POST', '/rest/v1/sessions', {
+const future = row(A.uid, { created_at: '2099-01-01T00:00:00Z' });
+r = await req('POST', '/rest/v1/sessions', { token: A.token, body: future });
+// 0004 clamps a future date to now() instead of refusing it: read back what was stored.
+const stored = await req('GET', `/rest/v1/sessions?select=created_at&id=eq.${future.id}`, {
   token: A.token,
-  body: row(A.uid, { created_at: '2099-01-01T00:00:00Z' }),
 });
-log('insert created_at 2099', r, r.status === 201 ? 'HOLE' : 'ok');
+const year = stored.json?.[0]?.created_at?.slice(0, 4);
+log(`insert created_at 2099 (stored year ${year})`, r, year === '2099' ? 'HOLE' : 'ok');
 
 // 5. Read other players' rows
 r = await req('GET', `/rest/v1/sessions?select=id,user_id,score&user_id=eq.${A.uid}`, {

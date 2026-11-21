@@ -79,9 +79,56 @@ and revalidates them on every visit. Recommended `vercel.json` headers (Greg's C
 `/models/(.*)` and `/mediapipe/(.*)` → `public, max-age=86400, stale-while-revalidate=604800`
 (fixed names, so not immutable).
 
+## 0004 on the live project (Saturday 6:30 PM, after Greg's Claude applied it)
+
+`live-probes.mjs` (guests `QA-j2post4-*`, `QA-j2post4b-*`): score 999,999 → 400 `sessions_score_ceiling`;
+99,999 in 11 s → 400; 300 KB reps → 400 `sessions_reps_small`; `created_at` 2099 → stored as 2026;
+update and delete → 403 (no grant). Reads by others, writes as others and anon reads are still
+refused. The leaderboard is still readable. Only L5 (duplicate names) remains, as accepted.
+
+## Visitors' devices
+
+| Device | Before | Now |
+| --- | --- | --- |
+| Phone (Pixel 7, iPhone 15 emulation) | Landing fine; the select screen auto-switches to the camera and **downloads ~9 MB** of model and WASM; calibration asks to stand 1.5 m from the phone | #61 (merged and wired): "Play on a laptop in Chrome", See the leaderboard / Play anyway |
+| Safari, Firefox on a laptop | Not testable here (Chrome and Edge only) | #61: "Best in Chrome", Continue / See the leaderboard |
+| No WebGL 2 | The game can't render | #61: leaderboard only |
+| Laptop with no camera | Keyboard (the select screen only switches to the camera if a `videoinput` exists) | unchanged |
+| Real phone, real Safari or Firefox | **not tested** | |
+
+On a phone, "See the leaderboard" is only useful with **F1 fixed (#58)**: before sign-in it's empty.
+
+## F2: anonymous sign-in refused (venue wifi, 1000/h per project)
+
+Forced with Playwright (`/auth/v1/signup` → 429): the profile opens in 83 ms, the round plays and is
+saved on the local store, and the dashboard works. **But the results screen said "#1 ON THE
+LEADERBOARD" for 500 points** (the local board holds only this player's rounds), and nothing tells
+the player that their rounds stay on this laptop. #64: the fallback reads the real board. Still
+needed in `App.tsx`: a "leaderboard server busy" notice and no rank chip (see #64).
+
+## Coach endpoint (live, no key set)
+
+| Request | Status | Time |
+| --- | --- | --- |
+| no token (cold start) | 401 | 948 ms |
+| bad token | 401 | 265 ms |
+| invalid JSON | 400 | 43 ms |
+| valid, first call | 503 "coach not configured" | 454 ms |
+| again within 10 s | 429, `Retry-After: 10` | 252 ms |
+| unknown session | 404 | 332 ms |
+
+The client falls back to the rules on any non-200, and after 8 s at most if the endpoint hangs
+(unit-tested). In practice the rules card shows within half a second. Cosmetic: every round logs a
+red `503` in the console.
+
 ## Self-grade
 
 - **Saturday 6:30 PM.** A visitor could have put 999,999 on any board from DevTools in two
   requests: real and judge-visible. Migration 0004 closes it, but it isn't applied yet.
   Theoretical: the 300 KB rows and TRUNCATE (not reachable through REST). Next: the live site
   end to end, then devices.
+- **Saturday 7:30 PM.** Fixed and live: score cap and grants (0004, verified on the live
+  database), device notice (#61). Judge-visible and still open: F1, an empty board before sign-in
+  (#58 awaits Greg's OK), and F2, a false "#1" when sign-in is refused (#64, plus App wiring).
+  Theoretical: duplicate names (L5), the 429 storm (needs 1000 sign-ups in an hour).
+  Next: what a judge does on the demo Mac with `?demo=1`, then caching headers if Greg wants a PR.
