@@ -24,6 +24,8 @@ export interface StageFrame {
   dim: boolean; // paused: darken the scene
   /** Intro fly-in progress, 0 (in front of the runner) to 1 (chase camera). */
   intro: number;
+  /** Outro after the finish, 0 (chase camera) to 1 (swung back to intro progress OUTRO_TO). */
+  outro: number;
 }
 
 export interface Stage {
@@ -480,7 +482,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   return {
     scene,
     camera,
-    update({ distance, playerX, dt, realDt, speed, fever, dim, intro }) {
+    update({ distance, playerX, dt, realDt, speed, fever, dim, intro, outro }) {
       clock += dt;
       gridTex.offset.y = wrap(distance / T.GRID_TILE, 1);
 
@@ -785,12 +787,20 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       shakeAmount *= Math.exp(-T.SHAKE_DECAY * dt);
       const sx = (Math.random() - 0.5) * shakeAmount;
       const sy = (Math.random() - 0.5) * shakeAmount;
-      if (intro < 1) {
+      // The outro runs the intro's path part way back, toward the celebrating runner's front.
+      const fly = intro < 1 ? intro : 1 - (1 - L.OUTRO_TO) * outro;
+      if (fly < 1) {
         // Intro fly-in around the runner, landing exactly on the chase camera.
-        introCamera(intro, cam);
-        const follow = camX * intro + playerX * (1 - intro);
+        introCamera(fly, cam);
+        const follow = camX * fly + playerX * (1 - fly);
         camera.position.set(cam.px + follow, cam.py, cam.pz);
-        camera.lookAt(cam.lx + follow, cam.ly, cam.lz);
+        // In the outro the look target moves onto the runner (OUTRO_LOOK), not down the track.
+        const o = intro < 1 ? 0 : outro;
+        camera.lookAt(
+          cam.lx + follow + (playerX - cam.lx - follow) * o,
+          cam.ly + (L.OUTRO_LOOK.y - cam.ly) * o,
+          cam.lz + (L.OUTRO_LOOK.z - cam.lz) * o,
+        );
       } else {
         camera.position.set(T.CAMERA_POS.x + camX + sx, T.CAMERA_POS.y + sy, T.CAMERA_POS.z);
         camera.lookAt(look.x + camX * 0.5, look.y, look.z);
