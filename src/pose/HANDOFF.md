@@ -161,16 +161,14 @@ gives JSON to put into `DETECTION_DEFAULTS`.
 
 ## 8. Next tasks (priority, PLAN.md phase)
 
-1. **Now (Greg's ask, Sat ~2:40 PM): on the demo laptop, Patrick's Mac.** `git pull` main,
-   `npm run dev`, `http://localhost:5173/?demo=1&debug=timing`. Play full pose rounds and measure
-   pose FPS (D overlay) and page FPS (console snippet). If pose is under 20, use `&gfx=low`. Also
-   check Greg's #31: arms up on results plays again (armed after 1.5 s), K mid-round calibrates with
-   messages, skeleton on the play preview. Covers §6 step 8 and the timing report for Patrick.
-2. Finish §6 steps 4–7 on the real camera (Phase 1 done-check).
-3. Teammate check, 8/10 (Phase 1 done-check). Save clips as `fixtures/extra/` tests.
-4. (done) PR #27 merged via #30; NEEDS 1, 2, 5, 6, 7 done by Greg (#28, #31).
-5. Patrick's `?debug=timing`: share the combined table from item 1 with him, so the game's pose
-   leads match real lag (Phase 2).
+1. **On call for Patrick (Sat ~2:45 PM).** Patrick owns the camera session, FPS and camera tuning
+   on his Mac (the demo laptop); A does not run it or tune for camera quality. If his session
+   shows detection itself is wrong (a move missed, or seen when not done), he sends the case and A
+   fixes it in `src/pose`, keeping the pinned state timing test green.
+2. (done) Patrick's false jump during an overhead press: DECISIONS 39.
+3. Finish §6 steps 4–7 on the real camera (Phase 1 done-check), if Patrick's session doesn't cover it.
+4. Teammate check, 8/10 (Phase 1 done-check). Save clips as `fixtures/extra/` tests.
+5. (done) PR #27 merged via #30; NEEDS 1, 2, 5, 6, 7 done by Greg (#28, #31).
 6. Measure `MAX_POSES = 2` FPS; keep it if ≥ 25 with the game (Phase 2, background people).
 7. Phase 4: venue-lighting test, `STATION.md` setup at the venue.
 
