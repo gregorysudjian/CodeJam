@@ -1,43 +1,42 @@
 # Progress (Greg: D + C)
 
-## Status
+## Status (Saturday about 6:30 AM, unattended night run)
 
-_Updated after every PR._
+**First 3 things for Greg at 10 AM**
+1. **Merge PR #13** (the Lovable UI pass: cleanup, race progress bar, "REACH" label). I reviewed it: clean merge, check green, click-through fine. Your rule says only you merge other people's PRs.
+2. **Get Patrick and Abdo to open their PRs.** Patrick: `p1-workout`, then `p2-game`, **and fix the 3 slow tests in `src/workout/level.test.ts` first**, or `npm run check` goes red. Abdo: wire `detect.ts` into `createPoseInput()` (still the stub) and export `mountPoseDebug`. Everything merges cleanly with `main` today (dry run in `docs/AUDIT.md`).
+3. **Add `ANTHROPIC_API_KEY` in Vercel.** It's safe now: the per-user rate limit is live (#16). Then play one round on the live site and check the coach card says AI, not rules.
 
-**Live:** https://codejam-jet.vercel.app, deployed from `main`. The real UI, the Supabase backend and the rules coach are live. The game is the 2D placeholder, played with the keyboard, until Patrick's and Abdo's PRs land.
+**Live:** https://codejam-jet.vercel.app, deployed from `main` at #18. Working end to end with the keyboard:
+- landing → profile → select → "try each move" (first round) → play → results (1.5 s fanfare delay) → dashboard → leaderboard → New guest.
+- Supabase saves with an offline queue. The rules coach answers until the key is added.
+- `?store=local` (offline path) and `?kiosk=1` (board for between players).
+- Camera error, player-lost and offline states.
+- Panic keys K, R, D and Esc, with K continuing the round.
+- The game is still the 2D placeholder (Patrick's 3D game isn't merged), and body control is still the pose stub.
 
-**Merged and live**
-- #2 UI (Neon Arena screens) · #3 backend (schema, store with offline queue, coach endpoint) · #4 wiring (all 8 screens on real data)
-- #5 `signOut`: "New guest" now starts a new player
-- #6 demo preset: **reverted in #7**. `src/workout` is Patrick's, and his `p1-workout` already has the real generator and `?demo=1` (seed 594)
-- #8 `signOut` never hangs on bad wifi: the queue wait is capped at 2 s, and sign-out no longer makes a network call
-- #9 Results wait 1.5 s after the game finishes, so Patrick's finish arch and fanfare play (his request #5)
-- #10 Error states: camera blocked, missing, busy or other (full-screen, with Use keyboard and Try again), player lost (keyboard offer after 3 s), offline banner
-- #11 Kiosk leaderboard `?kiosk=1`: the board with the QR code, refreshing every 15 s, with its own in-memory guest so it never touches the game tab's player. Also fixes a sign-in race (two concurrent `signInGuest` calls)
-- #12 Audit (`docs/AUDIT.md`)
-- #13 The HUD reads `level.config`, so with `?demo=1` the countdown matches the 45 s demo (audit #5)
-- #15 K mid-round switches input without restarting the round (audit #4)
-- #16 Per-user rate limit on `/api/coach`: 1 call per 10 s (audit #6)
-- #17 Lazy loading: play screen, dashboard (Recharts) and pose module load only when needed; main chunk 1,198 → 762 KB (audit #8)
-- #18 "Try each move" tutorial before a player's first round (about 15 s, skippable, advances when the player does the move)
-- Skipped: the low-graphics toggle. No spot on the select screen without editing `src/ui`; `?gfx=low` already works through Patrick's game. Requested a settings slot (below)
+**Merged tonight (each with `npm run check` green, a short real test and a live deploy check)**
+- #5 `signOut`: New guest is a new player · #7 revert of my `src/workout` demo preset · #8 `signOut` never hangs on bad wifi
+- #9 1.5 s finish delay · #10 error states · #11 kiosk leaderboard plus a sign-in race fix · #12 audit
+- #14 HUD reads `level.config` · #15 K mid-round without a restart · #16 coach rate limit (1 call per 10 s, Postgres) · #17 lazy loading (main chunk −36 %) · #18 "try each move" tutorial
+- Skipped: the low-graphics toggle. No room on the select screen without editing `src/ui`; `?gfx=low` already works. UI request filed.
 
-**Testing rule (from Greg):** unit tests first. One scripted round per change, using `?demo=1&store=local` once Patrick's demo is on `main`. Browser testing is time-boxed to 5 minutes.
+**How it was tested:** unit tests (60, plus 128 more in Patrick's branches); one scripted keyboard round per change; the live database for the security rules and the rate limit; the live site for a full round (session in Supabase, on the dashboard and leaderboard); an integration dry run of all branches (3D game at 46 FPS on this laptop's Intel UHD).
 
-**How it was tested:** `npm run check` on every PR. Click-throughs by keyboard in Chrome against live Supabase, plus `?store=local`. Security rules tested with two anonymous users. Offline save tested with the network cut. `/api/coach` tested on a Vercel preview.
+**Not tested (needs hardware or a human):** a camera and real body input; R recalibration with real pose; a real Claude coach answer; the demo laptop's frame rate with pose and 3D together; projector, stage, lighting.
 
-**Not tested yet:** the camera and real body input (`src/pose` is still the stub). A real Claude coach answer (no key, by instruction). Patrick's 3D game on the demo laptop.
+**Open problems, ranked by demo risk** (details and owners in `docs/AUDIT.md`)
+1. Body control doesn't exist yet: Abdo's `createPoseInput()` is a stub. **Abdo**
+2. The 3D game and real generator aren't on `main`; no PRs opened. **Patrick**
+3. Patrick's 3 fairness tests time out at 5 s, so `check` goes red after his merge. **Patrick**
+4. No Claude key, so the coach card is always rules. **Greg** (now safe to add)
+5. With `?demo=1` the select screen shows the app's default (90 s) while the demo plays 45 s; the HUD is already correct. **Greg**, after `p1-workout` merges: preselect its `DEMO_CONFIG`
+6. `?dev=pose` is a placeholder until Abdo exports `mountPoseDebug`. **Abdo**, then Greg
+7. An offline save waits up to about 10 s before the coach card falls back (results show at once). **Greg**, low priority
 
-**Open problems, ranked by demo risk**
-1. Body control isn't on `main` (Abdo's `createPoseInput`), and the 3D game isn't on `main` (Patrick's `p0-game`). No PRs open yet.
-2. K pressed mid-round switches input by remounting the play screen, which **restarts the round** (found while building 3c; to fix in 3e, panic keys).
-3. An offline save waits up to about 10 s before falling back. The results screen already shows meanwhile, so only the coach card and rank arrive late.
+**Next 3 for me:** preselect the demo config with `?demo=1` once `p1-workout` is merged → wire `?dev=pose` once Abdo exports `mountPoseDebug` → review Patrick's and Abdo's PRs as they open (verdict before merging, merge order `p1-workout` → `p2-game` → `abdo-1`).
 
-**Requests:** none open (see below).
-
-**Next 3:** improvement passes (edge cases, empty and error states) → select screen preselects the demo with `?demo=1` (after `p1-workout` merges) → wire `?dev=pose` once Abdo exports `mountPoseDebug`.
-
-**Audit:** see `docs/AUDIT.md` (top 10 problems with owners).
+**Testing rule (from Greg):** unit tests first; one scripted round per change; browser tests time-boxed to 5 minutes.
 
 ## Log
 
