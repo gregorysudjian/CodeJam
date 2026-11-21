@@ -7,6 +7,7 @@
    - https://github.com/gregorysudjian/CodeJam/compare/main...q-pitch?expand=1
    - https://github.com/gregorysudjian/CodeJam/compare/main...q-submission?expand=1
    - https://github.com/gregorysudjian/CodeJam/compare/main...q-qa?expand=1
+   - https://github.com/gregorysudjian/CodeJam/compare/main...q-a11y?expand=1 (stacked on `q-qa`: merge that first, or merge only this one, which contains both)
 2. **Decide Q10:** should the local store mark rounds `synced: true`? Today every `?store=local` round says "NOT SYNCED" and the offline banner promises a sync that never happens.
 3. **Tell the Lovable UI Claude** about Q1, Q3, Q4 and Q5 (all `src/ui`). Q1 matters if the demo laptop ever runs at 1280×720 on a projector.
 
@@ -95,12 +96,51 @@ The local store saves `synced: false` (`src/data/local.ts:92`), so the dashboard
 ### Note for the Operator (not a bug)
 On the select screen, after clicking a control with the mouse, **Enter re-activates that control instead of starting** (`useHotkey` leaves Enter to the focused button). Click START instead. Worth one line in the DEMO station notes.
 
+## Accessibility and reading from 2 m (report only)
+
+**Yardstick.** A 14" laptop at 1366 px wide has about 0.23 mm per CSS pixel (a MacBook at default scaling about 0.2 mm). At 2 m, comfortable reading needs a cap height of about 8 mm (distance ÷ 250), which is a **48 px** font; about **32 px** is the floor for a short word. Sizes and contrast below were measured in Chrome at 1366×768 (computed font size; contrast against the element's own background, blended down to the page colour).
+
+| What the standing player reads | Size | Contrast | Verdict |
+| --- | --- | --- | --- |
+| HUD score | 112 px | 16.9 | pass |
+| HUD timer | 72 px | 18.6 | pass |
+| HUD cue word / countdown | 160 px / 48 px | 8.4 on its glow | pass for size; covers the obstacle (Q6) |
+| "+100" / "MISS" feedback | 48 px | n/a (over the 3D scene) | pass |
+| Streak, multiplier | 32 px | 16.9 | borderline, acceptable |
+| Calibration status message | 48 px, 72 px from 1024 px wide | high (white on dark band) | pass (read from code) |
+| "Step back" / "Step closer" | 48 px | amber on dark | pass (read from code) |
+| "STEP BACK INTO THE FRAME" | 112 px | amber | pass (read from code) |
+| Tutorial move name | 48 px | 11 | borderline: A2 |
+| **Tutorial instruction ("Step to the side")** | **20 px, muted** | 6.5 | **fail: A2** |
+| **Results "RAISE BOTH ARMS TO PLAY AGAIN"** | **20 px** | lime on dark | **fail: A1** |
+| Results score / stat values | 128 px / 48 px | 16.9 / 6.0 to 10.3 | pass |
+| Coach card text | 20 px | 17.3 | fine for the presenter at the laptop; not for a standing player |
+
+**Contrast:** every measured text passes WCAG AA (lowest visible: 6.0, muted captions on glass panels). Not measurable: text drawn over the moving 3D scene (the cue word and feedback). In screenshots the lime cue word sits on lime-lit gates (Q6).
+
+**Focus:** order is logical on every screen; the pause overlay keeps focus on RESUME; the camera dialog is a modal `alertdialog` with focus inside. Big buttons show no focus ring (Q4).
+
+**Labels:** every control on landing, profile (with "More options"), select, play, dashboard and leaderboard has an accessible name (icon buttons use `aria-label`; the Low impact switch uses `<label for>`). Charts carry an `aria-label` with their numbers.
+
+**Reduced motion:** `theme.css:935` stops every CSS animation under `prefers-reduced-motion`; measured 0 running animations on landing, tutorial, play and results (5 normally). Components read `useReducedMotion` for the HUD shake and results bars, and the game drops camera shake and the hold pulse (`src/game/README.md`); the in-game part was not checked visually.
+
+### A1. Results: the hands-free prompt is unreadable from 2 m (visible)
+A camera player stands 2 m away on the results screen, and the only instruction is "RAISE BOTH ARMS TO PLAY AGAIN" at 20 px with a 55 px figure. **Owner:** `src/ui/screens/ResultsScreen.tsx:85-86` (Lovable UI). **Fix:** `text-[20px]` → `text-display-sm` (48 px), `MoveFigure size={55}` → `size={96}`.
+
+### A2. Tutorial: the instruction is 20 px and muted (visible)
+"Try each move" is played from the mark, but the hint ("Step to the side", "Raise both arms") is `text-body text-text-muted` (20 px, grey) and the move name 48 px. **Owner:** Greg (`src/app/TryMoves.tsx:74-78`). **Fix:** hint `text-body text-text-muted` → `font-display-italic text-display-sm text-text` (48 px, white); move name `text-display-sm` → `text-display-md` (72 px); counter `text-sm` → `text-title`.
+
+### A3. Smaller ones (minor)
+- Tracking lost: "The round is paused until we can see you." is 16 px muted under a 112 px title. **Owner:** `src/ui/screens/GameHud.tsx:287`. **Fix:** `text-caption text-text-muted` → `text-title text-text`.
+- Calibration: "Camera starting…" is a 14 px muted eyebrow while the player is already walking back. **Owner:** `src/ui/screens/CalibrationScreen.tsx:117`. **Fix:** `eyebrow … text-text-muted` → `font-display-italic text-display-sm text-text`.
+- The pause screen's key hints (K, R, D) are 16 px; fine, the Operator reads them at the laptop.
+
 ## Requests
 
 _For each owner, from the findings above._
 
-- **Lovable UI (`src/ui`):** Q1, Q3, Q4, Q5 first; then Q6 (already requested), Q7 (button), Q11, Q12.
-- **Greg (`src/app`, `src/data`):** Q2 (one-line fix plus my skipped test), Q8, Q9, Q10 (decision), Q7 (wiring).
+- **Lovable UI (`src/ui`):** Q1, Q3, Q4, Q5, A1 first; then Q6 (already requested), Q7 (button), Q11, Q12, A3.
+- **Greg (`src/app`, `src/data`):** Q2 (one-line fix plus my skipped test), A2, Q8, Q9, Q10 (decision), Q7 (wiring).
 - **Abdo, Patrick:** nothing from this sweep.
 
 ## Passed
@@ -126,3 +166,4 @@ _For each owner, from the findings above._
 | 14:38 | 2. Pitch (`q-pitch`) | Script and Q&A match the app; found "raise both arms to start" (doesn't exist), "Play this next" with `?demo=1` replays the demo level, arms up on results replays. Pushed |
 | 14:49 | 3. Submission (`q-submission`) | `docs/SUBMISSION.md` pushed |
 | 15:02 | 4. QA sweep (`q-qa`) | This file. 12 findings, 4 visible ones need fixes (Q1–Q4) |
+| 15:20 | 5. Accessibility from 2 m (`q-a11y`, stacked on `q-qa`) | Sizes and contrast measured; 2 visible (A1 hands-free prompt, A2 tutorial hint), labels and reduced motion pass |
