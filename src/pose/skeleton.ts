@@ -1,14 +1,7 @@
 // Owner: A. Draws the pose on a canvas that sits over the mirrored video.
 import { PoseLandmarker, type NormalizedLandmark } from '@mediapipe/tasks-vision';
+import { toPlayerX } from './detect';
 import { DRAW_LINE_WIDTH, DRAW_MIN_VISIBILITY, DRAW_POINT_RADIUS } from './tuning';
-
-/**
- * The single place where MediaPipe's unmirrored x becomes the player's x
- * (docs/CONTRACTS.md, "Mirroring trap"). Everything in src/pose uses this.
- */
-export function toPlayerX(x: number): number {
-  return 1 - x;
-}
 
 const visible = (p: NormalizedLandmark) => (p.visibility ?? 1) >= DRAW_MIN_VISIBILITY;
 
