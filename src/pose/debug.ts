@@ -8,7 +8,16 @@ import { drawPose } from './skeleton';
 import { FPS_WINDOW_MS, RECORD_COUNTDOWN_MS, RECORD_DURATION_MS } from './tuning';
 
 /** Clips to record for the detector's test fixtures. */
-const CLIP_LABELS = ['standing', 'sidestep', 'jump', 'squat', 'armsUp', 'reach', 'leaveFrame'];
+const CLIP_LABELS = [
+  'standing',
+  'sidestep',
+  'jump',
+  'squat',
+  'armsUp',
+  'reach',
+  'leaveFrame',
+  'mixed',
+];
 
 /** Mounts the debug view into `container`. Returns a cleanup that releases everything. */
 export function mountPoseDebug(container: HTMLElement): () => void {
