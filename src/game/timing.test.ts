@@ -5,6 +5,7 @@ import {
   createTimingProbe,
   describeSpawn,
   explainMiss,
+  lagsToPaste,
   leadsToPaste,
   mergeTiming,
   summarizeTiming,
@@ -200,6 +201,37 @@ describe('camera-session helpers', () => {
     expect(leadsToPaste(rows, VISUAL_LEAD_SEC.pose)).toBe(
       `{ jump: 0.1, sidestep: 0.25, squat: ${rows[0]!.suggestedLeadSec}, armsUp: 0.3, reachLeft: 0.3, reachRight: 0.3 }`,
     );
+  });
+
+  it('lagsToPaste: the measured lags only, so the test keeps clip lags for the rest', () => {
+    const rows = summarizeTiming(
+      new Map([
+        ['squat', [0.15, 0.2, 0.25]],
+        ['jump', [0.05]],
+      ]),
+      VISUAL_LEAD_SEC.pose,
+    );
+    expect(lagsToPaste(rows)).toBe('{ jump: 0.15, squat: 0.5 }');
+    expect(lagsToPaste([])).toBe('{  }');
+  });
+
+  it('both lines paste as object literals that hold the table values', () => {
+    // The console line is pasted as code: keys must be bare move names, values plain numbers.
+    const asObject = (s: string): unknown => JSON.parse(s.replace(/(\w+):/g, '"$1":'));
+    const rows = summarizeTiming(
+      new Map([
+        ['armsUp', [0.31, 0.12, -0.4]],
+        ['sidestep', [0.02]],
+      ]),
+      VISUAL_LEAD_SEC.pose,
+    );
+    const leads = asObject(leadsToPaste(rows, VISUAL_LEAD_SEC.pose)) as Record<MoveType, number>;
+    expect(Object.keys(leads).sort()).toEqual(Object.keys(VISUAL_LEAD_SEC.pose).sort());
+    for (const r of rows) expect(leads[r.move]).toBe(r.suggestedLeadSec);
+    expect(asObject(lagsToPaste(rows))).toEqual({
+      sidestep: rows[1]!.lagSec,
+      armsUp: rows[0]!.lagSec,
+    });
   });
 
   it('describeSpawn names the object and what clears it', () => {

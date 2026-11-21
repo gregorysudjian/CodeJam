@@ -45,7 +45,8 @@ A webcam fitness runner for CodeJam 16. The player's body steers a 3-lane runner
      - The camera preview during play shows the skeleton.
    - Patrick has a checklist page that builds a report; he will paste it.
 2. **Your part, once he pastes the console output or report:**
-   - **Leads:** paste the leads line into `VISUAL_LEAD_SEC.pose` in `src/game/tuning.ts`. If `src/game/latency.test.ts` then fails, put the session's `lagSec` values in its `DETECTOR_LAG_SEC` and set `CAMERA_SEC` to 0 (its comment explains).
+   - **Leads:** the console prints `[game] camera session, paste both lines:`. The first goes after `VISUAL_LEAD_SEC.pose = ` in `src/game/tuning.ts`, the second after `SESSION_LAG_SEC = ` in `src/game/latency.test.ts`.
+   - **Hit table:** read it with the checklist in `src/game/README.md`, step 3 (which cause means what, and who fixes it).
    - **Hit causes:**
      - `late` or `early`: the leads.
      - `not seen`, or `dropped` while he really held: write a request for Abdo in `src/game/README.md`, under "Requests for A", with times and objects.

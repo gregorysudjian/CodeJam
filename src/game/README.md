@@ -54,16 +54,20 @@ Do the steps in this order: the frame rate changes the webcam lag, and the ghost
    - If pose drops under about 25 fps while the game runs, fix a lower level on this laptop: in the console on `http://localhost:5173`, `localStorage.setItem('game.gfx', 'medium')`, or `'low'`.
    - Otherwise leave it on automatic: it steps at 3 s if needed, and later rounds start at the level found.
 2. **Latency leads.** Play 2–3 rounds, moving when each object reaches the runner.
-   - From the second round on, the console prints a combined table and a line `VISUAL_LEAD_SEC.pose = { … }`. Paste that line into `tuning.ts`.
-   - If `latency.test.ts` then fails, put the `lagSec` column into its `DETECTOR_LAG_SEC` and set `CAMERA_SEC` to 0.
-3. **Holds and fair attempts.** After each round the console lists every hit and missed orb, with a cause:
+   - From the second round on, the console prints a combined table and `[game] camera session, paste both lines:`. Paste the first after `VISUAL_LEAD_SEC.pose = ` in `src/game/tuning.ts`, the second after `SESSION_LAG_SEC = ` in `src/game/latency.test.ts`. Then `npm run check`.
+   - If `latency.test.ts` still fails, a lead is below what its measured lag needs (the suggestion is capped at `TIMING_MAX_LEAD_SEC`): look at that move's `inWindowShare` before raising anything.
+3. **Holds and fair attempts.** After each round the console lists every hit and missed orb (`[game] N hits and missed orbs this round, and why:`, also in `window.__gameMisses`). Read it row by row:
 
-   | Cause | Meaning | Who fixes it |
+   | `cause` | What happened | Who fixes it, and how |
    | --- | --- | --- |
-   | `late` / `early`, by X s | outside the judging window | the leads (step 2), or the player |
-   | `not seen` | the detector never saw the move | a request to A, with the time and the object |
-   | `dropped` for X s | the state went off mid-hold, then came back | A, unless the player really stood up |
-   | `let go` X s early | the hold ended before its end | the player, or A if they were still down |
+   | `late`, by X s | first seen after the window closed (t + 0.15 s) | Patrick: the move's lead, from the combined table, not from one row. A single late row with the rest in the window is the player. |
+   | `early`, by X s | seen only before the window opened (t − 0.35 s) | Patrick: the lead is too high for this move, or the player anticipated. Same rule: the combined table decides. |
+   | `not seen` | never seen within 1 s of its time | The player really moved: a request to A under "Requests for A" below. A missed orb where nobody reached is just a miss. |
+   | `dropped`, gone at +X s for Y s | held, off for longer than the 0.3 s grace, back before the end | A, if the player stayed down or up (flicker). The player, if they really stood up. |
+   | `let go`, X s before the hold ended | the hold ended early and did not come back | The player, if they stood up. A, if they were still down (the state ended early). |
+   | `in window` | the probe saw the move in time, yet it was a hit | Patrick: the probe and the judge disagree. Note the row; it is a bug in `judge.ts` or `timing.ts`. |
+
+   The `detail` column gives the times; `at` is the object's judging time in the level, the same in every round of the demo level, so a row that repeats across rounds is the level or the detector, not the player.
 
    What recorded clips already say, from A's clips replayed through his detector with ±1 % landmark noise and 30 % dropped frames:
    - Held squats and both-arms-up never flickered.
@@ -190,7 +194,7 @@ Judging, events and the contract are unchanged; only where objects are drawn mov
 - the current lead, and the lead that would put the median in the middle of the window;
 - `lagSec` (median + lead): the whole webcam lag, if the player moved as the object reached the runner.
 
-Objects the player did not have to move for are skipped (already standing in the free lane). From the second round on (no page reload in between, "play again" is fine), a second table combines every round of this page load with the same input. Rounds where K was pressed are left out. The demo level has only 2 to 5 of each move, so copy the combined table's `suggestedLeadSec` into `VISUAL_LEAD_SEC.pose` after two or three rounds. The same reports are in `window.__gameTiming` (last round) and `window.__gameTimingAll` (combined). `latency.test.ts` checks the leads against the lags measured on A's clips. If you lower a lead below what those need, it fails: put the session's `lagSec` values in its `DETECTOR_LAG_SEC` and set its `CAMERA_SEC` to 0. Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
+Objects the player did not have to move for are skipped (already standing in the free lane). From the second round on (no page reload in between, "play again" is fine), a second table combines every round of this page load with the same input. Rounds where K was pressed are left out. The demo level has only 2 to 5 of each move, so copy the combined table's `suggestedLeadSec` into `VISUAL_LEAD_SEC.pose` after two or three rounds. The same reports are in `window.__gameTiming` (last round) and `window.__gameTimingAll` (combined). `latency.test.ts` checks the leads against the lags measured on A's clips, or against `SESSION_LAG_SEC` for moves measured in a camera session. The console prints that line next to the leads line, so step 2 is one paste into each file. Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
 
 ## Placement (`timeline.ts`, pure, tested)
 
@@ -261,6 +265,12 @@ Rechecked after Greg's PRs #13 and #20 (the select screen's camera/keyboard swit
 - Frame rate on a real GPU, especially next to MediaPipe. If it stutters, set `BLOOM_ENABLED = false` first.
 - Real webcam input. Tested only with the keyboard and a scripted input.
 - Long-term WebGL memory over many rounds.
+
+### Requests for A (Abdo), from the camera session
+None yet. Template for a `not seen`, `dropped` or `let go` row where the player really held the move:
+- Move, round and time: e.g. "squat, demo level, `at` 21.40 s, rounds 1 and 3".
+- The `cause` and `detail` columns, pasted.
+- What the body did (e.g. "deep squat, held until the beam passed") and the pose FPS on the overlay.
 
 ### Requests for D (Greg), not done because they are outside src/game
 1. A "Demo" entry point. `?demo=1` already works without any change (see `src/workout/README.md`).

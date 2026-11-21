@@ -17,6 +17,7 @@ import { createLeadBlend } from './timeline';
 import {
   createTimingProbe,
   describeSpawn,
+  lagsToPaste,
   leadsToPaste,
   mergeTiming,
   summarizeTiming,
@@ -157,8 +158,11 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
           console.table(all);
         }
         if (startKind === 'pose') {
+          // Step 2 of the camera session in one paste (src/game/README.md).
           console.info(
-            `[game] for src/game/tuning.ts, VISUAL_LEAD_SEC.pose = ${leadsToPaste(all, T.VISUAL_LEAD_SEC.pose)}`,
+            `[game] camera session, paste both lines:\n` +
+              `src/game/tuning.ts         VISUAL_LEAD_SEC.pose = ${leadsToPaste(all, T.VISUAL_LEAD_SEC.pose)}\n` +
+              `src/game/latency.test.ts   SESSION_LAG_SEC = ${lagsToPaste(all)}`,
           );
         }
       }

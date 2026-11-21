@@ -203,9 +203,27 @@ export function mergeTiming(
 export function leadsToPaste(rows: readonly MoveTiming[], current: T.LeadTable): string {
   const next: Record<MoveType, number> = { ...current };
   for (const r of rows) next[r.move] = r.suggestedLeadSec;
-  const order: MoveType[] = ['jump', 'sidestep', 'squat', 'armsUp', 'reachLeft', 'reachRight'];
-  return `{ ${order.map((m) => `${m}: ${next[m]}`).join(', ')} }`;
+  return `{ ${PASTE_ORDER.map((m) => `${m}: ${next[m]}`).join(', ')} }`;
 }
+
+/**
+ * The measured webcam lags, camera included, for SESSION_LAG_SEC in latency.test.ts: only the
+ * moves that were measured, so the test keeps the clip lags for the rest.
+ */
+export function lagsToPaste(rows: readonly MoveTiming[]): string {
+  const lag = new Map(rows.map((r) => [r.move, r.lagSec]));
+  const measured = PASTE_ORDER.filter((m) => lag.has(m));
+  return `{ ${measured.map((m) => `${m}: ${lag.get(m)}`).join(', ')} }`;
+}
+
+const PASTE_ORDER: readonly MoveType[] = [
+  'jump',
+  'sidestep',
+  'squat',
+  'armsUp',
+  'reachLeft',
+  'reachRight',
+];
 
 /** For the hit report: "beam (squat, held 1.6 s)", "block (sidestep, free lane 1)". */
 export function describeSpawn(s: Spawn): string {
