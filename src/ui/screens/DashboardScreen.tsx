@@ -1,5 +1,5 @@
-import { Button } from "@/ui/components/ui/button";
-import { useState } from "react";
+import { Button } from '@/ui/components/ui/button';
+import { useState } from 'react';
 import {
   CloudOff,
   Dumbbell,
@@ -9,8 +9,8 @@ import {
   HeartPulse,
   Play,
   Trophy,
-} from "lucide-react";
-import type { CoachAdvice, Profile, SavedSession, SessionConfig } from "@/contracts";
+} from 'lucide-react';
+import type { CoachAdvice, Profile, SavedSession, SessionConfig } from '@/contracts';
 import {
   AnimatedNumber,
   Eyebrow,
@@ -27,9 +27,9 @@ import {
   MODE_LABELS,
   ACCENT_TEXT,
   useHotkey,
-} from "@/ui/kit";
-import { cn } from "@/ui/lib/utils";
-import { DashboardCharts } from "@/ui/screens/DashboardCharts";
+} from '@/ui/kit';
+import { cn } from '@/ui/lib/utils';
+import { DashboardCharts } from '@/ui/screens/DashboardCharts';
 import {
   DAY_LABELS,
   dayStreak,
@@ -41,8 +41,8 @@ import {
   totals,
   weeklyActiveMinutes,
   weekStart,
-} from "@/ui/screens/dashboardStats";
-import { accuracyGrade } from "@/ui/screens/resultsRules";
+} from '@/ui/screens/dashboardStats';
+import { accuracyGrade } from '@/ui/screens/resultsRules';
 
 export interface DashboardScreenProps {
   profile: Profile;
@@ -55,15 +55,15 @@ export interface DashboardScreenProps {
   onEditProfile?(): void;
 }
 const GOALS = {
-  getMoving: { label: "GET MOVING", icon: Footprints },
-  buildStrength: { label: "BUILD STRENGTH", icon: Dumbbell },
-  cardio: { label: "CARDIO", icon: HeartPulse },
+  getMoving: { label: 'GET MOVING', icon: Footprints },
+  buildStrength: { label: 'BUILD STRENGTH', icon: Dumbbell },
+  cardio: { label: 'CARDIO', icon: HeartPulse },
 };
 const GRADE_TONE = {
-  S: "text-lime border-lime/40",
-  A: "text-cyan border-cyan/40",
-  B: "text-amber border-amber/40",
-  C: "text-text-muted border-glass-border",
+  S: 'text-lime border-lime/40',
+  A: 'text-cyan border-cyan/40',
+  B: 'text-amber border-amber/40',
+  C: 'text-text-muted border-glass-border',
 };
 export function DashboardScreen({
   profile,
@@ -86,10 +86,10 @@ export function DashboardScreen({
   const playedDays = new Set(sessions.filter((s) => s.at <= now).map((s) => localDay(s.at)));
   const GoalIcon = GOALS[profile.goal].icon;
   const history = sessions.slice(0, 8);
-  useHotkey("Enter", onPlay);
-  useHotkey("l", onLeaderboard);
+  useHotkey('Enter', onPlay);
+  useHotkey('l', onLeaderboard);
   useHotkey(
-    "c",
+    'c',
     () => {
       if (coachPick && onPlayCoachPick) onPlayCoachPick(coachPick.next);
     },
@@ -150,7 +150,9 @@ export function DashboardScreen({
       )}
       {sessions.length === 0 ? (
         <div className="dashboard-empty flex flex-col items-center justify-center gap-5 text-center">
-          <h1 className="font-display-italic text-title text-text-muted">WELCOME, {profile.displayName}</h1>
+          <h1 className="font-display-italic text-title text-text-muted">
+            WELCOME, {profile.displayName}
+          </h1>
           <MoveFigure pose="jump" size={160} />
           <h2 className="font-display-italic text-display-sm">NO ROUNDS YET</h2>
           <p className="text-body text-text-muted">Your first round takes 90 seconds.</p>
@@ -183,11 +185,11 @@ export function DashboardScreen({
               </ProgressRing>
               <p
                 className={cn(
-                  "font-display-italic text-title",
-                  remaining === 0 ? "text-lime text-glow-lime" : "text-text-muted",
+                  'font-display-italic text-title',
+                  remaining === 0 ? 'text-lime text-glow-lime' : 'text-text-muted',
                 )}
               >
-                {remaining === 0 ? "GOAL SMASHED" : `${remaining} MIN TO GO`}
+                {remaining === 0 ? 'GOAL SMASHED' : `${remaining} MIN TO GO`}
               </p>
             </section>
             <section className="min-w-0" aria-label="Day streak">
@@ -199,7 +201,7 @@ export function DashboardScreen({
                   className="font-display-italic text-display-lg text-magenta"
                 />
                 <span className="self-end pb-3 font-display-italic text-title text-text-muted">
-                  DAYS
+                  {streak === 1 ? 'DAY' : 'DAYS'}
                 </span>
               </div>
               <div className="flex justify-between gap-2">
@@ -211,15 +213,15 @@ export function DashboardScreen({
                     <div
                       key={date}
                       className="flex flex-col items-center gap-2"
-                      aria-label={`${DAY_LABELS[new Date(date).getDay()]}${played ? ", played" : ", no round"}${today ? ", today" : ""}`}
+                      aria-label={`${DAY_LABELS[new Date(date).getDay()]}${played ? ', played' : ', no round'}${today ? ', today' : ''}`}
                     >
                       <span
                         className={cn(
-                          "grid size-6 place-items-center rounded-full border",
+                          'grid size-6 place-items-center rounded-full border',
                           played
-                            ? "border-lime bg-lime shadow-glow-lime"
-                            : "border-glass-border bg-glass-strong",
-                          today && "outline-2 outline-offset-4 outline-lime",
+                            ? 'border-lime bg-lime shadow-glow-lime'
+                            : 'border-glass-border bg-glass-strong',
+                          today && 'outline-2 outline-offset-4 outline-lime',
                         )}
                       />
                       <span className="font-display text-caption text-text-muted">
@@ -272,7 +274,8 @@ export function DashboardScreen({
             <div className="mb-6 flex items-center justify-between gap-4">
               <SectionTitle title="RECENT ROUNDS" size="sm" />
               <span className="text-caption text-text-muted">
-                {total.sessions} rounds · Best {total.bestScore.toLocaleString("en-US")}
+                {total.sessions} {total.sessions === 1 ? 'round' : 'rounds'} · Best{' '}
+                {total.bestScore.toLocaleString('en-US')}
               </span>
             </div>
             <div role="list">
@@ -291,7 +294,7 @@ export function DashboardScreen({
                     <span className="flex flex-wrap gap-2">
                       <span
                         className={cn(
-                          "rounded-md border border-current px-2 py-1 font-display-italic text-[20px]",
+                          'rounded-md border border-current px-2 py-1 font-display-italic text-[20px]',
                           ACCENT_TEXT[WORKOUT_ACCENTS[session.config.workout]],
                         )}
                       >
@@ -305,11 +308,11 @@ export function DashboardScreen({
                       {session.config.durationSec} S
                     </span>
                     <span className="font-display-italic text-title text-text">
-                      {session.score.toLocaleString("en-US")}
+                      {session.score.toLocaleString('en-US')}
                     </span>
                     <span
                       className={cn(
-                        "grid size-9 place-items-center rounded-md border font-display-italic text-[24px]",
+                        'grid size-9 place-items-center rounded-md border font-display-italic text-[24px]',
                         GRADE_TONE[grade],
                       )}
                     >
