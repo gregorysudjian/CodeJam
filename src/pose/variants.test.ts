@@ -311,11 +311,20 @@ describe('when states turn on (the game pose latency leads depend on it)', () =>
 });
 
 /*
- * Extra clips (e.g. a teammate's): save as fixtures/extra/<move>-<count>[-name].json, standing still
- * for the first second (the clip calibrates on its first 300 ms). Each one expects exactly <count>
- * moves of type <move> (sidestep, jump, squat, armsUp, reachLeft, reachRight).
+ * Extra clips (a teammate's, e.g. Greg's 9 at 1.5 m): save as fixtures/extra/<label>-<count>[-name].json
+ * (the recorder's label; `leaveFrame` and `mixed` take no count, e.g. mixed-greg.json), standing still
+ * for the first second (the clip calibrates on its first 300 ms). The teammate check (Phase 1):
+ * at least 8 in 10 of the reps count, never more than were done, nothing of another kind, and no
+ * pause except in pauseX, which must give exactly <count> pauses.
  */
-describe('extra clips named <move>-<count>', () => {
+const EXTRA_MOVES: Record<string, string[]> = {
+  sidestep: ['sidestep'],
+  jump: ['jump'],
+  squat: ['squat'],
+  armsUp: ['armsUp'],
+  reach: ['reachLeft', 'reachRight'],
+};
+describe('extra clips named <label>-<count>', () => {
   const names = Object.keys(
     import.meta.glob('./fixtures/extra/*.json', { eager: true, import: 'default' }),
   ).map((path) => path.replace('./fixtures/', '').replace('.json', ''));
@@ -325,9 +334,28 @@ describe('extra clips named <move>-<count>', () => {
     return;
   }
   test.each(names)('%s', (name) => {
-    const [move, count] = name.replace('extra/', '').split('-');
-    const got = kinds(replay(name, { calibrate: 'self' }).events).filter((k) => k === move);
-    expect(got).toHaveLength(Number(count));
+    const [label, countText] = name.replace('extra/', '').split('-');
+    const count = Number(countText);
+    // A squat ending with the clip is decided after standing a moment; other clips end as recorded
+    // (holding a last crossed frame would complete an X the player never finished).
+    const r = replay(name, { calibrate: 'self', holdLastMs: label === 'squat' ? 1000 : 0 });
+    const got = kinds(r.events);
+    if (label === 'standing') {
+      expect(got).toEqual([]);
+      expect(r.gestures).toEqual([]);
+    } else if (label === 'pauseX') {
+      expect(r.gestures).toHaveLength(count);
+      expect(got).toEqual([]);
+    } else if (label in EXTRA_MOVES) {
+      const mine = got.filter((k) => EXTRA_MOVES[label].includes(k));
+      expect(mine.length).toBeGreaterThanOrEqual(Math.ceil(0.8 * count));
+      expect(mine.length).toBeLessThanOrEqual(count);
+      expect(got.filter((k) => !EXTRA_MOVES[label].includes(k))).toEqual([]);
+      expect(r.gestures).toEqual([]);
+    } else {
+      // leaveFrame, mixed: no expected count, but the X never fires during real moves.
+      expect(r.gestures).toEqual([]);
+    }
   });
 });
 
