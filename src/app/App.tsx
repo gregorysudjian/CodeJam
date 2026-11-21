@@ -35,7 +35,12 @@ import { InputSwitch, type InputKind } from './InputSwitch';
 import { createSwitchableInput } from './switchableInput';
 import { TryMoves } from './TryMoves';
 import { tutorialMoves } from './tutorial';
-import { BOARD_DEFAULT_DURATION_SEC, HANDS_FREE_ARM_MS, LEADERBOARD_SIZE } from './tuning';
+import {
+  BOARD_DEFAULT_DURATION_SEC,
+  HANDS_FREE_ARM_MS,
+  LEADERBOARD_SIZE,
+  PUBLIC_SITE_URL,
+} from './tuning';
 import { useOnline } from './useOnline';
 
 type Screen =
@@ -66,7 +71,9 @@ const isDevPose = new URLSearchParams(window.location.search).get('dev') === 'po
 // ?demo=1: the workout module plays its fixed demo level; preselect it so the screen matches.
 const isDemo = new URLSearchParams(window.location.search).get('demo') === '1';
 const isKiosk = new URLSearchParams(window.location.search).get('kiosk') === '1';
-const publicUrl = window.location.origin;
+// QR codes: the live site when running locally (a phone can't open localhost), else this site.
+const isLocalHost = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+const publicUrl = isLocalHost ? PUBLIC_SITE_URL : window.location.origin;
 const workouts = Object.values(WORKOUTS);
 
 export default function App() {
