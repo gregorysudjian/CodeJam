@@ -15,7 +15,8 @@ mirrored and fills the frame, D shows the overlay (27 FPS GPU), Esc and K back t
 MediaPipe model swapped for a replay of your clips, the full flow ran: K → START → calibration done
 from your standing frames → "try each move" ticked sidestep, jump, squat, arms up, reach left, reach
 right **while the video was off the page** → play screen received moves, timer ran, score went up.
-No console errors.
+Treadmill too (clips scaled to ~1.2 m): shoulder calibration, tutorial reach left / right / arms up,
+orbs collected in play, lane stays 0, bouncing gave no moves. No console errors in either run.
 
 **What works (tested on your recorded clips, no camera needed)**
 - `createPoseInput()` is real: camera, MediaPipe, `calibrate()` with status messages, smoothing,

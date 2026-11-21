@@ -24,7 +24,8 @@ _Last refresh: Sat 07:00 (overnight autonomous session). Read this first in a ne
 - **Last commit:** see `git log -1`.
 - **`npm run check`:** passes (177 tests). Use its exit code; a `| grep` can hide a failure.
 - **End to end:** `main`'s full flow (calibrate → tutorial with the video off-page → play) ran on
-  replayed clips with only the model swapped (see §6 "Testing without a camera").
+  replayed clips with only the model swapped, in floor and treadmill mode (see §6 "Testing without
+  a camera"). Phase 3's "treadmill round playable" holds on replayed data.
 - **Integration:** verified against `origin/main` PR #19 in a scratch worktree (never merged): `main`'s
   check passes with this `src/pose` (236 tests incl. the DevPose snippet from NEEDS.md 1), the real
   calibration screen and `?dev=pose` work with a stubbed camera, StrictMode leaves one camera track.
