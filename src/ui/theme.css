@@ -1,9 +1,9 @@
 /* NEON ARENA — every design token, utility and keyframe for the product lives here. */
-@import "@fontsource/barlow-condensed/600.css";
-@import "@fontsource/barlow-condensed/700.css";
-@import "@fontsource/barlow-condensed/800.css";
-@import "@fontsource/barlow-condensed/800-italic.css";
-@import "@fontsource-variable/inter";
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource/barlow-condensed/800.css';
+@import '@fontsource/barlow-condensed/800-italic.css';
+@import '@fontsource-variable/inter';
 
 :root {
   color-scheme: dark;
@@ -121,8 +121,8 @@
   --color-move-reach-left: var(--na-violet);
   --color-move-reach-right: var(--na-violet);
 
-  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
-  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
 
   --text-display-xl: 160px;
   --text-display-xl--line-height: 0.85;
@@ -443,7 +443,7 @@
 }
 @container (max-width: 1300px) {
   .hud-cue-label {
-    font-size: 112px;
+    font-size: 60px;
   }
   .hud-score > span {
     font-size: 88px;
@@ -487,16 +487,16 @@
     display: none;
   }
   .hud-cue-label {
-    font-size: 48px;
+    font-size: 36px;
   }
   .hud-cue-figure {
-    height: 90px;
-    width: 65px;
+    height: 60px;
+    width: 44px;
   }
   .hud-cue {
     gap: 12px;
   }
-  .hud-cue [role="progressbar"] {
+  .hud-cue [role='progressbar'] {
     transform: scale(0.65);
     margin: -20px;
   }
@@ -573,10 +573,10 @@
 .workout-screen h1 {
   font-size: 64px;
 }
-.workout-screen [role="radiogroup"][aria-label="Workout"] > [role="radio"] {
+.workout-screen [role='radiogroup'][aria-label='Workout'] > [role='radio'] {
   min-height: 320px;
 }
-.workout-screen [role="radiogroup"] + div {
+.workout-screen [role='radiogroup'] + div {
   padding-top: 12px;
 }
 .results-screen .results-score {
@@ -588,14 +588,14 @@
 .results-screen .results-stats > div {
   padding: 18px;
 }
-.results-screen section[aria-label="Reps breakdown"] {
+.results-screen section[aria-label='Reps breakdown'] {
   margin-top: 24px;
 }
-.results-screen section[aria-label="Reps breakdown"] .space-y-3 {
+.results-screen section[aria-label='Reps breakdown'] .space-y-3 {
   display: grid;
   gap: 6px;
 }
-.results-screen section[aria-label="Reps breakdown"] .space-y-3 > * {
+.results-screen section[aria-label='Reps breakdown'] .space-y-3 > * {
   margin: 0;
 }
 .leaderboard-screen:not(.leaderboard-kiosk) .podium-place {
@@ -634,7 +634,7 @@
   margin-top: calc(-1 * var(--screen-footer-height, 136px));
 }
 .screen-bottom-bar::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: -24px 0 100%;
   pointer-events: none;
@@ -704,7 +704,7 @@
   scroll-padding: 8px;
 }
 .leaderboard-row,
-.dashboard-screen [role="listitem"] {
+.dashboard-screen [role='listitem'] {
   /* Focus colour is immediate; keep only the row-highlight transitions. */
   transition-property: color, background-color, border-color;
 }
@@ -738,7 +738,7 @@
   .leaderboard-title {
     font-size: 48px;
   }
-  .leaderboard-filters [role="radio"] {
+  .leaderboard-filters [role='radio'] {
     min-width: 100px;
     padding-left: 14px;
     padding-right: 14px;
@@ -785,10 +785,10 @@
   .leaderboard-title {
     font-size: 48px;
   }
-  .leaderboard-filters [role="radiogroup"] {
+  .leaderboard-filters [role='radiogroup'] {
     width: 100%;
   }
-  .leaderboard-filters [role="radio"] {
+  .leaderboard-filters [role='radio'] {
     flex: 1;
     min-width: 0;
     padding: 8px;
