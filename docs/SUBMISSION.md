@@ -45,7 +45,7 @@ Three people, four modules, one shared TypeScript contract file (`src/contracts/
 - **Backend.** Supabase anonymous sign-in and Postgres. Row-level security on every table: a player can read and insert only their own sessions, with no update or delete. A `leaderboard` view exposes only name, workout, mode, score and date. Check constraints keep stored values in sane ranges.
 - **Offline.** If the network drops, the round is still played and saved. Sessions wait in a local queue and sync later, reads time out quickly and fall back to cache, and the coach falls back to the rules. `?store=local` runs with no backend at all.
 - **Coach endpoint.** A Vercel serverless function checks the player's token, reads their history through a Supabase client that carries that token (so row-level security applies on the server too and no service key is needed), and allows at most one call per player every 10 s with an atomic Postgres function. It asks Claude for JSON matching a schema, with a 7 s timeout and no retries, and validates the answer before returning it. **For the demo no Claude key is configured**, so the coach card shows the rule-based coach (it says RULES). It recommends the workout you played least this week, raises difficulty by 0.1 above 85% accuracy and lowers it below 60%, and aims the tip at your most-missed move.
-- **Quality.** 634 automated tests (Vitest). A mutation sweep set each of the 23 detection thresholds to an extreme value, and every one breaks at least one test.
+- **Quality.** 699 automated tests (Vitest). A mutation sweep set each of the 23 detection thresholds to an extreme value, and every one breaks at least one test.
 
 ## Challenges we ran into
 
@@ -96,17 +96,28 @@ Record on the demo laptop at `http://localhost:5173/?demo=1` with real sessions 
 | 0:48 to 0:54 | Screen: dashboard, then leaderboard | "Your week, and everyone's best scores." |
 | 0:54 to 1:00 | Screen: a title card | "Tracking runs in the browser. The video never leaves your laptop." |
 
-## Screenshot suggestions
+## Screenshots
 
-Take them in Chrome at 1920×1080. Pick Camera only where marked; the rest work with the keyboard. Use `?store=local` for any screenshot that must not add rows to the shared database.
+Real captures at 1920×1080 from `main` (bb17780 and bff0541), in [docs/submission/](submission/), ready to upload. All are from `http://localhost:5173/?demo=1&store=local` (the 45 s demo level) played **with the keyboard** by a script, so no camera preview appears; the ghost is an earlier, weaker run of the same level.
 
-1. **Landing:** `http://localhost:5173/?demo=1`. The first screen, with top scores and the QR code. Best with a returning player ("Continue as …").
-2. **Workout select:** same URL → Continue (or Play as guest → profile → Continue). Full body is preselected; show the Camera/Keyboard switch and the Low impact toggle.
-3. **Mid-round with the camera (Camera):** same URL, Camera, Start, calibrate, then capture about 10 s in, with an obstacle cue, the camera preview with the skeleton, and the ghost runner with the "vs ghost" chip (needs a camera rehearsal round on this URL first).
-4. **Results:** after any round on the same URL. Show the score, grade, reps per move and the coach card with NEXT UP.
-5. **Dashboard:** from results, click Dashboard. Needs a few rounds this week so the weekly ring and the 7-day chart have data.
-6. **Pose debug page (Camera):** `http://localhost:5173/?dev=pose`. The landmarks and threshold lines over the video, with the live values panel. This one shows the engineering.
+| File | Screen | Shows |
+| --- | --- | --- |
+| [01-landing](submission/01-landing.jpg) | Landing, first visit | "Your body is the controller", Play as guest, the privacy line |
+| [02-select](submission/02-select.jpg) | Workout select | Four workouts, floor/treadmill, 45/90/180 s, Low impact, Camera/Keyboard |
+| [03-tutorial](submission/03-tutorial.jpg) | "Try each move" | First of six moves (keyboard hint) |
+| [04-zone-city](submission/04-zone-city.jpg) | Play, city | Crate wall, ARMS UP cue, "EVEN VS GHOST" |
+| [05-zone-tunnel](submission/05-zone-tunnel.jpg) | Play, tunnel | Ghost runner beside the player, PERFECT, "+4 VS GHOST" |
+| [06-zone-bridge](submission/06-zone-bridge.jpg) | Play, bridge | Cable bridge, ghost in another lane, 13 combo |
+| [07-zone-finale](submission/07-zone-finale.jpg) | Play, finale | Dusk sky, PERFECT, 21 combo, "+8 VS GHOST" |
+| [08-perfect](submission/08-perfect.jpg) | Play, tunnel | PERFECT and +200 right after a clear |
+| [09-milestone](submission/09-milestone.jpg) | Play, finale | "20 COMBO!" banner (the REACH cue sits just above it, QA Q15), shockwave ring, PERFECT, +150 ORB |
+| [10-results](submission/10-results.jpg) | Results | 4,750 at 100%, grade S, reps per move, coach card (RULES) with NEXT UP |
+| [11-dashboard](submission/11-dashboard.jpg) | Dashboard | Weekly ring, day streak, 7-day chart, reps by move, coach's pick |
+| [12-leaderboard](submission/12-leaderboard.jpg) | Leaderboard | Podium with filters |
+| [13-kiosk](submission/13-kiosk.jpg) | `?kiosk=1` | "Beat 4,750 to take the crown", QR code |
 
-Alternative: **Kiosk leaderboard**, `http://localhost:5173/?kiosk=1`, with the QR code and filters.
+**Retake before submitting if you can:**
+- One shot with the **camera**, showing the preview and skeleton in the corner, and `?dev=pose` (landmarks and threshold lines). This machine has no camera.
+- The leaderboard and kiosk on the **live site** after the team's real rounds: the local store holds one player, so the podium shows a single name.
 
-**Not verified for this document:** shots and screenshots that need the camera (3 and 6 above, video shots 3 and 4) were described from the code and the team's notes, not seen on this machine.
+Select, results and dashboard were retaken on `main` bb17780 after the UI fixes in #41; the game frames (04–09) on bff0541 after the new scenery colours and icons in #42.
