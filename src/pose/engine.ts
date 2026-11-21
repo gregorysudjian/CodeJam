@@ -105,7 +105,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
         s = await getCameraStream();
       } catch (err) {
         if (my !== gen) return;
-        throw new Error(cameraErrorMessage(err));
+        throw new Error(cameraErrorMessage(err), { cause: err });
       }
       if (my !== gen) return stopStream(video, s);
       stream = s;
