@@ -244,3 +244,17 @@ or the named file.
     within 1.5% median (worst 3–8%), but restarts ~100 ms after a real step instead of at once.
     It changes nothing measurable on real still clips, so it waits for real fidgeting to show a
     need. Patch: HANDOFF §8.
+47. **Codex finding "a lone passerby controls a standing player" (`a2-pose-robust` f7c6525):
+    plausible, needs a real repro before any change.** Synthetic: when the session is fed only a
+    passerby 0.6× the player's size or bigger, it accepts them at once (a false jump and sidestep on
+    the first frame, then lane changes as they walk). With both bodies reported, the picker never
+    errs (0.4–1.05×). The case needs MediaPipe (one pose, video mode, which follows the previous
+    frame's body) to drop the player for the passerby; how often that happens on a camera is
+    unknown, and someone walking in front blocks the player anyway. A "no teleport" check (reject a
+    body far from the player's last position while still tracked) removes the first-frame jump and
+    sidestep, but a passerby who crosses through the player's spot is then picked up there and still
+    moves lanes, and in between the round pauses ("tracking lost"). Not worth a logic change on
+    synthetic evidence the night before the freeze. Next: A records `● passerby` (someone walks
+    behind, near and far, while A stands still); if the model switches bodies in that clip, the
+    continuity check comes back as a candidate with the clip as its test. Codex's `test.fails`
+    cases stay as they are.

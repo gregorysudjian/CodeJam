@@ -30,6 +30,8 @@ const CLIP_LABELS = [
   'lowReach',
   'turnStep',
   'squatArmsOut',
+  // Someone walks behind the player while they stand still (Codex finding, DECISIONS 47).
+  'passerby',
   // One move at a steady rhythm, for the lag study.
   'lagSidestep',
   'lagJump',
