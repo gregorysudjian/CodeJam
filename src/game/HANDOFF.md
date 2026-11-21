@@ -40,7 +40,7 @@ A webcam fitness runner for CodeJam 16. The player's body steers a 3-lane runner
 1. **Camera session.** Patrick does this: it needs his body, the webcam and his Mac, which is the demo laptop.
    - Start: `cd ~/CodeJam && git pull && npm run dev -- --strictPort`, then open `http://localhost:5173/?demo=1&debug=timing` and pick Camera. D shows the pose overlay and its FPS.
    - **Frame rate:** the console prints `[game] frame rate this round: …`. If pose FPS drops under about 25 with the game running, fix a lower level on the laptop: `localStorage.setItem('game.gfx', 'medium')`, or `'low'`.
-   - **Latency leads:** 2–3 rounds. From the second round, the console prints a combined table and the leads line to paste.
+   - **Latency leads:** 2–3 rounds. After each, the console prints the two lines to paste (leads and lags), over all camera rounds so far; from the second round, also a combined table.
    - **Holds and fair attempts:** the hit table after each round says why each hit happened.
    - **Body rounds:** 3 with the body, plus 1 in low impact. Note unfair or tiring combos.
    - **Greg's #31 checks:**

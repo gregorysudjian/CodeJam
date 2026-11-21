@@ -54,7 +54,7 @@ Do the steps in this order: the frame rate changes the webcam lag, and the ghost
    - If pose drops under about 25 fps while the game runs, fix a lower level on this laptop: in the console on `http://localhost:5173`, `localStorage.setItem('game.gfx', 'medium')`, or `'low'`.
    - Otherwise leave it on automatic: it steps at 3 s if needed, and later rounds start at the level found.
 2. **Latency leads.** Play 2–3 rounds, moving when each object reaches the runner.
-   - From the second round on, the console prints a combined table and `[game] camera session, paste both lines:`. Paste the first after `VISUAL_LEAD_SEC.pose = ` in `src/game/tuning.ts`, the second after `SESSION_LAG_SEC = ` in `src/game/latency.test.ts`. Then `npm run check`.
+   - After every camera round the console prints `[game] camera session, paste both lines:`, over all camera rounds of this page load (from the second round, with a combined table). After 2–3 rounds, paste the first after `VISUAL_LEAD_SEC.pose = ` in `src/game/tuning.ts`, the second after `SESSION_LAG_SEC = ` in `src/game/latency.test.ts`. Then `npm run check`.
    - If `latency.test.ts` still fails, a lead is below what its measured lag needs (the suggestion is capped at `TIMING_MAX_LEAD_SEC`): look at that move's `inWindowShare` before raising anything.
 3. **Holds and fair attempts.** After each round the console lists every hit and missed orb (`[game] N hits and missed orbs this round, and why:`, also in `window.__gameMisses`). Read it row by row:
 
