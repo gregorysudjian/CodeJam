@@ -152,6 +152,80 @@ describe('supabase store signOut', () => {
   });
 });
 
+// Migration 0004 refuses impossible rows (a check constraint). One refused row fails the whole
+// batch upsert, so before this fix it blocked every later round in the queue for good.
+describe('supabase store refused rows', () => {
+  /** Answers like PostgREST with 0004: 400 / 23514 if any row in the batch breaks the cap. */
+  function capServer(received: string[]) {
+    return (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!String(input).includes('/rest/v1/sessions') || init?.method !== 'POST')
+        return new Response(null, { status: 404 });
+      const rows = JSON.parse(String(init.body)) as {
+        id: string;
+        score: number;
+        duration_sec: number;
+      }[];
+      if (rows.some((r) => r.score > 300 * r.duration_sec)) {
+        return Response.json(
+          { code: '23514', message: 'violates check constraint "sessions_score_ceiling"' },
+          { status: 400 },
+        );
+      }
+      received.push(...rows.map((r) => r.id));
+      return new Response(null, { status: 201 });
+    }) as typeof fetch;
+  }
+  const cheat: SavedSession = {
+    ...queued,
+    id: '00000000-0000-4000-8000-0000000000cc',
+    score: 999999,
+  };
+
+  it('a refused row in the queue does not block the good ones, and is dropped', async () => {
+    const received: string[] = [];
+    const { store, kv } = storeWith(capServer(received));
+    kv.setItem('codejam.sb.queue', JSON.stringify([cheat, queued]));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const saved = await store.saveSession({ ...queued, score: 700 });
+
+    expect(saved.synced).toBe(true);
+    expect(received).toEqual([queued.id, saved.id]); // each good row sent once
+    expect(JSON.parse(kv.getItem('codejam.sb.queue') ?? '[]')).toEqual([]);
+    vi.restoreAllMocks();
+  });
+
+  it('a refused round resolves, is not reported as synced, and is not retried', async () => {
+    const received: string[] = [];
+    const { store, kv } = storeWith(capServer(received));
+    kv.setItem('codejam.sb.queue', '[]');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const saved = await store.saveSession({ ...queued, score: 999999 });
+
+    expect(saved.synced).toBe(false);
+    expect(JSON.parse(kv.getItem('codejam.sb.queue') ?? '[]')).toEqual([]);
+    const next = await store.saveSession({ ...queued, score: 800 });
+    expect(next.synced).toBe(true);
+    expect(received).toEqual([next.id]);
+    vi.restoreAllMocks();
+  });
+
+  it('a server or network error keeps the whole queue for later', async () => {
+    const down = (async () =>
+      Response.json({ code: 'PGRST000', message: 'db down' }, { status: 503 })) as typeof fetch;
+    const { store, kv } = storeWith(down);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const saved = await store.saveSession({ ...queued, score: 700 });
+
+    expect(saved.synced).toBe(false);
+    const ids = JSON.parse(kv.getItem('codejam.sb.queue') ?? '[]').map((s: SavedSession) => s.id);
+    expect(ids).toEqual([queued.id, saved.id]);
+    vi.restoreAllMocks();
+  });
+});
+
 // The venue wifi drops out or hangs: every call must still answer, from the queue and the caches.
 describe('supabase store offline', () => {
   const offline = (() => Promise.reject(new TypeError('Failed to fetch'))) as typeof fetch;

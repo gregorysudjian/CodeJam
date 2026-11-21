@@ -53,6 +53,10 @@ export const OUTRO_TO = 0.55; // intro progress it swings back to: 1 is the chas
 // low in the frame, under the end banner.
 export const OUTRO_LOOK = { y: 2.6, z: -0.5 };
 
+/* ── Reduced motion (scene.ts) ── */
+// A milestone brightens the lane lines and horizon; with prefers-reduced-motion, this much of it.
+export const REDUCED_FLASH = 0.4;
+
 /* ── Ghost runner (player.ts, view3d.ts) ── */
 // Silver glass with white accents: never the player's lime, and never a move colour (the old
 // cyan was the blocks'), so it reads as a runner, not an obstacle.
@@ -95,6 +99,9 @@ export const SFX = {
   finish: 0.35,
 } as const;
 export const MUSIC_VOLUME = 0.35; // the beat, relative to AUDIO_VOLUME
+// While Chrome keeps audio suspended (no gesture on the page yet), at most one resume attempt
+// per this long; a key press or click resumes it at once (audio.ts).
+export const AUDIO_WAKE_GAP_MS = 1000;
 /** Peak level of each voice of the beat, before MUSIC_VOLUME. */
 export const MUSIC_VOICES = {
   kick: 0.9,

@@ -2,6 +2,21 @@
 
 Copy each section into the matching Devpost field. Everything here is checked against the code; the few things we could not verify are marked.
 
+## Form checklist
+
+| Devpost field | What to paste or do | Status |
+| --- | --- | --- |
+| Project name | **Neon Arena** | ready |
+| Elevator pitch (short; 108 characters) | the Tagline below | ready |
+| About the project | the seven sections below, Inspiration to What's next, in order (Markdown works) | ready |
+| Built with | the comma list under "Built with" | ready |
+| Try it out (links) | `https://codejam-jet.vercel.app` and the GitHub repo | **Greg:** the repo is private (an anonymous request gets 404). Make it public before judging, or leave the GitHub link out |
+| Image gallery | the 13 JPGs in `docs/submission/` (table under "Screenshots"); 01, 05, 09 and 10 if only a few | ready; ours are 16:9: check the crop in Devpost's thumbnail preview |
+| Video demo | a YouTube or Vimeo link | **Greg:** record the take in [VIDEO.md](VIDEO.md) Sunday 8 AM, upload (unlisted is fine), paste the link |
+| Team members | Abdo, Patrick, Greg | **Greg:** invite both from the project page; each accepts from their own Devpost account |
+| Hackathon questions, prize tracks | whatever the CodeJam 16 form asks | **Greg** |
+| Submit | before the Devpost deadline (check it on the hackathon page; the code freeze is Sunday 12:00) | **Greg** |
+
 ## Tagline
 
 A workout you play with your whole body, using only your laptop's webcam. The video never leaves the laptop.
@@ -26,7 +41,7 @@ You pick what to train (Legs, Arms, Shoulders or Full body) and a 3-lane neon ru
 - **Feel:** the track runs through a neon city, a tunnel and a bridge to a synthesised beat that speeds up from 118 to 138 BPM and adds layers as your streak grows. Every clear is graded PERFECT, GOOD or LATE.
 - **Hands-free:** cross your forearms in an X for 1 s to pause or resume; raise both arms on the results screen to play again.
 - **Low impact** removes hurdles. **Treadmill mode** uses only crates and orbs (upper body), calibrated on the shoulders at 1 to 1.5 m, for people who run.
-- **Ghost runner:** when you replay a level, a see-through runner replays your best run beside you, and a chip shows whether you are ahead.
+- **Ghost runner:** when you replay a level, a silver "YOUR BEST" runner replays your best run beside you, a chip shows whether you are ahead, and the finish says who won.
 - **After each round:** score, grade, accuracy, best streak, reps per move, calories (labelled as an estimate), and a coach card with a recap, one tip for the move you missed most, and a recommended next session you can start with one click.
 - **Progress:** a dashboard with active minutes this week against your goal, a day streak and reps by move, and a leaderboard per workout, mode and round length. `?kiosk=1` turns a second screen into a live leaderboard with a QR code to play.
 - **No account needed:** you play as an anonymous guest and can pick a display name.
@@ -45,7 +60,7 @@ Three people, four modules, one shared TypeScript contract file (`src/contracts/
 - **Backend.** Supabase anonymous sign-in and Postgres. Row-level security on every table: a player can read and insert only their own sessions, with no update or delete. A `leaderboard` view exposes only each player's best per workout, mode and round length (name, score, date); one board per length, because a 180 s round scores about 6× a 45 s one. Check constraints keep stored values in sane ranges.
 - **Offline.** If the network drops, the round is still played and saved. Sessions wait in a local queue and sync later, reads time out quickly and fall back to cache, and the coach falls back to the rules. `?store=local` runs with no backend at all.
 - **Coach endpoint.** A Vercel serverless function checks the player's token, reads their history through a Supabase client that carries that token (so row-level security applies on the server too and no service key is needed), and allows at most one call per player every 10 s with an atomic Postgres function. It asks Claude for JSON matching a schema, with a 7 s timeout and no retries, and validates the answer before returning it. **For the demo no Claude key is configured**, so the coach card shows the rule-based coach (it says RULES). It recommends the workout you played least this week, raises difficulty by 0.1 above 85% accuracy and lowers it below 60%, and aims the tip at your most-missed move.
-- **Quality.** 762 automated tests (Vitest). A mutation sweep set each of the 23 detection thresholds to an extreme value, and every one breaks at least one test.
+- **Quality.** 823 automated tests (Vitest). A mutation sweep set each of the 23 detection thresholds to an extreme value, and every one breaks at least one test.
 
 ## Challenges we ran into
 
@@ -82,19 +97,9 @@ Three people, four modules, one shared TypeScript contract file (`src/contracts/
 
 TypeScript, React, Vite, Three.js, MediaPipe (`@mediapipe/tasks-vision`, Pose Landmarker), Tailwind CSS, shadcn/ui, Radix UI, Motion, Recharts, Supabase (Auth, Postgres, row-level security), Vercel serverless functions, Claude API (`@anthropic-ai/sdk`), Vitest, Web Audio API.
 
-## 60-second demo video: shot list
+## Demo video
 
-Record on the demo laptop at `http://localhost:5173/?demo=1` with real sessions already saved. Use a second phone or camera to film the player for shots 3 and 4, and a screen recording for the rest.
-
-| Time | Shot | Voice-over |
-| --- | --- | --- |
-| 0:00 to 0:05 | Player standing 1.5 m from a laptop in a normal room | "No console, no camera bar. Just a laptop." |
-| 0:05 to 0:12 | Screen: workout select, Full body, the Camera switch | "Pick what to train." |
-| 0:12 to 0:17 | Screen: calibration with the skeleton on the preview | "Stand still for a second and it measures you." |
-| 0:17 to 0:40 | Split screen: the player and the game, from the 3-2-1. Sidestep, orb, crate, jump, squat-and-hold, a PERFECT grade, the ghost and the "vs ghost" chip | Name each move as it happens. "That ghost is my best run." |
-| 0:40 to 0:48 | Screen: results with the coach card | "Reps, accuracy, and a coach that picks your next session." |
-| 0:48 to 0:54 | Screen: dashboard, then leaderboard | "Your week, and everyone's best scores." |
-| 0:54 to 1:00 | Screen: a title card | "Tracking runs in the browser. The video never leaves your laptop." |
+The shot list, voice-over, 10-second clip and a ready keyboard fallback are in [VIDEO.md](VIDEO.md).
 
 ## Screenshots
 
