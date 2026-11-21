@@ -32,6 +32,7 @@ export function PlayScreen({
   onGame,
   onFinish,
   onUseKeyboard,
+  pose,
 }: {
   config: SessionConfig;
   input: InputSource;
@@ -41,6 +42,8 @@ export function PlayScreen({
   onFinish: (summary: SessionSummary) => void;
   /** Switch to keyboard input (offered when the camera has lost the player for a while). */
   onUseKeyboard: () => void;
+  /** The live pose source when the camera is the input, for the camera preview in the HUD. */
+  pose: PoseInputSource | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // The level actually played. generateLevel may change the config (fills the seed; with ?demo=1
@@ -152,8 +155,6 @@ export function PlayScreen({
       onGameRef.current(null);
     };
   }, [level, input, weightKg]);
-
-  const pose = input.kind === 'pose' ? (input as PoseInputSource) : null;
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-bg">
