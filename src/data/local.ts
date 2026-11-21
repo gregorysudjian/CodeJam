@@ -39,6 +39,16 @@ export function browserStorage(): KeyValue | null {
   }
 }
 
+/** In-memory storage: nothing survives a reload. */
+export function memoryStorage(): KeyValue {
+  const m = new Map<string, string>();
+  return {
+    getItem: (k) => m.get(k) ?? null,
+    setItem: (k, v) => void m.set(k, v),
+    removeItem: (k) => void m.delete(k),
+  };
+}
+
 export function guestName(): string {
   return `Guest-${Math.floor(1000 + Math.random() * 9000)}`;
 }

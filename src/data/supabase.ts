@@ -51,20 +51,25 @@ export function createSupabaseStore(
   url: string,
   anonKey: string,
   kv: KeyValue | null = browserStorage(),
-  /** Test hooks only: a stand-in fetch and auth storage. The app never passes these. */
-  testing?: { fetch?: typeof fetch; authStorage?: KeyValue },
+  /**
+   * authStorage: where the guest session lives (default localStorage; the kiosk uses memory so it
+   * never touches the game tab's player). fetch: a stand-in for tests only.
+   */
+  options?: { fetch?: typeof fetch; authStorage?: KeyValue; sessionName?: string },
 ): DataStore {
   // Where supabase-js keeps the guest's session: its default key is sb-<project ref>-auth-token.
-  const authStorage = testing?.authStorage ?? browserStorage();
-  const authStorageKey = `sb-${new URL(url).hostname.split('.')[0]}-auth-token`;
+  const authStorage = options?.authStorage ?? browserStorage();
+  // A different sessionName gives a separate key, and with it a separate cross-tab channel, so a
+  // kiosk tab never touches the game tab's player.
+  const authStorageKey = `sb-${new URL(url).hostname.split('.')[0]}-${options?.sessionName ?? 'auth'}-token`;
   const sb: SupabaseClient = createClient(url, anonKey, {
     auth: {
       persistSession: true,
-      autoRefreshToken: !testing,
+      autoRefreshToken: !options?.fetch,
       storageKey: authStorageKey,
-      ...(testing?.authStorage ? { storage: testing.authStorage } : {}),
+      ...(options?.authStorage ? { storage: options.authStorage } : {}),
     },
-    ...(testing?.fetch ? { global: { fetch: testing.fetch } } : {}),
+    ...(options?.fetch ? { global: { fetch: options.fetch } } : {}),
   });
 
   const queue = () => readJson<SavedSession[]>(kv, KEYS.queue, []);
@@ -127,32 +132,41 @@ export function createSupabaseStore(
     return [...queue().filter((s) => !ids.has(s.id)), ...list].sort((a, b) => b.at - a.at);
   }
 
+  async function doSignIn(displayName?: string): Promise<Profile> {
+    let uid = await userId();
+    if (!uid) {
+      const { data, error } = await withTimeout(sb.auth.signInAnonymously());
+      if (error || !data.user) throw error ?? new Error('anonymous sign-in failed');
+      uid = data.user.id;
+    }
+    let profile = await fetchProfile(uid);
+    if (!profile) {
+      const { data, error } = await withTimeout(
+        sb
+          .from('profiles')
+          .insert({ id: uid, display_name: displayName?.trim().slice(0, 40) || guestName() })
+          .select('*')
+          .single<ProfileRow>(),
+      );
+      if (error) throw error;
+      profile = profileFromRow(data);
+    }
+    writeJson(kv, KEYS.profile, profile);
+    void flush();
+    return profile;
+  }
+  let signingIn: Promise<Profile> | null = null;
+
   const store: DataStore = {
     kind: 'supabase',
 
     // Throws if sign-in fails; createStore() then switches to the local store.
-    async signInGuest(displayName) {
-      let uid = await userId();
-      if (!uid) {
-        const { data, error } = await withTimeout(sb.auth.signInAnonymously());
-        if (error || !data.user) throw error ?? new Error('anonymous sign-in failed');
-        uid = data.user.id;
-      }
-      let profile = await fetchProfile(uid);
-      if (!profile) {
-        const { data, error } = await withTimeout(
-          sb
-            .from('profiles')
-            .insert({ id: uid, display_name: displayName?.trim().slice(0, 40) || guestName() })
-            .select('*')
-            .single<ProfileRow>(),
-        );
-        if (error) throw error;
-        profile = profileFromRow(data);
-      }
-      writeJson(kv, KEYS.profile, profile);
-      void flush();
-      return profile;
+    // Concurrent calls (a double click, React StrictMode running an effect twice) share one sign-in:
+    // two parallel anonymous sign-ins would each replace the other's session, and the loser's
+    // profile insert would then fail row-level security.
+    signInGuest(displayName) {
+      signingIn ??= doSignIn(displayName).finally(() => (signingIn = null));
+      return signingIn;
     },
 
     async getProfile() {

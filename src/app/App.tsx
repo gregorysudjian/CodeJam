@@ -30,9 +30,11 @@ import {
 import { WORKOUTS } from '@/workout';
 import { CalibrateStep } from './CalibrateStep';
 import { DevPose } from './DevPose';
+import { KioskBoard } from './KioskBoard';
 import { CameraErrorOverlay, OfflineBanner } from './ErrorStates';
 import { classifyCameraError, type CameraErrorInfo } from './errors';
 import { PlayScreen } from './PlayScreen';
+import { LEADERBOARD_SIZE } from './tuning';
 import { useOnline } from './useOnline';
 
 type Screen =
@@ -40,15 +42,22 @@ type Screen =
 
 const APP_NAME = 'Neon Arena';
 const NOTICE_MS = 4000;
-const LEADERBOARD_SIZE = 20;
 
 const store = createStore();
 const isDevPose = new URLSearchParams(window.location.search).get('dev') === 'pose';
+const isKiosk = new URLSearchParams(window.location.search).get('kiosk') === '1';
 const publicUrl = window.location.origin;
 const workouts = Object.values(WORKOUTS);
 
 export default function App() {
   if (isDevPose) return <DevPose />;
+  if (isKiosk)
+    return (
+      <KioskBoard
+        store={store}
+        qr={<QRCodeSVG value={publicUrl} bgColor="transparent" fgColor="currentColor" />}
+      />
+    );
   return <MainApp />;
 }
 
@@ -388,7 +397,9 @@ function MainApp() {
           }}
         />
       )}
-      {!online && <OfflineBanner onUseKeyboard={inputKind === 'pose' ? switchToKeyboard : undefined} />}
+      {!online && (
+        <OfflineBanner onUseKeyboard={inputKind === 'pose' ? switchToKeyboard : undefined} />
+      )}
       {notice && (
         <div
           role="status"
