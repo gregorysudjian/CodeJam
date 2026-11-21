@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat ~5:15 PM. A new conversation starts here: read this, then do §8 task 1._
+_Last refresh: Sat ~5:30 PM. A new conversation starts here: read this, then do §8 task 1._
 
 ## 1. Context
 
@@ -12,8 +12,8 @@ _Last refresh: Sat ~5:15 PM. A new conversation starts here: read this, then do 
 
 ## 2. Current state
 
-- **Branch:** `abdo-1` = `main` at `b0a02bd` (Merge #44) plus the commits after it (`git log origin/main..abdo-1`): the STATION.md operator card and self-review fixes (DECISIONS 43). Not in a PR yet: Greg asked for one PR at the end of his list, so open it after §8 tasks 1–3, or earlier if the freeze gets close.
-- **`npm run check` passes:** 729 tests, 411 of them in `src/pose` (Sat ~5:15 PM). The 7 lint warnings are in `src/ui`, not ours.
+- **Branch:** `abdo-1` = `main` at `4ed83c9` (Merge #47: Patrick's p5-game and p6-look, merged clean, nothing in `src/pose` changed) plus the station card and self-review (DECISIONS 43). Greg merges `abdo-1` as it stands in his batch tonight; the near-miss clips follow in a later PR.
+- **`npm run check` passes:** 757 tests with the whole team's code, 411 of them in `src/pose` (Sat ~5:30 PM). The 7 lint warnings are in `src/ui`, not ours.
 - **Merged today:** #27/#30 (self-check: 15 FPS, flicker), #32 (no false jump during a press), #37/#39 (head-to-knees calibration at about 1.5 m and the pause X), #43/#44 (the app picks the camera on the select screen when one exists, and remembers the choice).
 - **Works (all in `main`):**
   - `createPoseInput()`, which returns `PoseSource` = the contract's `PoseInputSource` + `onGesture`. It covers the camera, MediaPipe, `calibrate()` with status messages, lane / jump / squat / armsUp / reachLeft / reachRight, `tracking`, move events and `drawSkeleton`.
@@ -104,6 +104,11 @@ If something misses: `STATION.md` has a symptom → fix table. Record a clip of 
 
 ## 7. Waiting on teammates (copy-paste; full text in `NEEDS.md`)
 
+**Who does what (Greg, Sat ~5:30 PM):**
+- **A's second laptop** (Codex, branch `a2-pose-robust`) works on pose robustness: strangers walking behind the player, camera and model failures, synthetic bodies and FPS, false pauses, and proof that no video leaves the laptop. It **never touches** `tuning.ts`, `detect.ts`, `gesture.ts`, `calibration.ts`, `session.ts`, `variants.test.ts` or `fixtures/near/`. Its findings come to A; **A alone decides thresholds.**
+- **Patrick's camera session:** after each camera round with `?debug=timing`, the Mac prints a table of every hit with its cause. Rows marked `not seen` come to A as requests, using the "Requests for A" template in `src/game/README.md` (move, round and time; the cause and detail columns; what the body did and the pose FPS). Top priority whenever one arrives.
+- **Second person's X:** Greg records his 9 clips tonight, `pauseX` among them. Don't wait for them; they come in a later merge.
+
 NEEDS 1, 2, 5, 6, 7, 9, 10, 11 and 12 are done. 3, 4 and 8 are FYI. Open items:
 
 - **To Patrick (the camera session on the demo Mac):**
@@ -113,7 +118,8 @@ NEEDS 1, 2, 5, 6, 7, 9, 10, 11 and 12 are done. 3, 4 and 8 are FYI. Open items:
 
 ## 8. Next tasks (priority, mapped to docs/PLAN.md phases)
 
-1. **Phase 4 (hardening): X near-miss clips.** After §6 step 5, copy the new `~/Downloads/pose-{pauseX,xLow,xTouch,xOverhead}-*.json` into `src/pose/fixtures/near/` with clear names (for example `pauseX-chest.json`, `pauseX-armsOut.json`, `xLow.json`). In `variants.test.ts` › `describe('closer play …')`, expect the real number of pauses for the pauseX clips and 0 for the x* clips. If one fails, look at `isCrossed` with real values (see the probe pattern in DECISIONS 42) before changing `GESTURE_*` thresholds, and only before Sunday 10 AM. Run `npm run check`, then open a PR from `abdo-1`.
+0. **App check on the merged main** (§6 step 6), then tell Greg the result.
+1. **Phase 4 (hardening): X near-miss clips.** After §6 step 5, copy the new `~/Downloads/pose-{pauseX,xLow,xTouch,xOverhead}-*.json` into `src/pose/fixtures/near/` with clear names (for example `pauseX-chest.json`, `pauseX-armsOut.json`, `xLow.json`). In `variants.test.ts` › `describe('closer play …')`, expect the real number of pauses for the pauseX clips and 0 for the x* clips. If one fails, look at `isCrossed` with real values (see the probe pattern in DECISIONS 42) before changing `GESTURE_*` thresholds, and only before Sunday 10 AM. Run `npm run check`, push `abdo-1` and tell Greg **"ready"**.
 2. **Phase 4: on call for Patrick's Mac session** (§7). His cases come in as clips; fix them in `src/pose`. The pinned timing test must pass.
 3. **Phase 1/2 done-check: the teammate check** with Greg's clips at 1.5 m (§7), added as `fixtures/extra/` tests.
 4. **Phase 4: `STATION.md`.** The operator card is done; add what the Mac session shows (distance, light, whether `?gfx=low` is needed) to the "Before the demo" list.
