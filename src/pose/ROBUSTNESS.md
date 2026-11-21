@@ -19,3 +19,9 @@ Baseline `7be4281` passed all 762 tests on Windows with Node 24.22.3 and the com
 | Only walker, 1.00×                                   | 53 wrong picks, four false lane changes starting on frame 72.                                                     |
 
 No false pauses in this sweep. The between-person rows use synthetic model output. The out-of-position first pick is a candidate for a continuity check. Abdo owns that decision and the real-camera reproduction. [Report to Abdo](https://github.com/gregorysudjian/CodeJam/commit/a1e2857acaea4f52a56d0062f9841337ed65da78#commitcomment-211229250).
+
+### Cancelling calibration before the camera starts
+
+**Likely when a judge presses K or leaves setup during a permission prompt.** On `56fb514`, `engine.robust.test.ts` starts calibration, holds the camera request unresolved, then calls `stop()` before frame 0. Expected the public calibration promise to reject immediately. It stayed pending through the next event-loop turn and Vitest reported an unhandled rejection from the internal session. Observing both startup and calibration immediately fixes this, while preserving the browser's original startup error for the app overlay. Restoring the old engine reproduced both failures. The late camera grant still releases its track.
+
+Node stubs additionally cover denied, busy and missing device errors, a failed model load followed by a retry, overlapping StrictMode starts and a 5 s simulated load. `landmarker.robust.test.ts` checks shared-model GPU → CPU fallback and retry after model or WASM failure. These are module-level tests.

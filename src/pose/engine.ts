@@ -235,14 +235,13 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
       const done = session.calibrate(mode, onStatus);
       if (!running) {
         onStatus({ step: 'noBody', progress: 0, message: 'Starting the camera…' });
-        try {
-          await start();
-        } catch (err) {
-          // No camera: drop the pending calibration quietly and report the camera error.
-          done.catch(() => {});
-          session.cancel('The camera could not start.');
-          throw err;
-        }
+        // Observe cancellation even while a permission prompt or model load is still pending.
+        // Register the caller's startup error before cleanup rejects the calibration promise.
+        const started = start();
+        const ready = Promise.all([started, done]);
+        void started.catch(() => session.cancel('The camera could not start.'));
+        await ready;
+        return;
       }
       return done;
     },
