@@ -1,1 +1,669 @@
-/* Placeholder so src/index.css resolves. Replaced by the ported Lovable theme on greg-2. */
+/* NEON ARENA — every design token, utility and keyframe for the product lives here. */
+@import "@fontsource/barlow-condensed/600.css";
+@import "@fontsource/barlow-condensed/700.css";
+@import "@fontsource/barlow-condensed/800.css";
+@import "@fontsource/barlow-condensed/800-italic.css";
+@import "@fontsource-variable/inter";
+
+:root {
+  color-scheme: dark;
+  /* Raw palette */
+  --na-bg: #07090d;
+  --na-bg-raised: #0d1118;
+  --na-glass: rgba(255, 255, 255, 0.04);
+  --na-glass-strong: rgba(255, 255, 255, 0.07);
+  --na-glass-border: rgba(255, 255, 255, 0.08);
+  --na-text: #f5f7fa;
+  --na-text-muted: #8a94a6;
+  --na-text-dim: #5b6475;
+  --na-lime: #c6ff3d;
+  --na-cyan: #22d3ee;
+  --na-magenta: #ff3dcb;
+  --na-amber: #ffb020;
+  --na-violet: #8b5cf6;
+  --na-danger: #ff4d4f;
+  --na-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* shadcn mapping (dark only) */
+  --radius: 0.75rem;
+  --background: var(--na-bg);
+  --foreground: var(--na-text);
+  --card: var(--na-bg-raised);
+  --card-foreground: var(--na-text);
+  --popover: var(--na-bg-raised);
+  --popover-foreground: var(--na-text);
+  --primary: var(--na-lime);
+  --primary-foreground: var(--na-bg);
+  --secondary: var(--na-glass-strong);
+  --secondary-foreground: var(--na-text);
+  --muted: var(--na-glass-strong);
+  --muted-foreground: var(--na-text-muted);
+  --accent: var(--na-glass-strong);
+  --accent-foreground: var(--na-text);
+  --destructive: var(--na-danger);
+  --destructive-foreground: var(--na-text);
+  --border: var(--na-glass-border);
+  --input: rgba(255, 255, 255, 0.14);
+  --ring: var(--na-lime);
+  --chart-1: var(--na-lime);
+  --chart-2: var(--na-cyan);
+  --chart-3: var(--na-magenta);
+  --chart-4: var(--na-amber);
+  --chart-5: var(--na-violet);
+  --sidebar: var(--na-bg-raised);
+  --sidebar-foreground: var(--na-text);
+  --sidebar-primary: var(--na-lime);
+  --sidebar-primary-foreground: var(--na-bg);
+  --sidebar-accent: var(--na-glass-strong);
+  --sidebar-accent-foreground: var(--na-text);
+  --sidebar-border: var(--na-glass-border);
+  --sidebar-ring: var(--na-lime);
+}
+
+@theme inline {
+  /* shadcn semantic colours */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-bg: var(--na-bg);
+  --color-bg-raised: var(--na-bg-raised);
+  --color-glass: var(--na-glass);
+  --color-glass-strong: var(--na-glass-strong);
+  --color-glass-border: var(--na-glass-border);
+  --color-text: var(--na-text);
+  --color-text-muted: var(--na-text-muted);
+  --color-text-dim: var(--na-text-dim);
+  --color-lime: var(--na-lime);
+  --color-cyan: var(--na-cyan);
+  --color-magenta: var(--na-magenta);
+  --color-amber: var(--na-amber);
+  --color-violet: var(--na-violet);
+  --color-danger: var(--na-danger);
+  --color-move-sidestep: var(--na-cyan);
+  --color-move-jump: var(--na-lime);
+  --color-move-squat: var(--na-amber);
+  --color-move-arms-up: var(--na-magenta);
+  --color-move-reach-left: var(--na-violet);
+  --color-move-reach-right: var(--na-violet);
+
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+
+  --text-display-xl: 160px;
+  --text-display-xl--line-height: 0.85;
+  --text-display-xl--letter-spacing: -0.03em;
+  --text-display-lg: 112px;
+  --text-display-lg--line-height: 0.88;
+  --text-display-lg--letter-spacing: -0.025em;
+  --text-display-md: 72px;
+  --text-display-md--line-height: 0.9;
+  --text-display-md--letter-spacing: -0.02em;
+  --text-display-sm: 48px;
+  --text-display-sm--line-height: 0.95;
+  --text-display-sm--letter-spacing: -0.01em;
+  --text-title: 32px;
+  --text-title--line-height: 1.05;
+  --text-body: 20px;
+  --text-body--line-height: 1.5;
+  --text-caption: 16px;
+  --text-caption--line-height: 1.4;
+
+  --ease-arena: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --radius-panel: 24px;
+
+  --shadow-glow-lime:
+    0 0 0 1px color-mix(in srgb, var(--na-lime) 40%, transparent),
+    0 0 24px color-mix(in srgb, var(--na-lime) 35%, transparent),
+    0 0 64px color-mix(in srgb, var(--na-lime) 20%, transparent);
+  --shadow-glow-cyan:
+    0 0 0 1px color-mix(in srgb, var(--na-cyan) 40%, transparent),
+    0 0 24px color-mix(in srgb, var(--na-cyan) 35%, transparent),
+    0 0 64px color-mix(in srgb, var(--na-cyan) 20%, transparent);
+  --shadow-glow-magenta:
+    0 0 0 1px color-mix(in srgb, var(--na-magenta) 40%, transparent),
+    0 0 24px color-mix(in srgb, var(--na-magenta) 35%, transparent),
+    0 0 64px color-mix(in srgb, var(--na-magenta) 20%, transparent);
+  --shadow-glow-danger:
+    0 0 0 1px color-mix(in srgb, var(--na-danger) 40%, transparent),
+    0 0 24px color-mix(in srgb, var(--na-danger) 30%, transparent);
+
+  --animate-drift-a: na-drift-a 38s ease-in-out infinite alternate;
+  --animate-drift-b: na-drift-b 46s ease-in-out infinite alternate;
+  --animate-drift-c: na-drift-c 54s ease-in-out infinite alternate;
+  --animate-cta-pulse: na-cta-pulse 2.4s ease-in-out infinite;
+  --animate-grid-scroll: na-grid-scroll 1.6s linear infinite;
+}
+
+/* ───── Utilities ───── */
+
+@utility font-display-italic {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@utility glass {
+  background: var(--na-glass);
+  border: 1px solid var(--na-glass-border);
+  backdrop-filter: blur(24px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.09),
+    0 24px 60px -24px rgba(0, 0, 0, 0.7);
+}
+
+@utility glass-strong {
+  background: var(--na-glass-strong);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(24px) saturate(140%);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+@utility glow-edge-lime {
+  border-color: color-mix(in srgb, var(--na-lime) 45%, transparent);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    0 0 32px -4px color-mix(in srgb, var(--na-lime) 30%, transparent),
+    0 0 80px -10px color-mix(in srgb, var(--na-lime) 18%, transparent);
+}
+@utility glow-edge-cyan {
+  border-color: color-mix(in srgb, var(--na-cyan) 45%, transparent);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    0 0 32px -4px color-mix(in srgb, var(--na-cyan) 30%, transparent),
+    0 0 80px -10px color-mix(in srgb, var(--na-cyan) 18%, transparent);
+}
+@utility glow-edge-magenta {
+  border-color: color-mix(in srgb, var(--na-magenta) 45%, transparent);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    0 0 32px -4px color-mix(in srgb, var(--na-magenta) 30%, transparent),
+    0 0 80px -10px color-mix(in srgb, var(--na-magenta) 18%, transparent);
+}
+
+@utility text-glow-lime {
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--na-lime) 55%, transparent),
+    0 0 48px color-mix(in srgb, var(--na-lime) 30%, transparent);
+}
+@utility text-glow-cyan {
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--na-cyan) 55%, transparent),
+    0 0 48px color-mix(in srgb, var(--na-cyan) 30%, transparent);
+}
+@utility text-glow-magenta {
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--na-magenta) 55%, transparent),
+    0 0 48px color-mix(in srgb, var(--na-magenta) 30%, transparent);
+}
+
+/* Tinted chip driven by a --chip colour variable set by the component */
+@utility chip-tint {
+  color: var(--chip);
+  background: color-mix(in srgb, var(--chip) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip) 55%, transparent);
+  box-shadow: 0 0 16px -4px color-mix(in srgb, var(--chip) 45%, transparent);
+}
+
+@utility grain {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+}
+
+@utility pool {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(min(110px, 8vw));
+  will-change: transform;
+}
+
+/* Perspective floor grid with lime lane lines */
+@utility track-floor {
+  position: absolute;
+  left: -50%;
+  right: -50%;
+  bottom: -10%;
+  height: 75%;
+  transform-origin: 50% 0%;
+  transform: perspective(520px) rotateX(62deg);
+  background-image:
+    linear-gradient(
+      to right,
+      transparent calc(50% - 15% - 1px),
+      color-mix(in srgb, var(--na-lime) 85%, transparent) calc(50% - 15% - 1px),
+      color-mix(in srgb, var(--na-lime) 85%, transparent) calc(50% - 15% + 1px),
+      transparent calc(50% - 15% + 1px)
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(50% + 15% - 1px),
+      color-mix(in srgb, var(--na-lime) 85%, transparent) calc(50% + 15% - 1px),
+      color-mix(in srgb, var(--na-lime) 85%, transparent) calc(50% + 15% + 1px),
+      transparent calc(50% + 15% + 1px)
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(50% - 5% - 1px),
+      color-mix(in srgb, var(--na-lime) 35%, transparent) calc(50% - 5% - 1px),
+      color-mix(in srgb, var(--na-lime) 35%, transparent) calc(50% - 5% + 1px),
+      transparent calc(50% - 5% + 1px)
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(50% + 5% - 1px),
+      color-mix(in srgb, var(--na-lime) 35%, transparent) calc(50% + 5% - 1px),
+      color-mix(in srgb, var(--na-lime) 35%, transparent) calc(50% + 5% + 1px),
+      transparent calc(50% + 5% + 1px)
+    ),
+    linear-gradient(to right, rgba(34, 211, 238, 0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 211, 238, 0.18) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    64px 64px,
+    64px 64px;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 100%);
+}
+
+@utility horizon-glow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--na-lime) 70%, transparent),
+    transparent
+  );
+  box-shadow: 0 0 40px 8px color-mix(in srgb, var(--na-lime) 20%, transparent);
+}
+
+@utility sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.55) 48%,
+    transparent 66%
+  );
+  transform: translateX(-120%);
+  transition: transform 650ms var(--na-ease);
+}
+
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--na-lime);
+    outline-offset: 4px;
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, var(--na-lime) 18%, transparent),
+      0 0 24px color-mix(in srgb, var(--na-lime) 35%, transparent);
+  }
+}
+
+@utility gradient-edge {
+  background: linear-gradient(
+    110deg,
+    var(--na-lime),
+    var(--na-magenta),
+    var(--na-cyan),
+    var(--na-lime)
+  );
+  background-size: 300% 100%;
+  animation: na-gradient-shift 8s linear infinite;
+}
+
+@utility scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 30%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--na-lime) 10%, transparent),
+    transparent
+  );
+  animation: na-scan 3.2s ease-in-out infinite;
+}
+
+/* Legible text over any camera image */
+@utility text-on-video {
+  text-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.85),
+    0 0 2px rgba(0, 0, 0, 0.9);
+}
+
+/* ───── Keyframes ───── */
+/* Broadcast HUD: transparent geometry and semantic feedback accents. */
+@utility hud-plate {
+  background: color-mix(in srgb, var(--na-bg-raised) 86%, transparent);
+  border: 1px solid var(--na-glass-border);
+  border-top: 3px solid var(--na-lime);
+  backdrop-filter: blur(20px);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+@utility hud-overlay {
+  background: color-mix(in srgb, var(--na-bg) 80%, transparent);
+  backdrop-filter: blur(18px);
+}
+@utility hud-text-glow {
+  text-shadow: 0 0 28px currentColor;
+}
+@utility hud-vignette {
+  box-shadow:
+    inset 0 0 0 2px currentColor,
+    inset 0 0 65px -15px currentColor;
+}
+@utility hud-clock-pulse {
+  animation: na-hud-pulse 1.5s ease-in-out infinite;
+}
+@utility hud-guide-pulse {
+  animation: na-hud-pulse 2s ease-in-out infinite;
+}
+@utility coach-shimmer {
+  background: linear-gradient(
+    110deg,
+    var(--na-glass-strong) 20%,
+    color-mix(in srgb, var(--na-lime) 15%, transparent) 45%,
+    var(--na-glass-strong) 70%
+  );
+  background-size: 220% 100%;
+  animation: na-coach-shimmer 2s linear infinite;
+}
+@keyframes na-coach-shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+@keyframes na-hud-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+.hud-root {
+  container-type: inline-size;
+}
+.hud-reps {
+  width: max-content;
+  max-width: calc(100% - 48px);
+}
+.hud-reps-camera {
+  max-width: calc(100% - 320px);
+}
+@container (max-width: 1300px) {
+  .hud-cue-label {
+    font-size: 112px;
+  }
+  .hud-score > span {
+    font-size: 88px;
+  }
+  .hud-cue {
+    gap: 24px;
+  }
+  .hud-reps {
+    column-gap: 12px;
+    row-gap: 8px;
+  }
+}
+@container (max-width: 800px) {
+  .hud-score {
+    top: 12px;
+    left: 12px;
+    padding: 12px;
+  }
+  .hud-score > span {
+    font-size: 48px;
+  }
+  .hud-score .eyebrow {
+    font-size: 10px;
+  }
+  .hud-score .text-title {
+    font-size: 20px;
+  }
+  .hud-clock {
+    top: 12px;
+    right: 12px;
+    width: 145px;
+    padding: 10px;
+  }
+  .hud-clock .text-display-md {
+    font-size: 40px;
+  }
+  .hud-clock .eyebrow {
+    font-size: 10px;
+  }
+  .hud-clock kbd {
+    display: none;
+  }
+  .hud-cue-label {
+    font-size: 48px;
+  }
+  .hud-cue-figure {
+    height: 90px;
+    width: 65px;
+  }
+  .hud-cue {
+    gap: 12px;
+  }
+  .hud-cue [role="progressbar"] {
+    transform: scale(0.65);
+    margin: -20px;
+  }
+  .hud-camera {
+    width: 128px;
+    height: 72px;
+    left: 12px;
+    bottom: 12px;
+  }
+  .hud-reps {
+    right: 12px;
+    bottom: 12px;
+    gap: 4px;
+  }
+  .hud-reps-camera {
+    max-width: calc(100% - 160px);
+  }
+  .hud-reps .chip-tint {
+    font-size: 12px;
+    height: 24px;
+    padding: 4px;
+  }
+  .hud-reps .chip-tint svg {
+    display: none;
+  }
+  .hud-reps .text-title {
+    font-size: 18px;
+  }
+  .hud-pause-title {
+    font-size: 72px;
+  }
+  .hud-tracking-title {
+    font-size: 40px;
+  }
+  .hud-overlay {
+    gap: 12px;
+  }
+  .hud-overlay .hud-guide-pulse svg {
+    height: 80px;
+  }
+}
+@media (max-width: 1279px) {
+  .results-score {
+    font-size: 112px;
+  }
+}
+@media (max-width: 600px) {
+  .results-score {
+    font-size: 72px;
+  }
+  .results-stats > div {
+    padding: 16px;
+  }
+  .results-stats .text-display-sm {
+    font-size: 40px;
+  }
+  .results-footer button {
+    width: 100%;
+  }
+  .results-footer > div {
+    width: 100%;
+  }
+}
+
+@keyframes na-gradient-shift {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 300% 50%;
+  }
+}
+@keyframes na-scan {
+  0% {
+    top: -30%;
+  }
+  100% {
+    top: 100%;
+  }
+}
+
+@keyframes na-drift-a {
+  from {
+    transform: translate3d(-6%, -4%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(8%, 6%, 0) scale(1.15);
+  }
+}
+@keyframes na-drift-b {
+  from {
+    transform: translate3d(5%, 3%, 0) scale(1.1);
+  }
+  to {
+    transform: translate3d(-7%, -5%, 0) scale(0.95);
+  }
+}
+@keyframes na-drift-c {
+  from {
+    transform: translate3d(0, 6%, 0) scale(0.9);
+  }
+  to {
+    transform: translate3d(-4%, -6%, 0) scale(1.1);
+  }
+}
+@keyframes na-cta-pulse {
+  0%,
+  100% {
+    box-shadow: var(--shadow-glow-lime);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--na-lime) 60%, transparent),
+      0 0 36px color-mix(in srgb, var(--na-lime) 50%, transparent),
+      0 0 96px color-mix(in srgb, var(--na-lime) 28%, transparent);
+  }
+}
+@keyframes na-grid-scroll {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 64px;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    background-color: var(--na-bg);
+  }
+  body {
+    background-color: var(--na-bg);
+    color: var(--na-text);
+    font-family: var(--font-sans);
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--na-lime) 35%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--na-lime);
+    outline-offset: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
