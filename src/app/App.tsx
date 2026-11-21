@@ -69,6 +69,11 @@ const DashboardScreen = lazy(() =>
 type PoseModule = typeof import('@/pose');
 
 const store = createStore();
+// Supabase at page load but local after a sign-in: the sign-in was refused (rate limit, venue wifi).
+const startedRemote = store.kind === 'supabase';
+// Read live: the kind changes when the store falls back (TypeScript would narrow a direct read).
+const storeKind = (): string => store.kind;
+const BUSY_NOTICE = 'The leaderboard server is busy. Your rounds are saved on this laptop.';
 const isDevPose = new URLSearchParams(window.location.search).get('dev') === 'pose';
 // ?demo=1: the workout module plays its fixed demo level; preselect it so the screen matches.
 const isDemo = new URLSearchParams(window.location.search).get('demo') === '1';
@@ -293,6 +298,11 @@ function MainApp() {
   // ── Guest sign-in and profile ──
   // "Play as guest" for a first visit, "New guest" when a player is saved: either way a NEW
   // player. "Continue as …" (continueAsReturning) keeps the saved one.
+  const signIn = async (displayName?: string) => {
+    const p = await store.signInGuest(displayName);
+    if (startedRemote && storeKind() === 'local') setNotice(BUSY_NOTICE);
+    return p;
+  };
   const playAsGuest = async () => {
     if (returning || profile) {
       await store.signOut();
@@ -304,15 +314,15 @@ function MainApp() {
       setAdvice(null);
       setConfig(null);
     }
-    setProfile(await store.signInGuest());
+    setProfile(await signIn());
     setScreen('profile');
   };
   const continueAsReturning = async () => {
-    setProfile(await store.signInGuest());
+    setProfile(await signIn());
     setScreen('select');
   };
   const submitProfile = async (p: ProfileInput) => {
-    await store.signInGuest(p.displayName || undefined);
+    await signIn(p.displayName || undefined);
     const patch: Partial<ProfileInput> = { ...p };
     if (!p.displayName?.trim()) delete patch.displayName;
     setProfile(await store.saveProfile(patch));
@@ -334,14 +344,16 @@ function MainApp() {
       setAdvice(coach);
       setCoachPick(coach);
     });
-    void store
-      .getLeaderboard(s.config.workout, s.config.mode, s.config.durationSec, LEADERBOARD_SIZE)
-      .then((top) => {
-        // An empty board means offline with nothing cached, not "you are #1". When the round
-        // synced, the board includes it, so it is never empty then.
-        const better = top.filter((e) => e.score > s.score).length;
-        setRank(top.length > 0 && better < LEADERBOARD_SIZE ? better + 1 : null);
-      });
+    // A round on the local store is not on the shared board, so no rank (Jiscar 2, #64).
+    if (store.kind === 'supabase')
+      void store
+        .getLeaderboard(s.config.workout, s.config.mode, s.config.durationSec, LEADERBOARD_SIZE)
+        .then((top) => {
+          // An empty board means offline with nothing cached, not "you are #1". When the round
+          // synced, the board includes it, so it is never empty then.
+          const better = top.filter((e) => e.score > s.score).length;
+          setRank(top.length > 0 && better < LEADERBOARD_SIZE ? better + 1 : null);
+        });
     const list = await store.listSessions(50);
     setSessions(list);
     const previousBest = list
