@@ -127,6 +127,8 @@ Reacting on sight then lands inside the window for every kind, and players who a
 
 Judging, events and the contract are unchanged; only where objects are drawn moves. Keyboard input has no lag and gets no lead. The HUD countdown (`cue.inSec`) runs to the visual arrival too, so following the ring and following the picture agree.
 
+**Switching input mid-round (K).** The leads change by up to 0.3 s at a switch. They follow at 0.5 s of lead per second (`createLeadBlend` in `timeline.ts`, tested), so objects on screen slow down or speed up for at most 0.6 s instead of jumping up to 6 m.
+
 **Tuning with the camera (`?debug=timing`, `timing.ts`).** Play a round with pose input and the browser console open. At the end the game prints one row per move:
 - when the move was first seen relative to its judging time (median, negative = early);
 - the share inside the judging window;
@@ -182,6 +184,10 @@ Rechecked: `npm run check` on main + `p1-workout` + `p2-game` (201 tests pass). 
 5. ~~Show the finish~~: done (`FINISH_DELAY_MS`). Was: show the finish: in `PlayScreen`, wait about 1.5 s after `finished` before calling `onFinish`. The game shows a finish arch, the world coasts to a stop and the runner raises both arms, but today the results screen replaces it at once. The fanfare already rings out after `destroy()`.
 6. ~~A pause overlay with text~~: done in `GameHud`.
 7. The HUD cue word ("SIDESTEP" with its countdown ring) sits in the middle of the screen, exactly where the announced obstacle approaches. It covers the obstacle and the game's free-lane chevron for those 2 seconds. Move it to the top band (between score and timer) or make it much more transparent. Screenshot: the game at 2 s into the demo level. Still open on Sat midday: in the real app "SQUAT" covers the incoming beam.
+8. Demo prep (`docs/DEMO.md`), for the ghost:
+   - **Ghosts are stored per browser origin.** The Vercel tab and the localhost backup tab each need their own rehearsal round, or the backup has no ghost.
+   - **The low-impact toggle makes a different level.** It is the same seed without hurdles, so it has its own ghost. Rehearse it once too if judges will get it.
+   - **One ghost per input.** Rehearse with the camera, since judges play with their body. A round where the Operator pressed K is never stored.
 
 ### Checked end to end (local merge of main + p1-game + p1-workout)
 - `npm run check`: 78 tests pass.
