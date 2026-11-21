@@ -7,7 +7,7 @@
 | `index.ts` | The loop: polls input once per frame, steps the core, draws the view, plays sounds, steps the graphics quality |
 | `quality.ts` | The graphics quality ladder (tested) |
 | `timing.ts` | Timing probe for tuning the latency leads, `?debug=timing` (tested) |
-| `ghost.ts`, `ghostStore.ts` | Ghost runner: recording, replay, ranking, on-device storage (tested) |
+| `ghost.ts`, `ghostStore.ts`, `ghostRace.ts` | Ghost runner: recording, replay, ranking, on-device storage, live race (tested) |
 | `core.ts` | The rules, with no drawing: clock, cues, judging, pause, finish (tested) |
 | `judge.ts`, `timeline.ts` | One object's collision verdict; distance and speed (tested) |
 | `view3d.ts` + `scene.ts`, `obstacles.ts`, `player.ts` | The Three.js picture |
@@ -49,6 +49,8 @@ game.start(); // after your countdown
 - **Different moves:** it separates visibly, sidestepping, jumping, squatting or raising its arms on its own.
 
 At the finish a banner says GHOST SAVED (first run of a level), GHOST BEATEN, GHOST WINS or TIE. The app's 1.5 s celebration keeps it on screen.
+
+**Live race:** while racing, a chip at the top centre shows the player's lead in cleared + collected: "+2 VS GHOST" in lime, "−1 VS GHOST" in magenta, "EVEN VS GHOST" in cyan. It works because `ghostRace.ts` judges the ghost's recorded moves with a shadow copy of the game rules, synced to the round's game time. Re-judging a recording reproduces the ghost's real result.
 
 **For the demo:** the presenter plays the demo level (`?demo=1`) once on the demo laptop. Every judge after that races the presenter's ghost. A judge who beats it becomes the new ghost.
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { InputState, Lane, Level } from '@/contracts';
 import {
   compareRuns,
+  raceLabel,
   createGhostRecorder,
   finishOutcome,
   decodePose,
@@ -139,6 +140,12 @@ describe('ranking', () => {
     expect(finishOutcome(r(10, 4, 2), r(10, 4, 2), false)).toBe('tie');
     expect(finishOutcome(null, r(3, 0, 13), true)).toBe('saved');
     expect(finishOutcome(null, r(3, 0, 13), false)).toBeNull(); // no storage: no banner
+  });
+
+  it('raceLabel says who leads in words, not only in colour', () => {
+    expect(raceLabel(2).text).toBe('+2 VS GHOST');
+    expect(raceLabel(-1).text).toBe('\u22121 VS GHOST');
+    expect(raceLabel(0).text).toBe('EVEN VS GHOST');
   });
 
   it('compareRuns gives the end banner', () => {

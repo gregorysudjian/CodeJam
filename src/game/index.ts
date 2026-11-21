@@ -9,6 +9,7 @@ import {
   neutralPose,
   type GhostResult,
 } from './ghost';
+import { createGhostRace, raceLead } from './ghostRace';
 import { browserStorage, createGhostStore } from './ghostStore';
 import { createQualityGovernor, type Quality } from './quality';
 import { createTimingProbe } from './timing';
@@ -61,6 +62,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   const ghost = ghostStore?.load(fingerprint) ?? null;
   const recorder = ghostStore ? createGhostRecorder() : null;
   const ghostPose = neutralPose(); // reused every frame
+  const race = ghost ? createGhostRace(level, ghost) : null; // the ghost's live score
   let currentState = input.getState();
 
   // ?debug=timing: record move timing for tuning VISUAL_LEAD_SEC; printed when the round ends.
@@ -129,6 +131,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     const state = input.getState(); // polled once per frame
     currentState = state;
     core.step(realDt, state, now);
+    race?.syncTo(core.elapsed());
     if (recorder && core.started() && !core.finished() && core.pauseReason() === null)
       recorder.sample(core.elapsed(), state);
     if (probe && core.started() && !core.finished() && core.pauseReason() === null)
@@ -169,6 +172,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         phase,
         streak: core.streak(),
         ghost: ghost ? ghostPoseAt(ghost.samples, ghost.hz, core.elapsed(), ghostPose) : null,
+        race: race && phase !== 'finished' ? raceLead(result, race.ghost) : null,
       });
     } catch (err) {
       // A drawing failure must not stop the round: events and the HUD keep working.

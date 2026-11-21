@@ -1,6 +1,6 @@
 import type { Level, Spawn } from '@/contracts';
 import type { Item } from './core';
-import { OUTCOME_LABEL, type GhostOutcome, type GhostPose } from './ghost';
+import { OUTCOME_LABEL, raceLabel, type GhostOutcome, type GhostPose } from './ghost';
 import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
 import { createTrack } from './timeline';
@@ -37,7 +37,7 @@ export function create2DView(
   };
 
   return {
-    frame({ elapsed, visDt, state, phase, ghost }) {
+    frame({ elapsed, visDt, state, phase, ghost, race }) {
       if (!ctx) return;
       const dpr = Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
       const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
@@ -133,6 +133,23 @@ export function create2DView(
       if (phase === 'paused') {
         ctx.fillStyle = `rgba(0, 0, 0, ${T.PAUSE_DIM})`;
         ctx.fillRect(0, 0, w, h);
+      }
+      if (race !== null) {
+        const { text, color } = raceLabel(race);
+        const cw = Math.min(w * 0.26, h * 0.5);
+        const ch = cw / 5.33;
+        ctx.fillStyle = 'rgba(7, 9, 13, 0.72)';
+        ctx.strokeStyle = css(color);
+        ctx.lineWidth = Math.max(2, ch * 0.05);
+        ctx.beginPath();
+        ctx.roundRect((w - cw) / 2, h * 0.06, cw, ch, ch * 0.3);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = css(color);
+        ctx.font = `italic 800 ${Math.round(ch * 0.55)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, w / 2, h * 0.06 + ch / 2 + ch * 0.03);
       }
       if (outcome) {
         const { text, color } = OUTCOME_LABEL[outcome];

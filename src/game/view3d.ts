@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { InputState, Level } from '@/contracts';
 import { feverTier, holdFeedback, type HoldFeedback, type Item } from './core';
-import { OUTCOME_LABEL, type GhostOutcome, type GhostPose } from './ghost';
+import { OUTCOME_LABEL, raceLabel, type GhostOutcome, type GhostPose } from './ghost';
 import { requirementMet } from './judge';
 import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
@@ -24,6 +24,8 @@ export interface FrameInfo {
   streak: number;
   /** The ghost runner's pose at this moment, or null when there is no ghost to race. */
   ghost: GhostPose | null;
+  /** The player's live lead over the ghost (cleared + collected), or null: no chip. */
+  race: number | null;
 }
 
 export interface GameView {
@@ -56,6 +58,8 @@ export function create3DView(
 
   const views = new Map<Item, ObstacleView>();
   let banner: THREE.Sprite | null = null;
+  let raceChip: ReturnType<typeof createChip> | null = null;
+  let raceShown: number | null = null;
   let bannerT = 0;
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   // The ghost runner, created the first time a ghost pose arrives; fed through one reused state.
@@ -97,7 +101,7 @@ export function create3DView(
   };
 
   return {
-    frame({ elapsed, visDt, realDt, state, phase, streak, ghost }) {
+    frame({ elapsed, visDt, realDt, state, phase, streak, ghost, race }) {
       lastState = state;
       clock += visDt;
       if (phase === 'finished') {
@@ -163,6 +167,12 @@ export function create3DView(
       obstacles.tick(visDt);
       const moving = phase === 'running' || (phase === 'finished' && coastSpeed > 1);
       player.update(visDt, state, moving, phase === 'finished');
+      if (race !== null && race !== raceShown) {
+        raceChip ??= createChip(stage.scene);
+        raceChip.draw(raceLabel(race));
+        raceShown = race;
+      }
+      if (raceChip) raceChip.sprite.visible = race !== null;
       if (banner) {
         bannerT += realDt;
         const k = reduceMotion ? 1 : Math.min(1, bannerT / T.BANNER_POP_SEC);
@@ -317,4 +327,44 @@ function createBanner(outcome: GhostOutcome): THREE.Sprite {
   sprite.position.set(T.BANNER_POS.x, T.BANNER_POS.y, T.BANNER_POS.z);
   sprite.scale.set(0.001, 0.001, 1);
   return sprite;
+}
+
+/** The live race chip: one sprite whose canvas is redrawn only when the lead changes. */
+function createChip(scene: THREE.Scene): {
+  sprite: THREE.Sprite;
+  draw(label: { text: string; color: number }): void;
+} {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 96;
+  const g = c.getContext('2d')!;
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, fog: false }),
+  );
+  sprite.renderOrder = 999;
+  sprite.position.set(T.RACE_POS.x, T.RACE_POS.y, T.RACE_POS.z);
+  sprite.scale.set(T.RACE_WIDTH, (T.RACE_WIDTH * c.height) / c.width, 1);
+  scene.add(sprite);
+  return {
+    sprite,
+    draw({ text, color }) {
+      const hex = `#${color.toString(16).padStart(6, '0')}`;
+      g.clearRect(0, 0, c.width, c.height);
+      g.fillStyle = 'rgba(7, 9, 13, 0.72)';
+      g.strokeStyle = hex;
+      g.lineWidth = 5;
+      g.beginPath();
+      g.roundRect(4, 4, c.width - 8, c.height - 8, 30);
+      g.fill();
+      g.stroke();
+      g.fillStyle = hex;
+      g.font = 'italic 800 52px system-ui, sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(text, c.width / 2, c.height / 2 + 3);
+      tex.needsUpdate = true;
+    },
+  };
 }

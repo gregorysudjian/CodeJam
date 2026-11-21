@@ -35,6 +35,13 @@ export interface GhostRun {
 
 export type GhostOutcome = 'beaten' | 'lost' | 'tie' | 'saved';
 
+/** The live race chip: the player's lead over the ghost in cleared + collected. */
+export function raceLabel(lead: number): { text: string; color: number } {
+  if (lead > 0) return { text: `+${lead} VS GHOST`, color: T.COLOR_LIME };
+  if (lead < 0) return { text: `\u2212${-lead} VS GHOST`, color: T.MOVE_COLOR.armsUp };
+  return { text: 'EVEN VS GHOST', color: T.GHOST_ACCENT };
+}
+
 /** The end banner's text and colour, shared by the 3D and 2D views. */
 export const OUTCOME_LABEL: Record<GhostOutcome, { text: string; color: number }> = {
   beaten: { text: 'GHOST BEATEN', color: T.COLOR_LIME },
