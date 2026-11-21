@@ -32,11 +32,21 @@ import { KioskBoard } from './KioskBoard';
 import { CameraErrorOverlay, OfflineBanner } from './ErrorStates';
 import { classifyCameraError, type CameraErrorInfo } from './errors';
 import { createSwitchableInput } from './switchableInput';
+import { TryMoves } from './TryMoves';
+import { tutorialMoves } from './tutorial';
 import { LEADERBOARD_SIZE } from './tuning';
 import { useOnline } from './useOnline';
 
 type Screen =
-  'landing' | 'profile' | 'select' | 'calibrate' | 'play' | 'results' | 'dashboard' | 'leaderboard';
+  | 'landing'
+  | 'profile'
+  | 'select'
+  | 'calibrate'
+  | 'tutorial'
+  | 'play'
+  | 'results'
+  | 'dashboard'
+  | 'leaderboard';
 
 const APP_NAME = 'Neon Arena';
 const NOTICE_MS = 4000;
@@ -76,6 +86,7 @@ function MainApp() {
   const [debug, setDebug] = useState(false);
   const [notice, setNotice] = useState('');
   const [cameraError, setCameraError] = useState<CameraErrorInfo | null>(null);
+  const [tutorialDone, setTutorialDone] = useState(false);
   const online = useOnline();
 
   const [summary, setSummary] = useState<SessionSummary | null>(null);
@@ -175,13 +186,21 @@ function MainApp() {
   }, []);
 
   // ── Navigation helpers ──
+  // "Try each move" runs before a player's first round, after calibration when the camera is used.
+  const needsTutorial = sessions.length === 0 && !tutorialDone;
+  const afterSetup: Screen = needsTutorial ? 'tutorial' : 'play';
+  const finishTutorial = useCallback(() => {
+    setTutorialDone(true);
+    setScreen('play');
+  }, []);
+
   const startSession = useCallback(
     (c: SessionConfig) => {
       // A fresh level each time unless the config pins a seed (coach's pick keeps its own).
       setConfig({ ...c });
-      setScreen(inputKind === 'pose' ? 'calibrate' : 'play');
+      setScreen(inputKind === 'pose' ? 'calibrate' : afterSetup);
     },
-    [inputKind],
+    [inputKind, afterSetup],
   );
 
   const openDashboard = useCallback(async () => {
@@ -207,6 +226,7 @@ function MainApp() {
       await store.signOut();
       setReturning(null);
       setSessions([]);
+      setTutorialDone(false);
       setCoachPick(null);
       setSummary(null);
       setAdvice(null);
@@ -352,13 +372,16 @@ function MainApp() {
         <CalibrateStep
           pose={pose}
           mode={config.mode}
-          onDone={() => setScreen('play')}
+          onDone={() => setScreen(afterSetup)}
           onCancel={() => setScreen('select')}
           onUseKeyboard={() => {
             setInputKind('keyboard');
-            setScreen('play');
+            setScreen(afterSetup);
           }}
         />
+      )}
+      {screen === 'tutorial' && config && (
+        <TryMoves moves={tutorialMoves(config)} input={gameInput} onDone={finishTutorial} />
       )}
       {screen === 'play' && config && (
         <Suspense fallback={<div className="h-screen bg-bg" />}>
@@ -423,7 +446,7 @@ function MainApp() {
           onUseKeyboard={() => {
             setCameraError(null);
             // Calibration needs the camera; with the keyboard there is nothing to calibrate.
-            if (screen === 'calibrate') setScreen('play');
+            if (screen === 'calibrate') setScreen(afterSetup);
           }}
           onRetry={() => {
             setCameraError(null);

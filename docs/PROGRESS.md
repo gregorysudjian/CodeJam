@@ -19,6 +19,8 @@ _Updated after every PR._
 - #15 K mid-round switches input without restarting the round (audit #4)
 - #16 Per-user rate limit on `/api/coach`: 1 call per 10 s (audit #6)
 - #17 Lazy loading: play screen, dashboard (Recharts) and pose module load only when needed; main chunk 1,198 → 762 KB (audit #8)
+- #18 "Try each move" tutorial before a player's first round (about 15 s, skippable, advances when the player does the move)
+- Skipped: the low-graphics toggle. No spot on the select screen without editing `src/ui`; `?gfx=low` already works through Patrick's game. Requested a settings slot (below)
 
 **Testing rule (from Greg):** unit tests first. One scripted round per change, using `?demo=1&store=local` once Patrick's demo is on `main`. Browser testing is time-boxed to 5 minutes.
 
@@ -33,7 +35,7 @@ _Updated after every PR._
 
 **Requests:** none open (see below).
 
-**Next 3:** low-graphics toggle (game.gfx) → the "try each move" tutorial → select screen preselects the demo with `?demo=1` (after `p1-workout` merges).
+**Next 3:** improvement passes (edge cases, empty and error states) → select screen preselects the demo with `?demo=1` (after `p1-workout` merges) → wire `?dev=pose` once Abdo exports `mountPoseDebug`.
 
 **Audit:** see `docs/AUDIT.md` (top 10 problems with owners).
 
@@ -90,13 +92,18 @@ _Updated after every PR._
 - **Result:** main chunk 1,198 KB → 762 KB (gzip 355 → 232 KB); dashboard 429 KB on demand.
 - **Tested:** `npm run check` passes (56 tests). One scripted round with `?store=local`: no lazy chunk on landing; K loaded the pose module and showed the camera overlay; Start loaded the play screen; the round finished; the dashboard loaded and rendered. No errors.
 
+### #18 "Try each move" tutorial
+- `src/app/TryMoves.tsx`, built from the kit (`Screen`, `MoveFigure`, `GameButton`, move labels and colours). It shows each move of the coming round (`tutorialMoves`: all 6 on the floor, no jump in low impact, upper body only on the treadmill) for `TUTORIAL_STEP_MS` (2.5 s), or until the player does it (a tick, then the next move). Keyboard players see the key and camera players the body move (`moveHint`). Esc or Enter skips.
+- Shown before a player's first round only (no sessions and not yet seen), after calibration when the camera is used. "New guest" shows it again.
+- **Tested:** 4 unit tests (60 in total). One scripted pass: the tutorial showed on the first Start; a quick double sidestep advanced exactly one step; Space advanced past jump; Esc went into the round; after the round, "Play again" went straight to play. No errors.
+
 ## Requests
 
 _For things outside my folders: src/ui (Lovable Claude), src/pose (Abdo), src/game, src/input and src/workout (Patrick), packages, keys._
 
 - **Abdo:** wire `detect.ts` and calibration into `createPoseInput()`, which is still the stub on `abdo-1`, and open the PR. Export `mountPoseDebug` from `src/pose/index.ts` so the app can wire `?dev=pose`.
 - **Patrick:** open PRs for `p1-workout`, then `p2-game`. Fix the 3 slow fairness tests in `src/workout/level.test.ts` (5 s vitest timeout; they take 6.5–57 s here) so `npm run check` stays green.
-- **Lovable UI:** the "REACH" label on the HUD (Patrick's request #3).
+- **Lovable UI:** the "REACH" label on the HUD (Patrick's request #3), in PR #13, which waits for Greg's merge. **New:** an optional `settingsSlot?: ReactNode` on `WorkoutSelectScreen`, shown near the duration and low-impact rows, so the app can add a "Low graphics" switch without overlapping the header (it overlapped both the header button and the Floor/Treadmill control).
 
 ## Needs Greg
 
