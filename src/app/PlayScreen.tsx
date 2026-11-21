@@ -32,6 +32,7 @@ export function PlayScreen({
   onGame,
   onFinish,
   onUseKeyboard,
+  onQuit,
   pose,
 }: {
   config: SessionConfig;
@@ -42,6 +43,8 @@ export function PlayScreen({
   onFinish: (summary: SessionSummary) => void;
   /** Switch to keyboard input (offered when the camera has lost the player for a while). */
   onUseKeyboard: () => void;
+  /** Leave the round from the pause screen; nothing is saved. */
+  onQuit: () => void;
   /** The live pose source when the camera is the input, for the camera preview in the HUD. */
   pose: PoseInputSource | null;
 }) {
@@ -210,6 +213,7 @@ export function PlayScreen({
           onResume={() => {
             if (!finishedRef.current) gameRef.current?.resume();
           }}
+          onQuit={onQuit}
         />
       )}
       {trackingLost && lostLong && <TrackingLostHint onUseKeyboard={onUseKeyboard} />}

@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from 'react';
 import {
   Check,
   Dices,
@@ -9,8 +9,8 @@ import {
   ArrowLeft,
   ChevronDown,
   type LucideIcon,
-} from "lucide-react";
-import type { FitnessLevel, Goal, Profile } from "@/contracts";
+} from 'lucide-react';
+import type { FitnessLevel, Goal, Profile } from '@/contracts';
 import {
   Eyebrow,
   GameButton,
@@ -20,10 +20,10 @@ import {
   ScreenFooter,
   TextField,
   useHotkey,
-} from "@/ui/kit";
-import { cn } from "@/ui/lib/utils";
+} from '@/ui/kit';
+import { cn } from '@/ui/lib/utils';
 
-export type ProfileInput = Omit<Profile, "id">;
+export type ProfileInput = Omit<Profile, 'id'>;
 
 export interface ProfileScreenProps {
   initial?: Partial<ProfileInput>;
@@ -32,43 +32,43 @@ export interface ProfileScreenProps {
 }
 
 export const PROFILE_DEFAULTS: ProfileInput = {
-  displayName: "Guest-1234",
-  goal: "getMoving",
-  level: "beginner",
+  displayName: 'Guest-1234',
+  goal: 'getMoving',
+  level: 'beginner',
   weeklyGoalMin: 60,
 };
 
 const GOALS: { value: Goal; label: string; body: string; icon: LucideIcon }[] = [
-  { value: "getMoving", label: "Get moving", body: "Build a daily habit", icon: Footprints },
+  { value: 'getMoving', label: 'Get moving', body: 'Build a daily habit', icon: Footprints },
   {
-    value: "buildStrength",
-    label: "Build strength",
-    body: "Squats, presses, power",
+    value: 'buildStrength',
+    label: 'Build strength',
+    body: 'Squats, presses, power',
     icon: Dumbbell,
   },
-  { value: "cardio", label: "Cardio", body: "Keep the heart rate up", icon: HeartPulse },
+  { value: 'cardio', label: 'Cardio', body: 'Keep the heart rate up', icon: HeartPulse },
 ];
 
 const LEVELS = [
-  { value: "beginner", label: "Beginner" },
-  { value: "regular", label: "Regular" },
-  { value: "athlete", label: "Athlete" },
+  { value: 'beginner', label: 'Beginner' },
+  { value: 'regular', label: 'Regular' },
+  { value: 'athlete', label: 'Athlete' },
 ] as const satisfies readonly { value: FitnessLevel; label: string }[];
 
 const WEEKLY = [
-  { value: "30", label: "30" },
-  { value: "60", label: "60" },
-  { value: "90", label: "90" },
-  { value: "150", label: "150 min" },
+  { value: '30', label: '30' },
+  { value: '60', label: '60' },
+  { value: '90', label: '90' },
+  { value: '150', label: '150 min' },
 ] as const;
-type WeeklyValue = (typeof WEEKLY)[number]["value"];
+type WeeklyValue = (typeof WEEKLY)[number]['value'];
 
 const randomGuest = () => `Guest-${String(Math.floor(1000 + Math.random() * 9000))}`;
 
 export function validateWeight(raw: string): string | null {
-  if (raw.trim() === "") return null;
+  if (raw.trim() === '') return null;
   const n = Number(raw);
-  if (!Number.isFinite(n) || n < 30 || n > 250) return "Enter a weight between 30 and 250 kg.";
+  if (!Number.isFinite(n) || n < 30 || n > 250) return 'Enter a weight between 30 and 250 kg.';
   return null;
 }
 
@@ -98,23 +98,23 @@ function GoalPicker({ value, onChange }: { value: Goal; onChange: (g: Goal) => v
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(g.value)}
             onKeyDown={(e) => {
-              if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+              if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
                 e.preventDefault();
                 go(i + 1);
-              } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+              } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
                 e.preventDefault();
                 go(i - 1);
               }
             }}
             className={cn(
-              "glass focus-ring relative flex min-h-36 cursor-pointer flex-col items-start justify-between gap-4 rounded-[24px] p-4 text-left transition-[border-color,box-shadow,transform] duration-200 ease-arena active:scale-[0.98]",
-              selected ? "glow-edge-lime" : "hover:border-white/20",
+              'glass focus-ring relative flex min-h-36 cursor-pointer flex-col items-start justify-between gap-4 rounded-[24px] p-4 text-left transition-[border-color,box-shadow,transform] duration-200 ease-arena active:scale-[0.98]',
+              selected ? 'glow-edge-lime' : 'hover:border-white/20',
             )}
           >
             <span
               className={cn(
-                "grid size-10 place-items-center rounded-2xl",
-                selected ? "bg-lime text-bg" : "bg-white/[0.06] text-text-muted",
+                'grid size-10 place-items-center rounded-2xl',
+                selected ? 'bg-lime text-bg' : 'bg-white/[0.06] text-text-muted',
               )}
             >
               <Icon aria-hidden="true" className="size-6" strokeWidth={2.25} />
@@ -139,15 +139,15 @@ function GoalPicker({ value, onChange }: { value: Goal; onChange: (g: Goal) => v
 
 /** Player setup: name, goal, level, weekly minutes and optional weight. */
 export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps) {
-  const [name, setName] = React.useState(initial?.displayName ?? "");
+  const [name, setName] = React.useState(initial?.displayName ?? '');
   const [goal, setGoal] = React.useState<Goal>(initial?.goal ?? PROFILE_DEFAULTS.goal);
   const [level, setLevel] = React.useState<FitnessLevel>(initial?.level ?? PROFILE_DEFAULTS.level);
   const [weekly, setWeekly] = React.useState<WeeklyValue>(() => {
     const v = String(initial?.weeklyGoalMin ?? PROFILE_DEFAULTS.weeklyGoalMin);
-    return WEEKLY.find((w) => w.value === v)?.value ?? "60";
+    return WEEKLY.find((w) => w.value === v)?.value ?? '60';
   });
   const [weight, setWeight] = React.useState(
-    initial?.weightKg != null ? String(initial.weightKg) : "",
+    initial?.weightKg != null ? String(initial.weightKg) : '',
   );
   const [more, setMore] = React.useState(false);
   const weightError = validateWeight(weight);
@@ -160,13 +160,13 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
       level,
       weeklyGoalMin: Number(weekly),
     };
-    if (weight.trim() !== "") out.weightKg = Number(weight);
+    if (weight.trim() !== '') out.weightKg = Number(weight);
     onSubmit(out);
   };
 
-  useHotkey("Enter", submit, !weightError);
-  useHotkey("Escape", onBack);
-  useHotkey("s", () => onSubmit({ ...PROFILE_DEFAULTS }));
+  useHotkey('Enter', submit, !weightError);
+  useHotkey('Escape', onBack);
+  useHotkey('s', () => onSubmit({ ...PROFILE_DEFAULTS }));
 
   return (
     <Screen
@@ -278,7 +278,7 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
               id="profile-more"
               className="flex flex-col gap-6 border-t border-glass-border pt-5"
             >
-              {" "}
+              {' '}
               <div className="flex flex-col gap-4">
                 <Eyebrow accent="muted">Weekly goal · minutes</Eyebrow>
                 <SegmentedControl<WeeklyValue>
