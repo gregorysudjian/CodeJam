@@ -21,6 +21,21 @@ const CLIP_LABELS = [
   'xLow',
   'xTouch',
   'xOverhead',
+  // How a first-time judge plays (DECISIONS 44): steps 30–50 cm forward and back mid-play,
+  // fidgets while calibrating, rests hands on the head, reaches low, sidesteps while turning,
+  // squats with the arms out in front.
+  'drift',
+  'fidget',
+  'handsOnHead',
+  'lowReach',
+  'turnStep',
+  'squatArmsOut',
+  // One move at a steady rhythm, for the lag study.
+  'lagSidestep',
+  'lagJump',
+  'lagSquat',
+  'lagArmsUp',
+  'lagReach',
 ];
 
 const BUTTON_CSS =

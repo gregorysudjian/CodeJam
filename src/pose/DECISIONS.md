@@ -188,3 +188,33 @@ or the named file.
     default, `p2-game`, "once that lands") updated; the wobble test now also wobbles *after* the
     pause, so "nor re-arms it" is really tested (checked: it fails if the grace is removed). No
     threshold changed; 729 tests pass.
+44. **A judge who steps closer or backs off keeps playing** (`RESCALE_*`, HANDOFF risk 7).
+    - **Problem (synthetic drift on A's real 1.4 m clips, scaled over 1 s about the image point that
+      stays put):** with the camera aimed above the hips (`cy` 0.35), a 30 cm step closer (1.3×)
+      moved the hips down the frame by more than the squat line: a **false squat**, then `ducking`
+      stuck, so 2 of 4 jumps and both squats were lost. A level camera held to 1.45× but gave a
+      false squat at 1.5–1.55×. Past 1.67× or under 0.6× the size gate called the player a
+      stranger and tracking was lost. A's real `near/mixed` already contains such a step: W 1.54×,
+      T 1.12–1.29× after a squat at ~6.3 s.
+    - **Tried and dropped:** telling a squat from a closer body by T/W (real squats reach 0.95,
+      distance changes 0.9–1.1) or by the thigh (hip→knee over T): at real squat onsets it is
+      0.31–0.76 (Greg 0.63–0.76) against 0.64–0.83 standing, so it would delay real squats.
+    - **Fix:** a distance change = W **and** T both ≥ 20% off their baselines, the same way, with
+      T/W within 12% of 1, for 300 ms, in the centre lane, not airborne, no arm up. Then W, T and
+      the standing height re-baseline at once, and a `ducking` that came from walking closer is
+      dropped without a squat. While ducking, only growth counts (a shrinking squat may be a real
+      one leaning back; Greg's squats reach W 0.86×). Real moves never qualify: T stays ≤ 1.00× while
+      ducking in every clip, and normal play keeps W and T within 0.83–1.16× with no arm up. The
+      size gate needs no change: it compares to the detector's W, which now follows the player.
+    - **Evidence:** `drift.test.ts`, 32 cases. Before: 11 fail (false squats, lost jumps/squats,
+      tracking lost at 1.7×). After: all pass, also with ±0.5% noise at 15 FPS; a much bigger
+      stranger stepping in at once still loses tracking. Every existing test passes unchanged,
+      including the pinned timing. Events on every real clip (3 sessions × 8 clips, two
+      calibrations): unchanged except (1) `standing` after 6.4 s, A walking up to the laptop
+      (W up to 3.9×): 4 false moves → 2; (2) `reach` calibrated on session 1's standing clip,
+      where A stood 0.8× smaller: reaches 68 ms earlier (the arm line is now in A's real size;
+      the pinned timing calibrates on the clip itself and is unchanged); (3) `greg/mixed`: one
+      more sidestep at 5.5 s, where Greg, shrunk to 0.77×, moved 0.51 calibrated W right =
+      0.66 W in his real size, a real step the stale W missed.
+    - **Still to check on real clips:** A's `● drift` and `● turnStep` (turning narrows W, but
+      not T).
