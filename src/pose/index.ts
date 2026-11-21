@@ -1,28 +1,11 @@
-// Owner: A. STUB — replace with MediaPipe pose tracking (docs/CONTRACTS.md, "Detection starting values").
-// start() rejects so the app stays on keyboard input until the real tracker lands.
+// Owner: A. The pose input (docs/CONTRACTS.md): webcam → MediaPipe → calibration → moves.
+// Press D during play for the debug overlay.
 import type { PoseInputSource } from '@/contracts';
+import { createPoseEngine } from './engine';
 
 export function createPoseInput(): PoseInputSource {
-  const video = document.createElement('video');
-  return {
-    kind: 'pose',
-    video,
-    async start() {
-      throw new Error('Pose tracking is not implemented yet (src/pose stub).');
-    },
-    stop() {},
-    getState: () => ({
-      tracking: false,
-      lane: 0,
-      ducking: false,
-      airborne: false,
-      leftArmUp: false,
-      rightArmUp: false,
-    }),
-    onMove: () => () => {},
-    async calibrate(_mode, onStatus) {
-      onStatus({ step: 'done', progress: 1, message: 'Calibration stub' });
-    },
-    drawSkeleton() {},
-  };
+  return createPoseEngine().source;
 }
+
+/** The ?dev=pose page (debug overlay, calibrate buttons, move tally, clip recorder). Greg's request. */
+export { mountPoseDebug } from './debug';

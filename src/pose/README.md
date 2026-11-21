@@ -1,0 +1,115 @@
+# src/pose — Vision (owner A)
+
+## STATUS (last update: Sat 13:50)
+
+**Now (13:50):** `main` is merged into `abdo-1` (clean) and **PR #27 is open**
+(https://github.com/gregorysudjian/CodeJam/pull/27): mergeable, only pose folders changed, `npm run
+check` passes with the whole team's code (530 tests, 317 in `src/pose`). Greg's clips are in as a
+second body, and his two findings are fixed (DECISIONS 34–36). Real camera: 25.7 FPS GPU,
+calibration and threshold lines OK; the 10-of-each move check is still to finish.
+
+**Local setup note:** your `node_modules` is half-installed (an `npm ci` was blocked by the old 3 AM
+dev server, PID 19480, locking a file). Close that server (Task Manager → Details → `node.exe` PID
+19480 → End task), then run `npm ci` in this folder.
+
+**Evidence (no camera; nothing merged):**
+- **The whole team's code together:** a scratch merge of `main` + Patrick's `p1-workout` + `p2-game`
+  (the real 3D game) + `abdo-1` (detached, no branch, not pushed) has no conflicts, passes typecheck,
+  lint, all **403 tests** (Patrick's 3 slow tests need a longer timeout, as Greg's audit says) and the
+  build. A full 45 s `?demo=1` round of the real 3D game ran on your replayed moves: tutorial passed,
+  hits scored, round complete, results and coach card shown. No console errors.
+  Re-run at 11:06 with Patrick's newest `p1-workout` and `p2-game`: still no conflicts, and the plain
+  `npm run check` passes (**417 tests**, his slow tests are fixed).
+- In a throwaway copy of `origin/main` with this `src/pose`: `main`'s `npm run check` passes (236
+  tests), Greg's calibration screen shows our live messages, D shows the overlay, `?dev=pose` works
+  with the `DevPose.tsx` from NEEDS.md, React StrictMode leaves exactly one camera track.
+- Full flow with only the model swapped for your clips: calibration done → "try each move" ticked all
+  six moves **while the video was off the page** → play received moves, timer ran, score rose.
+  Treadmill (clips scaled to ~1.2 m): calibrated, tutorial passed, orbs collected, bouncing gave no
+  moves. No console errors.
+- Production build of that copy under `vite preview` (the offline demo backup): the landing page
+  loads no MediaPipe files; after K, the lazy chunk, WASM and model load (all 200), 28 FPS GPU,
+  calibration screen shows our message, no errors.
+
+**What works (tested on your clips + synthetic variants).** A mutation sweep set each of the 23
+detection thresholds to an extreme value: every one breaks at least one test, so the tests pin real
+behaviour.
+- `createPoseInput()` per the contract: camera, MediaPipe, `calibrate()` with status messages,
+  smoothing, lane (hysteresis), jump, squat, arms up, reach left/right, `tracking`, move events,
+  `drawSkeleton` (handles the app's object-cover crop).
+- Every clip gives the right moves; so do 11 variants of every clip (shorter/taller, closer/farther,
+  ±0.5–1% jitter, ±3° tilt, 20–40% dropped frames, all at once), at the same times (±100–250 ms).
+- No moves standing still. Standing up from a squat, even onto the toes: no jump. Crouch-then-jump:
+  a jump. Squats 4× faster or slower count. Stepping back quickly is not a jump; stepping closer
+  re-baselines.
+- Background people: largest, nearest body wins; bodies far from the player's size are ignored.
+- Treadmill: shoulder calibration at 1–1.5 m (works while already jogging), arms only; floor results
+  unchanged.
+- **D** overlay: live values vs thresholds, 12 sliders, Reset, Copy, threshold lines on the video.
+  `?dev=pose` adds calibrate buttons, a **move tally** and the clip recorder.
+
+**Bugs found and fixed overnight**
+1. **Pose froze for good when a screen took the video off the page** — on `main` that is every first
+   round (calibrate → tutorial has no camera view → play). Fixed and verified end to end.
+2. **Crouch-then-jump lost the jump** (crouch counted as a squat, then the jump was blocked).
+3. Camera stayed on after React StrictMode start/stop/start.
+4. Baseline stuck after stepping closer; quick step back fired a jump; overhead holds shrank W/T.
+5. Smaller ones: lane hysteresis leaving a side lane; a GPU error stopped the loop; a throwing game
+   listener or UI callback corrupted tracking; a bigger stranger in front hid the player;
+   calibration restarted on every one-frame flicker; unhandled rejection on camera failure; an
+   unplugged or stalled camera kept `tracking: true` with a frozen pose.
+
+**Kept in sync with Patrick's game:** his pose latency leads were tuned on this detector's lag. A
+change of mine tonight (arm line 0.4 T) would have added ~70 ms of arm lag, so it was reverted, and
+a test now pins when each state turns on in your clips. Jump, squat and lane timing never changed.
+
+**Also new:** MediaPipe JS loads only when pose starts (main bundle 407 → 254 kB); `STATION.md` (demo
+setup, keys, symptom → fix table); small-room switch `CALIBRATION_FEET_IN_VIEW`.
+
+**Pointers:** decisions `DECISIONS.md` (33) · messages for Greg and Patrick `NEEDS.md` (8) · new session
+`HANDOFF.md` (starter prompt in §9) · demo `STATION.md`.
+
+## How to use it
+
+- App: `createPoseInput()` from `@/pose` (the contract). Press **D** in the app for the overlay.
+- Debug page: `npm run dev`, open `/?dev=pose`, then in the Chrome console (until Greg wires it):
+
+```js
+const host = document.createElement('div');
+host.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#111;overflow:auto';
+document.body.append(host);
+const { mountPoseDebug } = await import('/src/pose/index.ts');
+mountPoseDebug(host);
+```
+
+## Files
+
+| File | What |
+| --- | --- |
+| `index.ts` | `createPoseInput()` (the contract) and `mountPoseDebug` (Greg asked for it here) |
+| `engine.ts` | Browser side: camera, `requestVideoFrameCallback` loop, D key, overlay, `PoseInputSource` |
+| `session.ts` | Pure core per frame: pick the player, calibrate or detect, status throttling, listeners |
+| `calibration.ts` | Pure calibrator: noBody / tooFar / tooClose / holdStill / done, median over 1.5 s |
+| `detect.ts` | Pure detector: smoothing, lane, jump, squat, arms, tracking, drift; `toPlayerX` (the only `1 - x`) |
+| `tuning.ts` | Every number. `DETECTION` is live (sliders); `DETECTION_DEFAULTS` is what is committed |
+| `overlay.ts` | Debug overlay DOM and its text |
+| `skeleton.ts` | Skeleton drawing with the app's object-cover crop |
+| `landmarker.ts` | One shared MediaPipe model per page, GPU with CPU fallback |
+| `camera.ts` | Camera stream, attach, stop, readable errors |
+| `debug.ts` | `mountPoseDebug` for `?dev=pose`: calibrate buttons, overlay, move tally, clip recorder |
+| `STATION.md` | Demo station setup, keys, symptom → fix table |
+| `recording.ts` | Clip format and JSON download |
+| `fixtures/*.json` | A's recorded clips (landmarks only, no images) |
+| `fixtures.ts` | Test helpers: replay clips, synthetic variants |
+| `*.test.ts` | Unit, replay, variant, session, treadmill tests |
+
+## Assets (served from `public/`, never a CDN)
+
+- `public/models/pose_landmarker_lite.task` — from
+  `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`
+- `public/mediapipe/wasm/` — copied from `node_modules/@mediapipe/tasks-vision/wasm` (1.2.3). If the
+  package version changes: `cp node_modules/@mediapipe/tasks-vision/wasm/* public/mediapipe/wasm/`
+
+## History
+
+- Phase 0 (Sat ~3 AM): spike at 25.9 FPS GPU on A's laptop, mirroring correct, full body tracked.
