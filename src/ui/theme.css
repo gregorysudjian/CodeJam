@@ -402,6 +402,12 @@
   background: color-mix(in srgb, var(--na-bg) 80%, transparent);
   backdrop-filter: blur(18px);
 }
+/* A dark ring around HUD words over the 3D scene. Under protanopia the danger red turns a dim
+   olive (2.2:1 on the sky); against this ring it keeps 4.4:1 on any background. */
+@utility text-outline {
+  -webkit-text-stroke: 4px var(--na-bg);
+  paint-order: stroke fill;
+}
 @utility hud-text-glow {
   text-shadow: 0 0 28px currentColor;
 }
