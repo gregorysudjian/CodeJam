@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat 07:13 (overnight autonomous session). Read this first in a new conversation._
+_Last refresh: Sat 07:20 (overnight autonomous session). Read this first in a new conversation._
 
 ## 1. Context
 
@@ -58,7 +58,8 @@ engine.ts      getState() (game polls), onMove listeners, drawSkeleton (skeleton
 - `overlay.ts`, `skeleton.ts`, `landmarker.ts`, `camera.ts`, `debug.ts`, `recording.ts`.
 - Tests: `detect.test.ts` (rules), `variants.test.ts` (clips × variants), `session.test.ts`,
   `treadmill.test.ts`, `calibration.test.ts`, `skeleton.test.ts`, `overlay.test.ts`;
-  helpers in `fixtures.ts`; clips in `fixtures/*.json` (A, two sessions at different spots).
+  helpers in `fixtures.ts`; clips in `fixtures/*.json` (A, two sessions at different spots;
+  what each clip contains and its quirks: `fixtures/README.md`).
 
 ## 4. Decisions
 

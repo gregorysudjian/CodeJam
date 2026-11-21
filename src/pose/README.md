@@ -1,6 +1,6 @@
 # src/pose — Vision (owner A)
 
-## MORNING REPORT (last update: Sat 07:14 — refreshed through the night)
+## MORNING REPORT (last update: Sat 07:20 — refreshed through the night)
 
 **TL;DR:** the real pose input is done on `abdo-1` (Phase 1, most of Phase 2, Phase 3 treadmill),
 205 tests pass, and it runs end to end inside `main`'s real app (calibration → tutorial → play) on
