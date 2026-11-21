@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat 11:06. Read this first in a new conversation._
+_Last refresh: Sat 11:07. Read this first in a new conversation._
 
 ## 1. Context
 
@@ -22,7 +22,7 @@ _Last refresh: Sat 11:06. Read this first in a new conversation._
   - Nothing is half-written in code. Not done: "raise both arms to start" (app-side, NEEDS.md 5),
     station setup notes (Phase 4), real-camera tuning (needs A).
 - **Last commit:** see `git log -1`.
-- **`npm run check`:** passes (218 tests). Use its exit code; a `| grep` can hide a failure.
+- **`npm run check`:** passes (219 tests). Use its exit code; a `| grep` can hide a failure.
   A clean checkout of `origin/abdo-1` + `npm ci` + `npm run check` passes too (nothing local needed).
   Mutation sweep: each of the 23 `DETECTION` thresholds and the calibration / body-picking constants
   set to an extreme breaks at least one test (only the overlay's list length is cosmetic).
@@ -191,7 +191,7 @@ Replaces the src/pose stub with the real pose input (CONTRACTS.md, unchanged int
   screen takes it off the page
 - ?dev=pose: mountPoseDebug exported from src/pose (see src/pose/NEEDS.md 1 for DevPose.tsx)
 - Thresholds tuned from recorded clips: src/pose/DECISIONS.md; station notes: src/pose/STATION.md
-- 218 tests on recorded landmark clips and synthetic variants; npm run check passes
+- 219 tests on recorded landmark clips and synthetic variants; npm run check passes
 
 Only src/pose/, public/models/, public/mediapipe/ changed. No new packages or env vars.
 
