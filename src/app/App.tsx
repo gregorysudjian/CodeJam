@@ -29,6 +29,8 @@ import { DEMO_CONFIG, WORKOUTS } from '@/workout';
 import { CalibrateStep } from './CalibrateStep';
 import { DevPose } from './DevPose';
 import { KioskBoard } from './KioskBoard';
+import { DeviceNotice } from './DeviceNotice';
+import { checkDevice, readEnvironment } from './deviceCheck';
 import { CameraErrorOverlay, OfflineBanner } from './ErrorStates';
 import { classifyCameraError, type CameraErrorInfo } from './errors';
 import { InputSwitch, type InputKind } from './InputSwitch';
@@ -112,6 +114,9 @@ function MainApp() {
   const [config, setConfig] = useState<SessionConfig | null>(null);
   const [inputKind, setInputKind] = useState<InputKind>('keyboard');
   const [debug, setDebug] = useState(false);
+  // Phones, Safari and Firefox get a notice on the landing screen (Jiscar 2, #61).
+  const [device] = useState(() => checkDevice(readEnvironment()));
+  const [deviceOk, setDeviceOk] = useState(device.verdict === 'ok');
   const [notice, setNotice] = useState('');
   const [cameraError, setCameraError] = useState<CameraErrorInfo | null>(null);
   const [tutorialDone, setTutorialDone] = useState(false);
@@ -447,6 +452,16 @@ function MainApp() {
 
   return (
     <div className="min-h-screen">
+      {!deviceOk && screen === 'landing' && (
+        <DeviceNotice
+          check={device}
+          onLeaderboard={() => {
+            setDeviceOk(true);
+            openLeaderboard();
+          }}
+          onPlayAnyway={() => setDeviceOk(true)}
+        />
+      )}
       {screen === 'landing' && (
         <LandingScreen
           appName={APP_NAME}
