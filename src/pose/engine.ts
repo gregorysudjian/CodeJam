@@ -2,7 +2,7 @@
 // around the pure session (session.ts). createPoseInput() (index.ts) returns `engine.source`; the
 // ?dev=pose page uses the rest. Video and landmarks never leave the device (AGENTS.md rule 5).
 import type { CalibrationStatus, MoveEvent, PlayMode, PoseInputSource } from '@/contracts';
-import { closeCamera, openCamera } from './camera';
+import { attachStream, cameraErrorMessage, getCameraStream, stopStream } from './camera';
 import type { Calibration, Detector, Point } from './detect';
 import { type Delegate, getLandmarker, type Landmarker } from './landmarker';
 import { createOverlay, type Overlay } from './overlay';
@@ -98,12 +98,28 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     if (starting) return starting;
     const my = ++gen;
     const run = async () => {
-      const s = await openCamera(video);
-      if (my !== gen) return closeCamera(video, s);
+      // Get the stream before touching the video: a start superseded by stop() (React StrictMode
+      // runs start, stop, start) must never detach the newer stream or leave its camera on.
+      let s: MediaStream;
+      try {
+        s = await getCameraStream();
+      } catch (err) {
+        if (my !== gen) return;
+        throw new Error(cameraErrorMessage(err));
+      }
+      if (my !== gen) return stopStream(video, s);
       stream = s;
-      const lm = await getLandmarker();
-      if (my !== gen) return;
-      landmarker = lm;
+      try {
+        await attachStream(video, s);
+        const lm = await getLandmarker();
+        if (my !== gen) return; // stop() already released the stream
+        landmarker = lm;
+      } catch (err) {
+        if (my !== gen) return;
+        stopStream(video, s);
+        stream = null;
+        throw err instanceof Error ? err : new Error('The pose model could not start.');
+      }
       running = true;
       frames = 0;
       windowStart = performance.now();
@@ -122,7 +138,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     starting = null;
     if (running) video.cancelVideoFrameCallback(frameHandle);
     running = false;
-    closeCamera(video, stream);
+    stopStream(video, stream);
     stream = null;
     window.removeEventListener('keydown', onKey);
     if (keys) overlay.hide();
