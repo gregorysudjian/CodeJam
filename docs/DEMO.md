@@ -16,11 +16,15 @@ Target length: 2 minutes 40 seconds for the judges. Shorter talk means more Q&A,
 | Time | Who | What |
 | --- | --- | --- |
 | 0:00 to 0:20 | Presenter | Hook. "Who here has skipped a workout this week?" Then one line on the problem: working out at home is boring, so people stop. |
-| 0:20 to 0:35 | Presenter | What it is, in one sentence: "It's a workout you play with your whole body, using only your laptop's webcam, with a coach that builds your next level from how you did." |
-| 0:35 to 1:30 | Player and Presenter | Live round. Player picks Full body, raises both arms to start, plays the 45-second demo level. Presenter names each move as it happens: sidestep, jump, squat, press. |
-| 1:30 to 1:55 | Presenter | The loop around the game. Results: reps per move, estimated calories, score. Coach card: what went well and the recommended next session. Dashboard: the week so far against the goal. Leaderboard. |
-| 1:55 to 2:25 | Presenter | How it works: tracking runs on the laptop and the video never leaves it; sessions are stored in Postgres behind per-user security; a server endpoint asks Claude for the coaching and the level generator builds what it recommends; treadmill mode for runners. |
+| 0:20 to 0:35 | Presenter | What it is, in one sentence: "It's a workout you play with your whole body, using only your laptop's webcam, with a coach that recommends your next session from how you did." |
+| 0:35 to 1:30 | Player, Operator, Presenter | Live round. `?demo=1` has already selected Full body, and the Operator has set the switch to Camera. The Operator clicks Start. The Player stands on the tape mark and holds still for about 1.5 s to calibrate, and the 45-second demo level starts at once (there is no "raise both arms to start"). The Presenter names each move as it comes: sidestep, grab the orb (one arm), smash the crate (both arms), jump, squat and hold. If a ghost was rehearsed on this URL with the camera: "The see-through runner is our best rehearsal; the chip at the top says whether we're ahead." |
+| 1:30 to 1:55 | Presenter | The loop around the game. Results: score and grade, accuracy, best streak, reps per move, calories labelled as an estimate. Coach card (its badge says RULES): a recap from the numbers, one tip for the move missed most, and a recommended next session. Dashboard: active minutes this week against the weekly goal, and the day streak. Leaderboard: best score per workout and mode. |
+| 1:55 to 2:25 | Presenter | How it works: "Tracking runs in the browser, and the video never leaves the laptop. Every threshold is a fraction of your own body, measured at calibration. Webcam moves arrive late, so the game draws obstacles early by each move's measured lag. Sessions live in Postgres, and each player can read only their own rows. The coach reads your history and recommends the next session. Today that's our rule-based coach; the server endpoint is built to hand this to Claude, rate-limited, and switches on when a key is added. And treadmill mode gives runners upper-body moves." |
 | 2:25 to 2:40 | Presenter | Close and invite: "The high score today is ____. Who wants to beat it?" |
+
+**Things the script must not do with `?demo=1`:**
+- Don't click "Play this next" to show the coach's pick: with `?demo=1` every round is the demo level, so it plays Full body 45 s again, whatever the card says. Describe the pick instead.
+- The Player keeps their arms down on the results screen. With the camera, both arms up (after 1.5 s) starts the next round.
 
 A second hook option is a statistic. The World Health Organization reported in 2024 that about 31% of adults do not get enough physical activity. Check the number and the source before putting it on a slide.
 
@@ -76,8 +80,8 @@ Per the opening slides, Popular Vote is a 2-minute demo, then the audience ranks
 | --- | --- | --- |
 | 0:00 to 0:15 | Presenter | Hook and the one-sentence description from the main script |
 | 0:15 to 1:05 | Player and Presenter | The 45-second seeded demo round. Calibrate during setup, before the clock starts. Presenter names the moves |
-| 1:05 to 1:35 | Presenter | Results, coach card, leaderboard: one line each. Skip the dashboard |
-| 1:35 to 1:50 | Presenter | How it works in one line: tracking on the laptop, video never leaves it, Claude builds your next level |
+| 1:05 to 1:35 | Presenter | Results, coach card, leaderboard: one line each. Skip the dashboard. Player keeps arms down (both arms up replays) |
+| 1:35 to 1:50 | Presenter | How it works in one line: tracking on the laptop, video never leaves it, and a coach that reads your history and recommends your next session |
 | 1:50 to 2:00 | Presenter | Close on the QR code: "Scan it and play on your own laptop." |
 
 No architecture slide in this version. Rehearse it with a timer at least twice.
@@ -100,19 +104,28 @@ No architecture slide in this version. Rehearse it with a timer at least twice.
 ## Likely judge questions
 
 **How does the tracking work?**
-MediaPipe Pose finds 33 body landmarks in every webcam frame, in the browser. We calibrate on the player's standing pose and measure each move as a fraction of their own torso length and shoulder width, so it adapts to height and distance.
+MediaPipe's Pose Landmarker (lite model, on the GPU) finds 33 body landmarks in every webcam frame, in the browser. Calibration takes 1.5 s of standing still and records hip position, shoulder width and torso length. Every move is a fraction of those: a squat is the hips dropping 0.3 torso lengths, a lane change is the hips moving 0.55 shoulder widths. So it adapts to height and distance.
 
 **What did you build this weekend, and what is a library?**
-The pose model is pre-trained by Google, and Supabase hosts the database and sign-in. Everything else is ours: calibration, move detection, the game, the level generator, scoring, the schema and security rules, the coach endpoint and the UI.
+The pose model is pre-trained by Google, and Supabase hosts the database and sign-in. Everything else is ours: calibration, move detection, the game, the latency compensation, the ghost runner, the level generator, scoring, the schema and security rules, the coach (rules and endpoint) and the UI.
 
 **What is in your backend, and why does the tracking not run there?**
-Postgres with per-user row-level security for profiles and sessions, anonymous sign-in, and a server endpoint that turns a user's history into coaching through Claude. Tracking stays on the device on purpose: a round trip to a server would add lag you can feel in a game, and it would mean uploading video of people exercising.
+Postgres with row-level security for profiles and sessions, anonymous sign-in, a leaderboard view that exposes only name and score, and a serverless coach endpoint. The endpoint checks the player's token, reads their history under the same row-level security, limits each player to one call per 10 s, and asks Claude for structured JSON. No Claude key is configured for the demo, so the card shows our rule-based coach; adding the key switches the endpoint on. Tracking stays on the device on purpose: a round trip to a server would add lag you can feel in a game, and it would mean uploading video of people exercising.
 
-**Is the AI coach giving medical advice?**
-No. It is limited to general encouragement and picking the next session from the player's own numbers, its answer is validated on the server, and a rule-based coach takes over if it fails.
+**Where is the AI?**
+On screen today: the pose model, and a rule-based coach (the card's badge says RULES). The Claude path is built and tested up to the API call (token check, rate limit, answer validation), but has not answered with a real key. Say this plainly rather than let a judge find the RULES badge.
+
+**Is the coach giving medical advice?**
+No. The card says "General fitness encouragement, not medical advice." The rule-based coach uses only the player's own numbers (accuracy, missed moves, workouts this week) and fixed tips. The Claude prompt is limited to general encouragement with no medical, diet or body comments, its answer is validated on the server, and any failure falls back to the rules.
 
 **How is this different from Ring Fit, Just Dance or Kinect games?**
-No hardware and no install: any laptop with a webcam. The level is generated from the workout you pick, so the game is built around training goals. And it has a treadmill mode for people who already run.
+No hardware and no install: any laptop with a webcam. The level is generated from the workout you pick, so the game is built around training goals. You race a ghost of your best run. And it has a treadmill mode for people who already run.
+
+**Webcams are laggy. How is it fair?**
+We measured the lag on recorded clips: about 0.06 s for a jump up to about 0.3 s for squats and arms, plus about 0.1 s for the camera and model. With the camera, each obstacle is drawn early by its move's lag, so reacting when you see it lands inside the judging window (0.35 s before to 0.15 s after). The keyboard gets no lead.
+
+**What happens if the wifi drops?**
+The round is played and saved on the laptop. Sessions that can't reach the server wait in a local queue and sync later, and the coach falls back to the rules. `?store=local` runs with no backend at all.
 
 **Is it a real workout? How do you get the calorie number?**
 We count actual reps per move. Calories are an estimate from a standard MET formula and are labelled as an estimate. Give the measured numbers here: reps in a 90-second Legs round, and heart rate before and after if someone has a smartwatch.
@@ -127,19 +140,19 @@ Today, yes, a determined person could, because the score is computed on the devi
 Thresholds are relative to the calibrated body, so a squat needs real hip depth. It is not a form checker yet; squat depth scoring is on the roadmap.
 
 **Is it safe? What about people who cannot jump?**
-There is a low-impact toggle that removes jumps, rounds start with a warm-up, and treadmill mode is upper body only. It can be played in a small space.
+There is a low-impact toggle that removes hurdles (so no jumps), every round starts with an easier warm-up, and treadmill mode is upper body only. Treadmill mode calibrates on the shoulders at 1 to 1.5 m, so it fits a small space.
 
 **What happens with several people in the frame, or bad lighting?**
-We track the largest, most central person and pause when the player is lost. Be honest about the limits you measured.
+MediaPipe is set to find one body, for frame rate. A picker for several bodies (largest, nearest the player's last position, ignoring bodies of a very different size) is built and tested on recorded clips but not switched on. When the player is lost, the game pauses with "Step back into the frame", resumes when they return, and after 3 s offers the keyboard. Be honest about the limits you measured.
 
 **How does the difficulty work?**
-Within a round there is a warm-up, a build, a peak and a cool-down; gaps shorten and moves combine as it goes. Between rounds, the coach raises or lowers the difficulty from your accuracy.
+Within a round there is a warm-up, a build, a peak and a cool-down; gaps shorten and moves combine as it goes. Between rounds, the coach's recommended session raises difficulty by 0.1 after accuracy above 85% and lowers it by 0.1 below 60%.
 
 **How did you use AI tools?**
 Say it plainly: AI assistants helped write code against interfaces the team designed, and the team did the architecture, the tuning in front of the camera and the playtesting.
 
 **What was hardest?**
-Have one real story ready. The likely one is telling a jump apart from standing up out of a squat, or making input lag feel fair.
+Have one real story ready. The likely one: a crouch before a jump looks exactly like a quick squat, by depth and by time (Greg's clips: a 0.46 s crouch at 0.55 torso lengths, a 0.51 s squat at 0.64). Only what follows tells them apart, so a short squat is counted once the player stands up, unless a jump follows within 0.35 s. Or making input lag feel fair (above).
 
 **What is next?**
 More exercises, form feedback, server-verified scores, friend challenges, two-player mode, a phone-as-camera option for TVs.
