@@ -1,23 +1,16 @@
 # src/pose — Vision (owner A)
 
-## MORNING REPORT (last update: Sat 11:07)
+## STATUS (last update: Sat 13:50)
 
-**TL;DR:** the real pose input is done on `abdo-1` (Phase 1, most of Phase 2, Phase 3 treadmill),
-219 tests pass, and it runs end to end inside `main`'s real app (calibration → tutorial → play) on
-your replayed clips. Nothing touched `main`. It has **not** met a real camera since Phase 0.
+**Now (13:50):** `main` is merged into `abdo-1` (clean) and **PR #27 is open**
+(https://github.com/gregorysudjian/CodeJam/pull/27): mergeable, only pose folders changed, `npm run
+check` passes with the whole team's code (530 tests, 317 in `src/pose`). Greg's clips are in as a
+second body, and his two findings are fixed (DECISIONS 34–36). Real camera: 25.7 FPS GPU,
+calibration and threshold lines OK; the 10-of-each move check is still to finish.
 
-**Do this first (≈20 min):**
-1. **10-minute camera check:** `HANDOFF.md` §6 (FPS, calibration, 10 of each move with the new move
-   tally, no false moves, crouch-and-jump, treadmill). Tune with the D overlay's sliders if needed.
-2. **Tell Greg** both requests in his `main` docs (PROGRESS.md, AUDIT.md #1 and #7) are done on
-   `abdo-1`: the real `createPoseInput()`, and `mountPoseDebug` exported from `src/pose/index.ts`.
-   Send `NEEDS.md` items 1 (ready `DevPose.tsx`) and 2 (who mirrors the video). He plans to merge
-   `abdo-1` after Patrick's `p1-workout` and `p2-game`. Send Patrick `NEEDS.md` 8 (his game's pose
-   latency leads still match).
-3. **Decide the merge:** `main` has moved (PR #19, new packages). Merge `origin/main` into `abdo-1`,
-   `npm install`, `npm run check`, then open the PR with the text in `HANDOFF.md` §8. A dry run
-   (`git merge-tree`, nothing changed) shows **no conflicts**: `main` never touched `src/pose`,
-   `public/models` or `public/mediapipe`.
+**Local setup note:** your `node_modules` is half-installed (an `npm ci` was blocked by the old 3 AM
+dev server, PID 19480, locking a file). Close that server (Task Manager → Details → `node.exe` PID
+19480 → End task), then run `npm ci` in this folder.
 
 **Evidence (no camera; nothing merged):**
 - **The whole team's code together:** a scratch merge of `main` + Patrick's `p1-workout` + `p2-game`

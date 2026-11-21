@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat 11:07. Read this first in a new conversation._
+_Last refresh: Sat 13:50. Read this first in a new conversation._
 
 ## 1. Context
 
@@ -8,7 +8,7 @@ _Last refresh: Sat 11:07. Read this first in a new conversation._
   Three.js, MediaPipe pose on device, Supabase, Vercel. Docs: `AGENTS.md`, `docs/PLAN.md`,
   `docs/CONTRACTS.md` (the law), `docs/DEMO.md`.
 - Role A (Vision). Branch **`abdo-1`**. Never commit, merge, rebase or push to `main`; never force-push.
-  `main` has NOT been merged into `abdo-1` (A's call) — the module was built to match `main`'s app.
+  `main` was merged into `abdo-1` at ~1:50 PM (Greg's request; adds `vercel.json`). PR #27 is open.
 - A owns only `src/pose/`, `public/models/`, `public/mediapipe/`. Anything else → `src/pose/NEEDS.md`.
 - No npm packages; every number in `src/pose/tuning.ts`; `npm run check` before each commit.
 - Code freeze **Sunday 12:00 PM** Montreal time.
@@ -22,7 +22,7 @@ _Last refresh: Sat 11:07. Read this first in a new conversation._
   - Nothing is half-written in code. Not done: "raise both arms to start" (app-side, NEEDS.md 5),
     station setup notes (Phase 4), real-camera tuning (needs A).
 - **Last commit:** see `git log -1`.
-- **`npm run check`:** passes (219 tests). Use its exit code; a `| grep` can hide a failure.
+- **`npm run check`:** passes (317 pose tests; 530 with the whole team after merging main). Use its exit code; a `| grep` can hide a failure.
   A clean checkout of `origin/abdo-1` + `npm ci` + `npm run check` passes too (nothing local needed).
   Mutation sweep: each of the 23 `DETECTION` thresholds and the calibration / body-picking constants
   set to an extreme breaks at least one test (only the overlay's list length is cosmetic).
