@@ -42,6 +42,15 @@ export function raceLabel(lead: number): { text: string; color: number } {
   return { text: 'EVEN VS GHOST', color: T.GHOST_ACCENT };
 }
 
+/**
+ * Extra scale of the race chip `sinceChange` seconds after the lead changed: a short pop, so
+ * passing the ghost (or being passed) catches the eye. 0 once it has settled.
+ */
+export function racePulse(sinceChange: number): number {
+  if (!(sinceChange >= 0) || sinceChange >= T.RACE_PULSE_SEC) return 0;
+  return T.RACE_PULSE * (1 - sinceChange / T.RACE_PULSE_SEC) ** 2;
+}
+
 /** The end banner's text and colour, shared by the 3D and 2D views. */
 export const OUTCOME_LABEL: Record<GhostOutcome, { text: string; color: number }> = {
   beaten: { text: 'GHOST BEATEN', color: T.COLOR_LIME },

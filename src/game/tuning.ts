@@ -40,6 +40,8 @@ export const BANNER_WIDTH = 6.2; // world units
 export const BANNER_POP_SEC = 0.35; // scale-in (none with reduced motion)
 export const RACE_POS = { x: 0, y: 6.2, z: -6 }; // live "+2 VS GHOST" chip: top centre, above the horizon and the finish arch
 export const RACE_WIDTH = 3.4; // world units: readable from 2 m
+export const RACE_PULSE = 0.3; // the chip pops 30 % larger when the lead changes ...
+export const RACE_PULSE_SEC = 0.45; // ... and settles over this long (none with reduced motion)
 
 /* Timing probe (?debug=timing, timing.ts): data for tuning VISUAL_LEAD_SEC with the camera. */
 export const TIMING_PROBE_SEC = 1; // watch each object from t - 1 s to t + 1 s

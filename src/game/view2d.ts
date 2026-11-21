@@ -1,6 +1,6 @@
 import type { Level, Spawn } from '@/contracts';
 import type { Item } from './core';
-import { OUTCOME_LABEL, raceLabel, type GhostOutcome, type GhostPose } from './ghost';
+import { OUTCOME_LABEL, raceLabel, racePulse, type GhostOutcome, type GhostPose } from './ghost';
 import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
 import { createTrack } from './timeline';
@@ -30,6 +30,9 @@ export function create2DView(
   const playerMotion = newMotion();
   const ghostMotion = newMotion();
   let outcome: GhostOutcome | null = null;
+  let raceShown: number | null = null;
+  let raceChangedT = Infinity; // seconds since the lead last changed (chip pop)
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   const colorOf = (item: Item): string => {
     const v = verdicts.get(item);
@@ -37,7 +40,7 @@ export function create2DView(
   };
 
   return {
-    frame({ elapsed, visDt, state, phase, ghost, race }) {
+    frame({ elapsed, visDt, realDt, state, phase, ghost, race }) {
       if (!ctx) return;
       const dpr = Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
       const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
@@ -134,22 +137,30 @@ export function create2DView(
         ctx.fillStyle = `rgba(0, 0, 0, ${T.PAUSE_DIM})`;
         ctx.fillRect(0, 0, w, h);
       }
+      raceChangedT += realDt;
+      if (race !== null && race !== raceShown) {
+        if (raceShown !== null) raceChangedT = 0; // not the first draw: the lead changed
+        raceShown = race;
+      }
       if (race !== null) {
         const { text, color } = raceLabel(race);
-        const cw = Math.min(w * 0.26, h * 0.5);
+        const pop = 1 + (reduceMotion ? 0 : racePulse(raceChangedT));
+        const base = Math.min(w * 0.26, h * 0.5);
+        const cy = h * 0.06 + base / 5.33 / 2; // the centre stays put while it pops
+        const cw = base * pop;
         const ch = cw / 5.33;
         ctx.fillStyle = 'rgba(7, 9, 13, 0.72)';
         ctx.strokeStyle = css(color);
         ctx.lineWidth = Math.max(2, ch * 0.05);
         ctx.beginPath();
-        ctx.roundRect((w - cw) / 2, h * 0.06, cw, ch, ch * 0.3);
+        ctx.roundRect((w - cw) / 2, cy - ch / 2, cw, ch, ch * 0.3);
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = css(color);
         ctx.font = `italic 800 ${Math.round(ch * 0.55)}px system-ui, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(text, w / 2, h * 0.06 + ch / 2 + ch * 0.03);
+        ctx.fillText(text, w / 2, cy + ch * 0.03);
       }
       if (outcome) {
         const { text, color } = OUTCOME_LABEL[outcome];

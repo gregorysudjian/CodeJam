@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { InputState, Level } from '@/contracts';
 import { feverTier, holdFeedback, type HoldFeedback, type Item } from './core';
-import { OUTCOME_LABEL, raceLabel, type GhostOutcome, type GhostPose } from './ghost';
+import { OUTCOME_LABEL, raceLabel, racePulse, type GhostOutcome, type GhostPose } from './ghost';
 import { requirementMet, type Verdict } from './judge';
 import { colorKeyFor, createObstacles, type ObstacleView } from './obstacles';
 import { createPlayer } from './player';
@@ -59,6 +59,7 @@ export function create3DView(
   const raceChip = createLabel(stage.scene, T.RACE_WIDTH, 512, T.RACE_POS, 999);
   const banner = createLabel(stage.scene, T.BANNER_WIDTH, 1024, T.BANNER_POS, 1000);
   let raceShown: number | null = null;
+  let raceChangedT = Infinity; // seconds since the lead last changed (chip pop)
   let bannerT = -1; // seconds since the banner appeared; < 0: not shown
   let compiled = false;
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -169,9 +170,13 @@ export function create3DView(
       player.update(visDt, state, moving, phase === 'finished');
       if (race !== null && race !== raceShown) {
         raceChip.draw(raceLabel(race));
+        if (raceShown !== null) raceChangedT = 0; // not the first draw: the lead changed
         raceShown = race;
       }
       raceChip.sprite.visible = race !== null;
+      raceChangedT += realDt;
+      const chipScale = T.RACE_WIDTH * (1 + (reduceMotion ? 0 : racePulse(raceChangedT)));
+      raceChip.sprite.scale.set(chipScale, chipScale * LABEL_ASPECT, 1);
       if (bannerT >= 0) {
         bannerT += realDt;
         const k = reduceMotion ? 1 : Math.min(1, bannerT / T.BANNER_POP_SEC);

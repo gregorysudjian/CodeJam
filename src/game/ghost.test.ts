@@ -3,6 +3,7 @@ import type { InputState, Lane, Level } from '@/contracts';
 import {
   compareRuns,
   raceLabel,
+  racePulse,
   createGhostRecorder,
   finishOutcome,
   decodePose,
@@ -16,6 +17,7 @@ import {
   type GhostPose,
   type GhostRun,
 } from './ghost';
+import { RACE_PULSE, RACE_PULSE_SEC } from './tuning';
 
 const idle: InputState = {
   tracking: true,
@@ -146,6 +148,15 @@ describe('ranking', () => {
     expect(raceLabel(2).text).toBe('+2 VS GHOST');
     expect(raceLabel(-1).text).toBe('\u22121 VS GHOST');
     expect(raceLabel(0).text).toBe('EVEN VS GHOST');
+  });
+
+  it('racePulse pops the chip when the lead changes, then settles to 0', () => {
+    expect(racePulse(0)).toBe(RACE_PULSE);
+    expect(racePulse(RACE_PULSE_SEC / 2)).toBeGreaterThan(0);
+    expect(racePulse(RACE_PULSE_SEC / 2)).toBeLessThan(RACE_PULSE);
+    expect(racePulse(RACE_PULSE_SEC)).toBe(0);
+    expect(racePulse(Infinity)).toBe(0); // never changed
+    expect(racePulse(-1)).toBe(0);
   });
 
   it('compareRuns gives the end banner', () => {
