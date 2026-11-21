@@ -1,4 +1,4 @@
-import type { InputState, PlayMode, Spawn } from '../contracts';
+import type { InputState, PlayMode, Spawn } from '@/contracts';
 import { HOLD_GRACE_SEC, WINDOW_AFTER_SEC, WINDOW_BEFORE_SEC } from './tuning';
 
 /**

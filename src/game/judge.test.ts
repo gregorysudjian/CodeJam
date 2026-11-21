@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { InputState, Spawn } from '../contracts';
+import type { InputState, Spawn } from '@/contracts';
 import { createJudge, requirementMet, type Verdict } from './judge';
 import { HOLD_GRACE_SEC, WINDOW_AFTER_SEC, WINDOW_BEFORE_SEC } from './tuning';
 

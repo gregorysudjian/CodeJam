@@ -52,3 +52,26 @@ All numbers are in `tuning.ts`.
 ## Status
 
 See the bottom of this file (kept up to date per phase).
+
+### Phase 0 + 1 status (Sat ~4:30 AM)
+
+**Works**
+- Every contract piece: `createGame` and `createKeyboardInput`, all seven `GameEvent` types, pause/resume, auto-pause on tracking loss, `destroy()`.
+- Five obstacle shapes coloured by move, floor markers, open-frame held beams, crate smash, orb collect, bursts on clear, red hit plus runner flash plus camera shake.
+- Capsule runner with lane slide and lean, jump arc, crouch, and arms that follow Q, E and W.
+- 22 judge and timeline tests plus 7 keyboard tests. `npm run check` passes.
+- Full 60 s rounds checked in headless Chrome with a scripted input:
+  - Perfect play gives 26 cues, 20 cleared, 6 collected, 0 hits, 1 finished.
+  - No moves at all gives 20 hits, no orb events, `trackingLost` pause and resume, 1 finished.
+- Runs inside D's `PlayScreen` under React StrictMode (create, destroy, create on the same canvas).
+
+**Not tested (no hardware here)**
+- Frame rate on a real GPU, especially next to MediaPipe. If it stutters, set `BLOOM_ENABLED = false` first.
+- Real webcam input. Tested only with the keyboard and a scripted input.
+- Long-term WebGL memory over many rounds.
+
+**Next (Phase 2)**
+- Sound effects and a music loop in `public/game/`.
+- Hit vignette; speed lines at peak intensity.
+- Low-graphics toggle.
+- Tune `SPEED_*` and the cue lead in front of the camera with A.

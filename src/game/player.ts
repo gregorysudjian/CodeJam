@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { InputState } from '../contracts';
+import type { InputState } from '@/contracts';
 import { neon } from './scene';
 import * as T from './tuning';
 

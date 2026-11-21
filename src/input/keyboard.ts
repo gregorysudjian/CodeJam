@@ -1,4 +1,4 @@
-import type { InputState, Lane, MoveEvent, MoveType } from '../contracts';
+import type { InputState, Lane, MoveEvent, MoveType } from '@/contracts';
 import { AIRBORNE_MS } from './tuning';
 
 /**

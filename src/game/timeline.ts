@@ -1,4 +1,4 @@
-import type { Wave } from '../contracts';
+import type { Wave } from '@/contracts';
 import { SPEED_MAX, SPEED_MIN, SPEED_TABLE_STEP_SEC } from './tuning';
 
 /** Speed for a wave intensity (0 to 1, clamped). */

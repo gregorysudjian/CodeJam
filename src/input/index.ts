@@ -1,4 +1,4 @@
-import type { InputSource } from '../contracts';
+import type { InputSource } from '@/contracts';
 import { createKeyboardController } from './keyboard';
 
 /** Keyboard stand-in for the camera. Same interface as the pose input. */

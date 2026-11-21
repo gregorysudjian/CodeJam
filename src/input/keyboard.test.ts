@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MoveType } from '../contracts';
+import type { MoveType } from '@/contracts';
 import { createKeyboardController } from './keyboard';
 import { AIRBORNE_MS } from './tuning';
 

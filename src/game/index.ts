@@ -1,4 +1,4 @@
-import type { Game, GameEvent, InputSource, InputState, Level, Wave } from '../contracts';
+import type { Game, GameEvent, InputSource, InputState, Level, Wave } from '@/contracts';
 import { createJudge, requirementMet, type Judge } from './judge';
 import { createObstacles, type ObstacleView } from './obstacles';
 import { createPlayer } from './player';

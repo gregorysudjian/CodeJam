@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { MoveType, ObstacleKind, Spawn } from '../contracts';
+import type { MoveType, ObstacleKind, Spawn } from '@/contracts';
 import type { Verdict } from './judge';
 import { neon } from './scene';
 import * as T from './tuning';

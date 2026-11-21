@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Wave } from '../contracts';
+import type { Wave } from '@/contracts';
 import { createTrack, intensityAt, speedFor } from './timeline';
 import { SPEED_MAX, SPEED_MIN } from './tuning';
 
