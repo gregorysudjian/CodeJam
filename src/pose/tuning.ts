@@ -102,8 +102,6 @@ export const DETECTION_DEFAULTS = Object.freeze({
   /** Jump: hip centre above standing height while moving up faster than this (T per second). */
   JUMP_ON_T: 0.15,
   JUMP_MIN_UP_SPEED_T: 1.0, // A's jumps rise 1.1–3.6 T/s (even at 40% dropped frames); a quick step back ~0.6
-  /** The upward speed is measured over this window (ms). */
-  JUMP_SPEED_WINDOW_MS: 150,
   AIRBORNE_MS: 450,
   JUMP_COOLDOWN_MS: 300,
   /**

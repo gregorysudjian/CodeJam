@@ -67,7 +67,7 @@ engine.ts      getState() (game polls), onMove listeners, drawSkeleton (skeleton
 All in `src/pose/DECISIONS.md` (32, with reasons). The big ones: lane 0.55/0.3 W; arm up 0.4 T above
 the nose, "down" back near the nose (press reps); arms ignored mid-jump; squat rep after 250 ms down,
 and a raised jump line (0.45 T) for 0.4 s after a squat instead of a block (crouch-then-jump works);
-jump speed over 150 ms > 1.0 T/s; tracking lost when hips leave the frame; baselines drift only when
+jump speed > 1.0 T/s; tracking lost when hips leave the frame; baselines drift only when
 still; size gate 40%; `MAX_POSES = 1`; pose handles D, app handles R; video kept playing off-page.
 
 ## 5. Known bugs and risks (ranked)

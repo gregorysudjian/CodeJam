@@ -141,8 +141,7 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
 
   const smooth = new Map<number, { x: number; y: number }>();
   let lastT = -Infinity;
-  /** Recent centre heights, to measure the rise over a short window (robust to dropped frames). */
-  let history: { t: number; y: number }[] = [];
+  let lastY = cal.centreY;
   let presentSince = -Infinity;
   let missingSince = -Infinity;
   let airborneUntil = -Infinity;
@@ -204,13 +203,9 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
 
     const dt = (t - lastT) / 1000;
     const fresh = dt > 0 && dt < 0.5; // no speed or drift across gaps
+    const upSpeed = fresh ? (lastY - c.y) / T / dt : 0; // T per second, + = up
     lastT = t;
-    if (!fresh) history = [];
-    history.push({ t, y: c.y });
-    while (history.length > 1 && t - history[1].t >= K.JUMP_SPEED_WINDOW_MS) history.shift();
-    const ref = history[0];
-    // Upward speed over the window, in T per second (+ = up).
-    const upSpeed = t > ref.t ? (ref.y - c.y) / T / ((t - ref.t) / 1000) : 0;
+    lastY = c.y;
 
     const emit = (type: MoveType) => {
       if (state.tracking) events.push({ type, t });

@@ -52,9 +52,10 @@ or the named file.
     sinks the hips ~0.18 T in frame, beyond the old 0.15 T band, so the baseline never adapted and
     squats/jumps were measured from the wrong height. Arms up narrow and lift the shoulders, which
     used to shrink W and T during an overhead hold.
-21. **Jump speed is measured over the last 150 ms and must exceed 1.0 T/s** (was per frame, 0.5).
-    A's jumps rise at 1.1–3.6 T/s even with 40% dropped frames; stepping back quickly rises ~0.6 T/s
-    and used to fire a jump.
+21. **Jump speed must exceed 1.0 T/s** (was 0.5). A's jumps rise at 1.1–3.6 T/s even with 40%
+    dropped frames; stepping back quickly rises ~0.6 T/s and used to fire a jump. (A 150 ms speed
+    window was tried too; a later mutation sweep showed no scenario where it helped, so it was
+    removed: speed is frame to frame again.)
 22. **A MediaPipe error on one frame no longer stops the loop** (treated as "no body"); if the camera
     fails inside `calibrate()`, the pending calibration is dropped without an unhandled rejection.
 23. **The treadmill torso estimate uses the live video aspect** (passed each frame), not the aspect at
