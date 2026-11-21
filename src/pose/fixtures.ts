@@ -32,7 +32,8 @@ export function rng(seed: number): () => number {
   };
 }
 
-export type PoseTransform = (pose: Point[]) => Point[];
+/** Changes one frame's pose; `t` is the frame time in the original clip (ms). */
+export type PoseTransform = (pose: Point[], t: number) => Point[];
 
 /** Scales the body about a fixed point: about the feet = taller/shorter, about the centre = closer/farther. */
 export const scaleAbout =
@@ -56,6 +57,8 @@ export interface ReplayOptions {
   transform?: PoseTransform;
   /** Fraction of frames to drop at random (camera hiccups). */
   dropFraction?: number;
+  /** Plays the clip this many times slower (2 = half speed). */
+  timeScale?: number;
   /** Extra bodies in frame for each pose (e.g. someone behind the player); pickBody chooses. */
   others?: (pose: Point[], t: number) => Point[][];
 }
@@ -70,7 +73,7 @@ export function calibrateFromClip(
   const aspect = rec.video.width / rec.video.height;
   const bodies = rec.frames
     .filter((f) => f.t < ms && f.pose)
-    .map((f) => measureForMode(transform(toPoints(f.pose!)), mode, aspect));
+    .map((f) => measureForMode(transform(toPoints(f.pose!), f.t), mode, aspect));
   const median = (k: keyof Calibration) =>
     bodies.map((b) => b[k]).sort((a, b) => a - b)[bodies.length >> 1];
   return {
@@ -96,6 +99,7 @@ export function replay(name: string, opts: ReplayOptions = {}): Replay {
     mode = 'floor',
     transform = (p) => p,
     dropFraction = 0,
+    timeScale = 1,
     others,
   } = opts;
   const rec = loadClip(name);
@@ -113,7 +117,7 @@ export function replay(name: string, opts: ReplayOptions = {}): Replay {
   for (const f of rec.frames) {
     if (f.t > upToMs) break;
     if (dropFraction > 0 && drop() < dropFraction) continue;
-    let pose = f.pose ? transform(toPoints(f.pose)) : null;
+    let pose = f.pose ? transform(toPoints(f.pose), f.t) : null;
     if (pose && others) {
       const bodies = [pose, ...others(pose, f.t)];
       const i = pickBody(bodies, last);
@@ -122,10 +126,11 @@ export function replay(name: string, opts: ReplayOptions = {}): Replay {
       const s = mid(pose[11], pose[12]);
       last = { x: toPlayerX(s.x), y: s.y };
     }
-    events.push(...det.update(pose, f.t));
+    const t = f.t * timeScale;
+    events.push(...det.update(pose, t));
     if (det.state.tracking !== wasTracking) {
       wasTracking = det.state.tracking;
-      tracking.push([f.t, wasTracking]);
+      tracking.push([t, wasTracking]);
     }
   }
   return { events, tracking, wrongPicks };

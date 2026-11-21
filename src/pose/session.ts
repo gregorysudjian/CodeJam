@@ -14,7 +14,7 @@ import {
   R_SHOULDER,
   toPlayerX,
 } from './detect';
-import { CALIBRATION_STATUS_STEP, RECENT_EVENTS } from './tuning';
+import { CALIBRATION_STATUS_STEP, PICK_SIZE_TOLERANCE, RECENT_EVENTS } from './tuning';
 
 export const NEUTRAL_STATE: InputState = Object.freeze({
   tracking: false,
@@ -59,6 +59,15 @@ export interface Session {
   readonly detector: Detector | null;
   readonly bodies: number;
   readonly recent: MoveEvent[];
+}
+
+/** True when a body's shoulder width is within PICK_SIZE_TOLERANCE of the player's. */
+export function isPlayerSized(pose: Point[], playerW: number): boolean {
+  const ls = pose[L_SHOULDER];
+  const rs = pose[R_SHOULDER];
+  if (!ls || !rs || playerW <= 0) return false;
+  const ratio = Math.abs(ls.x - rs.x) / playerW;
+  return ratio > 1 - PICK_SIZE_TOLERANCE && ratio < 1 / (1 - PICK_SIZE_TOLERANCE);
 }
 
 export function createSession(): Session {
@@ -121,6 +130,8 @@ export function createSession(): Session {
     bodies = poses.length;
     const i = poses.length > 1 ? pickBody(poses, lastCentre) : poses.length - 1;
     player = i >= 0 ? poses[i] : null;
+    // Once calibrated, someone much bigger or smaller than the player is not the player.
+    if (player && detector && !isPlayerSized(player, detector.readout.W)) player = null;
     if (player && player[L_SHOULDER] && player[R_SHOULDER]) {
       const s = mid(player[L_SHOULDER], player[R_SHOULDER]);
       lastCentre = { x: toPlayerX(s.x), y: s.y };

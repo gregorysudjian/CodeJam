@@ -18,8 +18,14 @@ export const MIN_TRACKING_CONFIDENCE = 0.5;
  * where the player was) and ignores people behind them. Costs FPS: measure before raising it.
  */
 export const MAX_POSES = 1;
-/** pickBody: penalty for distance from the player's last position, in torso lengths. */
+/** pickBody: score = shoulder width minus this × distance from the player's last position. */
 export const PICK_DISTANCE_WEIGHT = 0.5;
+/**
+ * After calibration, a body whose shoulder width is off by more than this fraction from the
+ * player's is someone else (e.g. a person behind the player after the player walks off).
+ * A's clips vary by at most about ±30% (arms up, turning slightly).
+ */
+export const PICK_SIZE_TOLERANCE = 0.4;
 
 /** Skeleton drawing. Landmarks below this visibility are drawn dimmed. */
 export const DRAW_MIN_VISIBILITY = 0.5;
