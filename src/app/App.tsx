@@ -165,6 +165,10 @@ function MainApp() {
       inputKind === 'pose' && poseModule ? poseModule.createPoseInput() : createKeyboardInput(),
     [inputKind, poseModule],
   );
+  const inputRef = useRef(input);
+  useEffect(() => {
+    inputRef.current = input;
+  }, [input]);
   useEffect(() => {
     let cancelled = false;
     input.start().catch((err: unknown) => {
@@ -354,9 +358,16 @@ function MainApp() {
     const game = gameRef.current;
     game?.pause();
     setNotice('Recalibrating: stand on your mark and hold still.');
-    (input as PoseInputSource)
-      .calibrate(config?.mode ?? 'floor', (s) => setNotice(s.message))
-      .catch(() => setNotice('Recalibration failed. Press K for the keyboard.'))
+    // K back to the keyboard stops this camera and fails its calibration: say nothing then.
+    const source = input as PoseInputSource;
+    const current = () => inputRef.current === source;
+    source
+      .calibrate(config?.mode ?? 'floor', (s) => {
+        if (current()) setNotice(s.message);
+      })
+      .catch(() => {
+        if (current()) setNotice('Recalibration failed. Press K for the keyboard.');
+      })
       .finally(() => {
         recalibrating.current = false;
         game?.resume();
