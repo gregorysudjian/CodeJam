@@ -8,7 +8,7 @@ You stand at the laptop, start rounds, and fix problems. You never speak. Chrome
 | --- | --- |
 | **Demo** (Patrick's Mac, `npm run dev`) | `http://localhost:5173/?demo=1` |
 | No wifi or backend down | `http://localhost:5173/?demo=1&store=local` |
-| Leaderboard on a second screen | `http://localhost:5173/?kiosk=1` |
+| Leaderboard + QR on a second screen | `https://codejam-jet.vercel.app/?kiosk=1` (the live site: on localhost the QR points to localhost, QA Q18) |
 | Pose check before the demo | `http://localhost:5173/?dev=pose` |
 | Public link (QR code, own laptops) | `https://codejam-jet.vercel.app` |
 
