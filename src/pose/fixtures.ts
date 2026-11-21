@@ -1,10 +1,10 @@
 // Owner: A. Test-only helpers: replay recorded clips (src/pose/fixtures/*.json) through the
 // detector, optionally transformed into synthetic variants (scaled, jittery, dropped frames,
 // a second person in frame).
-import type { MoveEvent, PlayMode } from '@/contracts';
+import type { Gesture, MoveEvent, PlayMode } from '@/contracts';
 import { measureForMode } from './calibration';
 import { type Calibration, createDetector, type Point, pickBody, toPlayerX, mid } from './detect';
-import { createGestureDetector, type Gesture } from './gesture';
+import { createGestureDetector } from './gesture';
 import type { Recording } from './recording';
 
 const clips = import.meta.glob<Recording>('./fixtures/**/*.json', {
