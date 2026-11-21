@@ -23,6 +23,8 @@ _Last refresh: Sat 07:00 (overnight autonomous session). Read this first in a ne
     station setup notes (Phase 4), real-camera tuning (needs A).
 - **Last commit:** see `git log -1`.
 - **`npm run check`:** passes (177 tests). Use its exit code; a `| grep` can hide a failure.
+- **End to end:** `main`'s full flow (calibrate → tutorial with the video off-page → play) ran on
+  replayed clips with only the model swapped (see §6 "Testing without a camera").
 - **Integration:** verified against `origin/main` PR #19 in a scratch worktree (never merged): `main`'s
   check passes with this `src/pose` (236 tests incl. the DevPose snippet from NEEDS.md 1), the real
   calibration screen and `?dev=pose` work with a stubbed camera, StrictMode leaves one camera track.
@@ -118,6 +120,11 @@ Recording a new clip for a failing case: use the `● …` buttons, then put the
 - Against `main` without merging: `git worktree add --detach <scratch dir> origin/main`, copy
   `src/pose` and `public/models`, `public/mediapipe` in, `npm ci`, `npm run check`, then
   `git worktree remove --force <dir>`. Never commit there.
+- Full game flow with your moves but no camera: in that scratch app, Playwright `page.route` serves a
+  replacement `/src/pose/landmarker.ts` whose `getLandmarker()` returns `{ delegate, detect() }` that
+  plays clips from `/src/pose/fixtures/*.json?import` by elapsed time (camera stubbed as above).
+  Everything else is the real code. Note: React StrictMode creates two pose inputs (useMemo runs
+  twice); only one is started.
 
 ## 7. Waiting on teammates
 

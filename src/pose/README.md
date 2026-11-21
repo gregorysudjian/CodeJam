@@ -11,6 +11,12 @@ team's), and the real app with a stubbed camera works: K switches to pose, START
 calibration screen showing our live status message ("Step in front of the camera…"), the video is
 mirrored and fills the frame, D shows the overlay (27 FPS GPU), Esc and K back to keyboard: no errors.
 
+**End to end in `main`'s real app (verified, nothing merged):** with the camera stubbed and only the
+MediaPipe model swapped for a replay of your clips, the full flow ran: K → START → calibration done
+from your standing frames → "try each move" ticked sidestep, jump, squat, arms up, reach left, reach
+right **while the video was off the page** → play screen received moves, timer ran, score went up.
+No console errors.
+
 **What works (tested on your recorded clips, no camera needed)**
 - `createPoseInput()` is real: camera, MediaPipe, `calibrate()` with status messages, smoothing,
   lane (hysteresis), jump, squat, arms up, reach left/right, `tracking`, move events, `drawSkeleton`.
