@@ -48,7 +48,9 @@ engine.ts      getState() (game polls), onMove listeners, drawSkeleton (skeleton
 ```
 
 - `index.ts` — `createPoseInput()` = `createPoseEngine().source`.
-- `engine.ts` — browser glue; StrictMode-safe start/stop; `calibrate()` before `start()` works.
+- `engine.ts` — browser glue; StrictMode-safe start/stop; `calibrate()` before `start()` works;
+  a 30 ms watchdog keeps frames flowing when the app takes the video off the page (it pauses) and
+  turns a stalled camera into "no body" after 1 s; frames are deduplicated by decoded-frame count.
 - `session.ts` — pure per-frame core (tested on clips).
 - `calibration.ts` — pure calibrator, messages per mode, treadmill T estimate.
 - `detect.ts` — pure detector; landmark indices; `toPlayerX` (the only `1 - x`); `pickBody`.
