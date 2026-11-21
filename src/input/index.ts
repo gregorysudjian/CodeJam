@@ -12,7 +12,11 @@ export function createKeyboardInput(): InputSource {
 
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
-    if (ctl.keyDown(e.code, e.repeat)) e.preventDefault(); // stop arrows and Space scrolling the page
+    // The app keeps this input started on every screen. Only during a round (the game marks
+    // <body data-game="running">) are the keys consumed, so Space jumps instead of pressing a
+    // focused HUD button. Elsewhere the browser keeps its own behaviour: Space presses the
+    // focused button, arrows scroll the dashboard (WCAG 2.1.1).
+    if (ctl.keyDown(e.code, e.repeat) && isRoundRunning()) e.preventDefault();
   };
   const onKeyUp = (e: KeyboardEvent): void => ctl.keyUp(e.code);
   const onBlur = (): void => ctl.releaseAll();
@@ -44,4 +48,9 @@ export function createKeyboardInput(): InputSource {
     getState: () => ctl.getState(),
     onMove: (cb) => ctl.onMove(cb),
   };
+}
+
+/** Set by src/game while a round runs (not paused, not finished); see src/game/index.ts. */
+function isRoundRunning(): boolean {
+  return document.body?.dataset.game === 'running';
 }

@@ -47,6 +47,15 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   let raf = 0;
   let prevState = input.getState();
   let lastTier = 0;
+  // <body data-game="running"> while the round runs: keyboard input (src/input) consumes its
+  // keys only then, so the rest of the app keeps normal keyboard behaviour.
+  let marked = false;
+  const markRunning = (on: boolean): void => {
+    if (on === marked) return;
+    marked = on;
+    if (on) document.body.dataset.game = 'running';
+    else delete document.body.dataset.game;
+  };
 
   function frame(now: number): void {
     if (destroyed) return;
@@ -70,6 +79,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         : core.started()
           ? 'running'
           : 'idle';
+    markRunning(phase === 'running');
     // Confirm each detected move with a quiet sound, also before the start, so the player
     // hears that the camera follows them. Silent while paused or after the finish.
     if (phase === 'idle' || phase === 'running')
@@ -105,6 +115,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       if (destroyed) return;
       destroyed = true;
       cancelAnimationFrame(raf);
+      markRunning(false);
       core.clearListeners();
       audio.dispose();
       view?.dispose();
