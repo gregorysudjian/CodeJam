@@ -31,3 +31,6 @@ dist-ssr
 
 # Supabase CLI local state
 supabase/.temp
+
+# Playwright MCP screenshots and logs
+.playwright-mcp/

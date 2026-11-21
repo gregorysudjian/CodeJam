@@ -31,6 +31,7 @@ import { DevPose } from './DevPose';
 import { KioskBoard } from './KioskBoard';
 import { CameraErrorOverlay, OfflineBanner } from './ErrorStates';
 import { classifyCameraError, type CameraErrorInfo } from './errors';
+import { InputSwitch, type InputKind } from './InputSwitch';
 import { createSwitchableInput } from './switchableInput';
 import { TryMoves } from './TryMoves';
 import { tutorialMoves } from './tutorial';
@@ -82,7 +83,7 @@ function MainApp() {
   const [screen, setScreen] = useState<Screen>('landing');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [config, setConfig] = useState<SessionConfig | null>(null);
-  const [inputKind, setInputKind] = useState<'keyboard' | 'pose'>('keyboard');
+  const [inputKind, setInputKind] = useState<InputKind>('keyboard');
   const [debug, setDebug] = useState(false);
   const [notice, setNotice] = useState('');
   const [cameraError, setCameraError] = useState<CameraErrorInfo | null>(null);
@@ -364,6 +365,7 @@ function MainApp() {
           workouts={workouts}
           coachPick={coachPick}
           initial={config ?? undefined}
+          settingsSlot={<InputSwitch value={inputKind} onChange={setInputKind} />}
           onStart={startSession}
           onBack={() => setScreen(sessions.length ? 'dashboard' : 'landing')}
         />
