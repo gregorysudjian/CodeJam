@@ -278,11 +278,13 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
 
   let quality: Quality = 0;
   let baseFov = T.CAMERA_FOV;
+  let lastDpr = window.devicePixelRatio || 1;
   const resize = (): void => {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     if (w === 0 || h === 0) return;
-    const pr = quality >= 1 ? 1 : Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
+    lastDpr = window.devicePixelRatio || 1;
+    const pr = quality >= 1 ? 1 : Math.min(lastDpr, T.MAX_PIXEL_RATIO);
     renderer.setPixelRatio(pr);
     renderer.setSize(w, h, false);
     composer?.setPixelRatio(pr);
@@ -325,7 +327,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
       }
 
       const parallax = distance * T.TOWER_PARALLAX;
-      for (let i = 0; i < towerCount; i++) {
+      for (let i = 0; i < towerCount && towers.visible; i++) {
         const t = towerInfo[i]!;
         const z = zNear - wrap(t.z0 - parallax, towerSpan);
         m4.makeScale(t.w, t.h, t.w).setPosition(t.x, t.h / 2, z);
@@ -335,9 +337,11 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
         m4.makeScale(0, 0, 0);
         (t.capB ? capsA : capsB).setMatrixAt(i, m4);
       }
-      towers.instanceMatrix.needsUpdate = true;
-      capsA.instanceMatrix.needsUpdate = true;
-      capsB.instanceMatrix.needsUpdate = true;
+      if (towers.visible) {
+        towers.instanceMatrix.needsUpdate = true;
+        capsA.instanceMatrix.needsUpdate = true;
+        capsB.instanceMatrix.needsUpdate = true;
+      }
 
       // Lane lines pulse faster and brighter as the streak climbs.
       const pulse = fever > 0 && !reduceMotion ? 0.5 + 0.5 * Math.sin(clock * (3 + fever * 2)) : 0;
@@ -393,6 +397,9 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
       resize();
     },
     render() {
+      // A ResizeObserver misses a pixel-ratio change with the same CSS size (window dragged
+      // from the laptop screen to a projector), so check it here: one comparison per frame.
+      if ((window.devicePixelRatio || 1) !== lastDpr) resize();
       if (composer && quality < 2) composer.render();
       else renderer.render(scene, camera);
     },
