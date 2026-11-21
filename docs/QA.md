@@ -4,9 +4,9 @@
 
 Branches are pushed with the PR text in the first commit message (`git log --reverse main..<branch>`).
 
-1. **Q15 is being decided** (Greg): the HUD cue word, the "N COMBO!" banner and the "VS GHOST" chip share the top-centre band and overprint each other. Either the UI moves the cue, or Patrick moves the banner and chip (details below).
+No decision is waiting. Q15 no longer needs one: Patrick's #46 moved the banners and the ghost chip to the bottom, and it is verified fixed below.
 
-## Status (Sat 15:55, `main` at bb17780; leaderboard re-checked on ba46d74)
+## Status (Sat 15:55, `main` at bb17780; leaderboard re-checked on ba46d74, Q15 and Q17 on 231dc4a)
 
 Full keyboard flow at 1366×768, 1920×1080 and 1280×720 with the new game (city/tunnel/bridge zones, beat, PERFECT/GOOD/LATE, 3-2-1 intro), plus a check of every fix in #40 and #41. **No console errors, no horizontal scroll, every round finished and saved.** `npm run check` on bff0541: 699 tests, none skipped.
 
@@ -26,8 +26,9 @@ Full keyboard flow at 1366×768, 1920×1080 and 1280×720 with the new game (cit
 | Q12 | minor | Landing QR below the fold at 1366/1280 | `src/ui` | open (use `?kiosk=1`) |
 | Q13 | minor | One NaN row would block the offline queue | Greg | **fixed** (test runs and passes) |
 | Q14 | visible | "Cross your arms to resume" is small, grey, and shown to keyboard players | `src/ui` | **open** |
-| Q15 | visible | HUD cue word overprints the "N COMBO!" banner and the VS GHOST chip | `src/ui` or Patrick | **open**, being decided by Greg |
+| Q15 | visible | HUD cue word overprinted the "N COMBO!" banner and the VS GHOST chip | Patrick (#46) | **fixed**, verified |
 | Q16 | minor | Local store leaderboard listed every round, not each player's best | Greg | **fixed**, verified |
+| Q17 | minor | `?kiosk=1&store=local` on a fresh browser saves a player called "Leaderboard" | Greg | **new** |
 | A1 | visible | Results: "RAISE BOTH ARMS TO PLAY AGAIN" was 20 px | `src/ui` | **fixed** (code; camera-only screen) |
 | A2 | visible | Tutorial hint was 20 px grey | Greg | **fixed**, verified |
 | A3 | minor | Tracking-lost subtext 16 px; "Camera starting…" 14 px | `src/ui` | half fixed: "Camera starting…" open |
@@ -45,12 +46,12 @@ Full keyboard flow at 1366×768, 1920×1080 and 1280×720 with the new game (cit
 - **Saw:** "Cross your arms to resume" for a keyboard player, at 20 px in muted grey (`text-body text-text-muted`, `GameHud.tsx:296`) ([paused-1366.jpg](qa/paused-1366.jpg)). A camera player who just paused with the X has to read it from 1.5 m.
 - **Owner:** `src/ui/screens/GameHud.tsx`. **Fix:** show it only when `cameraSlot` is set, as `font-display-italic text-display-sm text-text` (48 px, white).
 
-### Q15. The cue word, the milestone banner and the ghost chip overlap
-- **Steps:** `/?demo=1&store=local`, play the demo level cleanly (a ghost from an earlier run adds the chip). At streak 5 (about 0:30 left), 10 (about 0:22) and 20 (about 0:07) the game shows "N COMBO!" for 1.3 s.
-- **Expected:** the banner readable.
-- **Saw:** each milestone came while a cue was showing. At 1920×1080 "SIDESTEP" sits on "5 COMBO!" and "REACH" on "10 COMBO!"; at 1366×768 "SIDESTEP" covers "5 COMBO!" and the "EVEN VS GHOST" chip completely ([1366](qa/q15-cue-over-banner-1366.jpg), [1920 at 5](qa/q15-cue-over-banner-1920.jpg), [1920 at 10](qa/q15-cue-over-banner-10-1920.jpg)). "20 COMBO!" stays readable at 1920 (the cue sits just above it). Re-checked on bff0541 after #41 and #42: unchanged.
-- **Cause:** the cue is in the top band (`hud-cue`, `top-[124px]`, `GameHud.tsx:238`), where the game draws its banner (`BANNER_POS` y 3.3) and race chip (`RACE_POS` y 6.2, `src/game/tuning.ts`).
-- **Owner:** `src/ui` or Patrick; needs one decision. **Fix options (untested):** move the banner and chip lower, between the cue band and the horizon; or move the cue to one side of the top band (e.g. under the score) so the centre stays free for the game's labels.
+### Q17 (new). The local-store kiosk creates a player called "Leaderboard"
+- **Steps:** a browser with no saved player (or after New guest) → open `/?kiosk=1&store=local` → then open `/?demo=1&store=local`.
+- **Expected:** the kiosk only reads the board; the landing still says PLAY AS GUEST.
+- **Saw:** the landing says "CONTINUE AS LEADERBOARD", and `codejam.local.profile` holds `{"displayName":"Leaderboard", …}` ([q17-continue-as-leaderboard.jpg](qa/q17-continue-as-leaderboard.jpg)). A judge pressing Enter would play and be saved as "Leaderboard". Only on the local store: with Supabase the kiosk signs in an in-memory guest of its own (`src/data/index.ts`).
+- **Cause:** `KioskBoard.tsx` calls `store.signInGuest('Leaderboard')`; the local store's `signInGuest` creates and saves a profile when none exists.
+- **Owner:** Greg (`src/app/KioskBoard.tsx`). **Fix:** skip the sign-in when `store.kind === 'local'` (the local board needs none). Until then: don't open the kiosk with `&store=local` on the demo laptop (now in OPERATOR.md).
 
 ### Q12, A3 (minor)
 - **Q12:** the landing "Play on your laptop" QR starts at y 748 (below the fold at 720, at the edge at 768) ([landing-1366.jpg](qa/landing-1366.jpg)). Use `?kiosk=1` for the QR at the table.
@@ -69,6 +70,7 @@ Full keyboard flow at 1366×768, 1920×1080 and 1280×720 with the new game (cit
 - **Q9, Q10** (5a85969): offline mid-round → banner at the bottom, "Offline. Your rounds are saved on this laptop." on the local store ([offline-banner.jpg](qa/offline-banner.jpg)); no NOT SYNCED.
 - **Q11:** dashboard says "1 DAY" and "1 round · Best …".
 - **Q13:** the `mapping-edges` test runs and passes.
+- **Q15** (231dc4a, #46): at 1366×768 and 1920×1080 the cue stays in the top band, "5/10/20 COMBO!" appears at bottom centre and the "VS GHOST" chip at bottom right; nothing overlaps at any of the three milestones ([1366 at 5](qa/q15-fixed-1366.jpg), [1920 at 10](qa/q15-fixed-1920.jpg)). Old evidence kept: [before, 1366](qa/q15-cue-over-banner-1366.jpg).
 - **Q16** (ba46d74): a local profile with three 45 s rounds (best 4,750) shows "Sam" once on the landing top list, the leaderboard and `?kiosk=1`.
 - **Per-length boards (#45, ba46d74):** at 1920×1080, 1366×768 and 1280×720 the three filter groups (workout, mode, 45/90/180 S) sit on one row with nothing clipped and no horizontal scroll ([leaderboard-1280x720.jpg](qa/leaderboard-1280x720.jpg)); 1280×720 is 722 px tall (a 2 px scroll). 90 S with no rounds keeps the title "FULL BODY · FLOOR · 90 S", the filters and BACK ([leaderboard-empty-filter.jpg](qa/leaderboard-empty-filter.jpg)); Legs is disabled on Treadmill; results said "#1 on the leaderboard" for the 45 s round. `?kiosk=1` shows the 45 s board with no filters at all three sizes, no scroll. Not tested: Supabase (migration 0003 and other players on the board).
 - **A1:** `ResultsScreen.tsx` now uses `text-display-sm` (48 px) and a 96 px figure. Only shown with the camera, so read from code.
@@ -118,3 +120,8 @@ Open suggestions: preload the pose model on the landing page for live-URL visito
 | 15:55 | Verify #41 on bb17780 (`q-qa-2`) | Q1, Q3, Q4, Q5, Q7, Q11, A1 fixed; A3 half; Q12, Q14, Q15, Q16 open |
 | 16:04 | Loop: #42 on bff0541 | New scenery colours and bigger icons; Devpost game frames retaken (`q-shots`); Q15 re-checked, still open; 699 tests |
 | 16:25 | Leaderboard per length (`q-board`, ba46d74) | 3 sizes: filters fit on one row, empty 90 s board keeps filters, kiosk shows 45 s; Q16 verified fixed; 12/13 Devpost shots retaken; README/SUBMISSION board wording updated. Not tested: Supabase |
+| 16:30 | Judge Q&A (`q-judge`) | Added "Doesn't a longer round always win?"; sceptical pass fixed 5 answers (leaderboard view, X now tried on a real camera, 1.2 m dropped, calories formula, privacy); round re-timed: 50.2 s START → results on ba46d74 |
+| 16:36 | Q15 re-check on 231dc4a (#46), Devpost 04–09 (`q-shots-2`) | Q15 fixed at 1366 and 1920; game frames retaken (silver ghost, chip bottom right) |
+| 16:37 | Tests (`q-tests-2`) | `src/workout/pitch-claims.test.ts`: perfect demo = 4,750 / 100% / ≈7.35 kcal; 180 s ≈ 5–7× 45 s; Legs floor-only. 5 pass |
+| 16:40 | Sweep script (`q-sweep`) | `docs/qa/sweep/`: one command, 3 sizes in parallel, 34 checks each; first run 102/102 passed |
+| 16:42 | Operator card (`q-operator-2`) | Camera preselected, X chest-to-chin; found Q17 (local-store kiosk saves a "Leaderboard" player) |
