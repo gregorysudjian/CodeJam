@@ -226,6 +226,58 @@ describe('supabase store refused rows', () => {
   });
 });
 
+// A visitor who scans the QR code is not signed in yet (migration 0005 lets anon read the board).
+describe('supabase store leaderboard before sign-in', () => {
+  const row = {
+    display_name: 'Ana',
+    workout: 'fullBody',
+    mode: 'floor',
+    score: 1800,
+    created_at: '2026-11-21T20:00:00Z',
+    duration_sec: 45,
+  };
+
+  it('reads the board with the anon key instead of showing an empty one', async () => {
+    const auths: (string | null)[] = [];
+    const server = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!String(input).includes('/rest/v1/leaderboard'))
+        return new Response(null, { status: 404 });
+      auths.push(new Headers(init?.headers).get('Authorization'));
+      return Response.json([row]);
+    }) as typeof fetch;
+    const kv = memory();
+    const store = createSupabaseStore(URL, 'anon', kv, { fetch: server, authStorage: memory() });
+
+    const board = await store.getLeaderboard('fullBody', 'floor', 45);
+
+    expect(board.map((e) => [e.displayName, e.score])).toEqual([['Ana', 1800]]);
+    expect(auths).toEqual(['Bearer anon']); // no guest was created to read it
+  });
+
+  it('before 0005 is applied (anon refused), answers from the cache', async () => {
+    const refused = (async () =>
+      Response.json(
+        { code: '42501', message: 'permission denied for view leaderboard' },
+        { status: 401 },
+      )) as typeof fetch;
+    const kv = memory();
+    const cached: LeaderboardEntry[] = [
+      {
+        displayName: 'Ana',
+        score: 900,
+        workout: 'fullBody',
+        mode: 'floor',
+        durationSec: 45,
+        at: 1,
+      },
+    ];
+    kv.setItem('codejam.sb.board.fullBody.floor.45', JSON.stringify(cached));
+    const store = createSupabaseStore(URL, 'anon', kv, { fetch: refused, authStorage: memory() });
+
+    expect(await store.getLeaderboard('fullBody', 'floor', 45)).toEqual(cached);
+  });
+});
+
 // The venue wifi drops out or hangs: every call must still answer, from the queue and the caches.
 describe('supabase store offline', () => {
   const offline = (() => Promise.reject(new TypeError('Failed to fetch'))) as typeof fetch;
