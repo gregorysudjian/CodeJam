@@ -13,6 +13,8 @@ import { CAMERA_STALL_MS, FPS_WINDOW_MS, WATCHDOG_INTERVAL_MS, WATCHDOG_STALE_MS
 /** Everything the debug overlay shows. */
 export interface EngineSnapshot {
   fps: number;
+  /** What the camera itself reports (frame rate, size); empty before it starts. */
+  camera: string;
   delegate: Delegate | '';
   mode: PlayMode;
   calibration: Calibration | null;
@@ -63,6 +65,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
 
   const overlay = createOverlay(() => ({
     fps,
+    camera: cameraInfo(),
     delegate: landmarker?.delegate ?? '',
     mode: session.mode,
     calibration: session.calibration,
@@ -71,6 +74,13 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     bodies: session.bodies,
     events: session.recent,
   }));
+
+  const cameraInfo = () => {
+    const s = stream?.getVideoTracks()[0]?.getSettings();
+    return s
+      ? `camera ${Math.round(s.frameRate ?? 0)} fps ${s.width ?? '?'}×${s.height ?? '?'}`
+      : '';
+  };
 
   const aspect = () =>
     video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3;

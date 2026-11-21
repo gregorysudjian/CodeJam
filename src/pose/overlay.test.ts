@@ -5,6 +5,7 @@ import { DETECTION } from './tuning';
 
 const base = {
   fps: 29.7,
+  camera: 'camera 30 fps 640×480',
   delegate: 'GPU' as const,
   mode: 'floor' as const,
   calibration: null,
@@ -18,6 +19,7 @@ describe('overlay text', () => {
   test('before calibration', () => {
     const text = overlayText(base);
     expect(text).toContain('29.7 FPS GPU');
+    expect(text).toContain('camera 30 fps 640×480');
     expect(text).toContain('not calibrated');
   });
 

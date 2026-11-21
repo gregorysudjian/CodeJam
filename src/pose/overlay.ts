@@ -29,6 +29,8 @@ export function overlayText(s: EngineSnapshot): string {
   const K = DETECTION;
   const lines = [
     `pose · ${s.mode} · ${f(s.fps, 1)} FPS ${s.delegate} · bodies ${s.bodies}`,
+    // If FPS is low: camera fps also low = the camera (light); camera fps fine = the model (GPU).
+    s.camera || 'camera not started',
     s.calibration
       ? `calibrated  W ${f(s.calibration.W, 3)}  T ${f(s.calibration.T, 3)}`
       : 'not calibrated',
