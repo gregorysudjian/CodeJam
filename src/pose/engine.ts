@@ -63,6 +63,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   const session = createSession();
   let gen = 0; // bumps on every start/stop, so a stale async start gives up
   let starting: Promise<void> | null = null;
+  let interruptSetup: (() => void) | null = null;
   let running = false;
   let stream: MediaStream | null = null;
   let landmarker: Landmarker | null = null;
@@ -181,16 +182,34 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
       }
       if (my !== gen) return stopStream(video, s);
       stream = s;
+      const track = s.getVideoTracks()[0];
+      const stopped = new Error('The camera stopped during setup. Try again or use the keyboard.');
+      let onEnded!: () => void;
+      const ended = new Promise<never>((_, reject) => {
+        onEnded = () => reject(stopped);
+      });
+      const checkTrack = () => {
+        if (track?.readyState !== 'live') throw stopped;
+      };
       try {
-        await attachStream(video, s);
-        const lm = await getLandmarker();
+        checkTrack();
+        interruptSetup = onEnded;
+        track.addEventListener('ended', onEnded);
+        await Promise.race([attachStream(video, s), ended]);
+        if (my !== gen) return;
+        checkTrack();
+        const lm = await Promise.race([getLandmarker(), ended]);
         if (my !== gen) return; // stop() already released the stream
+        checkTrack();
         landmarker = lm;
       } catch (err) {
         if (my !== gen) return;
         stopStream(video, s);
         stream = null;
         throw err instanceof Error ? err : new Error('The pose model could not start.');
+      } finally {
+        track?.removeEventListener('ended', onEnded);
+        if (interruptSetup === onEnded) interruptSetup = null;
       }
       running = true;
       frames = 0;
@@ -211,6 +230,9 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   function stop(): void {
     gen++;
     starting = null;
+    // track.stop() does not fire 'ended'. Wake a start waiting for playback or the shared model.
+    interruptSetup?.();
+    interruptSetup = null;
     if (running) video.cancelVideoFrameCallback(frameHandle);
     running = false;
     window.clearInterval(watchdog);
@@ -235,14 +257,13 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
       const done = session.calibrate(mode, onStatus);
       if (!running) {
         onStatus({ step: 'noBody', progress: 0, message: 'Starting the camera…' });
-        try {
-          await start();
-        } catch (err) {
-          // No camera: drop the pending calibration quietly and report the camera error.
-          done.catch(() => {});
-          session.cancel('The camera could not start.');
-          throw err;
-        }
+        // Observe cancellation even while a permission prompt or model load is still pending.
+        // Register the caller's startup error before cleanup rejects the calibration promise.
+        const started = start();
+        const ready = Promise.all([started, done]);
+        void started.catch(() => session.cancel('The camera could not start.'));
+        await ready;
+        return;
       }
       return done;
     },
