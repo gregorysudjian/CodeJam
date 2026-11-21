@@ -7,6 +7,7 @@
 | `index.ts` | The loop: polls input once per frame, steps the core, draws the view, plays sounds, steps the graphics quality |
 | `quality.ts` | The graphics quality ladder (tested) |
 | `timing.ts` | Timing probe for tuning the latency leads, `?debug=timing` (tested) |
+| `ghost.ts`, `ghostStore.ts` | Ghost runner: recording, replay, ranking, on-device storage (tested) |
 | `core.ts` | The rules, with no drawing: clock, cues, judging, pause, finish (tested) |
 | `judge.ts`, `timeline.ts` | One object's collision verdict; distance and speed (tested) |
 | `view3d.ts` + `scene.ts`, `obstacles.ts`, `player.ts` | The Three.js picture |
@@ -19,7 +20,7 @@
 
 Below 20 fps it steps after 0.5 s instead of a full window, so a slow laptop never plays its first seconds in slow motion. On a 1× screen it skips straight to level 2.
 
-**URL switches** (also localStorage `game.gfx` / `game.muted`): `?gfx=high|medium|low` fixes the level (0, 1, 2), `?gfx=2d` forces the fallback, `?mute=1`. Without a switch the ladder is automatic.
+**URL switches** (also localStorage `game.gfx` / `game.muted` / `game.ghost`): `?gfx=high|medium|low` fixes the level (0, 1, 2), `?gfx=2d` forces the fallback, `?mute=1`, `?ghost=off|reset`, `?debug=timing`. Without a switch the ladder is automatic.
 
 **Keyboard and the page:** while a round runs the game sets `<body data-game="running">` (cleared on pause, finish and `destroy()`). `src/input` only consumes its keys then, so the rest of the app keeps normal keyboard behaviour.
 
@@ -40,11 +41,37 @@ game.start(); // after your countdown
 - Before `start()` the scene renders and the runner copies the player's arms, crouch and jump in place. That's useful behind a "raise both arms to start" prompt.
 - `destroy()` stops the loop and disposes every geometry, material, texture, the bloom passes and the renderer. It does not force a context loss, so React StrictMode can create a second game on the same canvas.
 
-## Ghost runner (in progress)
+## Ghost runner (`ghost.ts`, `ghostStore.ts`)
 
-Race your best run: during a round the game records the player's moves (lane, airborne, ducking, arms) at 20 Hz of game time. When the same level is played again, a translucent ghost replays the best run beside the player.
+**Race your best run.** During a round the game records the player's moves (lane, airborne, ducking, left and right arm) at 20 Hz of game time. When the same level is played again, a see-through ghost runner replays the best recorded run beside the player:
+- **Look:** light cyan glass, cyan hands, visor and ground ring (never the player's lime).
+- **Same lane:** it wraps the player as a shell.
+- **Different moves:** it separates visibly, sidestepping, jumping, squatting or raising its arms on its own.
 
-**Ghost status:** (a) `ghost.ts` done (encoding, recorder, playback, level fingerprint, ranking, parsing; tested). (b) `ghostStore.ts` done (localStorage, 10 most recent levels, corrupt or blocked storage tolerated; tested). (c) recording and saving at the finish done (checked in the browser: a perfect round saved a 1,032-character ghost, an idle round lost to it and did not replace it). (d) 3D ghost runner done (glass body, cyan accents and ring, shell in the same lane; screenshots of the ghost sidestepping, pressing, jumping and squatting next to an idle player). (e) end banner done ("GHOST SAVED", "GHOST BEATEN", "GHOST WINS", "TIE"). (f) 2D fallback done (cyan outline ghost, same banner). Next: (g) docs, then the review loops.
+At the finish a banner says GHOST SAVED (first run of a level), GHOST BEATEN, GHOST WINS or TIE. The app's 1.5 s celebration keeps it on screen.
+
+**For the demo:** the presenter plays the demo level (`?demo=1`) once on the demo laptop. Every judge after that races the presenter's ghost. A judge who beats it becomes the new ghost.
+
+- **Ranking:** cleared + collected, then fewer hits. The game counts these itself. A tie keeps the stored ghost.
+- **Level identity:** a ghost only replays on the identical level. A 64-bit fingerprint covers duration, mode and every wave (time, kinds, lanes, holds), so a new seed or a changed generator never shows a wrong ghost.
+- **Storage:** browser localStorage on this device, `game.ghost.<fingerprint>`, about 1 KB per 45 s level (one base64 character per sample). The 10 most recent levels are kept. Private mode, a full quota or corrupt data mean no ghost, never a crash.
+- **Privacy:** only those five game states. No video, no landmarks, nothing sent anywhere (AGENTS.md rule 5).
+- **Switches:** `?ghost=off` (or localStorage `game.ghost = off`) turns it off. `?ghost=reset` clears every stored ghost once per page load.
+- **Judging:** the ghost never affects it. It is drawn from the recording only, and full scripted rounds give the same event counts with or without it.
+- **Console:** one line at the finish, for example `[game] ghost: lost. This run 3 cleared, 13 hits; ghost 23 cleared, 0 hits`.
+
+**How it was checked:**
+- 19 unit tests:
+  - all 48 poses round-trip through one character;
+  - sampling by game time with slow frames;
+  - playback clamping;
+  - fingerprint stability and sensitivity;
+  - ranking;
+  - parsing of corrupt data;
+  - store cap, tie, blocked or full storage, clear.
+- In the browser, two rounds in one context: perfect play saved a 1,032-character ghost, then an idle round showed the ghost sidestepping (4.0 s), pressing (8.3 s), jumping (10.5 s) and squatting (13.0 s) while the player stood, and ended on GHOST WINS. The same in the 2D fallback.
+
+**Ghost status:** (a)–(g) done. Review loops follow.
 
 ## Events
 
