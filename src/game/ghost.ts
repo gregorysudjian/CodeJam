@@ -157,6 +157,20 @@ export function compareRuns(run: GhostResult, ghost: GhostResult): Exclude<Ghost
   return 'tie';
 }
 
+/**
+ * What the end banner says: the result against the ghost that was raced, 'saved' for the first
+ * run of a level once it is stored, or nothing when there was no ghost and nothing was stored
+ * (storage unavailable).
+ */
+export function finishOutcome(
+  raced: GhostResult | null,
+  run: GhostResult,
+  saved: boolean,
+): GhostOutcome | null {
+  if (raced) return compareRuns(run, raced);
+  return saved ? 'saved' : null;
+}
+
 /* ── Parsing stored data (anything malformed is treated as no ghost) ── */
 
 const isCount = (x: unknown): x is number => typeof x === 'number' && Number.isInteger(x) && x >= 0;

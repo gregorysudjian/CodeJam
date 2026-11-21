@@ -2,12 +2,11 @@ import type { Game, InputSource, Level } from '@/contracts';
 import { createGameAudio } from './audio';
 import { createCore, feverTier, movesSeen } from './core';
 import {
-  compareRuns,
   createGhostRecorder,
+  finishOutcome,
   ghostPoseAt,
   levelFingerprint,
   neutralPose,
-  type GhostOutcome,
   type GhostResult,
 } from './ghost';
 import { browserStorage, createGhostStore } from './ghostStore';
@@ -80,11 +79,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         savedAt: Date.now(),
       };
       const saved = ghostStore.saveIfBetter(run);
-      const outcome: GhostOutcome | null = ghost
-        ? compareRuns(result, ghost.result)
-        : saved
-          ? 'saved'
-          : null;
+      const outcome = finishOutcome(ghost?.result ?? null, result, saved);
       if (outcome) view?.showGhostOutcome(outcome);
       const told = (r: GhostResult) => `${r.cleared + r.collected} cleared, ${r.hit} hits`;
       console.info(

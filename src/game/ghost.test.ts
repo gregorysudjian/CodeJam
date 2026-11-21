@@ -3,6 +3,7 @@ import type { InputState, Lane, Level } from '@/contracts';
 import {
   compareRuns,
   createGhostRecorder,
+  finishOutcome,
   decodePose,
   encodePose,
   ghostPoseAt,
@@ -122,6 +123,15 @@ describe('ranking', () => {
     expect(isBetter(r(10, 3, 1), r(11, 2, 3))).toBe(true); // 13 = 13, fewer hits
     expect(isBetter(r(10, 3, 1), r(10, 3, 1))).toBe(false);
     expect(isBetter(r(0, 0, 9), null)).toBe(true);
+  });
+
+  it('finishOutcome: against the raced ghost, saved for a stored first run, else nothing', () => {
+    expect(finishOutcome(r(10, 4, 2), r(12, 4, 0), true)).toBe('beaten');
+    expect(finishOutcome(r(10, 4, 2), r(12, 4, 0), false)).toBe('beaten'); // even if not stored
+    expect(finishOutcome(r(10, 4, 2), r(8, 4, 4), false)).toBe('lost');
+    expect(finishOutcome(r(10, 4, 2), r(10, 4, 2), false)).toBe('tie');
+    expect(finishOutcome(null, r(3, 0, 13), true)).toBe('saved');
+    expect(finishOutcome(null, r(3, 0, 13), false)).toBeNull(); // no storage: no banner
   });
 
   it('compareRuns gives the end banner', () => {
