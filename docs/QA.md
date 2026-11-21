@@ -6,7 +6,7 @@ Branches are pushed with the PR text in the first commit message (`git log --rev
 
 1. **Decide Q15:** the HUD cue word, the "N COMBO!" banner and the "VS GHOST" chip share the top-centre band and overprint each other. Either the UI moves the cue, or Patrick moves the banner and chip (details below).
 
-## Status (Sat 16:00, `main` at bb17780)
+## Status (Sat 15:55, `main` at bb17780)
 
 Full keyboard flow at 1366×768, 1920×1080 and 1280×720 with the new game (city/tunnel/bridge zones, beat, PERFECT/GOOD/LATE, 3-2-1 intro), plus a check of every fix in #40 and #41. **No console errors, no horizontal scroll, every round finished and saved.** `npm run check`: 695 tests, none skipped.
 
@@ -118,4 +118,4 @@ Open suggestions: preload the pose model on the landing page for live-URL visito
 | 15:35 | Re-sweep 5a85969 (`q-qa-2`) | 3 sizes clean; Q2, Q6, Q8, Q9, Q10, Q13, A2, perf 1 verified fixed; new Q14 |
 | 15:47 | Devpost screenshots (`q-shots`) | 13 captures at 1920×1080 from scripted perfect rounds; found Q15 and Q16 |
 | 15:50 | Operator card (`q-operator`), pitch 2 (`q-pitch-2`) | Card from DEMO.md and the app; Q&A for the new features; round timed at 50.1 s START → results |
-| 16:00 | Verify #41 on bb17780 (`q-qa-2`) | Q1, Q3, Q4, Q5, Q7, Q11, A1 fixed; A3 half; Q12, Q14, Q15, Q16 open |
+| 15:55 | Verify #41 on bb17780 (`q-qa-2`) | Q1, Q3, Q4, Q5, Q7, Q11, A1 fixed; A3 half; Q12, Q14, Q15, Q16 open |
