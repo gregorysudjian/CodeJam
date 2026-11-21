@@ -116,6 +116,18 @@ describe('the banner and race chip stay clear of GameHud (Q15)', () => {
     expect(endBannerBox(1280, 720).h).toBeGreaterThanOrEqual(100); // letters about 60 px
   });
 
+  it('a canvas without layout gives empty boxes, never negative ones', () => {
+    // The 2D view's roundRect throws on a negative radius, and a throw stops all drawing.
+    for (const [W, H] of [
+      [1, 1],
+      [0, 0],
+      [30, 720],
+    ]) {
+      for (const b of [milestoneBox(W!, H!), raceBox(W!, H!, 1.3), endBannerBox(W!, H!)])
+        expect(b.h, `${W}x${H}`).toBeGreaterThanOrEqual(0);
+    }
+  });
+
   it('they stay readable from the mark on a 1280x720 projector', () => {
     // Letters are 56 % of the plate: about 38 px and 30 px tall.
     expect(milestoneBox(1280, 720).h).toBeGreaterThanOrEqual(64);

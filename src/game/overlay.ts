@@ -72,7 +72,7 @@ export function milestoneBox(viewW: number, viewH: number, grow = 1, out?: Pixel
 export function endBannerBox(viewW: number, viewH: number, grow = 1, out?: PixelBox): PixelBox {
   const h = Math.min(
     labelHeight(viewH, END_BANNER_H.share, END_BANNER_H.min, END_BANNER_H.max),
-    (viewW - 2 * OVERLAY_MARGIN) * LABEL_ASPECT,
+    Math.max(0, viewW - 2 * OVERLAY_MARGIN) * LABEL_ASPECT, // never negative: a 1 px canvas
   );
   const b = out ?? { cx: 0, cy: 0, h: 0 };
   b.cx = viewW / 2;
