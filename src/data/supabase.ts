@@ -69,6 +69,10 @@ export function createSupabaseStore(
       storageKey: authStorageKey,
       ...(options?.authStorage ? { storage: options.authStorage } : {}),
     },
+    // postgrest-js retries a failed read 3 times (1 + 2 + 4 s), so offline every read would hang
+    // until SUPABASE_TIMEOUT_MS. This store has its own offline path (timeout, queue, caches): fail
+    // fast and use it.
+    db: { retry: false },
     ...(options?.fetch ? { global: { fetch: options.fetch } } : {}),
   });
 

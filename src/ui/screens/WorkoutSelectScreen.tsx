@@ -1,10 +1,17 @@
 import * as React from "react";
-import { ArrowLeft, Check, Gauge, Lock, PersonStanding, Play, Sparkles } from "lucide-react";
-import type { CoachAdvice, MoveType, PlayMode, SessionConfig, WorkoutId, WorkoutInfo } from "@/contracts";
+import { ArrowLeft, Check, Gauge, Lock, PersonStanding, Play } from "lucide-react";
+import type {
+  CoachAdvice,
+  MoveType,
+  PlayMode,
+  SessionConfig,
+  WorkoutId,
+  WorkoutInfo,
+} from "@/contracts";
 import {
-  Eyebrow,
   GameButton,
-  GlassPanel,
+  CoachBanner,
+  ScreenFooter,
   MODE_LABELS,
   MoveChip,
   MoveFigure,
@@ -22,6 +29,8 @@ export interface WorkoutSelectScreenProps {
   workouts: WorkoutInfo[];
   coachPick?: CoachAdvice | null;
   initial?: Partial<SessionConfig>;
+  /** App-provided extra control rendered last in the compact settings row, e.g. a "Low graphics" switch. */
+  settingsSlot?: React.ReactNode;
   onStart(config: SessionConfig): void;
   onBack(): void;
 }
@@ -40,9 +49,9 @@ const MODES = [
 ] as const satisfies readonly { value: PlayMode; label: string; icon: typeof Gauge }[];
 
 const DURATIONS = [
-  { value: "45", label: "45 s quick" },
-  { value: "90", label: "90 s standard" },
-  { value: "180", label: "180 s long" },
+  { value: "45", label: "45 S" },
+  { value: "90", label: "90 S" },
+  { value: "180", label: "180 S" },
 ] as const;
 type DurationValue = (typeof DURATIONS)[number]["value"];
 
@@ -51,7 +60,8 @@ export function sessionLabel(c: Pick<SessionConfig, "workout" | "mode" | "durati
   return `${WORKOUT_LABELS[c.workout]} · ${MODE_LABELS[c.mode]} · ${c.durationSec} S`;
 }
 
-const isAvailable = (w: WorkoutInfo | undefined, mode: PlayMode) => Boolean(w && w.availableIn.includes(mode));
+const isAvailable = (w: WorkoutInfo | undefined, mode: PlayMode) =>
+  Boolean(w && w.availableIn.includes(mode));
 
 function firstAvailable(workouts: WorkoutInfo[], mode: PlayMode, preferred: WorkoutId): WorkoutId {
   const pref = workouts.find((w) => w.id === preferred);
@@ -102,38 +112,71 @@ function WorkoutCard({
           onKeyNav(-1);
         }
       }}
-      style={selected ? { boxShadow: `0 0 0 1px ${color}99, 0 24px 60px -20px ${color}66, 0 0 80px -20px ${color}55` } : undefined}
+      style={
+        selected
+          ? {
+              boxShadow: `0 0 0 1px ${color}99, 0 24px 60px -20px ${color}66, 0 0 80px -20px ${color}55`,
+            }
+          : undefined
+      }
       className={cn(
-        "glass focus-ring group relative flex min-h-[500px] cursor-pointer flex-col overflow-hidden rounded-[28px] p-6 text-left transition-[transform,box-shadow,border-color,filter,opacity] duration-300 ease-arena",
-        selected ? "-translate-y-2 border-transparent" : "hover:-translate-y-1 hover:border-white/20",
+        "glass focus-ring group relative flex min-h-[360px] cursor-pointer flex-col overflow-hidden rounded-[28px] p-6 text-left transition-[transform,box-shadow,border-color,filter,opacity] duration-300 ease-arena",
+        selected
+          ? "-translate-y-2 border-transparent"
+          : "hover:-translate-y-1 hover:border-white/20",
         disabled && "cursor-not-allowed opacity-45 grayscale hover:translate-y-0",
       )}
     >
-      <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ background: color, boxShadow: `0 0 24px 2px ${color}aa` }} />
+      <span
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-1.5"
+        style={{ background: color, boxShadow: `0 0 24px 2px ${color}aa` }}
+      />
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 h-[60%] transition-opacity duration-300"
-        style={{ background: `radial-gradient(60% 60% at 50% 45%, ${color}33, transparent 70%)`, opacity: selected || hover ? 1 : 0.55 }}
+        style={{
+          background: `radial-gradient(60% 60% at 50% 45%, ${color}33, transparent 70%)`,
+          opacity: selected || hover ? 1 : 0.55,
+        }}
       />
       <span className="relative flex items-start justify-between">
-        <span className="font-display-italic text-title text-text-dim">{index + 1}</span>
+        <span />
         {selected ? (
-          <span aria-hidden="true" className="grid size-9 place-items-center rounded-full text-bg" style={{ background: color, boxShadow: `0 0 20px ${color}aa` }}>
+          <span
+            aria-hidden="true"
+            className="grid size-9 place-items-center rounded-full text-bg"
+            style={{ background: color, boxShadow: `0 0 20px ${color}aa` }}
+          >
             <Check className="size-5" strokeWidth={3} />
           </span>
         ) : disabled ? (
-          <span aria-hidden="true" className="grid size-9 place-items-center rounded-full bg-white/10 text-text-muted">
+          <span
+            aria-hidden="true"
+            className="grid size-9 place-items-center rounded-full bg-white/10 text-text-muted"
+          >
             <Lock className="size-4" />
           </span>
         ) : null}
       </span>
       <span aria-hidden="true" className="relative flex flex-1 items-center justify-center py-4">
-        <MoveFigure pose={WORKOUT_SIGNATURE[info.id]} color={color} animate={!disabled && (selected || hover)} size={190} />
+        <MoveFigure
+          pose={WORKOUT_SIGNATURE[info.id]}
+          color={color}
+          animate={!disabled && (selected || hover)}
+          size={145}
+        />
       </span>
       <span className="relative flex flex-col gap-3">
-        <span className="font-display-italic pr-[0.06em] text-display-md leading-[0.9] xl:text-display-sm">{info.name}</span>
+        <span className="font-display-italic pr-[0.06em] text-display-md leading-[0.9] xl:text-display-sm">
+          {info.name}
+        </span>
         <span className="text-caption text-text-muted">
-          {disabled ? (info.id === "legs" && mode === "treadmill" ? "Running is your leg work" : `Not available on ${MODE_LABELS[mode].toLowerCase()}`) : info.tagline}
+          {disabled
+            ? info.id === "legs" && mode === "treadmill"
+              ? "Running is your leg work"
+              : `Not available on ${MODE_LABELS[mode].toLowerCase()}`
+            : info.tagline}
         </span>
         <span className="flex flex-wrap gap-1.5 pt-1">
           {info.moves.map((m) => (
@@ -146,7 +189,14 @@ function WorkoutCard({
 }
 
 /** Step 1 of session setup: mode, workout, duration and low-impact, with an optional coach's pick. */
-export function WorkoutSelectScreen({ workouts, coachPick, initial, onStart, onBack }: WorkoutSelectScreenProps) {
+export function WorkoutSelectScreen({
+  workouts,
+  coachPick,
+  initial,
+  settingsSlot,
+  onStart,
+  onBack,
+}: WorkoutSelectScreenProps) {
   const [mode, setMode] = React.useState<PlayMode>(initial?.mode ?? "floor");
   const [workout, setWorkout] = React.useState<WorkoutId>(() =>
     firstAvailable(workouts, initial?.mode ?? "floor", initial?.workout ?? "fullBody"),
@@ -202,56 +252,42 @@ export function WorkoutSelectScreen({ workouts, coachPick, initial, onStart, onB
   return (
     <Screen
       backdrop="arena"
+      className="workout-screen polish-screen"
       footer={
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-white/10 bg-bg-raised/85 shadow-[0_-12px_40px_-12px_rgba(0,0,0,0.8)] backdrop-blur-xl px-4 py-3 md:px-6">
-          <GameButton variant="ghost" size="md" leadingIcon={ArrowLeft} keyHint="ESC" onClick={onBack}>
-            Back
-          </GameButton>
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-4" aria-live="polite">
-            <span className="font-display-italic min-w-0 truncate pr-[0.06em] text-title xl:text-display-sm">
-              {sessionLabel({ workout, mode, durationSec })}
-            </span>
-            {effectiveLowImpact ? (
-              <span className="chip-tint rounded-full px-3 py-1.5 font-display-italic text-[16px] leading-none" style={{ ["--chip" as string]: "#22D3EE" }}>
-                Low impact
-              </span>
-            ) : null}
-          </div>
-          <GameButton size="xl" leadingIcon={Play} keyHint="ENTER" onClick={start}>
-            Start
-          </GameButton>
-        </div>
+        <ScreenFooter
+          left={
+            <GameButton
+              variant="ghost"
+              size="md"
+              leadingIcon={ArrowLeft}
+              keyHint="ESC"
+              onClick={onBack}
+            >
+              BACK
+            </GameButton>
+          }
+          right={
+            <GameButton size="lg" leadingIcon={Play} keyHint="ENTER" onClick={start}>
+              START
+            </GameButton>
+          }
+        >
+          <span className="font-display-italic text-title">
+            {sessionLabel({ workout, mode, durationSec })}
+          </span>
+          {effectiveLowImpact && <span className="ml-3 text-caption text-cyan">LOW IMPACT</span>}
+        </ScreenFooter>
       }
     >
-      <SectionTitle
-        as="h1"
-        size="lg"
-        eyebrow="Step 1 of 2"
-        title="Choose your workout"
-        right={<SegmentedControl<PlayMode> aria-label="Play mode" value={mode} onChange={changeMode} options={MODES} />}
-      />
+      <SectionTitle as="h1" size="lg" title="Pick a workout" />
 
-      {coachPick ? (
-        <div className="gradient-edge rounded-[26px] p-[2px]">
-          <div className="flex flex-wrap items-center justify-between gap-8 rounded-[24px] bg-bg-raised/95 p-8 backdrop-blur-xl md:p-10">
-            <div className="flex min-w-0 items-start gap-6">
-              <span aria-hidden="true" className="grid size-16 shrink-0 place-items-center rounded-2xl bg-magenta/15 text-magenta shadow-glow-magenta">
-                <Sparkles className="size-8" />
-              </span>
-              <div className="flex min-w-0 flex-col gap-3">
-                <Eyebrow accent="magenta">Coach's pick</Eyebrow>
-                <p className="font-display-italic pr-[0.06em] text-display-sm">{sessionLabel(coachPick.next)}</p>
-                <p className="max-w-2xl text-body text-text-muted">{coachPick.reason}</p>
-              </div>
-            </div>
-            <GameButton size="lg" leadingIcon={Sparkles} keyHint="C" onClick={() => onStart(coachPick.next)}>
-              Play coach's pick
-            </GameButton>
-          </div>
-        </div>
-      ) : null}
+      {coachPick && <CoachBanner advice={coachPick} onPlay={onStart} />}
 
-      <div role="radiogroup" aria-label="Workout" className="grid gap-6 pt-2 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        role="radiogroup"
+        aria-label="Workout"
+        className="grid gap-6 pt-2 sm:grid-cols-2 xl:grid-cols-4"
+      >
         {workouts.map((w, i) => (
           <WorkoutCard
             key={w.id}
@@ -269,17 +305,31 @@ export function WorkoutSelectScreen({ workouts, coachPick, initial, onStart, onB
         ))}
       </div>
 
-      <GlassPanel padding="lg" className="grid items-center gap-8 lg:grid-cols-[auto_minmax(0,1fr)]">
-        <div className="flex flex-col gap-4">
-          <Eyebrow accent="muted">Duration</Eyebrow>
-          <SegmentedControl<DurationValue> aria-label="Duration" value={duration} onChange={setDuration} options={DURATIONS} size="md" className="max-w-full" />
-        </div>
-        {mode === "floor" ? (
-          <ToggleRow label="Low impact" description="No jumps. Hurdles are removed." checked={lowImpact} onCheckedChange={setLowImpact} />
-        ) : (
-          <p className="text-caption text-text-muted">Treadmill mode has no jumps, so low impact is already on.</p>
+      <div className="flex flex-wrap items-center justify-between gap-5 border-t border-glass-border pt-5">
+        <SegmentedControl<PlayMode>
+          aria-label="Play mode"
+          value={mode}
+          onChange={changeMode}
+          options={MODES}
+          size="md"
+        />
+        <SegmentedControl<DurationValue>
+          aria-label="Duration"
+          value={duration}
+          onChange={setDuration}
+          options={DURATIONS}
+          size="md"
+        />
+        {mode === "floor" && (
+          <ToggleRow
+            className="min-h-14 border-0 bg-transparent p-0 shadow-none backdrop-blur-none [&_label>span]:text-[22px]"
+            label="Low impact"
+            checked={lowImpact}
+            onCheckedChange={setLowImpact}
+          />
         )}
-      </GlassPanel>
+        {settingsSlot ? <div className="flex min-h-14 items-center">{settingsSlot}</div> : null}
+      </div>
     </Screen>
   );
 }
