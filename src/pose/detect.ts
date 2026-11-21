@@ -149,6 +149,7 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
   let highJumpUntil = -Infinity; // after a squat ends, a jump must rise higher until then
   let duckSince = 0;
   let squatCounted = false;
+  let squatPendingAt = -1; // a short squat ended here; it counts unless a jump follows
   let still = { y: cal.centreY, since: -Infinity }; // where the centre has stayed, and since when
   let armGesture: 'none' | 'settling' | 'fired' = 'none';
   let oneArmSince = 0;
@@ -214,18 +215,26 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
     const offset = (c.x - centreX) / W;
 
     if (floor) {
-      // Squat, with hysteresis. `ducking` is immediate (beams); the squat event (one rep) waits
-      // until the squat is held briefly, so the crouch before a jump is not a squat.
+      // Squat, with hysteresis. `ducking` is immediate (beams use it). The squat event (one rep)
+      // is decided later, because a crouch before a jump looks like a quick squat (Greg's crouch:
+      // 0.46 s, 0.55 T; his real quick squat: 0.51 s, 0.64 T): a squat held long enough counts at
+      // once; a shorter one counts once the player is up, unless a jump follows (then it was a crouch).
       if (!state.ducking && drop > K.SQUAT_ON_T) {
         state.ducking = true;
         duckSince = t;
         squatCounted = false;
+        squatPendingAt = -1;
       } else if (state.ducking && drop < K.SQUAT_OFF_T) {
         state.ducking = false;
         highJumpUntil = t + K.JUMP_AFTER_SQUAT_MS;
+        if (!squatCounted && t - duckSince >= K.SQUAT_MIN_MS) squatPendingAt = t;
       }
-      if (state.ducking && !squatCounted && t - duckSince >= K.SQUAT_CONFIRM_MS) {
+      if (state.ducking && !squatCounted && t - duckSince >= K.SQUAT_HOLD_MS) {
         squatCounted = true;
+        emit('squat');
+      }
+      if (squatPendingAt >= 0 && t - squatPendingAt >= K.SQUAT_JUMP_GRACE_MS) {
+        squatPendingAt = -1;
         emit('squat');
       }
 
@@ -246,6 +255,7 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
         state.leftArmUp = false;
         state.rightArmUp = false;
         armGesture = 'none';
+        squatPendingAt = -1; // the dip before this jump was a crouch, not a squat
         emit('jump');
       }
 
@@ -276,13 +286,17 @@ export function createDetector(cal: Calibration, mode: PlayMode = 'floor'): Dete
       state.rightArmUp = up(state.rightArmUp, rightT);
       if (!state.leftArmUp && !state.rightArmUp) armGesture = 'none';
       else if (armGesture !== 'fired') {
+        // A reach needs the other arm clearly down when it fires. If the other arm is up near the
+        // head too, both arms are going up (Greg's half press: right wrist 0.35 T, left 0.29 T,
+        // just under the line). Not sticky, so quick left/right swaps still count.
+        const otherT = state.leftArmUp ? rightT : leftT;
         if (state.leftArmUp && state.rightArmUp) {
           armGesture = 'fired';
           emit('armsUp');
         } else if (armGesture === 'none') {
           armGesture = 'settling';
           oneArmSince = t;
-        } else if (t - oneArmSince >= K.ARM_SETTLE_MS) {
+        } else if (t - oneArmSince >= K.ARM_SETTLE_MS && otherT < K.ARM_DOWN_ABOVE_NOSE_T) {
           armGesture = 'fired';
           emit(state.leftArmUp ? 'reachLeft' : 'reachRight');
         }

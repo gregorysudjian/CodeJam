@@ -38,7 +38,8 @@ For the demo laptop and anyone running the station. Chrome only.
 | Jumps missed | Jump higher; press R | `JUMP_ON_T` lower (0.15 → 0.1), `JUMP_MIN_UP_SPEED_T` lower |
 | Jumps late after a crouch | — | `JUMP_AFTER_SQUAT_ON_T` lower (0.45 → 0.35, not below 0.3) |
 | Squats missed | Squat deeper | `SQUAT_ON_T` lower (0.3 → 0.25) |
-| Squat counted when crouching to jump | — | `SQUAT_CONFIRM_MS` higher (250 → 350) |
+| Squat counted when crouching to jump | — | `SQUAT_JUMP_GRACE_MS` higher (350 → 450) |
+| Squats counted late in the tally | Normal: a quick squat counts once you are back up | `SQUAT_HOLD_MS` lower (800 → 500) |
 | Arms up missed | Arms straight up | `ARM_UP_ABOVE_NOSE_T` lower (0.3 → 0.25) |
 | Arms up when resting hands on head | Hands down between moves | `ARM_UP_ABOVE_NOSE_T` higher (0.35), **and** the game's arm lead +0.05 s (`VISUAL_LEAD_SEC.pose` in src/game) |
 | Presses counted only once | Lower arms to the chin between reps | `ARM_DOWN_ABOVE_NOSE_T` higher (0.05 → 0.15) |

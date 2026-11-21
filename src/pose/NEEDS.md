@@ -43,8 +43,9 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > interfaces unchanged; details and reasons in `src/pose/DECISIONS.md`):
 > - lane line 0.55 W (was 0.8 W); arm up 0.3 T above the nose, arm "down" back near the nose (was
 >   below the shoulder), so presses from shoulder height count;
-> - `ducking` is instant, but the `squat` event fires after 250 ms down (a crouch before a jump is
->   not a squat); right after a squat a jump must rise 0.45 T instead of being blocked;
+> - `ducking` is instant, but the `squat` event (a rep) is decided later: at 0.8 s into a held
+>   squat, or once the player is back up unless a jump follows (then it was a crouch); right after
+>   a squat a jump must rise 0.45 T instead of being blocked; a reach needs the other arm down;
 > - arms are ignored mid-jump; tracking is also lost when the hips leave the frame or the camera
 >   stalls.
 
@@ -72,8 +73,9 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > Your `VISUAL_LEAD_SEC.pose` leads were measured on `abdo-1`'s detector. After tonight's changes,
 > the moments `airborne`, `ducking`, `lane` and the arm states turn on in my clips are the same as
 > when you measured (±1 frame), and a test in `src/pose/variants.test.ts` now pins them. One
-> difference: the `squat` *event* now fires 250 ms after `ducking` turns on (a crouch before a jump
-> is not a squat); collisions use `ducking`, so judging is unaffected. And a jump out of a crouch
+> difference: the `squat` *event* (a rep) is now decided later, 0.8 s into a held squat or once the
+> player is back up, so a crouch before a jump is not a squat; collisions use `ducking`, so
+> judging is unaffected. And a jump out of a crouch
 > deeper than the squat line now turns `airborne` on ~0.17 s later (it must rise 0.45 T, so standing
 > up out of a squat is never a jump); normal jumps are unchanged. If your `?debug=timing` shows
 > late hurdles for deep-crouch jumpers, I can lower `JUMP_AFTER_SQUAT_ON_T` (not below ~0.3 T).

@@ -51,7 +51,8 @@ export const jitter = (amp: number, seed = 1): PoseTransform => {
 export interface ReplayOptions {
   upToMs?: number;
   /** 'standing': calibrate on standing.json (session 1, same spot). 'self': the clip's first 300 ms. */
-  calibrate?: 'standing' | 'self';
+  /** A standing clip to calibrate on (first second), or 'self': the clip's own first 300 ms. */
+  calibrate?: string;
   mode?: PlayMode;
   /** Applied to every pose, in the calibration clip too (the same body, transformed). */
   transform?: PoseTransform;
@@ -59,6 +60,10 @@ export interface ReplayOptions {
   dropFraction?: number;
   /** Plays the clip this many times slower (2 = half speed). */
   timeScale?: number;
+  /** Keeps feeding the last frame this long after the clip, so pending decisions can finish. */
+  holdLastMs?: number;
+  /** Starts the replay at this clip time (ms), e.g. to skip an ambiguous first rep. */
+  fromMs?: number;
   /** Extra bodies in frame for each pose (e.g. someone behind the player); pickBody chooses. */
   others?: (pose: Point[], t: number) => Point[][];
 }
@@ -100,13 +105,15 @@ export function replay(name: string, opts: ReplayOptions = {}): Replay {
     transform = (p) => p,
     dropFraction = 0,
     timeScale = 1,
+    holdLastMs = 0,
+    fromMs = 0,
     others,
   } = opts;
   const rec = loadClip(name);
   const cal =
     calibrate === 'self'
       ? calibrateFromClip(rec, 300, mode, transform)
-      : calibrateFromClip(loadClip('standing'), 1000, mode, transform);
+      : calibrateFromClip(loadClip(calibrate), 1000, mode, transform);
   const det = createDetector(cal, mode);
   const drop = rng(7);
   const events: MoveEvent[] = [];
@@ -116,6 +123,7 @@ export function replay(name: string, opts: ReplayOptions = {}): Replay {
   let wrongPicks = 0;
   for (const f of rec.frames) {
     if (f.t > upToMs) break;
+    if (f.t < fromMs) continue;
     if (dropFraction > 0 && drop() < dropFraction) continue;
     let pose = f.pose ? transform(toPoints(f.pose), f.t) : null;
     if (pose && others) {
@@ -131,6 +139,13 @@ export function replay(name: string, opts: ReplayOptions = {}): Replay {
     if (det.state.tracking !== wasTracking) {
       wasTracking = det.state.tracking;
       tracking.push([t, wasTracking]);
+    }
+  }
+  const lastFrame = rec.frames.at(-1);
+  if (holdLastMs > 0 && lastFrame?.pose) {
+    const end = lastFrame.t * timeScale;
+    for (let t = end + 33; t <= end + holdLastMs; t += 33) {
+      events.push(...det.update(transform(toPoints(lastFrame.pose), lastFrame.t), t));
     }
   }
   return { events, tracking, wrongPicks };

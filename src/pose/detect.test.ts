@@ -123,28 +123,42 @@ describe('lane', () => {
 });
 
 describe('squat', () => {
-  test('one event per rep, ducking while held, off inside the off line', () => {
+  test('a held squat: one event once held, ducking while held, off inside the off line', () => {
     const det = standingDetector();
-    let r = run(det, pose({ dy: 0.5 * T }), 15, 0);
+    let r = run(det, pose({ dy: 0.5 * T }), Math.ceil(K.SQUAT_HOLD_MS / FRAME_MS) + 2, 0);
     expect(types(r.events)).toEqual(['squat']);
     expect(det.state.ducking).toBe(true);
     r = run(det, pose({ dy: 0.2 * T }), 10, r.t); // between the off and on lines: still ducking
     expect(det.state.ducking).toBe(true);
-    r = run(det, pose({ dy: 0.05 * T }), 10, r.t);
+    r = run(det, pose({ dy: 0.05 * T }), 20, r.t);
     expect(det.state.ducking).toBe(false);
-    expect(r.events).toEqual([]);
+    expect(r.events).toEqual([]); // no second event when standing up
   });
 
-  test('ducking is immediate; the squat event waits until the squat is held', () => {
+  test('ducking is immediate; a short squat counts once the player is back up', () => {
     const det = standingDetector();
     let r = run(det, pose({ dy: 0.5 * T }), 2, 0);
     expect(det.state.ducking).toBe(true);
     expect(r.events).toEqual([]);
-    r = run(det, pose({ dy: 0.5 * T }), Math.ceil(K.SQUAT_CONFIRM_MS / FRAME_MS), r.t);
+    r = run(det, pose({ dy: 0.5 * T }), 13, r.t); // ~0.5 s down, under the hold time
+    expect(r.events).toEqual([]);
+    r = run(det, pose(), Math.ceil(K.SQUAT_JUMP_GRACE_MS / FRAME_MS) + 3, r.t);
     expect(types(r.events)).toEqual(['squat']);
   });
 
-  test('a quick dip below the line (shorter than the confirm time) is not a squat rep', () => {
+  test('a crouch followed by a jump is a jump, not a squat', () => {
+    const det = standingDetector();
+    const events: MoveEvent[] = [];
+    let r = run(det, pose({ dy: 0.5 * T }), 14, 0); // 0.46 s, like Greg's crouch
+    events.push(...r.events);
+    r = run(det, pose({ dy: -0.7 * T }), 3, r.t);
+    events.push(...r.events);
+    r = run(det, pose(), 30, r.t);
+    events.push(...r.events);
+    expect(types(events)).toEqual(['jump']);
+  });
+
+  test('a quick dip below the line (shorter than the minimum) is not a squat rep', () => {
     const det = standingDetector();
     const events: MoveEvent[] = [];
     let r = run(det, pose({ dy: 0.5 * T }), 3, 0);

@@ -21,6 +21,12 @@ Raw MediaPipe landmarks only (no images), recorded on the `?dev=pose` page: 8 s 
 | `reach` | Left up/down twice, then right up/down | The 2nd right rep runs past the end |
 | `mixed` | Jump, squat, 2 presses, sidestep left, walks out left | Arms swing up during the jump |
 
+**Greg** (second body, Sat ~1 PM, hips at ~0.64; calibrate on `greg/standing.json`): `greg/`
+standing, sidestep (10 lane changes), jump (4), squat (2, the second ends near the clip end),
+armsUp (a half press first, then 3 presses), reach (8 alternating, right first), leaveFrame, mixed
+(crouch-jump, reaches, squat, sidesteps, walks out). His notes: `docs/clips/greg/README.md` on the
+`greg-clips` branch.
+
 To add a clip: record it with a `● …` button on `?dev=pose`, rename it to `<name>.json` here, and
 add an expectation in `../variants.test.ts` (`CLIPS` and the expected-moves table).
 

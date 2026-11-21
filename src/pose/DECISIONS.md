@@ -105,3 +105,18 @@ or the named file.
     the judging window's +0.15 s for crates and orbs. A missed crate hurts more than an extra rep
     counted when someone rests their hands on their head. A test now pins when each state turns
     on in the clips (±1 frame), so a future threshold change cannot silently desync the game.
+34. **Second body: Greg's clips** (`fixtures/greg/`, one spot, calibrated on his `standing.json`),
+    recorded on `?dev=pose` on main. Everything already matched his README except two moves, fixed
+    in 35 and 36. They are now in the expected-moves table and all 11 variants.
+35. **A reach needs the other arm clearly down** (below the arm-down line) when it fires. Greg's
+    first press peaked just under the line (right wrist 0.35 T, left 0.29 T) and read as
+    `reachRight`. Stricter, "sticky" rules were tried and lost real quick left/right reaches in his
+    `reach` clip, so the rule stays simple. Known limits (tested as "may miss, never invents"):
+    on a camera tilted ±3° that half press can still read as a reach; his fastest swaps lose one rep
+    at ±1% landmark jitter or ≥ 30% dropped frames (same before this change).
+36. **The squat rep is decided after standing up.** `ducking` is still instant. A squat held
+    0.8 s counts at once (`SQUAT_HOLD_MS`); a shorter one (≥ 0.15 s, `SQUAT_MIN_MS`) counts once
+    the player is up, unless a jump follows within 0.35 s (`SQUAT_JUMP_GRACE_MS`): then it was a
+    crouch. Greg's pre-jump crouch (0.46 s, 0.55 T) and his real quick squat (0.51 s, 0.64 T) can't
+    be told apart by depth or time, only by what follows. Replaces the 250 ms rule of 25; the
+    "2× deeper crouch" variant no longer adds a squat. State timing for the game is unchanged.

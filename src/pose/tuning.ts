@@ -115,8 +115,13 @@ export const DETECTION_DEFAULTS = Object.freeze({
   /** Squat: hip centre below standing height. `ducking` turns on at once (beams need it). */
   SQUAT_ON_T: 0.3,
   SQUAT_OFF_T: 0.15,
-  /** The squat event (a rep) needs this long below the line; pre-jump crouches last 0.13–0.3 s. */
-  SQUAT_CONFIRM_MS: 250,
+  /**
+   * The squat event (a rep): held this long counts at once; a shorter squat (at least SQUAT_MIN_MS)
+   * counts once the player is up, unless a jump follows within SQUAT_JUMP_GRACE_MS (a crouch).
+   */
+  SQUAT_HOLD_MS: 800,
+  SQUAT_MIN_MS: 150,
+  SQUAT_JUMP_GRACE_MS: 350,
 
   /** Arms: wrist height above the nose, in T (contract: up above nose, down below shoulder). */
   // Keep at 0.3: the game's pose latency leads (src/game VISUAL_LEAD_SEC on p2-game) were tuned on
@@ -159,7 +164,8 @@ export const SLIDERS: [keyof DetectionTuning, number, number, number][] = [
   ['JUMP_MIN_UP_SPEED_T', 0, 3, 0.1],
   ['SQUAT_ON_T', 0.1, 0.8, 0.02],
   ['SQUAT_OFF_T', 0.05, 0.5, 0.01],
-  ['SQUAT_CONFIRM_MS', 0, 600, 25],
+  ['SQUAT_HOLD_MS', 200, 2000, 50],
+  ['SQUAT_JUMP_GRACE_MS', 0, 800, 25],
   ['JUMP_AFTER_SQUAT_ON_T', 0.15, 1, 0.05],
   ['ARM_UP_ABOVE_NOSE_T', 0, 1, 0.05],
   ['ARM_DOWN_ABOVE_NOSE_T', -0.5, 0.5, 0.05],
