@@ -1,6 +1,6 @@
 // The pose input's core flow (what createPoseInput does per camera frame), on recorded clips:
 // calibrate() with status messages, then moves; recalibration; background people.
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import type { CalibrationStatus, MoveEvent } from '@/contracts';
 import type { Point } from './detect';
 import { loadClip, scaleAbout, toPoints } from './fixtures';
@@ -131,6 +131,21 @@ describe('calibrate()', () => {
     s.cancel('The camera was stopped.');
     await expect(p).rejects.toThrow('camera was stopped');
     expect(s.calibration).toBe(cal);
+  });
+
+  test('a listener that throws does not stop other listeners or detection', async () => {
+    const s = createSession();
+    const { t } = await calibrateOnStanding(s);
+    const moves: MoveEvent[] = [];
+    s.onMove(() => {
+      throw new Error('game bug');
+    });
+    s.onMove((e) => moves.push(e));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    feed(s, 'jump', t, { upToMs: 7200 });
+    spy.mockRestore();
+    expect(moves.map((e) => e.type)).toEqual(['jump', 'jump', 'jump', 'jump']);
+    expect(s.getState().tracking).toBe(true);
   });
 
   test('a stopped listener gets nothing', async () => {

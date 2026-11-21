@@ -155,7 +155,14 @@ export function createSession(): Session {
     for (const e of detector.update(player, t)) {
       recent.push(e);
       if (recent.length > RECENT_EVENTS) recent.shift();
-      listeners.forEach((cb) => cb(e));
+      // A failing listener (e.g. a game bug) must not stop the others or detection.
+      listeners.forEach((cb) => {
+        try {
+          cb(e);
+        } catch (err) {
+          console.error('[pose] onMove listener failed', err);
+        }
+      });
     }
   }
 

@@ -84,6 +84,15 @@ describe('lane', () => {
     expect(types(back.events)).toEqual(['sidestep']);
   });
 
+  test('one big step from the left lane to the right lane passes the centre: two sidesteps', () => {
+    const det = standingDetector();
+    let r = run(det, pose({ dx: -0.8 * W }), 10, 0);
+    expect(det.state.lane).toBe(-1);
+    r = run(det, pose({ dx: 0.8 * W }), 10, r.t);
+    expect(det.state.lane).toBe(1);
+    expect(types(r.events)).toEqual(['sidestep', 'sidestep']); // -1 → 0 → +1, two lanes
+  });
+
   test('a small sway does not change lane', () => {
     const det = standingDetector();
     const { events } = run(det, pose({ dx: 0.4 * W }), 20, 0);
@@ -164,6 +173,15 @@ describe('arms', () => {
     expect(det.state.leftArmUp || det.state.rightArmUp).toBe(false);
   });
 
+  test('a reach, then the other arm joins: still one move (the reach), no armsUp', () => {
+    const det = standingDetector();
+    let r = run(det, pose({ right: 'up' }), 15, 0);
+    expect(types(r.events)).toEqual(['reachRight']);
+    r = run(det, pose({ left: 'up', right: 'up' }), 10, r.t);
+    expect(r.events).toEqual([]);
+    expect(det.state.leftArmUp && det.state.rightArmUp).toBe(true); // the state still shows both up
+  });
+
   test('one arm held alone is a reach on that side; lowering it re-arms', () => {
     const det = standingDetector();
     let r = run(det, pose({ left: 'up' }), 15, 0);
@@ -192,6 +210,21 @@ describe('arms', () => {
 });
 
 describe('tracking', () => {
+  test('a short visibility flicker (under the lost time) keeps tracking and the lane', () => {
+    const det = standingDetector();
+    let r = run(det, pose({ dx: 0.7 * W }), 10, 0);
+    r = run(
+      det,
+      pose({ dx: 0.7 * W, vis: 0.3 }),
+      Math.floor(K.TRACKING_LOST_MS / FRAME_MS) - 3,
+      r.t,
+    );
+    expect(det.state.tracking).toBe(true);
+    r = run(det, pose({ dx: 0.7 * W }), 5, r.t);
+    expect(det.state.lane).toBe(1);
+    expect(r.events).toEqual([]);
+  });
+
   test('lost after the lost time with no body, regained after the regained time', () => {
     const det = standingDetector();
     let r = run(det, null, Math.floor(K.TRACKING_LOST_MS / FRAME_MS) - 1, 0);
