@@ -29,6 +29,8 @@ export interface WorkoutSelectScreenProps {
   workouts: WorkoutInfo[];
   coachPick?: CoachAdvice | null;
   initial?: Partial<SessionConfig>;
+  /** App-provided extra control rendered last in the compact settings row, e.g. a "Low graphics" switch. */
+  settingsSlot?: React.ReactNode;
   onStart(config: SessionConfig): void;
   onBack(): void;
 }
@@ -191,6 +193,7 @@ export function WorkoutSelectScreen({
   workouts,
   coachPick,
   initial,
+  settingsSlot,
   onStart,
   onBack,
 }: WorkoutSelectScreenProps) {
@@ -325,6 +328,7 @@ export function WorkoutSelectScreen({
             onCheckedChange={setLowImpact}
           />
         )}
+        {settingsSlot ? <div className="flex min-h-14 items-center">{settingsSlot}</div> : null}
       </div>
     </Screen>
   );
