@@ -4,6 +4,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { introCamera, type CameraPose } from './intro';
+import * as L from './look';
 import type { Quality } from './quality';
 import * as T from './tuning';
 import { ZONES, zoneIndexAt, zoneMix, zonePresence, type ZoneMix, type ZonePlan } from './world';
@@ -227,37 +228,20 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   const postGeo = new THREE.BoxGeometry(0.1, T.ARCH_HEIGHT, 0.1);
   const barGeo = new THREE.BoxGeometry(archHalf * 2 + 0.1, 0.1, 0.1);
   const archMat = new THREE.MeshBasicMaterial({ color: neon(T.COLOR_LIME, T.NEON_BOOST * 0.4) });
-  const archDimMat = new THREE.MeshStandardMaterial({
-    color: 0x141b26,
-    roughness: 0.6,
-    metalness: 0.4,
-  });
+  // Lambert, not standard: the same look on these dark surfaces, cheaper per pixel.
+  const archDimMat = new THREE.MeshLambertMaterial({ color: 0x141b26 });
   const plinthGeo = new THREE.BoxGeometry(0.7, 0.5, 0.7);
-  const arches: THREE.Group[] = [];
-  for (let i = 0; i < T.ARCH_COUNT; i++) {
-    const a = new THREE.Group();
-    for (const s of [-1, 1]) {
-      const post = new THREE.Mesh(postGeo, archMat);
-      post.position.set(s * archHalf, T.ARCH_HEIGHT / 2, 0);
-      const plinth = new THREE.Mesh(plinthGeo, archDimMat);
-      plinth.position.set(s * archHalf, 0.25, 0);
-      a.add(post, plinth);
-    }
-    const bar = new THREE.Mesh(barGeo, archMat);
-    bar.position.y = T.ARCH_HEIGHT;
-    a.add(bar);
-    arches.push(a);
-    scene.add(a);
-  }
+  // Instanced: 3 draw calls for every gate instead of 5 per gate.
+  const archPosts = instanced(postGeo, archMat, T.ARCH_COUNT * 2);
+  const archPlinths = instanced(plinthGeo, archDimMat, T.ARCH_COUNT * 2);
+  const archBars = instanced(barGeo, archMat, T.ARCH_COUNT);
 
   /* City and finale: dark towers with lit windows and neon caps, scrolling for parallax. */
   const towerCount = T.TOWER_COUNT;
   const boxGeo = new THREE.BoxGeometry(1, 1, 1);
   const winTex = windowTexture();
-  const towerMat = new THREE.MeshStandardMaterial({
+  const towerMat = new THREE.MeshLambertMaterial({
     color: 0x0e1420,
-    roughness: 0.8,
-    metalness: 0.2,
     emissive: 0xffffff,
     emissiveMap: winTex,
     emissiveIntensity: 0.55,
@@ -282,10 +266,8 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   });
 
   /* Bridge: the skyline across the water, far away and slow. */
-  const skyMat = new THREE.MeshStandardMaterial({
+  const skyMat = new THREE.MeshLambertMaterial({
     color: 0x0a1222,
-    roughness: 0.9,
-    metalness: 0.1,
     emissive: 0xffffff,
     emissiveMap: winTex,
     emissiveIntensity: 0.4,
@@ -307,11 +289,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   const pylonCount = Math.ceil(span / T.BRIDGE_PYLON_SPACING) * 2;
   const pylonH = 17;
   const pylonX = halfTrack + 2.4;
-  const pylonMat = new THREE.MeshStandardMaterial({
-    color: 0x101a2a,
-    roughness: 0.7,
-    metalness: 0.4,
-  });
+  const pylonMat = new THREE.MeshLambertMaterial({ color: 0x101a2a });
   const accentAMat = new THREE.MeshBasicMaterial({ color: neon(T.MOVE_COLOR.sidestep, 0.9) });
   const accentBMat = new THREE.MeshBasicMaterial({ color: neon(T.MOVE_COLOR.armsUp, 0.9) });
   const pylons = instanced(boxGeo, pylonMat, pylonCount);
@@ -361,7 +339,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
-    color: new THREE.Color(T.ZONE_LOOK.city.particle),
+    color: new THREE.Color(L.ZONE_LOOK.city.particle),
   });
   const particles = new THREE.Points(pGeo, pMat);
   particles.frustumCulled = false;
@@ -460,6 +438,8 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
     renderer.setSize(w, h, false);
     composer?.setPixelRatio(pr);
     composer?.setSize(w, h);
+    // The composer sizes bloom to the canvas; shrink its blur further (look.ts BLOOM_SCALE).
+    bloom?.setSize(Math.round(w * pr * L.BLOOM_SCALE), Math.round(h * pr * L.BLOOM_SCALE));
     camera.aspect = w / h;
     // Keep the three lanes in view on narrow (portrait) screens.
     baseFov = w / h < 1 ? T.CAMERA_FOV * 1.35 : T.CAMERA_FOV;
@@ -471,7 +451,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   resize();
 
   /* Zone colours, blended at the camera. */
-  const looks = ZONES.map((z) => T.ZONE_LOOK[z]);
+  const looks = ZONES.map((z) => L.ZONE_LOOK[z]);
   const colA = new THREE.Color();
   const colB = new THREE.Color();
   const mixed: ZoneMix = { a: 0, b: 0, k: 0 };
@@ -529,15 +509,26 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       blend((l) => l.particle, pMat.color);
 
       /* City and finale gates. */
-      for (let i = 0; i < arches.length; i++) {
-        const a = arches[i]!;
+      for (let i = 0; i < T.ARCH_COUNT; i++) {
         // Offset so that no arch stands near the runner at the start: the intro camera orbits there.
-        a.position.z = zNear - wrap(i * T.ARCH_SPACING - distance + 22, archSpan);
+        const z = zNear - wrap(i * T.ARCH_SPACING - distance + 22, archSpan);
         // Shown or not, never shrunk: a lowered top bar would sweep across the camera. Each
         // arch keeps its spot on the track while it approaches, so this is decided far away.
-        const d = worldAt(distance, a.position.z);
-        a.visible = Math.max(zonePresence(plan, CITY, d), zonePresence(plan, FINALE, d)) > 0.5;
+        const d = worldAt(distance, z);
+        const on = Math.max(zonePresence(plan, CITY, d), zonePresence(plan, FINALE, d)) > 0.5;
+        for (let s = 0; s < 2; s++) {
+          const x = (s === 0 ? -1 : 1) * archHalf;
+          archPosts.setMatrixAt(
+            i * 2 + s,
+            on ? m4.makeTranslation(x, T.ARCH_HEIGHT / 2, z) : hidden,
+          );
+          archPlinths.setMatrixAt(i * 2 + s, on ? m4.makeTranslation(x, 0.25, z) : hidden);
+        }
+        archBars.setMatrixAt(i, on ? m4.makeTranslation(0, T.ARCH_HEIGHT, z) : hidden);
       }
+      archPosts.instanceMatrix.needsUpdate = true;
+      archPlinths.instanceMatrix.needsUpdate = true;
+      archBars.instanceMatrix.needsUpdate = true;
 
       /* City and finale towers, rising out of the ground at a border. */
       const parallax = distance * T.TOWER_PARALLAX;
