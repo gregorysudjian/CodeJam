@@ -20,9 +20,15 @@ export interface MoveTiming {
   suggestedLeadSec: number;
 }
 
+/** When each move was seen relative to its judging time (seconds, negative = early), by move. */
+export type TimingSamples = Map<MoveType, number[]>;
+
 export interface TimingProbe {
   /** Feed one frame of the running round (game time and the polled input). */
   sample(elapsed: number, state: InputState): void;
+  /** This round's raw offsets, to combine rounds (mergeTiming). */
+  samples(): TimingSamples;
+  /** This round's table (summarizeTiming with the current leads). */
   report(): MoveTiming[];
 }
 
@@ -35,6 +41,14 @@ export function createTimingProbe(
 ): TimingProbe {
   const seenAt = new Map<Item, number>();
   const skipped = new WeakSet<Item>();
+  const samples = (): TimingSamples => {
+    const byMove: TimingSamples = new Map();
+    for (const [item, offset] of seenAt) {
+      const move = item.spawn.requires;
+      byMove.set(move, [...(byMove.get(move) ?? []), offset]);
+    }
+    return byMove;
+  };
 
   return {
     sample(elapsed, state) {
@@ -48,34 +62,49 @@ export function createTimingProbe(
         else seenAt.set(item, elapsed - t);
       }
     },
-    report() {
-      const byMove = new Map<MoveType, number[]>();
-      for (const [item, offset] of seenAt) {
-        const move = item.spawn.requires;
-        byMove.set(move, [...(byMove.get(move) ?? []), offset]);
-      }
-      return [...byMove].map(([move, offsets]) => {
-        const sorted = [...offsets].sort((a, b) => a - b);
-        const median = sorted[sorted.length >> 1]!;
-        const inWindow = offsets.filter(
-          (o) => o >= -T.WINDOW_BEFORE_SEC && o <= T.WINDOW_AFTER_SEC,
-        ).length;
-        // offset ≈ lag - lead, so raising the lead by (median - middle) centres the median.
-        const suggested = Math.min(
-          T.TIMING_MAX_LEAD_SEC,
-          Math.max(0, leads()[move] + median - WINDOW_MID),
-        );
-        return {
-          move,
-          seen: offsets.length,
-          medianOffsetSec: round2(median),
-          inWindowShare: round2(inWindow / offsets.length),
-          leadSec: leads()[move],
-          suggestedLeadSec: round2(suggested),
-        };
-      });
-    },
+    samples,
+    report: () => summarizeTiming(samples(), leads()),
   };
+}
+
+/**
+ * One row per move: the median offset, the share inside the judging window, the lead it was
+ * played with and the lead that would put the median in the middle of the window.
+ */
+export function summarizeTiming(
+  samples: ReadonlyMap<MoveType, readonly number[]>,
+  leads: T.LeadTable,
+): MoveTiming[] {
+  return [...samples]
+    .filter(([, offsets]) => offsets.length > 0)
+    .map(([move, offsets]) => {
+      const sorted = [...offsets].sort((a, b) => a - b);
+      const median = sorted[sorted.length >> 1]!;
+      const inWindow = offsets.filter(
+        (o) => o >= -T.WINDOW_BEFORE_SEC && o <= T.WINDOW_AFTER_SEC,
+      ).length;
+      // offset ≈ lag - lead, so raising the lead by (median - middle) centres the median.
+      const suggested = Math.min(
+        T.TIMING_MAX_LEAD_SEC,
+        Math.max(0, leads[move] + median - WINDOW_MID),
+      );
+      return {
+        move,
+        seen: offsets.length,
+        medianOffsetSec: round2(median),
+        inWindowShare: round2(inWindow / offsets.length),
+        leadSec: leads[move],
+        suggestedLeadSec: round2(suggested),
+      };
+    });
+}
+
+/** Adds `more` into `into`, in place: one table over several rounds of the tuning session. */
+export function mergeTiming(
+  into: TimingSamples,
+  more: ReadonlyMap<MoveType, readonly number[]>,
+): void {
+  for (const [move, offsets] of more) into.set(move, [...(into.get(move) ?? []), ...offsets]);
 }
 
 const round2 = (x: number): number => Math.round(x * 100) / 100;

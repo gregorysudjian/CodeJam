@@ -13,7 +13,7 @@ import { createGhostRace, raceLead } from './ghostRace';
 import { browserStorage, createGhostStore } from './ghostStore';
 import { createQualityGovernor, type Quality } from './quality';
 import { createLeadBlend } from './timeline';
-import { createTimingProbe } from './timing';
+import { createTimingProbe, mergeTiming, summarizeTiming, type TimingSamples } from './timing';
 import * as T from './tuning';
 import { create2DView } from './view2d';
 import { create3DView, type GameView, type Phase } from './view3d';
@@ -101,11 +101,26 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     }
     if (probe) {
       const report = probe.report();
-      (window as unknown as { __gameTiming?: unknown }).__gameTiming = report;
+      const w = window as unknown as { __gameTiming?: unknown; __gameTimingAll?: unknown };
+      w.__gameTiming = report;
       console.info(
         `[game] move timing, input: ${mixedInput ? 'switched mid-round (do not use this table)' : input.kind} (negative = early; window -0.35..+0.15 s)`,
       );
       console.table(report);
+      if (!mixedInput) {
+        // One table over every round of this page load with this input: a steadier median.
+        const session = timingSession[startKind];
+        mergeTiming(session.samples, probe.samples());
+        session.rounds++;
+        const all = summarizeTiming(session.samples, T.VISUAL_LEAD_SEC[startKind]);
+        w.__gameTimingAll = all;
+        if (session.rounds > 1) {
+          console.info(
+            `[game] move timing, all ${session.rounds} ${startKind} rounds so far: copy these suggestedLeadSec values`,
+          );
+          console.table(all);
+        }
+      }
     }
   });
 
@@ -238,6 +253,12 @@ function tryCreate3D(
 }
 
 let ghostResetDone = false; // ?ghost=reset clears the stored ghosts once per page load
+
+/** ?debug=timing: every round of this page load, per input (rounds that switched are left out). */
+const timingSession: Record<'pose' | 'keyboard', { samples: TimingSamples; rounds: number }> = {
+  pose: { samples: new Map(), rounds: 0 },
+  keyboard: { samples: new Map(), rounds: 0 },
+};
 
 /** '?gfx=high|medium|low|2d' or localStorage 'game.gfx'; anything else means automatic. */
 function readGfxSetting(): 'high' | 'medium' | 'low' | '2d' | 'auto' {

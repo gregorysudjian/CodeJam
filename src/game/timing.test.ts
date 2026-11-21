@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { InputState, Level, MoveType, Spawn, Wave } from '@/contracts';
 import { createCore } from './core';
-import { createTimingProbe } from './timing';
+import { createTimingProbe, mergeTiming, summarizeTiming, type TimingSamples } from './timing';
 
 const idle: InputState = {
   tracking: true,
@@ -81,6 +81,27 @@ describe('timing probe', () => {
     // standing in the centre already clears a block that leaves the centre free
     const report = probe([w(5, blockFreeCentre)], () => idle);
     expect(report).toEqual([]);
+  });
+
+  it('combines rounds into one table (a steadier median for the tuning session)', () => {
+    const ts = [5, 10, 15];
+    const round = (late: number) => {
+      const p = createTimingProbe(itemsOf(ts.map((t) => w(t, hurdle))), 'floor', () => NO_LEAD);
+      for (let e = 0; e <= 30; e += 1 / 60)
+        p.sample(e, { ...idle, airborne: ts.some((t) => e >= t + late && e < t + late + 0.45) });
+      return p;
+    };
+    const session: TimingSamples = new Map();
+    mergeTiming(session, round(0.1).samples());
+    mergeTiming(session, round(0.3).samples());
+    mergeTiming(session, round(0.3).samples());
+    const [jump] = summarizeTiming(session, NO_LEAD);
+    expect(jump).toMatchObject({ move: 'jump', seen: 9 });
+    expect(jump!.medianOffsetSec).toBeCloseTo(0.3, 1); // 3 at 0.1 s, 6 at 0.3 s
+    expect(summarizeTiming(new Map([['jump', []]]), NO_LEAD)).toEqual([]); // nothing seen: no row
+    // A round's own table is the same summary of its own samples.
+    const one = round(0.1);
+    expect(one.report()).toEqual(summarizeTiming(one.samples(), NO_LEAD));
   });
 
   it('counts a sidestep made in time for a block', () => {
