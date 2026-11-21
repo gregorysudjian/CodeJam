@@ -124,6 +124,13 @@ export const DETECTION_DEFAULTS = Object.freeze({
    * then be a jump.
    */
   JUMP_AFTER_SQUAT_SPEED_WINDOW_MS: 150,
+  /**
+   * While both arms are up (an overhead press or a held crate), a jump must rise this high: raising
+   * both arms lifts the hip landmarks 0.10–0.16 T, right at JUMP_ON_T, and landmark noise then
+   * fired false jumps (Patrick, greg/armsUp with ±1% noise). Real jumps start with the arms down
+   * and peak at 0.49–0.70 T, so this never delays them.
+   */
+  JUMP_ARMS_UP_ON_T: 0.3,
 
   /** Squat: hip centre below standing height. `ducking` turns on at once (beams need it). */
   SQUAT_ON_T: 0.3,

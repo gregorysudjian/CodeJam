@@ -134,3 +134,12 @@ or the named file.
     Tried and rejected: letting short gaps not restart the 0.3 s tracking regain count. On Greg's
     real `leaveFrame` it regained tracking while he was half out at the frame edge (a false squat
     and extra sidesteps), so the strict regain stays. New variant: "hip visibility flicker".
+39. **With both arms up, a jump must rise 0.3 T** (`JUMP_ARMS_UP_ON_T`). Patrick's replay of
+    `greg/armsUp` with ±1% landmark noise (20 seeds) set `airborne` mid-press for 3 seeds: raising
+    both arms lifts the hip landmarks 0.10–0.16 T, right at `JUMP_ON_T`, and the noisy speed passed.
+    A false jump turns both arms off, so a held crate became a hit. In every real jump (both
+    bodies) the arms are down at take-off and the hips peak at 0.49–0.70 T, so the raised line
+    never applies to them: 0 real jumps lost in 560 noisy replays, and the pinned state timing is
+    unchanged. Tried: the same for either arm up, to also catch a false jump in Greg's reach swap
+    (±1% noise, 2 of 20 seeds, already there before). It does not help (mid-swap neither arm counts
+    as up), so it was left out; that case is a known limit.
