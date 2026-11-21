@@ -196,6 +196,16 @@ export const DETECTION_DEFAULTS = Object.freeze({
   IDLE_STILL_MS: 500,
   /** No drift beyond this distance from standing height (T): stepping 20% closer moves ~0.18 T. */
   IDLE_MAX_DROP_T: 0.25,
+
+  /**
+   * A distance change (a judge stepping closer or back; DECISIONS 44): W and T both off their
+   * baselines by at least this fraction, the same way (T / W within RESCALE_SHAPE_TOL of W's ratio),
+   * for RESCALE_CONFIRM_MS, re-baselines at once. Real moves never do this: in every clip T stays
+   * ≤ 1.00 × while ducking, and normal play keeps W and T within 0.83–1.16 × with no arm up.
+   */
+  RESCALE_MIN: 0.2,
+  RESCALE_SHAPE_TOL: 0.12,
+  RESCALE_CONFIRM_MS: 300,
 });
 
 export type DetectionTuning = { -readonly [K in keyof typeof DETECTION_DEFAULTS]: number };
