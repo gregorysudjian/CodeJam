@@ -27,6 +27,18 @@ const roll = (deg: number) => (pose: Point[]) => {
 const jitterAll = jitter(0.005, 11);
 
 /**
+ * About 1.5 m from the camera, head to knees in view (CALIBRATION_FEET_IN_VIEW = false): 1.45×
+ * bigger, framed like the calibration asks. Landmarks pushed out of the frame get MediaPipe's low
+ * visibility, so a hip leaving the frame mid-move would show up as lost frames.
+ */
+const closer = (pose: Point[]) =>
+  scaleAbout(
+    0.5,
+    0.87,
+    1.45,
+  )(pose).map((p) => (p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1 ? { ...p, visibility: 0.1 } : p));
+
+/**
  * One frame in fifteen (~0.5 s) where MediaPipe is unsure of the left hip (visibility under the
  * line). Not more often: regaining tracking needs 0.3 s without a gap, on purpose (a body coming
  * back at the frame edge flickers; tolerating that gave Greg's leaveFrame a false squat).
@@ -82,6 +94,7 @@ const VARIANTS: Record<string, { opts: ReplayOptions; slackMs: number }> = {
     slackMs: 250,
   },
   '40% dropped frames (~17 FPS)': { opts: { dropFraction: 0.4 }, slackMs: 250 },
+  'closer, head to knees (~1.5 m)': { opts: { transform: closer }, slackMs: 100 },
   // Pose plus the 3D game on a slow laptop: every other frame, evenly (~15 FPS).
   // Greg's double raise (arm dips just under the down line between) reads as one raise at 15 FPS,
   // so that reach fires ~0.2 s earlier.
@@ -123,7 +136,9 @@ describe('recorded clips give the expected moves', () => {
   };
   for (const [clip, opts] of Object.entries(CLIPS)) {
     test(clip, () => {
-      expect(kinds(replay(clip, opts).events)).toEqual(expected[clip]);
+      const r = replay(clip, opts);
+      expect(kinds(r.events)).toEqual(expected[clip]);
+      expect(r.gestures).toEqual([]); // the pause X never fires during real moves
     });
   }
 });
@@ -156,6 +171,7 @@ describe.each(Object.entries(VARIANTS))('%s', (name, { opts, slackMs }) => {
     const base = replay(clip, clipOpts);
     const v = replay(clip, { ...clipOpts, ...opts });
     expect(v.tracking.map(([, on]) => on)).toEqual(base.tracking.map(([, on]) => on));
+    expect(v.gestures).toEqual([]); // no pause X from real moves, in any variant
     // Walking out of frame: lane changes on the way out mean nothing; only tracking matters.
     if (clip.endsWith('leaveFrame')) return;
     if (MAY_MISS.has(`${name}|${clip}`)) {
