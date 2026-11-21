@@ -108,4 +108,7 @@ Vite, React 19, TypeScript (strict), Tailwind CSS, shadcn/ui (Radix), Motion, Re
 | [docs/CONTRACTS.md](docs/CONTRACTS.md) | Shared interfaces, database schema, endpoint, collision and level rules, detection thresholds |
 | [docs/PLAN.md](docs/PLAN.md) | The original build plan |
 | [docs/DEMO.md](docs/DEMO.md) | Pitch script, demo fallbacks, judge Q&A |
+| [docs/OPERATOR.md](docs/OPERATOR.md) | One-page card for the person at the laptop on demo day |
+| [docs/SUBMISSION.md](docs/SUBMISSION.md) | Devpost text, video shot list, screenshots |
+| [docs/QA.md](docs/QA.md) | QA findings and their status; [docs/qa/sweep/](docs/qa/sweep/) replays the whole flow at three sizes |
 | [AGENTS.md](AGENTS.md) | Rules every AI coding tool on the team follows |

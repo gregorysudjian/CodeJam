@@ -35,8 +35,10 @@ async function sweep([w, h], port) {
   };
   try {
     const url = `${BASE}?demo=1&store=local`;
+    // Open the kiosk first on this fresh browser: it must not save a player (QA Q17).
+    await b.go(`${BASE}?kiosk=1&store=local`, 2500);
     await b.go(url, 2500);
-    check('landing shows Play as guest', /PLAY AS GUEST/i.test(await b.text()));
+    check('landing shows Play as guest, even after the kiosk (Q17)', /PLAY AS GUEST/i.test(await b.text()));
     await step('01-landing');
 
     await b.click('play as guest');
@@ -79,7 +81,9 @@ async function sweep([w, h], port) {
     await sleep(5000);
     await b.key('Escape');
     check('Esc pauses', await b.waitFor(/PAUSED/, 3000));
+    await sleep(800); // the overlay fades in; a shot before that shows the scene through it
     await step('10-paused');
+    check('keyboard pause shows no X-gesture hint (Q14)', !/Cross your arms/i.test(await b.text()));
     await b.click('end round');
     check('END ROUND returns to select', await b.waitFor(/PICK A WORKOUT/i, 5000));
 
