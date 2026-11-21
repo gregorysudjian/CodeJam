@@ -4,7 +4,7 @@
 
 Branches are pushed with the PR text in the first commit message (`git log --reverse main..<branch>`).
 
-No decision is waiting.
+**Q18 (demo risk, Greg):** on the demo Mac every QR code in the app (landing, kiosk) points to `http://localhost:5173`, a dead link on a phone. Until it's fixed, show QR codes only from the live site (`https://codejam-jet.vercel.app/?kiosk=1`).
 
 ## Status (Sat 17:07, `main` at 7be4281)
 
@@ -29,6 +29,9 @@ No decision is waiting.
 | Q15 | visible | HUD cue word overprinted the "N COMBO!" banner and the VS GHOST chip | Patrick (#46) | **fixed**, verified |
 | Q16 | minor | Local store leaderboard listed every round, not each player's best | Greg | **fixed**, verified |
 | Q17 | minor | The kiosk could save a player called "Leaderboard" (two routes) | Greg | **fixed**, verified (both routes) |
+| Q18 | visible | On localhost the QR codes encode `http://localhost:5173` | Greg | **new** |
+| Q19 | visible | At 125–150 % display scaling or browser zoom, the select screen is 1,100 px tall: START and the Camera switch need scrolling | `src/ui` | **new** |
+| Q20 | minor | At 125–150 %, the leaderboard podium and the kiosk QR are below the fold | `src/ui` | **new** |
 | A1 | visible | Results: "RAISE BOTH ARMS TO PLAY AGAIN" was 20 px | `src/ui` | **fixed** (code; camera-only screen) |
 | A2 | visible | Tutorial hint was 20 px grey | Greg | **fixed**, verified |
 | A3 | minor | Tracking-lost subtext 16 px; "Camera starting…" 14 px | `src/ui` | **fixed** (code; camera-only screen) |
@@ -40,6 +43,24 @@ No decision is waiting.
 
 ## Open findings
 
+### Q18 (new, demo risk). The QR codes point to localhost on the demo Mac
+- **Steps:** on the demo Mac, open `http://localhost:5173/?demo=1` (landing) or `http://localhost:5173/?kiosk=1`, and scan the "Play on your laptop" QR with a phone.
+- **Expected:** the live site, `https://codejam-jet.vercel.app`.
+- **Saw:** the landing prints `http://localhost:5173` under its QR, and the kiosk's QR encodes the same value ([q18-kiosk-qr-localhost.jpg](qa/q18-kiosk-qr-localhost.jpg)). On a phone that is a dead link. The demo runs on localhost (DEMO.md), so every QR shown from the demo Mac at the table or on stage is affected. The live site's own kiosk is fine (its origin is the live URL).
+- **Cause:** `src/app/App.tsx:69` `const publicUrl = window.location.origin;`, used for both QR codes and the printed URL.
+- **Owner:** Greg (`src/app/App.tsx`). **Fix:** a `PUBLIC_URL = 'https://codejam-jet.vercel.app'` in `src/app/tuning.ts`, used when `location.hostname` is `localhost` or `127.0.0.1` (keep the origin otherwise, so preview deployments still point to themselves). **Until then:** take QR codes only from `https://codejam-jet.vercel.app/?kiosk=1` or a printout (OPERATOR.md, VIDEO.md and the close slide already say so).
+### Q19 (new). Select screen at 125–150 % scaling: two rows of tall cards, START off screen
+- **Why it matters:** Windows laptops default to 125–150 % display scaling, and browser zoom does the same. Both shrink the CSS viewport: 1366×768 at 125 % is 1093×614 CSS px, at 150 % 911×512; a 1280×720 projector at 125 % is 1024×576.
+- **Steps:** `SIZES=1093x614@1.25,911x512@1.5,1024x576@1.25,853x480@1.5 node docs/qa/sweep/sweep.mjs` (or Chrome at 1366×768 with Ctrl + "+" to 125 %) → Play as guest → Skip.
+- **Expected:** the four cards in one row with the settings row and START visible, as at 100 %.
+- **Saw:** below 1280 CSS px the cards go to a 2×2 grid of tall cards; the page is 1,102–1,109 px tall in a 480–614 px window. Only two cards are visible; Camera/Keyboard and START need scrolling ([q19-select-1366-at-125.jpg](qa/q19-select-1366-at-125.jpg)). 1920×1080 at 125 % (1536×864) is fine. Everything else in the sweep passes at all four scaled sizes: HUD ([1366 at 150 %](qa/zoom-hud-1366-at-150.jpg)), pause, results (PLAY AGAIN stays in the footer), dashboard, no horizontal scroll, no console errors.
+- **Cause:** `WorkoutSelectScreen.tsx:289` `sm:grid-cols-2 xl:grid-cols-4`; `xl` starts at 1280 CSS px.
+- **Owner:** `src/ui/screens/WorkoutSelectScreen.tsx`. **Fix:** `md:grid-cols-4` (four columns from 768 px), and under `[@media(max-height:640px)]` a smaller card figure and padding so the cards and settings fit in about 600 px. **Demo workaround:** set the demo laptop to 100 % (Windows: Settings → Display → Scale; Mac: the default is fine) and Chrome zoom to 100 % (Ctrl + 0).
+
+### Q20 (new, minor). Leaderboard and kiosk at 125–150 %: the podium is below the fold
+- **Steps:** as Q19, then Leaderboard, and `?kiosk=1`.
+- **Saw:** at 1024×576 (1280×720 at 125 %) the length filter wraps to a second row and only the top of the #1 card shows ([q20-leaderboard-1280-at-125.jpg](qa/q20-leaderboard-1280-at-125.jpg)). The kiosk at 853×480 (150 %) shows the title, "Beat 4,750 to take the crown" and the top of the podium; the **QR code is off screen** ([q20-kiosk-1280-at-150.jpg](qa/q20-kiosk-1280-at-150.jpg)).
+- **Owner:** `src/ui/screens/LeaderboardScreen.tsx`. **Fix:** under `max-height: 640px`, smaller podium cards and title, and in kiosk mode the QR beside the crown banner. **Workaround:** run the kiosk screen at 100 % (Ctrl + 0) or full screen (F11).
 ### Q12 (minor, open by choice)
 The landing "Play on your laptop" QR starts at y 748 (below the fold at 720, at the edge at 768) ([landing-1366.jpg](qa/landing-1366.jpg)). The kiosk (`?kiosk=1`) is the QR screen for the table.
 ## Copy pass (Sat 17:40, `main` 56fb514)
@@ -132,4 +153,6 @@ Open suggestions: preload the pose model on the landing page for live-URL visito
 | 16:40 | Sweep script (`q-sweep`) | `docs/qa/sweep/`: one command, 3 sizes in parallel, 34 checks each; first run 102/102 passed |
 | 16:42 | Operator card (`q-operator-2`) | Camera preselected, X chest-to-chin; found Q17 (local-store kiosk saves a "Leaderboard" player) |
 | 17:07 | Re-sweep 7be4281 (`q-docs-sync`) | Sweep 105/105 (new checks: Q14, Q17 route 1); Q14, Q17 (both routes), A3 marked fixed; test count 762, shot dates, ghost chip position and doc links aligned across README, SUBMISSION, OPERATOR, DEMO; kiosk warning removed |
+| 17:29 | New deliverables: VIDEO.md (`q-video`), slides (`q-slides`), Q18 (`q-qr`) | Fallback video recorded (67 s, 1920×1080, verified by playback; not in git). Architecture slide arrows checked in code. Found Q18: QR codes on localhost point to localhost. #50 (pose only) needs no keyboard re-sweep |
+| 17:33 | Scaling sweep (`q-zoom`) | The sweep takes `SIZES=WxH@scale`; at 1093×614@1.25, 911×512@1.5, 1024×576@1.25, 853×480@1.5: 34/35 each (select doesn't fit, Q19), 1536×864@1.25: 35/35. Q20 from the shots. Not tested: calibration screen (camera) |
 | 17:36 | Copy pass (`q-copy`) | Every rendered string in flow order; 10 proposals (C1–C10) for Greg's Claude; README's move table gets the in-app names |
