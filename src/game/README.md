@@ -44,7 +44,7 @@ game.start(); // after your countdown
 
 Race your best run: during a round the game records the player's moves (lane, airborne, ducking, arms) at 20 Hz of game time. When the same level is played again, a translucent ghost replays the best run beside the player.
 
-**Ghost status:** (a) `ghost.ts` done (encoding, recorder, playback, level fingerprint, ranking, parsing; tested). (b) `ghostStore.ts` done (localStorage, 10 most recent levels, corrupt or blocked storage tolerated; tested). (c) recording and saving at the finish done (checked in the browser: a perfect round saved a 1,032-character ghost, an idle round lost to it and did not replace it). (d) 3D ghost runner done (glass body, cyan accents and ring, shell in the same lane; screenshots of the ghost sidestepping, pressing, jumping and squatting next to an idle player). Next: (e) end banner, (f) 2D ghost, (g) docs.
+**Ghost status:** (a) `ghost.ts` done (encoding, recorder, playback, level fingerprint, ranking, parsing; tested). (b) `ghostStore.ts` done (localStorage, 10 most recent levels, corrupt or blocked storage tolerated; tested). (c) recording and saving at the finish done (checked in the browser: a perfect round saved a 1,032-character ghost, an idle round lost to it and did not replace it). (d) 3D ghost runner done (glass body, cyan accents and ring, shell in the same lane; screenshots of the ghost sidestepping, pressing, jumping and squatting next to an idle player). (e) end banner done ("GHOST SAVED", "GHOST BEATEN", "GHOST WINS", "TIE"). Next: (f) 2D ghost, (g) docs.
 
 ## Events
 

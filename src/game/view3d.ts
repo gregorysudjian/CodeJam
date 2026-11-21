@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { InputState, Level } from '@/contracts';
 import { feverTier, holdFeedback, type HoldFeedback, type Item } from './core';
-import type { GhostPose } from './ghost';
+import type { GhostOutcome, GhostPose } from './ghost';
 import { requirementMet } from './judge';
 import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
@@ -31,6 +31,8 @@ export interface GameView {
   engage(item: Item): void;
   verdict(item: Item, v: Verdict): void;
   setQuality(q: Quality): void;
+  /** End of round against the ghost: a banner over the track ("GHOST BEATEN", ...). */
+  showGhostOutcome(outcome: GhostOutcome): void;
   dispose(): void;
 }
 
@@ -49,10 +51,13 @@ export function create3DView(
   stage.scene.add(player.root);
   const obstacles = createObstacles(stage.scene);
   const finish = createFinishGate();
-  stage.scene.add(finish);
+  stage.scene.add(finish.group);
   const finishDistance = track.distanceAt(durationSec);
 
   const views = new Map<Item, ObstacleView>();
+  let banner: THREE.Sprite | null = null;
+  let bannerT = 0;
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   // The ghost runner, created the first time a ghost pose arrives; fed through one reused state.
   let ghostRunner: ReturnType<typeof createPlayer> | null = null;
   const ghostInput: InputState = {
@@ -145,12 +150,25 @@ export function create3DView(
       }
       player.setAura(aura);
 
-      finish.position.z = distance - finishDistance;
-      finish.visible = -finish.position.z < T.VIEW_DISTANCE && finish.position.z < T.DESPAWN_BEHIND;
+      const finishZ = distance - finishDistance;
+      // Fades out from FINISH_FADE_START to FINISH_FADE_END past the runner (see createFinishGate).
+      const fade = Math.min(
+        1,
+        Math.max(0, (T.FINISH_FADE_END - finishZ) / (T.FINISH_FADE_END - T.FINISH_FADE_START)),
+      );
+      finish.group.position.z = finishZ;
+      finish.group.visible = -finishZ < T.VIEW_DISTANCE && fade > 0.01;
+      finish.setFade(fade);
 
       obstacles.tick(visDt);
       const moving = phase === 'running' || (phase === 'finished' && coastSpeed > 1);
       player.update(visDt, state, moving, phase === 'finished');
+      if (banner) {
+        bannerT += realDt;
+        const k = reduceMotion ? 1 : Math.min(1, bannerT / T.BANNER_POP_SEC);
+        const pop = 1 - (1 - k) ** 3; // ease out
+        banner.scale.set(T.BANNER_WIDTH * pop, (T.BANNER_WIDTH / 5.33) * pop, 1);
+      }
       if (ghost) {
         if (!ghostRunner) {
           ghostRunner = createPlayer({ ghost: true });
@@ -189,6 +207,12 @@ export function create3DView(
         obstacles.burst(player.x, 'hit');
       }
     },
+    showGhostOutcome(outcome) {
+      if (banner) return;
+      banner = createBanner(outcome);
+      bannerT = 0;
+      stage.scene.add(banner);
+    },
     setQuality(q) {
       stage.setQuality(q);
     },
@@ -200,10 +224,19 @@ export function create3DView(
 }
 
 /** A checkered finish arch, placed where the runner is when the clock hits durationSec. */
-function createFinishGate(): THREE.Group {
+/**
+ * The finish arch. After the finish the world coasts on and the arch passes the camera; its
+ * banner hangs at eye height, so it would sweep across the whole view (a giant FINISH, a lime
+ * blob under bloom) during the app's 1.5 s celebration. `setFade` dissolves it as it passes
+ * the runner instead.
+ */
+function createFinishGate(): { group: THREE.Group; setFade(opacity: number): void } {
   const gate = new THREE.Group();
   const half = (3 * T.LANE_WIDTH) / 2 + 0.9;
-  const glow = new THREE.MeshBasicMaterial({ color: neon(0xffffff, T.NEON_BOOST * 0.7) });
+  const glow = new THREE.MeshBasicMaterial({
+    color: neon(0xffffff, T.NEON_BOOST * 0.7),
+    transparent: true,
+  });
   for (const s of [-1, 1]) {
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.22, T.FINISH_HEIGHT, 0.22), glow);
     post.position.set(s * half, T.FINISH_HEIGHT / 2, 0);
@@ -228,9 +261,14 @@ function createFinishGate(): THREE.Group {
   g.fillText('FINISH', 256, 50);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
+  const bannerMat = new THREE.MeshBasicMaterial({
+    map: tex,
+    side: THREE.DoubleSide,
+    transparent: true,
+  });
   const banner = new THREE.Mesh(
     new THREE.PlaneGeometry(half * 2, (half * 2 * c.height) / c.width),
-    new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }),
+    bannerMat,
   );
   banner.position.y = T.FINISH_HEIGHT - 0.6;
   gate.add(banner);
@@ -239,5 +277,51 @@ function createFinishGate(): THREE.Group {
   line.position.y = 0.03;
   gate.add(line);
   gate.visible = false;
-  return gate;
+  return {
+    group: gate,
+    setFade(opacity) {
+      glow.opacity = opacity;
+      bannerMat.opacity = opacity;
+      // Opaque while it approaches, so it sorts and depth-tests like the rest of the track.
+      glow.depthWrite = bannerMat.depthWrite = opacity >= 1;
+    },
+  };
+}
+
+const BANNER_TEXT: Record<GhostOutcome, { text: string; color: number }> = {
+  beaten: { text: 'GHOST BEATEN', color: T.COLOR_LIME },
+  lost: { text: 'GHOST WINS', color: T.MOVE_COLOR.armsUp },
+  tie: { text: 'TIE', color: T.GHOST_ACCENT },
+  saved: { text: 'GHOST SAVED', color: T.GHOST_ACCENT },
+};
+
+/** The end banner as a sprite: drawn once to a canvas, always on top, no fog. */
+function createBanner(outcome: GhostOutcome): THREE.Sprite {
+  const { text, color } = BANNER_TEXT[outcome];
+  const hex = `#${color.toString(16).padStart(6, '0')}`;
+  const c = document.createElement('canvas');
+  c.width = 1024;
+  c.height = 192;
+  const g = c.getContext('2d')!;
+  g.fillStyle = 'rgba(7, 9, 13, 0.78)';
+  g.strokeStyle = hex;
+  g.lineWidth = 8;
+  g.beginPath();
+  g.roundRect(8, 8, c.width - 16, c.height - 16, 40);
+  g.fill();
+  g.stroke();
+  g.fillStyle = hex;
+  g.font = 'italic 800 110px system-ui, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, c.width / 2, c.height / 2 + 6);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, fog: false }),
+  );
+  sprite.renderOrder = 1000;
+  sprite.position.set(T.BANNER_POS.x, T.BANNER_POS.y, T.BANNER_POS.z);
+  sprite.scale.set(0.001, 0.001, 1);
+  return sprite;
 }

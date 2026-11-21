@@ -85,6 +85,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         : saved
           ? 'saved'
           : null;
+      if (outcome) view?.showGhostOutcome(outcome);
       const told = (r: GhostResult) => `${r.cleared + r.collected} cleared, ${r.hit} hits`;
       console.info(
         `[game] ghost: ${outcome ?? 'not saved'}. This run ${told(result)}` +
@@ -177,7 +178,14 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       // A drawing failure must not stop the round: events and the HUD keep working.
       console.error('[game] render failed, continuing without drawing', err);
       view!.dispose();
-      view = { frame() {}, engage() {}, verdict() {}, setQuality() {}, dispose() {} };
+      view = {
+        frame() {},
+        engage() {},
+        verdict() {},
+        setQuality() {},
+        showGhostOutcome() {},
+        dispose() {},
+      };
     }
   }
   raf = requestAnimationFrame(frame);

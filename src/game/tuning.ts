@@ -32,6 +32,9 @@ export const GHOST_OPACITY = 0.35;
 export const GHOST_ACCENT = 0x22d3ee; // cyan visor, belt, hands, ring: never the player's lime
 export const GHOST_ACCENT_OPACITY = 0.55;
 export const GHOST_SCALE = 1.04; // in the same lane it wraps the player as a shell
+export const BANNER_POS = { x: 0, y: 3.3, z: -5 }; // in front of the fixed camera, above the track
+export const BANNER_WIDTH = 6.2; // world units
+export const BANNER_POP_SEC = 0.35; // scale-in (none with reduced motion)
 
 /* Timing probe (?debug=timing, timing.ts): data for tuning VISUAL_LEAD_SEC with the camera. */
 export const TIMING_PROBE_SEC = 1; // watch each object from t - 1 s to t + 1 s
@@ -59,6 +62,8 @@ export const VIEW_DISTANCE = 95; // objects appear this far ahead
 export const DESPAWN_BEHIND = 8; // and are recycled this far behind the player
 export const COAST_DECAY = 1.4; // after the finish the world slows to a stop (per second)
 export const FINISH_HEIGHT = 5.2; // finish arch
+export const FINISH_FADE_START = 0.5; // the arch dissolves as it passes the runner (z ahead of it)...
+export const FINISH_FADE_END = 4; // ...gone before it reaches the camera (z 7.4)
 
 /* ── Track ── */
 export const LANE_WIDTH = 2.2;

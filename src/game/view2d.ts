@@ -170,6 +170,7 @@ export function create2DView(
       verdicts.set(item, v);
     },
     setQuality() {},
+    showGhostOutcome() {}, // drawn in step (f)
     dispose() {},
   };
 }
