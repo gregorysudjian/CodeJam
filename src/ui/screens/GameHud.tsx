@@ -63,6 +63,8 @@ const Feedback = memo(
           className={cn(
             'absolute inset-x-0 top-[68%] text-center font-display-italic text-display-sm',
             tone,
+            // MISS is the only hit cue a red-blind player gets: outline it (theme.css text-outline).
+            event.kind === 'hit' && 'text-outline',
           )}
           initial={{ opacity: 1, y: 0 }}
           animate={{ opacity: [1, 1, 0], y: reduce ? 0 : -55 }}
