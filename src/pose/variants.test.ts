@@ -6,6 +6,16 @@ import type { Point } from './detect';
 import { jitter, replay, type ReplayOptions, scaleAbout } from './fixtures';
 import { DETECTION, resetDetectionTuning } from './tuning';
 
+/** A camera rolled by `deg` degrees (laptop on an uneven table), about the frame centre, in pixels. */
+const roll = (deg: number) => (pose: Point[]) => {
+  const a = (deg * Math.PI) / 180;
+  const [c, s] = [Math.cos(a), Math.sin(a)];
+  return pose.map((p) => {
+    const [x, y] = [(p.x - 0.5) * 640, (p.y - 0.5) * 480];
+    return { ...p, x: 0.5 + (x * c - y * s) / 640, y: 0.5 + (x * s + y * c) / 480 };
+  });
+};
+
 /** Clip → replay options for the plain recording. Session 2 clips calibrate on their own start. */
 const CLIPS: Record<string, ReplayOptions> = {
   standing: { upToMs: 5500 },
@@ -31,6 +41,8 @@ const VARIANTS: Record<string, { opts: ReplayOptions; slackMs: number }> = {
   'standing closer (1.25×)': { opts: { transform: scaleAbout(0.5, 0.6, 1.25) }, slackMs: 100 },
   'landmark jitter ±0.5%': { opts: { transform: jitter(0.005, 3) }, slackMs: 150 },
   'landmark jitter ±1%': { opts: { transform: jitter(0.01, 4) }, slackMs: 200 },
+  'camera tilted 3°': { opts: { transform: roll(3) }, slackMs: 100 },
+  'camera tilted -3°': { opts: { transform: roll(-3) }, slackMs: 100 },
   '20% dropped frames': { opts: { dropFraction: 0.2 }, slackMs: 150 },
   '40% dropped frames (~17 FPS)': { opts: { dropFraction: 0.4 }, slackMs: 250 },
 };

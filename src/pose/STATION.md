@@ -4,8 +4,9 @@ For the demo laptop and anyone running the station. Chrome only.
 
 ## Before the demo (5 minutes)
 
-1. **Laptop** on a table, screen tilted so the camera sees the floor in front of it. Plugged in
-   (battery saver lowers FPS).
+1. **Laptop** on a level table (a tilted camera of 6° or more can count a squat when someone walks
+   off to the side), screen tilted so the camera sees the floor in front of it. Plugged in (battery
+   saver lowers FPS).
 2. **Distance:** floor mode about **2–2.5 m** back, head and feet in view (tape a floor mark).
    Treadmill mode **1–1.5 m**, head and shoulders in view.
 3. **Light:** light on the player's face and body, not behind them (no window behind the player).
