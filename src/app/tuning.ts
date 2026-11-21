@@ -18,3 +18,6 @@ export const LEADERBOARD_SIZE = 20;
 
 /** "Try each move" tutorial before a player's first round: time per move (about 15 s in total). */
 export const TUTORIAL_STEP_MS = 2500;
+/** Results with the camera: raising both arms plays again, but only after this long, so arms still
+ * up from the last obstacle can't restart the round by accident. */
+export const HANDS_FREE_ARM_MS = 1500;
