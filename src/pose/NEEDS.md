@@ -4,11 +4,22 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 
 ## 1. Wire `?dev=pose` to the debug view (src/app/DevPose.tsx)
 
-> Hi Greg, the pose debug page is ready on `abdo-1`. In `src/app/DevPose.tsx`, please render a
-> full-screen `<div ref={ref} />` and call `useEffect(() => mountPoseDebug(ref.current!), []);` with
-> `import { mountPoseDebug } from '@/pose/debug';`. It is plain DOM, owns its own camera, and cleans
-> up on unmount. (Rule 3 says only `src/app` imports modules; this is the one extra export from
-> `src/pose`, as PLAN.md planned.)
+> Hi Greg, the pose debug page is ready on `abdo-1` (calibrate buttons, live overlay with sliders,
+> move tally, clip recorder). Once `abdo-1` is merged, could you replace `src/app/DevPose.tsx` with
+> this? It is plain DOM, owns its own camera, and cleans up fully on unmount (StrictMode-safe). It
+> imports `@/pose/debug`, the one extra export from `src/pose` that PLAN.md planned for this page.
+>
+> ```tsx
+> // ?dev=pose: A's pose debug view (src/pose/debug.ts).
+> import { useEffect, useRef } from 'react';
+> import { mountPoseDebug } from '@/pose/debug';
+>
+> export function DevPose() {
+>   const ref = useRef<HTMLDivElement>(null);
+>   useEffect(() => (ref.current ? mountPoseDebug(ref.current) : undefined), []);
+>   return <div ref={ref} className="min-h-screen bg-neutral-950" />;
+> }
+> ```
 
 ## 2. Who mirrors the video (contract comment vs app)
 
