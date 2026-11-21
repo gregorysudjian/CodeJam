@@ -186,8 +186,8 @@ Rechecked: `npm run check` on main + `p1-workout` + `p2-game` (201 tests pass). 
 
 ### Requests for D (Greg), not done because they are outside src/game
 1. A "Demo" entry point. `?demo=1` already works without any change (see `src/workout/README.md`).
-2. Optional: a low-graphics toggle on the select screen that writes localStorage `game.gfx` = `low` or `high`.
-3. HUD cue words: orbs carry `reachLeft` / `reachRight` / `armsUp`, and a floor orb in the centre lane says `reachRight` though either arm works. Show "REACH" for both reach moves.
+2. Optional: a low-graphics toggle on the select screen that writes localStorage `game.gfx` = `low` or `high`. The `settingsSlot` from PR #13 was meant for it; it now holds the camera/keyboard switch (#20).
+3. ~~HUD cue words: show "REACH" for both reach moves~~: done (`hudCueLabel`, PR #13).
 4. ~~Docs: AGENTS.md ownership and the CONTRACTS.md crate row~~: done.
 5. ~~Show the finish~~: done (`FINISH_DELAY_MS`). Was: show the finish: in `PlayScreen`, wait about 1.5 s after `finished` before calling `onFinish`. The game shows a finish arch, the world coasts to a stop and the runner raises both arms, but today the results screen replaces it at once. The fanfare already rings out after `destroy()`.
 6. ~~A pause overlay with text~~: done in `GameHud`.
