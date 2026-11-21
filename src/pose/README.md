@@ -23,6 +23,9 @@ your replayed clips. Nothing touched `main`. It has **not** met a real camera si
   six moves **while the video was off the page** → play received moves, timer ran, score rose.
   Treadmill (clips scaled to ~1.2 m): calibrated, tutorial passed, orbs collected, bouncing gave no
   moves. No console errors.
+- Production build of that copy under `vite preview` (the offline demo backup): the landing page
+  loads no MediaPipe files; after K, the lazy chunk, WASM and model load (all 200), 28 FPS GPU,
+  calibration screen shows our message, no errors.
 
 **What works (tested on your clips + synthetic variants)**
 - `createPoseInput()` per the contract: camera, MediaPipe, `calibrate()` with status messages,
