@@ -14,19 +14,23 @@ import { launch, sleep, timebox } from './cdp.mjs';
 const BASE = process.argv[2] ?? 'http://localhost:5173/';
 const OUT = process.argv[3] ?? join(tmpdir(), `neon-sweep-${new Date().toISOString().replace(/[:.]/g, '-')}`);
 const AUTO = readFileSync(new URL('./auto.js', import.meta.url), 'utf8').trim().replace(/;$/, '');
-const SIZES = [
-  [1366, 768],
-  [1920, 1080],
-  [1280, 720],
-];
+// SIZES=1093x614@1.25,911x512@1.5 runs other CSS viewports (width x height @ device scale factor):
+// Windows display scaling and browser zoom both shrink the CSS viewport (1366x768 at 125% = 1093x614).
+const SIZES = process.env.SIZES
+  ? process.env.SIZES.split(',').map((s) => s.match(/(\d+)x(\d+)(?:@([\d.]+))?/).slice(1).map((n, i) => (i < 2 ? Number(n) : Number(n ?? 1))))
+  : [
+      [1366, 768, 1],
+      [1920, 1080, 1],
+      [1280, 720, 1],
+    ];
 timebox(6 * 60 * 1000, 'sweep');
 
-async function sweep([w, h], port) {
-  const dir = join(OUT, `${w}x${h}`);
+async function sweep([w, h, dsf], port) {
+  const dir = join(OUT, `${w}x${h}@${dsf}`);
   const checks = [];
   const check = (name, ok, detail = '') => checks.push({ name, ok: Boolean(ok), detail });
-  const b = await launch({ port, profile: join(OUT, 'profiles', `${w}x${h}`), base: BASE });
-  await b.size(w, h);
+  const b = await launch({ port, profile: join(OUT, 'profiles', `${w}x${h}@${dsf}`), base: BASE });
+  await b.size(w, h, dsf);
   const step = async (name) => {
     await b.shot(dir, name);
     const l = await b.layout();
@@ -114,7 +118,7 @@ async function sweep([w, h], port) {
   }
   check('no console errors or warnings', b.logs.length === 0, b.logs.slice(0, 5).join(' | '));
   await b.close();
-  return { size: `${w}x${h}`, passed: checks.filter((c) => c.ok).length, failed: checks.filter((c) => !c.ok), checks };
+  return { size: `${w}x${h}@${dsf}`, passed: checks.filter((c) => c.ok).length, failed: checks.filter((c) => !c.ok), checks };
 }
 
 mkdirSync(OUT, { recursive: true });

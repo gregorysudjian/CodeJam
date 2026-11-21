@@ -102,8 +102,8 @@ export async function launch({ port, profile, base }) {
   const b = {
     send,
     logs,
-    async size(width, height) {
-      await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+    async size(width, height, deviceScaleFactor = 1) {
+      await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor, mobile: false });
     },
     async go(url, waitMs = 1500) {
       const loaded = new Promise((r) => on('Page.loadEventFired', r));
