@@ -10,5 +10,5 @@ export function createPoseInput(): PoseSource {
 /** The ?dev=pose page (debug overlay, calibrate buttons, move tally, clip recorder). Greg's request. */
 export { mountPoseDebug } from './debug';
 
-export type { Gesture } from './gesture';
+export type { Gesture } from '@/contracts';
 export type { PoseSource } from './engine';
