@@ -45,6 +45,7 @@ For the demo laptop and anyone running the station. Chrome only.
 | Game pauses ("tracking lost") | Step back into view, face the camera | Light; hips visible |
 | Everything jittery | Light | `SMOOTHING_ALPHA` lower (0.5 → 0.35; more lag) |
 | Low FPS (< 20) | Close other tabs, plug in, light | Keyboard (K) as fallback |
+| "The camera needs https or localhost" | Use the Vercel https link or `localhost`, not a LAN IP | — |
 
 "Copy changed values" in the overlay copies the slider changes as JSON; paste them into
 `DETECTION_DEFAULTS` in `src/pose/tuning.ts` to keep them.

@@ -3,6 +3,14 @@ import { VIDEO_HEIGHT, VIDEO_WIDTH } from './tuning';
 
 /** Asks for the front camera. The caller must stopStream() it when done, even on errors. */
 export function getCameraStream(): Promise<MediaStream> {
+  if (!window.isSecureContext) {
+    // Browsers only allow the camera on https or localhost (e.g. not http://192.168.x.x).
+    return Promise.reject(
+      new Error(
+        'The camera needs https or localhost. Open the app via its https link or localhost.',
+      ),
+    );
+  }
   if (!navigator.mediaDevices?.getUserMedia) {
     return Promise.reject(new Error('This browser cannot use the camera. Use Chrome.'));
   }
