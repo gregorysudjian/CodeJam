@@ -7,6 +7,8 @@ export const MODEL_PATH = '/models/pose_landmarker_lite.task';
 /** Camera request. 640×480 keeps the model fast on weak laptops. */
 export const VIDEO_WIDTH = 640;
 export const VIDEO_HEIGHT = 480;
+/** Video width / height assumed until the camera reports its real size. */
+export const DEFAULT_ASPECT = VIDEO_WIDTH / VIDEO_HEIGHT;
 
 /** MediaPipe confidences (0 to 1). */
 export const MIN_DETECTION_CONFIDENCE = 0.5;
@@ -173,7 +175,7 @@ export const DETECTION_DEFAULTS = Object.freeze({
   SQUAT_JUMP_GRACE_MS: 350,
 
   /** Arms: wrist height above the nose, in T (contract: up above nose, down below shoulder). */
-  // Keep at 0.3: the game's pose latency leads (src/game VISUAL_LEAD_SEC on p2-game) were tuned on
+  // Keep at 0.3: the game's pose latency leads (VISUAL_LEAD_SEC in src/game/tuning.ts) were tuned on
   // it. 0.4 would ignore hands resting on the head but adds ~70 ms of arm lag (DECISIONS.md 33).
   ARM_UP_ABOVE_NOSE_T: 0.3,
   ARM_DOWN_ABOVE_NOSE_T: 0.05,
@@ -194,6 +196,16 @@ export const DETECTION_DEFAULTS = Object.freeze({
   IDLE_STILL_MS: 500,
   /** No drift beyond this distance from standing height (T): stepping 20% closer moves ~0.18 T. */
   IDLE_MAX_DROP_T: 0.25,
+
+  /**
+   * A distance change (a judge stepping closer or back; DECISIONS 44): W and T both off their
+   * baselines by at least this fraction, the same way (T / W within RESCALE_SHAPE_TOL of W's ratio),
+   * for RESCALE_CONFIRM_MS, re-baselines at once. Real moves never do this: in every clip T stays
+   * ≤ 1.00 × while ducking, and normal play keeps W and T within 0.83–1.16 × with no arm up.
+   */
+  RESCALE_MIN: 0.2,
+  RESCALE_SHAPE_TOL: 0.12,
+  RESCALE_CONFIRM_MS: 300,
 });
 
 export type DetectionTuning = { -readonly [K in keyof typeof DETECTION_DEFAULTS]: number };

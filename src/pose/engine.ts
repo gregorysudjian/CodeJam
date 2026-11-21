@@ -1,20 +1,22 @@
 // Owner: A. The pose input's browser side: camera, MediaPipe frame loop, D key and debug overlay,
 // around the pure session (session.ts). createPoseInput() (index.ts) returns `engine.source`; the
 // ?dev=pose page uses the rest. Video and landmarks never leave the device (AGENTS.md rule 5).
-import type { CalibrationStatus, MoveEvent, PlayMode, PoseInputSource } from '@/contracts';
+import type { CalibrationStatus, Gesture, MoveEvent, PlayMode, PoseInputSource } from '@/contracts';
 import { attachStream, cameraErrorMessage, getCameraStream, stopStream } from './camera';
-import type { Gesture } from './gesture';
 import type { Calibration, Detector, Point } from './detect';
 import { type Delegate, getLandmarker, type Landmarker } from './landmarker';
 import { createOverlay, type Overlay } from './overlay';
 import { createSession, NEUTRAL_STATE } from './session';
 import { drawGuides, drawPose, guides } from './skeleton';
-import { CAMERA_STALL_MS, FPS_WINDOW_MS, WATCHDOG_INTERVAL_MS, WATCHDOG_STALE_MS } from './tuning';
+import {
+  CAMERA_STALL_MS,
+  DEFAULT_ASPECT,
+  FPS_WINDOW_MS,
+  WATCHDOG_INTERVAL_MS,
+  WATCHDOG_STALE_MS,
+} from './tuning';
 
-/**
- * The pose input plus the pause gesture. Matches the contract's optional
- * `onGesture?(cb: (g: Gesture) => void): () => void` (added by D), so it fits once that lands.
- */
+/** The contract's PoseInputSource with its optional `onGesture` always present (the pause X). */
 export type PoseSource = PoseInputSource & {
   onGesture(cb: (g: Gesture) => void): () => void;
 };
@@ -95,7 +97,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   };
 
   const aspect = () =>
-    video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3;
+    video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : DEFAULT_ASPECT;
 
   let errorLogged = false;
   /**

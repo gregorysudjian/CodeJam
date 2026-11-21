@@ -178,3 +178,83 @@ or the named file.
       0 false pauses in 1,440 noisy replays of every clip from all three sessions.
     - A's `near/reach` has two low reaches (wrist only 0.2–0.3 T above the nose) that do not
       count: that is the 0.3 T arm line Patrick's timing is tuned on, not a bug.
+43. **Demo-day card and a self-review (Sat ~5 PM, no behaviour change).** `STATION.md` now opens
+    with a 1-minute operator card: 1.5 m mark, face the light with nothing bright behind, what each
+    calibration message means, R during a round when moves feel off, and **K to give up on the
+    camera** after a camera error, ~30 s stuck in calibration, or moves still wrong after one R.
+    The tuning table moved below it, marked "A only, never after Sunday 10 AM". Review fixes:
+    `Gesture` now comes from `src/contracts` (it was a local copy from before D added it);
+    `DEFAULT_ASPECT` in `tuning.ts` replaces three inline `4 / 3`; stale comments (feet as the
+    default, `p2-game`, "once that lands") updated; the wobble test now also wobbles *after* the
+    pause, so "nor re-arms it" is really tested (checked: it fails if the grace is removed). No
+    threshold changed; 729 tests pass.
+44. **A judge who steps closer or backs off keeps playing** (`RESCALE_*`, HANDOFF risk 7).
+    - **Problem (synthetic drift on A's real 1.4 m clips, scaled over 1 s about the image point that
+      stays put):** with the camera aimed above the hips (`cy` 0.35), a 30 cm step closer (1.3×)
+      moved the hips down the frame by more than the squat line: a **false squat**, then `ducking`
+      stuck, so 2 of 4 jumps and both squats were lost. A level camera held to 1.45× but gave a
+      false squat at 1.5–1.55×. Past 1.67× or under 0.6× the size gate called the player a
+      stranger and tracking was lost. A's real `near/mixed` already contains such a step: W 1.54×,
+      T 1.12–1.29× after a squat at ~6.3 s.
+    - **Tried and dropped:** telling a squat from a closer body by T/W (real squats reach 0.95,
+      distance changes 0.9–1.1) or by the thigh (hip→knee over T): at real squat onsets it is
+      0.31–0.76 (Greg 0.63–0.76) against 0.64–0.83 standing, so it would delay real squats.
+    - **Fix:** a distance change = W **and** T both ≥ 20% off their baselines, the same way, with
+      T/W within 12% of 1, for 300 ms, in the centre lane, not airborne, no arm up. Then W, T and
+      the standing height re-baseline at once, and a `ducking` that came from walking closer is
+      dropped without a squat. While ducking, only growth counts (a shrinking squat may be a real
+      one leaning back; Greg's squats reach W 0.86×). Real moves never qualify: T stays ≤ 1.00× while
+      ducking in every clip, and normal play keeps W and T within 0.83–1.16× with no arm up. The
+      size gate needs no change: it compares to the detector's W, which now follows the player.
+    - **Evidence:** `drift.test.ts`, 32 cases. Before: 11 fail (false squats, lost jumps/squats,
+      tracking lost at 1.7×). After: all pass, also with ±0.5% noise at 15 FPS; a much bigger
+      stranger stepping in at once still loses tracking. Every existing test passes unchanged,
+      including the pinned timing. Events on every real clip (3 sessions × 8 clips, two
+      calibrations): unchanged except (1) `standing` after 6.4 s, A walking up to the laptop
+      (W up to 3.9×): 4 false moves → 2; (2) `reach` calibrated on session 1's standing clip,
+      where A stood 0.8× smaller: reaches 68 ms earlier (the arm line is now in A's real size;
+      the pinned timing calibrates on the clip itself and is unchanged); (3) `greg/mixed`: one
+      more sidestep at 5.5 s, where Greg, shrunk to 0.77×, moved 0.51 calibrated W right =
+      0.66 W in his real size, a real step the stale W missed.
+    - **Still to check on real clips:** A's `● drift` and `● turnStep` (turning narrows W, but
+      not T).
+45. **Lag study: no threshold can buy back the squat and arm lag without new false moves.**
+    Proposal for Greg: **change nothing**; the game's leads stay valid. Method: each state's onset
+    line swept lower, one at a time; a value counts only if all 19 real clips (3 sessions) keep
+    their exact moves, ±0.5% noise (4 seeds per clip) adds nothing new, and then the full test
+    suite (variants, crouches, drift) passes.
+    | Line (today) | Lowest value safe on the clips | State onset earlier | Full suite |
+    | --- | --- | --- | --- |
+    | `SQUAT_ON_T` 0.3 | 0.17 (0.20, 0.22, 0.25 too) | 146 ms median, 234 max (95 at 0.20) | **fails**: crouch-then-jumps count squats (1.4–1.6× deeper crouches), jumps after a crouch turn on later (the post-squat line starts sooner), `leaveFrame`, `mixed` and tilt variants change |
+    | `ARM_UP_ABOVE_NOSE_T` 0.3 | none: any lower turns Greg's half press into a 4th press | 29 ms at 0.25, 61 ms at 0.15 (without that clip) | not run |
+    | `LANE_ON_W` 0.55 | 0.52 (0.50: a false sidestep on Greg standing, with noise) | 31 ms | not worth it |
+    | `JUMP_ON_T` 0.15 | 0.12 | 0 ms | nothing to gain |
+    | `SMOOTHING_ALPHA` 0.5 | none (noise changes Greg's reaches and presses) | ≤ 32 ms | — |
+    The squat and arm lag is mostly the body travelling to a line that must sit clear of noise
+    and crouches. Earlier detection would need a different signal (e.g. onset by speed), judged
+    on the steady-rhythm `● lag*` clips; not before the freeze unless those clips show a large,
+    clean gain. Nothing in `src/pose` changed for this.
+46. **Calibration under fidgeting: candidate parked until A's `● fidget` clip.** On the real
+    still clips calibration takes 1.53–1.56 s (the 1.5 s hold), so the target holds for a still
+    player. With ±1% per-frame noise it failed in most clips (0/10 starts on session 1 and Greg),
+    because one jittery frame restarts the hold. (a) A 250 ms grace for "moved" frames fixed the
+    noise (8–10/10, median ~1.53 s, W/T within 2% median) but let a ±0.1 T bob finish and broke
+    "moving during the hold restarts it": rejected. (b) Judging stillness on a 5-frame median
+    (`CALIBRATION_STILL_WINDOW`) gets 7–10/10 under ±1% noise, still rejects the bob, keeps W/T
+    within 1.5% median (worst 3–8%), but restarts ~100 ms after a real step instead of at once.
+    It changes nothing measurable on real still clips, so it waits for real fidgeting to show a
+    need. Patch: HANDOFF §8.
+47. **Codex finding "a lone passerby controls a standing player" (`a2-pose-robust` f7c6525):
+    plausible, needs a real repro before any change.** Synthetic: when the session is fed only a
+    passerby 0.6× the player's size or bigger, it accepts them at once (a false jump and sidestep on
+    the first frame, then lane changes as they walk). With both bodies reported, the picker never
+    errs (0.4–1.05×). The case needs MediaPipe (one pose, video mode, which follows the previous
+    frame's body) to drop the player for the passerby; how often that happens on a camera is
+    unknown, and someone walking in front blocks the player anyway. A "no teleport" check (reject a
+    body far from the player's last position while still tracked) removes the first-frame jump and
+    sidestep, but a passerby who crosses through the player's spot is then picked up there and still
+    moves lanes, and in between the round pauses ("tracking lost"). Not worth a logic change on
+    synthetic evidence the night before the freeze. Next: A records `● passerby` (someone walks
+    behind, near and far, while A stands still); if the model switches bodies in that clip, the
+    continuity check comes back as a candidate with the clip as its test. Codex's `test.fails`
+    cases stay as they are.

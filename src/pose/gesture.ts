@@ -1,7 +1,7 @@
 // Owner: A. Pure gesture detection: the pause X (forearms crossed in front of the chest, held).
 // Runs after the move detector and only reads it, so move detection and its timing are unchanged.
 // A fist is not visible to the pose model, so the X is the pause sign.
-import type { InputState } from '@/contracts';
+import type { Gesture, InputState } from '@/contracts';
 import {
   L_SHOULDER,
   L_WRIST,
@@ -19,9 +19,6 @@ import {
   GESTURE_HOLD_MS,
   GESTURE_NEAR_CENTRE_W,
 } from './tuning';
-
-/** Same as the contract's `Gesture` (src/contracts, added by D). */
-export type Gesture = 'pause';
 
 export interface GestureDetector {
   /**
