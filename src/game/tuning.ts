@@ -26,6 +26,7 @@ export const VISUAL_LEAD_SEC: Record<'pose' | 'keyboard', LeadTable> = {
 /* ── Ghost runner (ghost.ts, ghostStore.ts) ── */
 export const GHOST_HZ = 20; // recorded samples per second of game time
 export const GHOST_MAX_SAMPLES = 15_000; // rounds last at most 600 s: 12,000 samples, plus margin
+export const GHOST_MAX_STORED = 10; // levels with a stored ghost (most recent kept)
 
 /* Timing probe (?debug=timing, timing.ts): data for tuning VISUAL_LEAD_SEC with the camera. */
 export const TIMING_PROBE_SEC = 1; // watch each object from t - 1 s to t + 1 s
