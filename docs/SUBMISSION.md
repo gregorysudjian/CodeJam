@@ -12,7 +12,7 @@ Home workouts are free and need no equipment, and most people still stop doing t
 
 ## What it does
 
-You pick what to train (Legs, Arms, Shoulders or Full body) and a 3-lane neon runner is generated for that workout. Standing about 2 m from the laptop, you play it with your body:
+You pick what to train (Legs, Arms, Shoulders or Full body) and a 3-lane neon runner is generated for that workout. Standing about 1.5 m from the laptop, you play it with your body:
 
 | Move | In the game |
 | --- | --- |
@@ -22,7 +22,9 @@ You pick what to train (Legs, Arms, Shoulders or Full body) and a 3-lane neon ru
 | Both arms up | Smash a crate |
 | One arm up | Grab an orb |
 
-- **Calibration** takes 1.5 s of standing still. Before your first round, "Try each move" walks through every move the round will use.
+- **Calibration** takes 1.5 s of standing still with head to knees in view. Before your first round, "Try each move" walks through every move the round will use. Each round opens with a camera fly-in and 3-2-1.
+- **Feel:** the track runs through a neon city, a tunnel and a bridge to a synthesised beat that speeds up from 118 to 138 BPM and adds layers as your streak grows. Every clear is graded PERFECT, GOOD or LATE.
+- **Hands-free:** cross your forearms in an X for 1 s to pause or resume; raise both arms on the results screen to play again.
 - **Low impact** removes hurdles. **Treadmill mode** uses only crates and orbs (upper body), calibrated on the shoulders at 1 to 1.5 m, for people who run.
 - **Ghost runner:** when you replay a level, a see-through runner replays your best run beside you, and a chip shows whether you are ahead.
 - **After each round:** score, grade, accuracy, best streak, reps per move, calories (labelled as an estimate), and a coach card with a recap, one tip for the move you missed most, and a recommended next session you can start with one click.
@@ -43,7 +45,7 @@ Three people, four modules, one shared TypeScript contract file (`src/contracts/
 - **Backend.** Supabase anonymous sign-in and Postgres. Row-level security on every table: a player can read and insert only their own sessions, with no update or delete. A `leaderboard` view exposes only name, workout, mode, score and date. Check constraints keep stored values in sane ranges.
 - **Offline.** If the network drops, the round is still played and saved. Sessions wait in a local queue and sync later, reads time out quickly and fall back to cache, and the coach falls back to the rules. `?store=local` runs with no backend at all.
 - **Coach endpoint.** A Vercel serverless function checks the player's token, reads their history through a Supabase client that carries that token (so row-level security applies on the server too and no service key is needed), and allows at most one call per player every 10 s with an atomic Postgres function. It asks Claude for JSON matching a schema, with a 7 s timeout and no retries, and validates the answer before returning it. **For the demo no Claude key is configured**, so the coach card shows the rule-based coach (it says RULES). It recommends the workout you played least this week, raises difficulty by 0.1 above 85% accuracy and lowers it below 60%, and aims the tip at your most-missed move.
-- **Quality.** 564 automated tests (Vitest). A mutation sweep set each of the 23 detection thresholds to an extreme value, and every one breaks at least one test.
+- **Quality.** 634 automated tests (Vitest). A mutation sweep set each of the 23 detection thresholds to an extreme value, and every one breaks at least one test.
 
 ## Challenges we ran into
 
@@ -86,10 +88,10 @@ Record on the demo laptop at `http://localhost:5173/?demo=1` with real sessions 
 
 | Time | Shot | Voice-over |
 | --- | --- | --- |
-| 0:00 to 0:05 | Player standing 2 m from a laptop in a normal room | "No console, no camera bar. Just a laptop." |
+| 0:00 to 0:05 | Player standing 1.5 m from a laptop in a normal room | "No console, no camera bar. Just a laptop." |
 | 0:05 to 0:12 | Screen: workout select, Full body, the Camera switch | "Pick what to train." |
 | 0:12 to 0:17 | Screen: calibration with the skeleton on the preview | "Stand still for a second and it measures you." |
-| 0:17 to 0:40 | Split screen: the player and the game. Sidestep, orb, crate, jump, squat-and-hold, the ghost and the "vs ghost" chip | Name each move as it happens. "That ghost is my best run." |
+| 0:17 to 0:40 | Split screen: the player and the game, from the 3-2-1. Sidestep, orb, crate, jump, squat-and-hold, a PERFECT grade, the ghost and the "vs ghost" chip | Name each move as it happens. "That ghost is my best run." |
 | 0:40 to 0:48 | Screen: results with the coach card | "Reps, accuracy, and a coach that picks your next session." |
 | 0:48 to 0:54 | Screen: dashboard, then leaderboard | "Your week, and everyone's best scores." |
 | 0:54 to 1:00 | Screen: a title card | "Tracking runs in the browser. The video never leaves your laptop." |
