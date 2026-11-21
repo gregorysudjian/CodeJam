@@ -34,9 +34,56 @@ A frame longer than 0.25 s (a hidden tab, a hitch) counts as 0.25 s, so switchin
 
 **URL switches** (also localStorage `game.gfx` / `game.muted` / `game.ghost` / `game.music` / `game.intro`): `?gfx=high|medium|low` fixes the level (0, 1, 2), `?gfx=2d` forces the fallback, `?mute=1`, `?music=off` (effects only), `?intro=off` (no countdown), `?ghost=off|reset`, `?debug=timing`. Without a switch the ladder is automatic.
 
-**Keyboard and the page:** while a round runs the game sets `<body data-game="running">` (cleared on pause, finish and `destroy()`). `src/input` only consumes its keys then, so the rest of the app keeps normal keyboard behaviour.
+**Keyboard and the page:** during the 3-2-1 intro and while a round runs, the game sets `<body data-game="running">` (cleared on pause, finish and `destroy()`; it turns on `INTRO_SEC` before the round clock starts). `src/input` only consumes its keys then, so the rest of the app keeps normal keyboard behaviour.
 
 **Failure handling:** if WebGL can't start, the 2D view takes over, with the same move icons (tested in a Chrome with the GPU disabled). If drawing throws mid-round, the game logs it and keeps running without drawing, so events, the HUD and the results still work.
+
+## Camera session: the next steps
+
+Everything here needs the webcam, the demo laptop and a body; the game prints what you need. Branch `p5-game` (main with the game-feel pass, plus this report), one PR at the end.
+
+**Set-up.** Patrick's Mac is the demo laptop, and the demo runs on plain `npm run dev` (no coach key, so the coach card is the rule-based one).
+- **Folder:** use a clone outside iCloud, e.g. `~/CodeJam`; a branch switch in the iCloud Desktop folder makes "name 2" copies. It needs `p5-game` until that is merged. Its `.env.local` holds the Supabase URL and anon key from D's message (gitignored, never committed), so rounds save and the leaderboard works.
+- **Start it:** `npm run dev -- --strictPort`. If port 5173 is taken, Vite would move to 5174 without asking: a different origin, so no ghosts and no saved settings. With `--strictPort` it stops with an error instead.
+- **URL:** always exactly `http://localhost:5173`, never `127.0.0.1`. For the session, open `/?demo=1&debug=timing` with the console open and pick Camera on the select screen. **D** shows A's pose overlay with its FPS.
+
+Do the steps in this order: the frame rate changes the webcam lag, and the ghosts belong to one level.
+
+1. **Frame rate.** Play one round with the camera.
+   - The console prints `[game] frame rate this round: average … fps, slowest 5% of frames … ms` and any quality step. The overlay shows the pose FPS.
+   - If pose drops under about 25 fps while the game runs, fix a lower level on this laptop: in the console on `http://localhost:5173`, `localStorage.setItem('game.gfx', 'medium')`, or `'low'`.
+   - Otherwise leave it on automatic: it steps at 3 s if needed, and later rounds start at the level found.
+2. **Latency leads.** Play 2–3 rounds, moving when each object reaches the runner.
+   - After every camera round the console prints `[game] camera session, paste both lines:`, over all camera rounds of this page load (from the second round, with a combined table). After 2–3 rounds, paste the first after `VISUAL_LEAD_SEC.pose = ` in `src/game/tuning.ts`, the second after `SESSION_LAG_SEC = ` in `src/game/latency.test.ts`. Then `npm run check`.
+   - If `latency.test.ts` still fails, a lead is below what its measured lag needs (the suggestion is capped at `TIMING_MAX_LEAD_SEC`): look at that move's `inWindowShare` before raising anything.
+3. **Holds and fair attempts.** After each round the console lists every hit and missed orb (`[game] N hits and missed orbs this round, and why:`, also in `window.__gameMisses`). Read it row by row:
+
+   | `cause` | What happened | Who fixes it, and how |
+   | --- | --- | --- |
+   | `late`, by X s | first seen after the window closed (t + 0.15 s) | Patrick: the move's lead, from the combined table, not from one row. A single late row with the rest in the window is the player. |
+   | `early`, by X s | seen only before the window opened (t − 0.35 s) | Patrick: the lead is too high for this move, or the player anticipated. Same rule: the combined table decides. |
+   | `not seen` | never seen within 1 s of its time | The player really moved: a request to A under "Requests for A" below. A missed orb where nobody reached is just a miss. |
+   | `dropped`, gone at +X s for Y s | held, off for longer than the 0.3 s grace, back before the end | A, if the player stayed down or up (flicker). The player, if they really stood up. |
+   | `let go`, X s before the hold ended | the hold ended early and did not come back | The player, if they stood up. A, if they were still down (the state ended early). |
+   | `in window` | the probe saw the move in time, yet it was a hit | Patrick: the probe and the judge disagree. Note the row; it is a bug in `judge.ts` or `timing.ts`. |
+
+   The `detail` column gives the times; `at` is the object's judging time in the level, the same in every round of the demo level, so a row that repeats across rounds is the level or the detector, not the player.
+
+   What recorded clips already say, from A's clips replayed through his detector with ±1 % landmark noise and 30 % dropped frames:
+   - Held squats and both-arms-up never flickered.
+   - At the end of a hold the state stays on after the player starts to rise: 0.3–0.7 s for squats, 0.1–0.5 s for both arms. Held objects now end visually at the judging end, so on top of that, letting go up to 0.3 s early still clears.
+   - Greg's clips (a second body): under heavy landmark noise, an overhead press could start a false jump that ended the hold. A fixed it on `main` (`3e696e8`, a higher jump line with both arms up).
+   - The tight spot is the start of a squat: about 0.39 s of lag against a 0.3 s lead leaves about 0.06 s of slack. Greg's slowest recorded squat would be about 0.02 s late, so watch for `late` squats. The combined table will probably suggest about 0.35 s.
+4. **Three body rounds, normal and low impact.**
+   - Note any combo that feels unfair or tiring. The hit report gives its time.
+   - Low impact already gives the hurdles' share to sidesteps and reaches, and no level has holds in its cool-down (`src/workout/README.md`).
+   - `npm run check` keeps `demo.test.ts` honest after any change.
+5. **Ghost rehearsals, last**, on the demo set-up, after the last change to the level generator.
+   - A ghost belongs to one exact level, and the generator changes on this branch already made a new low-impact demo level. Changing the latency leads or the look keeps ghosts valid.
+   - On exactly `http://localhost:5173/?demo=1` with the camera, play the demo level once in normal and once in low impact. Extra flags like `&debug=timing` don't matter; the origin does.
+   - Each round start prints `[game] ghost: racing …` or `none yet …`.
+
+**Send me** the console output (the tables are copyable) if you'd like me to update the numbers and tests.
 
 ## How to use it (for D)
 
@@ -137,6 +184,8 @@ Reacting on sight then lands inside the window for every kind, and players who a
 
 Judging, events and the contract are unchanged; only where objects are drawn moves. Keyboard input has no lag and gets no lead. The HUD countdown (`cue.inSec`) runs to the visual arrival too, so following the ring and following the picture agree.
 
+**Held beams and crates end where the judge ends them.** The front is drawn early by its lead, but the back end passes the runner at `t + holdSec`, when the hold is decided. Letting go as the object ends is then always in time, and the clear burst comes as the end passes, not 0.3 s later. Drawn early too, a release on sight had only the detector's release lag as slack. Recorded clips put that as low as 0.10 s for both arms (Greg's presses) and 0.32 s for squats; the 0.3 s grace now comes on top.
+
 **Switching input mid-round (K).** The leads change by up to 0.3 s at a switch. They follow at 0.5 s of lead per second (`createLeadBlend` in `timeline.ts`, tested), so objects on screen slow down or speed up for at most 0.6 s instead of jumping up to 6 m.
 
 **Tuning with the camera (`?debug=timing`, `timing.ts`).** Play a round with pose input and the browser console open. At the end the game prints one row per move:
@@ -145,7 +194,7 @@ Judging, events and the contract are unchanged; only where objects are drawn mov
 - the current lead, and the lead that would put the median in the middle of the window;
 - `lagSec` (median + lead): the whole webcam lag, if the player moved as the object reached the runner.
 
-Objects the player did not have to move for are skipped (already standing in the free lane). From the second round on (no page reload in between, "play again" is fine), a second table combines every round of this page load with the same input. Rounds where K was pressed are left out. The demo level has only 2 to 5 of each move, so copy the combined table's `suggestedLeadSec` into `VISUAL_LEAD_SEC.pose` after two or three rounds. The same reports are in `window.__gameTiming` (last round) and `window.__gameTimingAll` (combined). `latency.test.ts` checks the leads against the lags measured on A's clips. If you lower a lead below what those need, it fails: put the session's `lagSec` values in its `DETECTOR_LAG_SEC` and set its `CAMERA_SEC` to 0. Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
+Objects the player did not have to move for are skipped (already standing in the free lane). From the second round on (no page reload in between, "play again" is fine), a second table combines every round of this page load with the same input. Rounds where K was pressed are left out. The demo level has only 2 to 5 of each move, so copy the combined table's `suggestedLeadSec` into `VISUAL_LEAD_SEC.pose` after two or three rounds. The same reports are in `window.__gameTiming` (last round) and `window.__gameTimingAll` (combined). `latency.test.ts` checks the leads against the lags measured on A's clips, or against `SESSION_LAG_SEC` for moves measured in a camera session. The console prints that line next to the leads line, so step 2 is one paste into each file. Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
 
 ## Placement (`timeline.ts`, pure, tested)
 
@@ -160,6 +209,19 @@ All numbers are in `tuning.ts`.
 ## Status
 
 Newest first.
+
+### `p5-game` (Sat evening): camera-session report on top of the game-feel pass
+`main` already had the game-feel pass (`p4-game-feel`, #38). This branch adds what `p3-game` had that main lacked, without its duplicate polish:
+- **`?debug=timing` hit report:** after each round, every hit and missed orb with a cause (`late` / `early` by X s, `not seen`, `dropped`, `let go`) and the leads line to paste. Main's frame-rate line stays as the frame report.
+- **Round start:** a ghost status line (racing, or none yet).
+- **Automatic graphics:** they start each round at the level an earlier round reached.
+- **Quality ladder:** the first step comes at 3 s, before the first object (2 s window).
+- **Fixes:** held objects end visually when the judge ends them, and the view gets this frame's input before the rules (the orb used to fly to the previous frame's hand).
+- **Workout:** gentler low impact, and no holds in the cool-down (`src/workout/README.md`).
+- **Camera-session step 2 in one paste:** the console prints the leads line for `tuning.ts` and the measured lags for `SESSION_LAG_SEC` in `latency.test.ts` together; step 3 has a checklist (cause, meaning, who fixes it) and a "Requests for A" template.
+- **Edge cases pinned as tests (`core.test.ts`):** a hold across a pause, tracking loss or a K switch (the new input has the 0.3 s grace), a paused core never finishes (END ROUND saves nothing), and a round that ends mid-hold gives no verdict.
+- **Checked in Chrome on this branch:** a scripted round with one of each failure gets the right cause on every row; rounds unchanged (16/7/0, idle 13 hits, 2D); ghost line; graphics carry-over over three rounds; the held beam ends at the runner as it is cleared.
+- **Checked after merging #45 and #46 (Sat ~5 PM, Chrome 157 on the demo Mac, M4 Pro, built-in display at 1512×945):** a scripted perfect keyboard round of the demo level on `?demo=1&store=local&music=off` scored 4,750, 100 %, best streak 23, 0 hits; average 120 fps, slowest 5 % of frames 10 ms, graphics quality 0 throughout; the round saved; no console errors. At 5, 10 and 20 COMBO the banner (bottom centre) and the VS GHOST chip (bottom right) stay clear of the HUD cue. Not checked: the camera, an external screen.
 
 ### Game feel pass (`p4-game-feel`, Sat afternoon)
 Judging, events and `src/contracts` are unchanged: a scripted perfect run of the demo level still gives 16 cleared, 7 collected, 0 hits, with the camera leads or without.
@@ -206,6 +268,12 @@ Rechecked after Greg's PRs #13 and #20 (the select screen's camera/keyboard swit
 - Frame rate on a real GPU, especially next to MediaPipe. If it stutters, set `BLOOM_ENABLED = false` first.
 - Real webcam input. Tested only with the keyboard and a scripted input.
 - Long-term WebGL memory over many rounds.
+
+### Requests for A (Abdo), from the camera session
+None yet. Template for a `not seen`, `dropped` or `let go` row where the player really held the move:
+- Move, round and time: e.g. "squat, demo level, `at` 21.40 s, rounds 1 and 3".
+- The `cause` and `detail` columns, pasted.
+- What the body did (e.g. "deep squat, held until the beam passed") and the pose FPS on the overlay.
 
 ### Requests for D (Greg), not done because they are outside src/game
 1. A "Demo" entry point. `?demo=1` already works without any change (see `src/workout/README.md`).

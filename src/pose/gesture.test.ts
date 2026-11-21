@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import { type Point } from './detect';
 import { isCrossed } from './gesture';
 import { jitter, replay, type ReplayOptions, scaleAbout } from './fixtures';
-import { GESTURE_HOLD_MS } from './tuning';
+import { GESTURE_GRACE_MS, GESTURE_HOLD_MS } from './tuning';
 
 type Arms = 'x' | 'xOverhead' | 'xAtHips' | 'touching';
 
@@ -93,12 +93,15 @@ describe('pause X on the real standing clip', () => {
   });
 
   test('a short gap (one 0.1 s wobble) neither restarts the hold nor re-arms it', () => {
+    // Wobble before the pause (would restart the hold) and after it (would re-arm a second one).
     const r = run([
       [1000, 1600, 'x'],
-      [1700, 4000, 'x'],
+      [1700, 2400, 'x'],
+      [2500, 4500, 'x'],
     ]);
     expect(times(r)).toHaveLength(1);
-    expect(times(r)[0]).toBeLessThan(1000 + GESTURE_HOLD_MS + 200);
+    // Fired about 1 s after the first crossing, not 1 s after the wobble at 1.7 s.
+    expect(times(r)[0]).toBeLessThan(1700 + GESTURE_HOLD_MS - GESTURE_GRACE_MS);
   });
 
   test('not an X: crossed overhead, crossed at the hips, or hands just touching', () => {

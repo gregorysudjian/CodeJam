@@ -43,6 +43,12 @@ export interface FrameInfo {
 }
 
 export interface GameView {
+  /**
+   * This frame's polled input, given before the rules run: engage and verdict fire during the
+   * rules, so the hand an orb flies to (and anything else that reads the player's move) uses
+   * the move just made, not the previous frame's.
+   */
+  setInput(state: InputState): void;
   frame(f: FrameInfo): void;
   engage(item: Item): void;
   /** `grade`: the timing grade of a clear or collect (feedback.ts), null for a hit or miss. */
@@ -187,16 +193,25 @@ export function create3DView(
   const seenHolds = new WeakSet<Item>(); // held objects whose move has been seen
   let nextSpawn = 0;
   let clock = 0;
-  let lastState: InputState | null = null;
+  let lastState: InputState | null = null; // this frame's input (setInput)
   // After the finish the world coasts to a stop instead of freezing.
   let coast = 0;
   let coastSpeed = track.speedAt(durationSec);
   let finishedSeen = false;
 
-  const lengthOf = (item: Item): number => {
+  /**
+   * Drawn length of a held beam or crate. Its front is drawn `lead` early (latency compensation),
+   * but its back end passes the runner at t + holdSec, when the judge decides the hold: letting go
+   * as the object ends is always in time, and the clear comes as the end passes. Drawn `lead`
+   * early as well, a release on sight had only the detector's release lag as slack, which
+   * recorded clips put as low as 0.10 s for both arms; now it has the 0.3 s grace on top.
+   */
+  const lengthOf = (item: Item, lead: number): number => {
     const hold = item.spawn.holdSec ?? 0;
-    return hold > 0 ? track.distanceAt(item.wave.t + hold) - track.distanceAt(item.wave.t) : 0;
+    const t = item.wave.t;
+    return hold > 0 ? track.distanceAt(t + hold + lead) - track.distanceAt(t) : 0;
   };
+  const lengths = new Map<Item, number>(); // fixed when the object comes into view
   const hand = new THREE.Vector3();
   /** The hand that took the orb: treadmill by lane, floor by the raised arm. */
   const handFor = (item: Item): (() => THREE.Vector3) => {
@@ -237,7 +252,9 @@ export function create3DView(
         if (track.distanceAt(item.wave.t) - spawnLine > T.VIEW_DISTANCE) break;
         nextSpawn++;
         const view = obstacles.acquire(item.spawn.kind);
-        view.show(item.spawn, lengthOf(item), variantFor(item.wave.t, item.spawn.kind));
+        const length = lengthOf(item, lead[item.spawn.requires]);
+        lengths.set(item, length);
+        view.show(item.spawn, length, variantFor(item.wave.t, item.spawn.kind));
         if (item.judge.verdict !== 'pending') view.setVerdict(item.judge.verdict);
         views.set(item, view);
       }
@@ -245,9 +262,10 @@ export function create3DView(
         const z = ahead(lead[item.spawn.requires]) - track.distanceAt(item.wave.t);
         view.root.position.z = z;
         view.tick(visDt, clock);
-        if (z - lengthOf(item) > T.DESPAWN_BEHIND && item.judge.verdict !== 'pending') {
+        if (z - (lengths.get(item) ?? 0) > T.DESPAWN_BEHIND && item.judge.verdict !== 'pending') {
           obstacles.release(view);
           views.delete(item);
+          lengths.delete(item);
         }
       }
       // Hold feedback for the held beam or crate that is due (see holdFeedback).
@@ -438,6 +456,9 @@ export function create3DView(
         stage.precompile();
       }
       stage.render();
+    },
+    setInput(state) {
+      lastState = state;
     },
     engage(item) {
       views.get(item)?.engage(item.spawn.kind === 'orb' ? handFor(item) : undefined);

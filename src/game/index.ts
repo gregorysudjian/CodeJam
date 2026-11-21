@@ -1,6 +1,6 @@
 import type { Game, InputSource, Level } from '@/contracts';
 import { createGameAudio } from './audio';
-import { createCore, feverTier, movesSeen } from './core';
+import { createCore, feverTier, movesSeen, type Item } from './core';
 import { comboMilestone, gradeFor } from './feedback';
 import {
   createGhostRecorder,
@@ -14,7 +14,15 @@ import { createGhostRace, raceLead } from './ghostRace';
 import { browserStorage, createGhostStore } from './ghostStore';
 import { createFrameStats, createQualityGovernor, type Quality } from './quality';
 import { createLeadBlend } from './timeline';
-import { createTimingProbe, mergeTiming, summarizeTiming, type TimingSamples } from './timing';
+import {
+  createTimingProbe,
+  describeSpawn,
+  lagsToPaste,
+  leadsToPaste,
+  mergeTiming,
+  summarizeTiming,
+  type TimingSamples,
+} from './timing';
 import * as T from './tuning';
 import { create2DView } from './view2d';
 import { create3DView, type GameView, type Phase } from './view3d';
@@ -34,6 +42,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   // What objects are drawn (and cued) with: `leads` followed at a limited rate (createLeadBlend).
   const shownLeads = createLeadBlend(leads());
   const result: GhostResult = { cleared: 0, collected: 0, hit: 0 }; // this run, for the ghost
+  const misses: [Item, 'hit' | 'missed'][] = []; // explained at the end with ?debug=timing
   const core = createCore(
     level,
     {
@@ -49,6 +58,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         else if (v === 'collected') audio.collected();
         else if (v === 'hit') audio.hit();
         if (v === 'cleared' || v === 'collected' || v === 'hit') result[v]++;
+        if (v === 'hit' || v === 'missed') misses.push([item, v]);
         // Timing grade (feedback.ts): judged against the input in use, since the camera lags.
         const grade = offset === null ? null : gradeFor(offset, input.kind);
         if (grade === 'perfect') audio.perfect();
@@ -80,6 +90,15 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   const ghostPose = neutralPose(); // reused every frame
   const race = ghost ? createGhostRace(level, ghost) : null; // the ghost's live score
   let currentState = input.getState();
+  const told = (r: GhostResult) => `${r.cleared + r.collected} cleared, ${r.hit} hits`;
+  // One line per round, so a rehearsal can be checked: is there a ghost for this level and input?
+  console.info(
+    !ghostStore
+      ? '[game] ghost: off'
+      : ghost
+        ? `[game] ghost: racing the best ${startKind} run of this level (${told(ghost.result)})`
+        : `[game] ghost: none yet for this level with ${startKind} input; the first finished round saves one`,
+  );
 
   // ?debug=timing: record move timing for tuning VISUAL_LEAD_SEC; printed when the round ends.
   const probe =
@@ -110,7 +129,6 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       const saved = !mixedInput && ghostStore.saveIfBetter(run);
       const outcome = finishOutcome(ghost?.result ?? null, result, saved);
       if (outcome) view?.showGhostOutcome(outcome);
-      const told = (r: GhostResult) => `${r.cleared + r.collected} cleared, ${r.hit} hits`;
       console.info(
         `[game] ghost: ${outcome ?? 'not saved'}. This run ${told(result)}` +
           (ghost ? `; ghost ${told(ghost.result)}` : '') +
@@ -120,7 +138,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     }
     if (probe) {
       const report = probe.report();
-      const w = window as unknown as { __gameTiming?: unknown; __gameTimingAll?: unknown };
+      const w = window as unknown as Record<string, unknown>;
       w.__gameTiming = report;
       console.info(
         `[game] move timing, input: ${mixedInput ? 'switched mid-round (do not use this table)' : input.kind} (negative = early; window -0.35..+0.15 s)`,
@@ -139,15 +157,47 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
           );
           console.table(all);
         }
+        if (startKind === 'pose') {
+          // Step 2 of the camera session in one paste (src/game/README.md).
+          console.info(
+            `[game] camera session, paste both lines:\n` +
+              `src/game/tuning.ts         VISUAL_LEAD_SEC.pose = ${leadsToPaste(all, T.VISUAL_LEAD_SEC.pose)}\n` +
+              `src/game/latency.test.ts   SESSION_LAG_SEC = ${lagsToPaste(all)}`,
+          );
+        }
       }
+      // Every hit and missed orb, and why: timing (early, late), detection (not seen), holds.
+      const why = misses.map(([item, v]) => {
+        const { cause, detail } = probe.explain(item);
+        return {
+          at: `${item.wave.t.toFixed(2)} s`,
+          object: describeSpawn(item.spawn),
+          verdict: v,
+          cause,
+          detail,
+        };
+      });
+      w.__gameMisses = why;
+      if (why.length > 0) {
+        console.info(`[game] ${why.length} hits and missed orbs this round, and why:`);
+        console.table(why);
+      } else console.info('[game] no hits and no missed orbs this round');
     }
   });
 
   const gfx = readGfxSetting();
   view = gfx === '2d' ? null : tryCreate3D(canvas, level, core.items, shownLeads.get);
   view ??= create2DView(canvas, level, core.items, shownLeads.get);
-  const startQuality: Quality = gfx === 'low' ? 2 : gfx === 'medium' ? 1 : 0;
+  // Automatic graphics start where an earlier round of this page load ended up, so only the first
+  // round measures and steps down mid-round; later ones (the judges') start at the right level.
+  const startQuality: Quality =
+    gfx === 'low' ? 2 : gfx === 'medium' ? 1 : gfx === 'auto' ? autoQuality : 0;
   if (startQuality > 0) view.setQuality(startQuality);
+  if (gfx === 'auto' && startQuality > 0) {
+    console.info(
+      `[game] graphics quality ${startQuality}, as an earlier round measured (reload to measure again)`,
+    );
+  }
   const quality = createQualityGovernor(startQuality, gfx === 'auto', window.devicePixelRatio || 1);
   const frameStats = createFrameStats();
   // Intro (intro.ts): start() counts 3, 2, 1 while the camera flies in, then starts the clock.
@@ -165,8 +215,9 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   let raf = 0;
   let prevState = input.getState();
   let lastTier = 0;
-  // <body data-game="running"> while the round runs: keyboard input (src/input) consumes its
-  // keys only then, so the rest of the app keeps normal keyboard behaviour.
+  // <body data-game="running"> during the 3-2-1 intro and while the round runs: keyboard input
+  // (src/input) consumes its keys only then, so the rest of the app keeps normal keyboard behaviour.
+  // It turns on INTRO_SEC before the round clock starts.
   let marked = false;
   const markRunning = (on: boolean): void => {
     if (on === marked) return;
@@ -182,6 +233,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     last = now;
     const state = input.getState(); // polled once per frame
     currentState = state;
+    view!.setInput(state); // before the rules: engage and verdict use this frame's move
     if (introT >= 0 && introT < T.INTRO_SEC + T.INTRO_GO_SEC) {
       const before = introT;
       introT += Math.min(realDt, T.MAX_DT_SEC);
@@ -205,6 +257,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     const stepped = quality.sample(realDt, running);
     if (stepped !== null) {
       view!.setQuality(stepped);
+      if (gfx === 'auto') autoQuality = Math.max(autoQuality, stepped) as Quality;
       console.info(`[game] ${quality.lastFps.toFixed(0)} fps: graphics quality ${stepped}`);
     }
 
@@ -256,6 +309,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       console.error('[game] render failed, continuing without drawing', err);
       view!.dispose();
       view = {
+        setInput() {},
         frame() {},
         engage() {},
         verdict() {},
@@ -319,6 +373,7 @@ function tryCreate3D(
 }
 
 let ghostResetDone = false; // ?ghost=reset clears the stored ghosts once per page load
+let autoQuality: Quality = 0; // the level automatic graphics reached in this page load
 
 /** ?debug=timing: every round of this page load, per input (rounds that switched are left out). */
 const timingSession: Record<'pose' | 'keyboard', { samples: TimingSamples; rounds: number }> = {

@@ -1,23 +1,31 @@
 # Progress (Greg: D + C)
 
-## Status (Saturday about 5:00 PM)
+## Status (Saturday about 6:00 PM)
 
-**On `main` and working end to end:** Patrick's 3D game with the polish (runner rig, city/tunnel/bridge/finale zones, music, PERFECT/GOOD/LATE, intro) and the colour/readability pass; Abdo's body control with calibration at about 1.5 m (head to knees), the X pause gesture and camera-by-default when a camera exists; Greg's wiring (camera switch, hands-free play again, X pause/resume, End round, pause on tab switch, offline fixes) and every QA finding fixed (docs/QA.md). Demo on Patrick's Mac: `npm run dev`, `http://localhost:5173/?demo=1` (DEMO.md). Coach: rule-based (no Claude key).
+**On `main`:** everything from the 4:30 PM status, plus the leaderboard per round length (#45), the p6-look pass (#46: ghost restyle, banners bottom-centre and race chip bottom-right, sound mix and limiter), the p5-game PR (#47: camera-session paste lines and hit table, fairer workouts, hold edge cases; demo level pinned and unchanged), and this batch (#48: QA fixes Q14, Q17, A3, abdo-1's station card and self-review, the helper's docs, shots, sweep script and pitch-claim tests). Demo on Patrick's Mac: `npm run dev`, `http://localhost:5173/?demo=1` (DEMO.md). Coach: rule-based.
 
 **Who is doing what**
-- Patrick's Mac (`p5-game`, 11 commits not yet in a PR): his camera session, then latency leads, hit causes, ghost rehearsals, one PR. His leaderboard fairness numbers are in (`src/workout/README.md`) and the fix is merged.
-- Patrick's second laptop (`p6-look`): ghost readability, hit effects, banners vs the top-band cue; the three items deferred until `p5-game` merges.
-- Abdo: real X clips and near-miss checks; on call for detection cases from Patrick's session.
-- Fourth helper: re-sweep of the new main, Devpost screenshots, operator card (`docs/OPERATOR.md`), pitch Q&A.
-- Greg: his 9 teammate clips at 1.5 m (`?dev=pose`), pitch rehearsal.
+- Patrick's Mac (`p5-game`): the camera session (paste lines, hit table, X, grades, music, FPS), a follow-up PR, then ghost rehearsals at `localhost:5173/?demo=1` in normal Chrome. Meanwhile: judge edge cases, cold-start timing.
+- Patrick's laptop 2 (`p6-look`): look and sound. The deferred items and the 2D fixes, now that p5-game is merged; readability from the mark, slow laptops, sound states.
+- Patrick's laptop 3 (Codex, `p7-robust`): game robustness: 30-round soak, projector events, keyboard edge cases (`src/input`), level invariants.
+- Abdo (`abdo-1`): the real-camera check in the app, X near-miss clips, on call for the Mac's session; threshold decisions.
+- Abdo's laptop 2 (Codex, `a2-pose-robust`): pose robustness: strangers behind the player, camera and model failures, synthetic bodies and FPS, false pauses, the privacy proof.
+- QA helper (`q-*`): re-sweeps after each merge (`docs/qa/sweep/`), doc consistency, pitch Q&A.
+- Greg: his 9 clips at 1.5 m for Abdo (including a second person's X), pitch rehearsal.
 
 **Open problems, ranked by demo risk**
-1. The camera session on the demo Mac (calibration at 1.5 m, X, grades, music volume, FPS) hasn't happened yet. **Patrick**
-2. Vercel's daily deploy cap: the live site can lag `main`; the demo runs locally, so it doesn't block the demo. **Greg** (check Sunday morning)
+1. The camera session on the demo Mac hasn't happened yet. **Patrick**
+2. The X has only been tested on Abdo's body; Greg's clips and the Mac session will tell. **Abdo, Greg**
+3. Vercel's daily cap: the live site can lag `main`; the demo runs locally. **Greg** (check Sunday morning)
 
-**Sunday morning (Greg's Claude):** delete test players from the database, check the leaderboard, make sure the live site has the final `main`. After about 10 AM: crash or unplayable fixes only.
+**Sunday morning (Greg's Claude):** delete test players from the database (ask Greg before "Test-Guest" and "Guest-4300"), check the leaderboard, make sure the live site has the final `main`. After about 10 AM: crash or unplayable fixes only.
 
 ## Log
+
+### QA batch (#48): Q14, Q17, A3
+- **Q17:** the kiosk never saves a "Leaderboard" player in this browser. With `?store=local` it reads the board without signing in; with Supabase, if the kiosk's sign-in fails, its local fallback is in memory.
+- **Q14:** "Cross your arms to resume" shows only to camera players, in white display type (readable from the mark). **A3:** "Camera starting…" in the same size.
+- Also merged: abdo-1 (station card, self-review), q-qa-3 (with q-board), q-judge, q-shots-2, q-tests-2, q-sweep, q-operator-2.
 
 ### Leaderboard per round length (batch #45)
 - Patrick measured a 180 s round at about 6× a 45 s one, so a judge could never top a board with a long round on it. The board is now per workout, mode **and** round length: contract (`LeaderboardEntry.durationSec`, `getLeaderboard(workout, mode, durationSec, limit?)`), migration `0003_leaderboard_duration.sql` (applied; still a plain view, `authenticated` now SELECT only), both stores, a 45 S / 90 S / 180 S filter on the leaderboard screen. Landing top 3 and the kiosk show the 45 s board. Rank and personal best compare same-length rounds. The local store keeps the player's best only (QA Q16).

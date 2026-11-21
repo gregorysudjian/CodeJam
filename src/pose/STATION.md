@@ -1,60 +1,75 @@
-# Demo station setup (pose) — owner A
+# Demo station (pose) — owner A
 
-For the demo laptop and anyone running the station. Chrome only.
+## Operator card (read this, 1 minute)
 
-## Before the demo (5 minutes)
+**Set up once:** Chrome, laptop plugged in, on a level table. Tape a floor mark **1.5 m** from the
+screen. The camera must see the player from **head to knees** with a little room above the head.
 
-1. **Laptop** on a level table (a tilted camera of 6° or more can count a squat when someone walks
-   off to the side), screen tilted so the camera sees the floor in front of it. Plugged in (battery
-   saver lowers FPS).
-2. **Distance:** floor mode about **1.5 m** back, head and knees in view, with room above the head
-   (tape a floor mark). Closer than ~1.2 m, calibration says "step back" (no room to squat or jump).
-   Treadmill mode **1–1.5 m**, head and shoulders in view.
-3. **Light:** light on the player's face and body, not behind them (no window behind the player).
-   A dark room drops the webcam to ~15–25 FPS; a desk lamp pointed at the player helps most.
-4. **Background:** plain, no people walking behind if possible. Keep spectators beside the camera,
-   not behind the player.
-5. **Clothes:** anything works; very baggy or dark clothes can hide the hips. Contrast with the
-   background helps.
-6. **Check:** open `/?dev=pose` (or press **D** in the app): FPS ≥ 25 and `GPU` on the overlay's top
-   line. Calibrate, do one of each move, watch the move tally.
+**Light:** the player **faces the light** (a lamp or window behind the laptop). **Nothing bright
+behind the player:** no window, no lamp, no screen. Plain background; spectators stand beside the
+laptop, never behind the player.
 
-## During the demo: keys
+**Calibration messages** (the player stands on the mark, arms down):
 
-| Key | What it does |
+| Message says | Do this |
 | --- | --- |
-| **R** | Recalibrate (stand on the mark, hold still ~1.5 s). First fix for anything odd |
-| **D** | Pose debug overlay: live values, thresholds, sliders, lines on the video |
-| **K** | Switch to keyboard input (the fallback if the camera misbehaves) |
-| **Esc** | Pause |
-| **X** (gesture) | Player crosses the forearms in front of the chest for 1 s: pause; again: resume (once Greg wires `onGesture`) |
+| "Stand about 1.5 m from the screen…" | Nobody seen yet: step onto the mark, face the camera, check the light |
+| "Come closer…" | Step forward to the mark |
+| "Step back a little…" | Step back; tilt the screen so the head has room and the knees show |
+| "Stand tall… hold still…" | Stand still with arms down for ~1.5 s; the bar fills |
+| "Calibrated. Get ready!" | Go |
 
-## Symptoms → fix
+**Keys:**
 
-| Symptom | First try | Then (slider in the D overlay, or `tuning.ts`) |
-| --- | --- | --- |
-| Calibration stuck on "step back" | Step back to ~1.5 m; tilt the screen so there is room above the head and the knees show | `CALIBRATION_SQUAT_ROOM_T` / `CALIBRATION_JUMP_ROOM_T` lower (risk: tracking drops in deep squats or high jumps) |
-| Calibration stuck on "come closer" | Step forward | `CALIBRATION_MIN_T_FRAME` lower (0.15 → 0.12) |
-| Sidesteps not counted | Bigger step; press R | `LANE_ON_W` lower (0.55 → 0.45) |
-| Lane changes by itself | Press R on the mark | `LANE_ON_W` higher, `LANE_OFF_W` higher |
-| Jumps missed | Jump higher; press R | `JUMP_ON_T` lower (0.15 → 0.1), `JUMP_MIN_UP_SPEED_T` lower |
-| Jumps late after a crouch | — | `JUMP_AFTER_SQUAT_ON_T` lower (0.45 → 0.35, not below 0.3) |
-| Squats missed | Squat deeper | `SQUAT_ON_T` lower (0.3 → 0.25) |
-| Squat counted when crouching to jump | — | `SQUAT_JUMP_GRACE_MS` higher (350 → 450) |
-| Squats counted late in the tally | Normal: a quick squat counts once you are back up | `SQUAT_HOLD_MS` lower (800 → 500) |
-| Arms up missed | Arms straight up | `ARM_UP_ABOVE_NOSE_T` lower (0.3 → 0.25) |
-| Arms up when resting hands on head | Hands down between moves | `ARM_UP_ABOVE_NOSE_T` higher (0.35), **and** the game's arm lead +0.05 s (`VISUAL_LEAD_SEC.pose` in src/game) |
-| Presses counted only once | Lower arms to the chin between reps | `ARM_DOWN_ABOVE_NOSE_T` higher (0.05 → 0.15) |
-| Game pauses ("tracking lost") | Step back into view, face the camera | Light; hips visible |
-| Treadmill: arm moves too easy / too hard after a while | Runner drifted on the belt: press R | — |
-| Everything jittery | Light | `SMOOTHING_ALPHA` lower (0.5 → 0.35; more lag) |
-| Low FPS (< 20) | Overlay line 2: camera fps low → add light; camera ~30 → close tabs, plug in | Keyboard (K) as fallback |
-| "The camera needs https or localhost" | Use the Vercel https link or `localhost`, not a LAN IP | — |
+| Key | When |
+| --- | --- |
+| **R** (during a round) | Moves feel off, a lane changes by itself, or the player moved off the mark. Player stands on the mark, still, ~1.5 s |
+| **Esc** or the **X** (forearms crossed at the chest, held 1 s) | Pause. X again resumes; END ROUND is in the pause menu |
+| **K** | **Give up on the camera:** no camera error, calibration still stuck after ~30 s, or moves still wrong after one R. The game goes on with the arrow keys/space |
+| **D** | Debug overlay (FPS, live values). Not for players |
 
-"Copy changed values" in the overlay copies the slider changes as JSON; paste them into
-`DETECTION_DEFAULTS` in `src/pose/tuning.ts` to keep them.
+**Game paused, "tracking lost":** the player stepped out of view or the light is too dark. Step back
+onto the mark, face the camera.
 
-## Privacy line for judges
+**Tips for players:** step clearly to the side, jump for real, squat deep, reach **high** (hand well
+above the head), and lower the arms to the chin between presses.
 
-Pose tracking runs on the laptop. No video or landmarks are sent anywhere; the model and its
-runtime are served from the app itself (`public/`), so it also works offline.
+**Privacy line for judges:** pose tracking runs on the laptop. No video or landmarks are sent
+anywhere; the model is served from the app itself, so it also works offline.
+
+---
+
+## Before the demo (A or Patrick, 5 minutes)
+
+1. Open `/?dev=pose` (close it before playing the app: on Windows only one tab can hold the camera).
+   Overlay top line: FPS ≥ 25 and `GPU`. Line 2 shows the camera's own fps: if both are low, add
+   light; if the camera is ~30 but FPS is low, close tabs and plug in, or use `?gfx=low` in the app.
+2. `⟳ calibrate floor` at the mark, then one of each move; the move tally should count each once.
+3. Cross the forearms at the chest for 1 s: the tally's `pause X` goes up by 1.
+4. A laptop tilted 6° or more can count a squat when someone walks off to the side: keep it level.
+5. Very baggy or dark clothes can hide the hips; contrast with the background helps.
+6. Treadmill mode: 1–1.5 m, head and shoulders in view. If the runner drifts on the belt, press R.
+
+## Symptoms → tuning (A only, and never after Sunday 10 AM)
+
+Try the operator fix first (R, light, distance). Sliders are in the D overlay; "Copy changed values"
+copies them as JSON for `DETECTION_DEFAULTS` in `src/pose/tuning.ts`. Any change must keep
+`variants.test.ts` › "when states turn on" green (Patrick's game timing).
+
+| Symptom | Tuning (risk) |
+| --- | --- |
+| Stuck on "step back" at 1.5 m | `CALIBRATION_SQUAT_ROOM_T` / `CALIBRATION_JUMP_ROOM_T` lower (tracking may drop in deep squats or high jumps) |
+| Stuck on "come closer" | `CALIBRATION_MIN_T_FRAME` lower (0.15 → 0.12) |
+| Sidesteps missed | `LANE_ON_W` lower (0.55 → 0.45) |
+| Lane changes by itself | `LANE_ON_W`, `LANE_OFF_W` higher |
+| Jumps missed | `JUMP_ON_T` lower (0.15 → 0.1), `JUMP_MIN_UP_SPEED_T` lower |
+| Jumps late after a crouch | `JUMP_AFTER_SQUAT_ON_T` lower (0.45 → 0.35, not below 0.3) |
+| Squats missed | `SQUAT_ON_T` lower (0.3 → 0.25) |
+| Squat counted when crouching to jump | `SQUAT_JUMP_GRACE_MS` higher (350 → 450) |
+| Squats counted late in the tally | Normal (a quick squat counts once up); `SQUAT_HOLD_MS` lower (800 → 500) |
+| Arms up missed | `ARM_UP_ABOVE_NOSE_T` lower (0.3 → 0.25) |
+| Arms up when resting hands on head | `ARM_UP_ABOVE_NOSE_T` higher (0.35) **and** the game's arm lead +0.05 s (`VISUAL_LEAD_SEC.pose` in `src/game/tuning.ts`) |
+| Presses counted only once | `ARM_DOWN_ABOVE_NOSE_T` higher (0.05 → 0.15) |
+| X does not pause | Record `● pauseX` on `?dev=pose`; check `isCrossed` on it before touching `GESTURE_*` |
+| Everything jittery | `SMOOTHING_ALPHA` lower (0.5 → 0.35; more lag) |
+| "The camera needs https or localhost" | Use the Vercel https link or `localhost`, not a LAN IP |

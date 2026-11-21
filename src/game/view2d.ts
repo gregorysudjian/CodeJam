@@ -235,9 +235,12 @@ export function create2DView(
         } else if (spawn.kind === 'hurdle') {
           box(-half, half, T.HURDLE_HEIGHT - 0.12, T.HURDLE_HEIGHT, z);
         } else if (spawn.kind === 'beam') {
+          // As in 3D: the back end of a held beam passes the runner at t + holdSec.
+          const hold = spawn.holdSec ?? 0;
           const len =
-            (spawn.holdSec ?? 0) > 0
-              ? track.distanceAt(item.wave.t + spawn.holdSec!) - track.distanceAt(item.wave.t)
+            hold > 0
+              ? track.distanceAt(item.wave.t + hold + lead[spawn.requires]) -
+                track.distanceAt(item.wave.t)
               : 0;
           for (let zz = z + len; zz >= z; zz -= Math.max(2.5, len || 1))
             box(-half, half, T.BEAM_HEIGHT, T.BEAM_HEIGHT + 0.4, zz);
@@ -263,6 +266,7 @@ export function create2DView(
         }
       }
     },
+    setInput() {},
     engage() {},
     verdict(item, v, grade) {
       verdicts.set(item, v);

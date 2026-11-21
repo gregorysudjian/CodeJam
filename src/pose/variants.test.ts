@@ -269,7 +269,7 @@ describe('faster squats (the real squat clip sped up)', () => {
 
 /*
  * State timing on the clips. Patrick tuned the game's pose latency leads (VISUAL_LEAD_SEC in
- * src/game on p2-game) on this detector's lag. If a threshold change moves these onsets, update
+ * src/game/tuning.ts) on this detector's lag. If a threshold change moves these onsets, update
  * those leads (or the change) — the game would otherwise judge pose moves late.
  */
 describe('when states turn on (the game pose latency leads depend on it)', () => {
@@ -342,7 +342,7 @@ test('an overhead press with ±1% landmark noise is never a jump (Patrick, 20 se
 
 /*
  * A's third session (Sat ~3:20 PM, ~1.4 m, head to knees, feet at the bottom edge): the closer
- * play distance. Calibrated on its own standing clip. His deep squats take the hips to the bottom
+ * play distance. Calibrated on its own standing clip. The deep squats take the hips to the bottom
  * edge of the frame; tracking must hold. `pauseX` is a real X (two holds), the only clip with pauses.
  */
 describe('closer play (~1.4 m, head to knees): real clips', () => {

@@ -114,7 +114,8 @@ export function CalibrationScreen({
           ) : (
             <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_center,var(--na-bg-raised),var(--na-bg))]">
               <div className="scanline" aria-hidden="true" />
-              <p className="eyebrow absolute inset-x-0 top-[9%] text-center text-text-muted">
+              {/* Read while walking to the mark (QA A3). */}
+              <p className="absolute inset-x-0 top-[9%] text-center font-display-italic text-display-sm text-text">
                 Camera starting…
               </p>
             </div>
