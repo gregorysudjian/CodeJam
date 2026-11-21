@@ -6,7 +6,7 @@ Nothing blocking. Branches are pushed with the PR text in the first commit messa
 
 ## Status (Sat 15:35, `main` at 5a85969)
 
-Full keyboard flow re-run at 1366×768, 1920×1080 and 1280×720 with the new game (city/tunnel/bridge zones, beat, PERFECT/GOOD/LATE, 3-2-1 intro): landing → profile → select → tutorial → play → pause → results → dashboard → leaderboard → returning player. **No console errors, no horizontal scroll, every round finished and saved.** `npm run check`: 693 tests, none skipped.
+Full keyboard flow re-run at 1366×768, 1920×1080 and 1280×720 with the new game (city/tunnel/bridge zones, beat, PERFECT/GOOD/LATE, 3-2-1 intro): landing → profile → select → tutorial → play → pause → results → dashboard → leaderboard → returning player. **No console errors, no horizontal scroll, every round finished and saved.** `npm run check`: 695 tests, none skipped.
 
 | # | Severity | Problem | Owner | Status |
 | --- | --- | --- | --- | --- |
