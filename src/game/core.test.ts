@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GameEvent, InputState, Level, Spawn, Wave } from '@/contracts';
-import { createCore, feverTier, movesSeen, type Item } from './core';
+import { createCore, feverTier, holdFeedback, movesSeen, type Item } from './core';
 import type { Verdict } from './judge';
 import { CUE_LEAD_SEC, MAX_DT_SEC } from './tuning';
 
@@ -239,6 +239,39 @@ describe('listeners', () => {
   });
 });
 
+describe('cues with latency leads', () => {
+  it('count down to the visual arrival, t - lead, so the HUD ring hits zero on arrival', () => {
+    const leads = {
+      jump: 0.1,
+      sidestep: 0.25,
+      squat: 0.3,
+      armsUp: 0.3,
+      reachLeft: 0.3,
+      reachRight: 0.3,
+    };
+    const lv = level([w(4, hurdle), w(6, crate)], 8);
+    const core = createCore(lv, {}, leads);
+    const cues: { at: number; inSec: number }[] = [];
+    core.onEvent((e) => {
+      if (e.type === 'cue') cues.push({ at: core.elapsed(), inSec: e.inSec });
+    });
+    core.start();
+    for (let i = 0; i < 8 * 60; i++) core.step(1 / 60, idle, i);
+    expect(cues).toHaveLength(2);
+    expect(cues[0]!.at + cues[0]!.inSec).toBeCloseTo(4 - leads.jump, 2);
+    expect(cues[1]!.at + cues[1]!.inSec).toBeCloseTo(6 - leads.armsUp, 2);
+    expect(cues[1]!.inSec).toBeCloseTo(CUE_LEAD_SEC, 1);
+  });
+
+  it('without leads (keyboard) they count down to the judging time, as before', () => {
+    const { events } = run(level([w(4, hurdle)], 6));
+    const cue = events.find((e) => e.type === 'cue') as Extract<GameEvent, { type: 'cue' }> & {
+      at: number;
+    };
+    expect(cue.at + cue.inSec).toBeCloseTo(4, 2);
+  });
+});
+
 describe('streak and fever', () => {
   it('counts clears and orbs in a row, resets on a hit, ignores missed orbs', () => {
     const lv = level([w(4, hurdle), w(6, orb), w(8, hurdle), w(10, orb), w(12, hurdle)], 14);
@@ -271,5 +304,18 @@ describe('movesSeen', () => {
     expect(movesSeen(idle, ducked)).toEqual(['duck', 'raise']);
     expect(movesSeen(ducked, ducked)).toEqual([]); // held, not repeated
     expect(movesSeen(ducked, { ...ducked, rightArmUp: true })).toEqual(['raise']);
+  });
+});
+
+describe('holdFeedback', () => {
+  it('prompts until the move is seen, then ok while held, warn only after letting go', () => {
+    // a 2 s hold due at t = 10
+    expect(holdFeedback(10, 2, 9.5, false, false)).toBeNull(); // too early
+    expect(holdFeedback(10, 2, 9.8, false, false)).toBe('prompt');
+    expect(holdFeedback(10, 2, 10.2, false, false)).toBe('prompt'); // lagging camera: not red
+    expect(holdFeedback(10, 2, 10.3, true, false)).toBe('ok');
+    expect(holdFeedback(10, 2, 11, true, true)).toBe('ok');
+    expect(holdFeedback(10, 2, 11.2, false, true)).toBe('warn'); // let go mid-hold
+    expect(holdFeedback(10, 2, 12.1, false, true)).toBeNull(); // over
   });
 });

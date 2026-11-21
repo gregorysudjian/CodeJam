@@ -12,10 +12,10 @@ export interface Player {
   readonly root: THREE.Group;
   readonly x: number;
   /**
-   * Hold feedback: a light column in `color` while a held beam or crate is being held
-   * correctly, a red pulse while it is not, nothing (null) otherwise.
+   * Hold feedback (core.holdFeedback): a light column around the runner. 'prompt' pulses
+   * softly in the move's colour, 'ok' glows steadily in it, 'warn' pulses red; null hides it.
    */
-  setAura(aura: { color: number; ok: boolean } | null): void;
+  setAura(aura: { color: number; mode: 'prompt' | 'ok' | 'warn' } | null): void;
   /** World position of each hand, for orb collect effects. */
   handPosition(side: 'left' | 'right', out: THREE.Vector3): THREE.Vector3;
   /**
@@ -126,7 +126,7 @@ export function createPlayer(): Player {
   aura.position.y = 1.15;
   aura.visible = false;
   ground.add(aura);
-  let auraState: { color: number; ok: boolean } | null = null;
+  let auraState: { color: number; mode: 'prompt' | 'ok' | 'warn' } | null = null;
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   let auraClock = 0;
   root.add(ground);
@@ -149,8 +149,8 @@ export function createPlayer(): Player {
       return (side === 'left' ? armL : armR).hand.getWorldPosition(out);
     },
     setAura(a) {
-      if (a && (!auraState || auraState.color !== a.color || auraState.ok !== a.ok)) {
-        auraMat.color.set(a.ok ? a.color : T.COLOR_HIT);
+      if (a && (!auraState || auraState.color !== a.color || auraState.mode !== a.mode)) {
+        auraMat.color.set(a.mode === 'warn' ? T.COLOR_HIT : a.color);
       }
       auraState = a;
     },
@@ -198,14 +198,17 @@ export function createPlayer(): Player {
       ring.scale.setScalar(1 + lift * 0.3);
 
       auraClock += dt;
+      // Pulses stay well under 3 flashes a second (WCAG 2.3.1) and are steady with reduced motion.
+      const pulse = reduceMotion
+        ? 1
+        : 0.6 + 0.4 * Math.sin(auraClock * Math.PI * 2 * T.AURA_PULSE_HZ);
       const auraTarget = !auraState
         ? 0
-        : auraState.ok
+        : auraState.mode === 'ok'
           ? T.AURA_OPACITY
-          : reduceMotion
-            ? T.AURA_OPACITY
-            : // under 3 flashes a second (WCAG 2.3.1), red flashes being the risky kind
-              T.AURA_OPACITY * (0.6 + 0.4 * Math.sin(auraClock * Math.PI * 2 * T.AURA_PULSE_HZ));
+          : auraState.mode === 'prompt'
+            ? T.AURA_OPACITY * T.AURA_PROMPT_SCALE * pulse
+            : T.AURA_OPACITY * pulse;
       auraMat.opacity += (auraTarget - auraMat.opacity) * lerpRate(20, dt);
       aura.visible = auraMat.opacity > 0.01;
       aura.scale.y = crouch;

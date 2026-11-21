@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { InputState, Level, MoveType } from '@/contracts';
-import { feverTier, type Item } from './core';
+import { feverTier, holdFeedback, type HoldFeedback, type Item } from './core';
 import { requirementMet } from './judge';
 import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
@@ -50,6 +50,7 @@ export function create3DView(
   const finishDistance = track.distanceAt(durationSec);
 
   const views = new Map<Item, ObstacleView>();
+  const seenHolds = new WeakSet<Item>(); // held objects whose move has been seen
   const maxLead = Math.max(...Object.values(leads));
   let nextSpawn = 0;
   let clock = 0;
@@ -115,18 +116,17 @@ export function create3DView(
           views.delete(item);
         }
       }
-      // Hold feedback: is the player holding the held beam or crate they are under?
-      let aura: { color: number; ok: boolean } | null = null;
+      // Hold feedback for the held beam or crate that is due (see holdFeedback).
+      let aura: { color: number; mode: HoldFeedback } | null = null;
       if (phase === 'running') {
         for (const item of views.keys()) {
           const hold = item.spawn.holdSec ?? 0;
-          const t = item.wave.t;
           if (hold <= 0 || item.judge.verdict !== 'pending') continue;
-          if (elapsed < t - T.WINDOW_BEFORE_SEC || elapsed > t + hold) continue;
-          aura = {
-            color: T.MOVE_COLOR[colorKeyFor(item.spawn.requires)],
-            ok: requirementMet(item.spawn, mode, state),
-          };
+          const met = requirementMet(item.spawn, mode, state);
+          const feedback = holdFeedback(item.wave.t, hold, elapsed, met, seenHolds.has(item));
+          if (!feedback) continue;
+          if (met) seenHolds.add(item);
+          aura = { color: T.MOVE_COLOR[colorKeyFor(item.spawn.requires)], mode: feedback };
           break;
         }
       }

@@ -106,7 +106,8 @@ export const RUN_BOB_HEIGHT = 0.06;
 export const HIT_FLASH_SEC = 0.35;
 export const STUMBLE_SEC = 0.5;
 export const AURA_OPACITY = 0.28; // hold feedback column around the runner
-export const AURA_PULSE_HZ = 1.4; // red 'not holding' pulse; must stay well under 3
+export const AURA_PULSE_HZ = 1.4; // prompt and warn pulses; must stay well under 3
+export const AURA_PROMPT_SCALE = 0.7; // the prompt is softer than the steady 'ok' glow
 
 /* ── Obstacles ── */
 export const BLOCK_HEIGHT = 1.9;

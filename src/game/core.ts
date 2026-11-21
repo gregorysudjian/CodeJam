@@ -1,4 +1,4 @@
-import type { GameEvent, InputState, Level, Spawn, Wave } from '@/contracts';
+import type { GameEvent, InputState, Level, MoveType, Spawn, Wave } from '@/contracts';
 import { createJudge, requirementMet, type Judge, type Verdict } from './judge';
 import * as T from './tuning';
 
@@ -39,8 +39,21 @@ export interface Core {
   clearListeners(): void;
 }
 
-export function createCore(level: Level, hooks: CoreHooks = {}): Core {
+/**
+ * `leads`: seconds each object is drawn ahead of its judging time, by move (VISUAL_LEAD_SEC).
+ * The cue counts down to when the wave *visually* reaches the runner, t - lead, so a player who
+ * follows the HUD countdown moves when the latency compensation expects it.
+ */
+export function createCore(
+  level: Level,
+  hooks: CoreHooks = {},
+  leads?: Readonly<Record<MoveType, number>>,
+): Core {
   const { mode, durationSec } = level.config;
+  const arrivesAt = (wave: Wave): number => {
+    const move = wave.spawns[0]?.requires;
+    return wave.t - (move && leads ? leads[move] : 0);
+  };
   // Sorted copy: the contract says waves come sorted, but cues and judging rely on it.
   const waves = [...level.waves].sort((a, b) => a.t - b.t);
   const items: Item[] = waves.flatMap((wave) =>
@@ -135,10 +148,10 @@ export function createCore(level: Level, hooks: CoreHooks = {}): Core {
       if (pauseReason) return;
 
       elapsed = Math.min(durationSec, elapsed + Math.min(Math.max(0, realDtSec), T.MAX_DT_SEC));
-      while (nextCue < waves.length && waves[nextCue]!.t - elapsed <= T.CUE_LEAD_SEC) {
+      while (nextCue < waves.length && arrivesAt(waves[nextCue]!) - elapsed <= T.CUE_LEAD_SEC) {
         const wave = waves[nextCue++]!;
         hooks.cue?.(wave);
-        emit({ type: 'cue', wave, inSec: Math.max(0, wave.t - elapsed) });
+        emit({ type: 'cue', wave, inSec: Math.max(0, arrivesAt(wave) - elapsed) });
       }
       judgeAll(state, nowMs);
       if (elapsed >= durationSec) {
@@ -176,4 +189,24 @@ export function movesSeen(prev: InputState, next: InputState): SeenMove[] {
   if ((next.leftArmUp && !prev.leftArmUp) || (next.rightArmUp && !prev.rightArmUp))
     seen.push('raise');
   return seen;
+}
+
+/**
+ * Live feedback while a held beam or crate is due (from t - 0.35 s to t + holdSec):
+ * 'prompt' until the move is first seen, 'ok' while it is held, 'warn' (red) only if it was
+ * seen and then let go. Webcam input lags by about 0.3 s, so a player who moves on time is
+ * still reported idle for a moment: that must read as a prompt, never as a mistake.
+ */
+export type HoldFeedback = 'prompt' | 'ok' | 'warn';
+
+export function holdFeedback(
+  t: number,
+  holdSec: number,
+  elapsed: number,
+  met: boolean,
+  seenBefore: boolean,
+): HoldFeedback | null {
+  if (elapsed < t - T.WINDOW_BEFORE_SEC || elapsed > t + holdSec) return null;
+  if (met) return 'ok';
+  return seenBefore ? 'warn' : 'prompt';
 }

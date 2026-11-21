@@ -15,28 +15,32 @@ import { create3DView, type GameView, type Phase } from './view3d';
 export function createGame(canvas: HTMLCanvasElement, level: Level, input: InputSource): Game {
   const audio = createGameAudio();
   let view: GameView | null = null;
-  const core = createCore(level, {
-    cue: (wave) => {
-      if (wave.spawns[0]) audio.cue(wave.spawns[0].requires);
+  const leads = T.VISUAL_LEAD_SEC[input.kind];
+  const core = createCore(
+    level,
+    {
+      cue: (wave) => {
+        if (wave.spawns[0]) audio.cue(wave.spawns[0].requires);
+      },
+      engage: (item) => {
+        if (item.spawn.kind === 'crate') audio.smash();
+        view?.engage(item);
+      },
+      verdict: (item, v) => {
+        if (v === 'cleared') audio.cleared(item.spawn.requires);
+        else if (v === 'collected') audio.collected();
+        else if (v === 'hit') audio.hit();
+        view?.verdict(item, v);
+      },
     },
-    engage: (item) => {
-      if (item.spawn.kind === 'crate') audio.smash();
-      view?.engage(item);
-    },
-    verdict: (item, v) => {
-      if (v === 'cleared') audio.cleared(item.spawn.requires);
-      else if (v === 'collected') audio.collected();
-      else if (v === 'hit') audio.hit();
-      view?.verdict(item, v);
-    },
-  });
+    leads,
+  );
 
   core.onEvent((e) => {
     if (e.type === 'finished') audio.finish();
   });
 
   const gfx = readGfxSetting();
-  const leads = T.VISUAL_LEAD_SEC[input.kind];
   view = gfx === '2d' ? null : tryCreate3D(canvas, level, core.items, leads);
   view ??= create2DView(canvas, level, core.items, leads);
   const startQuality: Quality = gfx === 'low' ? 2 : gfx === 'medium' ? 1 : 0;
