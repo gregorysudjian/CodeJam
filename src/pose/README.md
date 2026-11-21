@@ -69,7 +69,7 @@ a test now pins when each state turns on in your clips. Jump, squat and lane tim
 **Also new:** MediaPipe JS loads only when pose starts (main bundle 407 → 254 kB); `STATION.md` (demo
 setup, keys, symptom → fix table); small-room switch `CALIBRATION_FEET_IN_VIEW`.
 
-**Pointers:** decisions `DECISIONS.md` (33) · messages for Greg `NEEDS.md` (7) · new session
+**Pointers:** decisions `DECISIONS.md` (33) · messages for Greg and Patrick `NEEDS.md` (8) · new session
 `HANDOFF.md` (starter prompt in §9) · demo `STATION.md`.
 
 ## How to use it

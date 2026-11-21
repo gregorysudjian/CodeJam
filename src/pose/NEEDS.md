@@ -41,7 +41,7 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 
 > Pose detection changed some CONTRACTS.md starting values after recording A's moves (types and
 > interfaces unchanged; details and reasons in `src/pose/DECISIONS.md`):
-> - lane line 0.55 W (was 0.8 W); arm up 0.4 T above the nose, arm "down" back near the nose (was
+> - lane line 0.55 W (was 0.8 W); arm up 0.3 T above the nose, arm "down" back near the nose (was
 >   below the shoulder), so presses from shoulder height count;
 > - `ducking` is instant, but the `squat` event fires after 250 ms down (a crouch before a jump is
 >   not a squat); right after a squat a jump must rise 0.45 T instead of being blocked;
