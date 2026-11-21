@@ -152,6 +152,8 @@ export const SLIDERS: [keyof DetectionTuning, number, number, number][] = [
   ['JUMP_MIN_UP_SPEED_T', 0, 3, 0.1],
   ['SQUAT_ON_T', 0.1, 0.8, 0.02],
   ['SQUAT_OFF_T', 0.05, 0.5, 0.01],
+  ['SQUAT_CONFIRM_MS', 0, 600, 25],
+  ['JUMP_AFTER_SQUAT_ON_T', 0.15, 1, 0.05],
   ['ARM_UP_ABOVE_NOSE_T', 0, 1, 0.05],
   ['ARM_DOWN_ABOVE_NOSE_T', -0.5, 0.5, 0.05],
   ['ARM_SETTLE_MS', 0, 600, 25],

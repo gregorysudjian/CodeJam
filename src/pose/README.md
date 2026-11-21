@@ -66,7 +66,8 @@ mountPoseDebug(host);
 | `skeleton.ts` | Skeleton drawing with the app's object-cover crop |
 | `landmarker.ts` | One shared MediaPipe model per page, GPU with CPU fallback |
 | `camera.ts` | Camera stream, attach, stop, readable errors |
-| `debug.ts` | `mountPoseDebug` for `?dev=pose`: calibrate buttons, overlay, clip recorder |
+| `debug.ts` | `mountPoseDebug` for `?dev=pose`: calibrate buttons, overlay, move tally, clip recorder |
+| `STATION.md` | Demo station setup, keys, symptom → fix table |
 | `recording.ts` | Clip format and JSON download |
 | `fixtures/*.json` | A's recorded clips (landmarks only, no images) |
 | `fixtures.ts` | Test helpers: replay clips, synthetic variants |
