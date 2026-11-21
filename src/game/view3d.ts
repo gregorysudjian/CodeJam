@@ -517,7 +517,7 @@ function createFinishGate(): { group: THREE.Group; setFade(opacity: number): voi
   const gate = new THREE.Group();
   const half = (3 * T.LANE_WIDTH) / 2 + 0.9;
   const glow = new THREE.MeshBasicMaterial({
-    color: neon(0xffffff, T.NEON_BOOST * 0.7),
+    color: neon(0xffffff, T.NEON_BOOST * LK.FINISH_GLOW),
     transparent: true,
   });
   for (const s of [-1, 1]) {
