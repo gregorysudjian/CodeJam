@@ -25,6 +25,8 @@ export type PauseReason = 'user' | 'trackingLost';
 export interface Core {
   readonly items: readonly Item[];
   elapsed(): number;
+  /** Clears and collected orbs in a row; a hit resets it (mirrors the scoring streak). */
+  streak(): number;
   started(): boolean;
   finished(): boolean;
   pauseReason(): PauseReason | null;
@@ -39,7 +41,8 @@ export interface Core {
 
 export function createCore(level: Level, hooks: CoreHooks = {}): Core {
   const { mode, durationSec } = level.config;
-  const waves = level.waves;
+  // Sorted copy: the contract says waves come sorted, but cues and judging rely on it.
+  const waves = [...level.waves].sort((a, b) => a.t - b.t);
   const items: Item[] = waves.flatMap((wave) =>
     wave.spawns.map((spawn) => ({ wave, spawn, judge: createJudge(spawn, wave.t, mode) })),
   );
@@ -61,6 +64,7 @@ export function createCore(level: Level, hooks: CoreHooks = {}): Core {
   let elapsed = 0;
   let nextCue = 0;
   let firstUndecided = 0; // items before this index are all decided
+  let streak = 0;
 
   const engage = (item: Item): void => {
     if (engaged.has(item)) return;
@@ -85,7 +89,12 @@ export function createCore(level: Level, hooks: CoreHooks = {}): Core {
       }
       const v = judge.sample(elapsed, state);
       if (!v) continue;
-      if (v === 'cleared' || v === 'collected') engage(item);
+      if (v === 'cleared' || v === 'collected') {
+        engage(item);
+        streak++;
+      } else if (v === 'hit') {
+        streak = 0;
+      }
       hooks.verdict?.(item, v);
       if (v === 'cleared') emit({ type: 'cleared', spawn, t: nowMs });
       else if (v === 'collected') emit({ type: 'collected', spawn, t: nowMs });
@@ -97,6 +106,7 @@ export function createCore(level: Level, hooks: CoreHooks = {}): Core {
   return {
     items,
     elapsed: () => elapsed,
+    streak: () => streak,
     started: () => started,
     finished: () => finished,
     pauseReason: () => pauseReason,
@@ -146,4 +156,24 @@ export function createCore(level: Level, hooks: CoreHooks = {}): Core {
       listeners.clear();
     },
   };
+}
+
+/** Visual intensity tier from the streak: 0, then 1, 2, 3 at T.STREAK_TIERS (5, 10, 20). */
+export function feverTier(streak: number): number {
+  let tier = 0;
+  for (const min of T.STREAK_TIERS) if (streak >= min) tier++;
+  return tier;
+}
+
+export type SeenMove = 'step' | 'hop' | 'duck' | 'raise';
+
+/** Moves that started between two polled states, for the "I saw that" sounds. */
+export function movesSeen(prev: InputState, next: InputState): SeenMove[] {
+  const seen: SeenMove[] = [];
+  if (next.lane !== prev.lane) seen.push('step');
+  if (next.airborne && !prev.airborne) seen.push('hop');
+  if (next.ducking && !prev.ducking) seen.push('duck');
+  if ((next.leftArmUp && !prev.leftArmUp) || (next.rightArmUp && !prev.rightArmUp))
+    seen.push('raise');
+  return seen;
 }

@@ -1,9 +1,9 @@
 import type { Game, InputSource, Level } from '@/contracts';
 import { createGameAudio } from './audio';
-import { createCore } from './core';
+import { createCore, feverTier, movesSeen } from './core';
 import * as T from './tuning';
 import { create2DView } from './view2d';
-import { create3DView, type GameView } from './view3d';
+import { create3DView, type GameView, type Phase } from './view3d';
 
 /**
  * The runner. Owns its requestAnimationFrame loop; nothing here touches React.
@@ -30,6 +30,10 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     },
   });
 
+  core.onEvent((e) => {
+    if (e.type === 'finished') audio.finish();
+  });
+
   const gfx = readGfxSetting();
   view = gfx === '2d' ? null : tryCreate3D(canvas, level, core.items);
   view ??= create2DView(canvas, level, core.items);
@@ -42,6 +46,8 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   let destroyed = false;
   let last = performance.now();
   let raf = 0;
+  let prevState = input.getState();
+  let lastTier = 0;
 
   function frame(now: number): void {
     if (destroyed) return;
@@ -69,10 +75,26 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       }
     }
 
+    const phase: Phase = core.finished()
+      ? 'finished'
+      : core.pauseReason()
+        ? 'paused'
+        : core.started()
+          ? 'running'
+          : 'idle';
+    // Confirm each detected move with a quiet sound, also before the start, so the player
+    // hears that the camera follows them. Silent while paused or after the finish.
+    if (phase === 'idle' || phase === 'running')
+      for (const m of movesSeen(prevState, state)) audio.saw(m);
+    prevState = state;
+    const tier = feverTier(core.streak());
+    if (tier > lastTier) audio.levelUp(tier);
+    lastTier = tier;
+
     // Everything freezes while paused; before start the runner copies the player in place.
-    const visDt = core.pauseReason() ? 0 : Math.min(realDt, T.MAX_DT_SEC);
+    const visDt = phase === 'paused' ? 0 : Math.min(realDt, T.MAX_DT_SEC);
     try {
-      view!.frame({ elapsed: core.elapsed(), visDt, state, moving: running });
+      view!.frame({ elapsed: core.elapsed(), visDt, realDt, state, phase, streak: core.streak() });
     } catch (err) {
       // A drawing failure must not stop the round: events and the HUD keep working.
       console.error('[game] render failed, continuing without drawing', err);

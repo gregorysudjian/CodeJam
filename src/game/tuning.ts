@@ -5,6 +5,7 @@ export const WINDOW_BEFORE_SEC = 0.35; // cleared if the move happens from t - 0
 export const WINDOW_AFTER_SEC = 0.15; // ... to t + 0.15 s
 export const HOLD_GRACE_SEC = 0.3; // a held beam / crate tolerates a gap this long
 export const CUE_LEAD_SEC = 2.0; // 'cue' fires this long before a wave arrives
+export const STREAK_TIERS = [5, 10, 20] as const; // fever tiers, same steps as the multiplier
 
 /* ── Loop ── */
 export const MAX_DT_SEC = 0.05; // clamp: a stall or background tab never skips a window
@@ -22,6 +23,8 @@ export const SPEED_MAX = 21; // units per second at intensity 1
 export const SPEED_TABLE_STEP_SEC = 0.05; // resolution of the precomputed distance table
 export const VIEW_DISTANCE = 95; // objects appear this far ahead
 export const DESPAWN_BEHIND = 8; // and are recycled this far behind the player
+export const COAST_DECAY = 1.4; // after the finish the world slows to a stop (per second)
+export const FINISH_HEIGHT = 5.2; // finish arch
 
 /* ── Track ── */
 export const LANE_WIDTH = 2.2;
@@ -33,6 +36,10 @@ export const ARCH_COUNT = 6;
 export const ARCH_HEIGHT = 6.2; // above the camera, so the top bar never sweeps across the view
 export const TOWER_COUNT = 48;
 export const TOWER_PARALLAX = 0.6; // skyline scrolls slower than the track
+export const SPEED_LINE_COUNT = 60;
+export const SPEED_LINE_LENGTH = 2.6;
+export const SPEED_LINE_SPAN = 70; // they recycle over this distance
+export const SPEED_LINE_RATE = 1.8; // they move faster than the track
 
 /* ── Look ("Neon Arena", matches the UI) ── */
 export const COLOR_BG = 0x07090d;
@@ -64,6 +71,9 @@ export const CAMERA_LOOK = { x: 0, y: 0.6, z: -14 };
 export const CAMERA_FOLLOW_X = 0.35; // fraction of the player's x the camera follows
 export const SHAKE_AMPLITUDE = 0.22;
 export const SHAKE_DECAY = 7; // per second
+export const FOV_KICK_SPEED = 5; // degrees added at full speed
+export const FOV_KICK_TIER = 1.5; // degrees added per streak tier
+export const PAUSE_DIM = 0.55; // darkness of the paused scene
 
 /* ── Player ── */
 export const PLAYER_RADIUS = 0.36;
@@ -77,6 +87,7 @@ export const ARM_RATE = 16;
 export const RUN_BOB_HZ = 2.6;
 export const RUN_BOB_HEIGHT = 0.06;
 export const HIT_FLASH_SEC = 0.35;
+export const STUMBLE_SEC = 0.5;
 
 /* ── Obstacles ── */
 export const BLOCK_HEIGHT = 1.9;
@@ -92,9 +103,15 @@ export const ORB_RADIUS = 0.42;
 export const TELEGRAPH_LENGTH = 5; // floor marker painted ahead of each object
 export const SMASH_SEC = 0.7; // crate fragments / orb collect animation
 export const BURST_SEC = 0.45;
+export const COLLECT_SEC = 0.35; // an orb flies into the hand
+export const COLLECT_PULL = 14; // how fast it homes in (per second)
+export const ICON_SIZE = 1.5; // move icon above each object, world units
+export const ICON_BRIGHTNESS = 1.6; // above 1 so it glows a little
 export const BURST_POOL = 10;
 export const POOL_WARM = 4; // views of each kind built up front
 
 /* ── Sound ── */
 export const AUDIO_VOLUME = 0.35;
 export const AUDIO_BASE_HZ = 392; // G4; each move is a fixed interval above or below
+export const SAW_VOLUME = 0.6; // move confirmations sit under the effects
+export const SAW_MIN_GAP_SEC = 0.15;

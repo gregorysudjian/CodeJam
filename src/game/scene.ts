@@ -10,11 +10,20 @@ export function neon(hex: number, boost = T.NEON_BOOST): THREE.Color {
   return new THREE.Color(hex).multiplyScalar(boost);
 }
 
+export interface StageFrame {
+  distance: number; // world scroll
+  playerX: number; // the camera follows part of it
+  dt: number; // visual seconds (0 while paused)
+  realDt: number; // for fades that run while paused
+  speed: number; // units per second, for the field-of-view kick
+  fever: number; // streak tier 0 to 3: lane pulse, speed lines
+  dim: boolean; // paused: darken the scene
+}
+
 export interface Stage {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
-  /** Scroll the world to `distance` and place the camera behind `playerX`. */
-  update(distance: number, playerX: number, dt: number): void;
+  update(f: StageFrame): void;
   shake(): void;
   /** Low graphics: no bloom, pixel ratio 1, no skyline. For weak laptops. */
   setLowGraphics(on: boolean): void;
@@ -71,6 +80,22 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   scene.fog = new THREE.Fog(T.COLOR_BG, T.FOG_NEAR, T.FOG_FAR);
 
   const camera = new THREE.PerspectiveCamera(T.CAMERA_FOV, 16 / 9, 0.1, 400);
+  scene.add(camera); // so its child, the pause overlay, renders
+
+  // Pause overlay: a dark sheet just in front of the camera.
+  const dimMat = new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    transparent: true,
+    opacity: 0,
+    depthTest: false,
+    depthWrite: false,
+    fog: false,
+  });
+  const dimSheet = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), dimMat);
+  dimSheet.position.z = -0.2;
+  dimSheet.renderOrder = 999;
+  dimSheet.visible = false;
+  camera.add(dimSheet);
   const look = new THREE.Vector3(T.CAMERA_LOOK.x, T.CAMERA_LOOK.y, T.CAMERA_LOOK.z);
 
   scene.add(new THREE.HemisphereLight(0x9fb3cc, 0x05070b, 1.1));
@@ -110,6 +135,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
 
   /* Lane lines: solid lime edges, dashed lime dividers. */
   const limeMat = new THREE.MeshBasicMaterial({ color: neon(T.COLOR_LIME, T.NEON_BOOST * 0.8) });
+  const limeBase = new THREE.Color(T.COLOR_LIME);
   const edgeGeo = new THREE.BoxGeometry(0.06, 0.03, T.TRACK_LENGTH);
   for (const x of [-halfTrack, halfTrack]) {
     const edge = new THREE.Mesh(edgeGeo, limeMat);
@@ -190,6 +216,33 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     };
   });
 
+  /* Speed lines: streaks of light rushing past at a high streak. */
+  const lineMat = new THREE.MeshBasicMaterial({
+    color: neon(T.COLOR_LIME, T.NEON_BOOST * 0.6),
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const speedLines = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.035, 0.035, T.SPEED_LINE_LENGTH),
+    lineMat,
+    T.SPEED_LINE_COUNT,
+  );
+  speedLines.frustumCulled = false;
+  speedLines.visible = false;
+  scene.add(speedLines);
+  const lineInfo = Array.from({ length: T.SPEED_LINE_COUNT }, (_, i) => {
+    const r1 = wrap(Math.sin(i * 91.7) * 4375.85, 1);
+    const r2 = wrap(Math.sin(i * 17.3) * 9821.13, 1);
+    const side = i % 2 === 0 ? -1 : 1;
+    return {
+      x: side * (halfTrack + 0.8 + r1 * 7),
+      y: 0.4 + r2 * 4.5,
+      z0: (i / T.SPEED_LINE_COUNT) * T.SPEED_LINE_SPAN,
+    };
+  });
+
   /* Horizon glow at the vanishing point. */
   const glowTex = glowTexture();
   const horizon = new THREE.Mesh(
@@ -223,6 +276,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   }
 
   let low = false;
+  let baseFov = T.CAMERA_FOV;
   const resize = (): void => {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
@@ -234,7 +288,8 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     composer?.setSize(w, h);
     camera.aspect = w / h;
     // Keep the three lanes in view on narrow (portrait) screens.
-    camera.fov = w / h < 1 ? T.CAMERA_FOV * 1.35 : T.CAMERA_FOV;
+    baseFov = w / h < 1 ? T.CAMERA_FOV * 1.35 : T.CAMERA_FOV;
+    camera.fov = baseFov;
     camera.updateProjectionMatrix();
   };
   const ro = new ResizeObserver(resize);
@@ -244,12 +299,15 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   let shakeAmount = 0;
   let camX = 0;
+  let clock = 0;
+  let fovKick = 0;
   const m4 = new THREE.Matrix4();
 
   return {
     scene,
     camera,
-    update(distance, playerX, dt) {
+    update({ distance, playerX, dt, realDt, speed, fever, dim }) {
+      clock += dt;
       gridTex.offset.y = wrap(distance / T.GRID_TILE, 1);
 
       for (let i = 0; i < dashesPerLine; i++) {
@@ -280,6 +338,42 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
       capsA.instanceMatrix.needsUpdate = true;
       capsB.instanceMatrix.needsUpdate = true;
 
+      // Lane lines pulse faster and brighter as the streak climbs.
+      const pulse = fever > 0 ? 0.5 + 0.5 * Math.sin(clock * (3 + fever * 2)) : 0;
+      limeMat.color
+        .copy(limeBase)
+        .multiplyScalar(T.NEON_BOOST * (0.8 + fever * 0.12 + pulse * fever * 0.15));
+
+      // Speed lines from the second tier (streak 10).
+      const lineTarget = reduceMotion || fever < 2 ? 0 : fever === 2 ? 0.55 : 0.9;
+      lineMat.opacity += (lineTarget - lineMat.opacity) * (1 - Math.exp(-3 * dt));
+      speedLines.visible = lineMat.opacity > 0.01;
+      if (speedLines.visible) {
+        const travel = distance * T.SPEED_LINE_RATE;
+        for (let i = 0; i < lineInfo.length; i++) {
+          const l = lineInfo[i]!;
+          m4.makeTranslation(l.x, l.y, zNear - wrap(l.z0 - travel, T.SPEED_LINE_SPAN));
+          speedLines.setMatrixAt(i, m4);
+        }
+        speedLines.instanceMatrix.needsUpdate = true;
+      }
+
+      // A small field-of-view kick with speed and streak sells the speed-up.
+      if (!reduceMotion) {
+        const target =
+          ((speed - T.SPEED_MIN) / (T.SPEED_MAX - T.SPEED_MIN)) * T.FOV_KICK_SPEED +
+          fever * T.FOV_KICK_TIER;
+        fovKick += (target - fovKick) * (1 - Math.exp(-2 * dt));
+        camera.fov = baseFov + fovKick;
+        camera.updateProjectionMatrix();
+      }
+
+      // With bloom the sheet blends in linear light, before the sRGB conversion, so the same
+      // perceived darkening needs a stronger sheet: 1 - (1 - d)^2.2.
+      const dimTarget = !dim ? 0 : composer && !low ? 1 - (1 - T.PAUSE_DIM) ** 2.2 : T.PAUSE_DIM;
+      dimMat.opacity += (dimTarget - dimMat.opacity) * (1 - Math.exp(-8 * realDt));
+      dimSheet.visible = dimMat.opacity > 0.01;
+
       camX += (playerX * T.CAMERA_FOLLOW_X - camX) * (1 - Math.exp(-6 * dt));
       shakeAmount *= Math.exp(-T.SHAKE_DECAY * dt);
       const sx = (Math.random() - 0.5) * shakeAmount;
@@ -303,7 +397,10 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     dispose() {
       ro.disconnect();
       scene.traverse((o) => {
-        if (
+        if (o instanceof THREE.Sprite) {
+          o.material.map?.dispose();
+          o.material.dispose();
+        } else if (
           o instanceof THREE.Mesh ||
           o instanceof THREE.LineSegments ||
           o instanceof THREE.InstancedMesh

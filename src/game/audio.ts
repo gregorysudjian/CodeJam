@@ -14,6 +14,11 @@ export interface GameAudio {
   collected(): void;
   smash(): void;
   hit(): void;
+  /** Quiet confirmations that the camera saw a move (lane change, jump, squat, arm up). */
+  saw(move: 'step' | 'hop' | 'duck' | 'raise'): void;
+  /** The streak reached a new tier (5, 10, 20). */
+  levelUp(tier: number): void;
+  finish(): void;
   dispose(): void;
 }
 
@@ -45,6 +50,9 @@ const silent: GameAudio = {
   collected() {},
   smash() {},
   hit() {},
+  saw() {},
+  levelUp() {},
+  finish() {},
   dispose() {},
 };
 
@@ -102,6 +110,7 @@ export function createGameAudio(): GameAudio {
     src.stop(t0 + dur + 0.02);
   };
 
+  const lastSaw = new Map<string, number>();
   const play = (fn: () => void): void => {
     if (ctx.state === 'closed') return;
     if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
@@ -145,6 +154,36 @@ export function createGameAudio(): GameAudio {
       play(() => {
         burst('lowpass', 500, 0.3, 0.8);
         tone('sawtooth', 160, 45, 0, 0.32, 0.3);
+      });
+    },
+    saw(move) {
+      // Rate-limited so a jittery camera cannot turn it into a buzz.
+      const now = ctx.currentTime;
+      if (now - (lastSaw.get(move) ?? -1) < T.SAW_MIN_GAP_SEC) return;
+      lastSaw.set(move, now);
+      play(() => {
+        const q = T.SAW_VOLUME;
+        if (move === 'step') burst('bandpass', 900, 0.12, 0.35 * q);
+        else if (move === 'hop') tone('sine', 300, 700, 0, 0.12, 0.35 * q);
+        else if (move === 'duck') tone('sine', 240, 110, 0, 0.14, 0.4 * q);
+        else tone('triangle', hz(19), hz(24), 0, 0.1, 0.25 * q);
+      });
+    },
+    levelUp(tier) {
+      play(() => {
+        const root = 12 + tier * 2;
+        [0, 4, 7, 12, 16].forEach((st, i) =>
+          tone('triangle', hz(root + st), hz(root + st), i * 0.06, 0.18, 0.28),
+        );
+      });
+    },
+    finish() {
+      play(() => {
+        [0, 4, 7].forEach((st, i) =>
+          tone('triangle', hz(12 + st), hz(12 + st), i * 0.12, 0.2, 0.3),
+        );
+        tone('triangle', hz(24), hz(24), 0.36, 0.6, 0.35);
+        tone('sine', hz(12), hz(12), 0.36, 0.6, 0.2);
       });
     },
     dispose() {

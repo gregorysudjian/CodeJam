@@ -13,8 +13,12 @@ export interface Player {
   readonly x: number;
   /** World position of each hand, for orb collect effects. */
   handPosition(side: 'left' | 'right', out: THREE.Vector3): THREE.Vector3;
-  /** `moving`: the world is scrolling, so the runner jogs. */
-  update(dt: number, state: InputState, moving: boolean): void;
+  /**
+   * `moving`: the world is scrolling, so the runner jogs.
+   * `celebrate`: the round is over; both arms go up whatever the player does.
+   */
+  update(dt: number, state: InputState, moving: boolean, celebrate?: boolean): void;
+  /** Red flash plus a stumble: a backward jolt and a short wobble. */
   flashHit(): void;
 }
 
@@ -128,7 +132,7 @@ export function createPlayer(): Player {
     flashHit() {
       hitT = 0;
     },
-    update(dt, s, moving) {
+    update(dt, s, moving, celebrate = false) {
       // Lane slide with a lean into the move.
       const targetX = s.lane * T.LANE_WIDTH;
       const dx = targetX - x;
@@ -154,8 +158,8 @@ export function createPlayer(): Player {
       const bob = running ? Math.abs(Math.sin(runPhase)) * T.RUN_BOB_HEIGHT : 0;
       body.position.y = jumpY + bob;
 
-      armUpL += ((s.leftArmUp ? 1 : 0) - armUpL) * lerpRate(T.ARM_RATE, dt);
-      armUpR += ((s.rightArmUp ? 1 : 0) - armUpR) * lerpRate(T.ARM_RATE, dt);
+      armUpL += ((s.leftArmUp || celebrate ? 1 : 0) - armUpL) * lerpRate(T.ARM_RATE, dt);
+      armUpR += ((s.rightArmUp || celebrate ? 1 : 0) - armUpR) * lerpRate(T.ARM_RATE, dt);
       const swing = running ? Math.sin(runPhase) * 0.45 : 0;
       const down = 0.18;
       const up = Math.PI - 0.22;
@@ -170,6 +174,9 @@ export function createPlayer(): Player {
 
       hitT += dt;
       suitMat.emissiveIntensity = hitT < T.HIT_FLASH_SEC ? 1.4 * (1 - hitT / T.HIT_FLASH_SEC) : 0;
+      // Stumble: jolt back, then a damped wobble.
+      const st = hitT / T.STUMBLE_SEC;
+      body.rotation.x = st < 1 ? 0.45 * Math.sin(st * Math.PI * 3) * (1 - st) : 0;
     },
   };
 }

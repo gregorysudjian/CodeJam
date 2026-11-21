@@ -35,7 +35,7 @@ export function create2DView(
   };
 
   return {
-    frame({ elapsed, visDt, state }) {
+    frame({ elapsed, visDt, state, phase }) {
       if (!ctx) return;
       const dpr = Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
       const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
@@ -116,6 +116,11 @@ export function create2DView(
         ctx.moveTo(feet.x + side * r, shoulder);
         ctx.lineTo(feet.x + side * r * 1.8, up ? shoulder - r * 2.6 : shoulder + r * 2);
         ctx.stroke();
+      }
+
+      if (phase === 'paused') {
+        ctx.fillStyle = `rgba(0, 0, 0, ${T.PAUSE_DIM})`;
+        ctx.fillRect(0, 0, w, h);
       }
 
       function drawObject(item: Item, z: number): void {

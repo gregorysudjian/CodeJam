@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GameEvent, InputState, Level, Spawn, Wave } from '@/contracts';
-import { createCore, type Item } from './core';
+import { createCore, feverTier, movesSeen, type Item } from './core';
 import type { Verdict } from './judge';
 import { CUE_LEAD_SEC, MAX_DT_SEC } from './tuning';
 
@@ -236,5 +236,40 @@ describe('listeners', () => {
     }
     expect(a).toEqual(['paused']);
     expect(b).toEqual(['paused', 'resumed']);
+  });
+});
+
+describe('streak and fever', () => {
+  it('counts clears and orbs in a row, resets on a hit, ignores missed orbs', () => {
+    const lv = level([w(4, hurdle), w(6, orb), w(8, hurdle), w(10, orb), w(12, hurdle)], 14);
+    // jump only for the first and last hurdle, collect the first orb only
+    const { core } = run(lv, (e) => ({
+      ...idle,
+      airborne: (e > 3.8 && e < 4.1) || (e > 11.8 && e < 12.1),
+      lane: e > 5 && e < 7 ? 1 : 0,
+      rightArmUp: e > 5.8 && e < 6.1,
+    }));
+    expect(core.streak()).toBe(1); // hurdle, orb (2) → hit at 8 (0) → missed orb (0) → hurdle (1)
+  });
+
+  it('fever tiers match the score multiplier steps', () => {
+    expect([0, 4, 5, 9, 10, 19, 20, 99].map(feverTier)).toEqual([0, 0, 1, 1, 2, 2, 3, 3]);
+  });
+
+  it('sorts waves that arrive out of order', () => {
+    const { events } = run(level([w(8, hurdle), w(4, block)], 10));
+    const cues = events.filter((e) => e.type === 'cue') as Extract<GameEvent, { type: 'cue' }>[];
+    expect(cues.map((c) => c.wave.t)).toEqual([4, 8]);
+  });
+});
+
+describe('movesSeen', () => {
+  it('reports only moves that start, one sound per rep', () => {
+    expect(movesSeen(idle, idle)).toEqual([]);
+    expect(movesSeen(idle, { ...idle, lane: 1, airborne: true })).toEqual(['step', 'hop']);
+    const ducked = { ...idle, ducking: true, leftArmUp: true };
+    expect(movesSeen(idle, ducked)).toEqual(['duck', 'raise']);
+    expect(movesSeen(ducked, ducked)).toEqual([]); // held, not repeated
+    expect(movesSeen(ducked, { ...ducked, rightArmUp: true })).toEqual(['raise']);
   });
 });

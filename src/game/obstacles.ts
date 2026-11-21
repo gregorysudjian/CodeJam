@@ -49,8 +49,11 @@ export interface ObstacleView {
   readonly kind: ObstacleKind;
   readonly root: THREE.Group;
   show(spawn: Spawn, length: number): void;
-  /** The move was seen in the window: smash the crate, start collecting the orb. */
-  engage(): void;
+  /**
+   * The move was seen in the window: smash the crate, start collecting the orb.
+   * `attractor` gives the world position the orb flies to (the hand that grabbed it).
+   */
+  engage(attractor?: () => THREE.Vector3): void;
   setVerdict(v: Verdict): void;
   tick(dt: number, time: number): void;
 }
@@ -59,8 +62,10 @@ export interface Obstacles {
   acquire(kind: ObstacleKind): ObstacleView;
   release(view: ObstacleView): void;
   /** Expanding ring at the player's feet. */
-  burst(x: number, move: MoveType): void;
+  burst(x: number, move: MoveType | 'hit'): void;
   tick(dt: number): void;
+  /** Frees shared geometry and every cached material, including ones not on screen. */
+  dispose(): void;
 }
 
 export function createObstacles(scene: THREE.Scene): Obstacles {
@@ -108,6 +113,33 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
   };
   const laneX = (lane: number): number => lane * L;
 
+  /* Icons: a sprite above each object showing the move, readable from 2 m. */
+  type Glyph = 'go' | 'up' | 'down' | 'arms';
+  const iconMats = new Map<string, THREE.SpriteMaterial>();
+  const iconMaterial = (glyph: Glyph, key: ColorKey | 'hit'): THREE.SpriteMaterial => {
+    const id = `${glyph}|${key}`;
+    let m = iconMats.get(id);
+    if (!m) {
+      const hex = key === 'hit' ? T.COLOR_HIT : T.MOVE_COLOR[key];
+      m = new THREE.SpriteMaterial({
+        map: drawGlyph(glyph, hex),
+        transparent: true,
+        depthWrite: false,
+      });
+      m.color.setScalar(T.ICON_BRIGHTNESS);
+      iconMats.set(id, m);
+    }
+    return m;
+  };
+  const makeIcon = (): THREE.Sprite => {
+    const sprite = new THREE.Sprite(iconMaterial('up', 'jump'));
+    sprite.scale.setScalar(T.ICON_SIZE);
+    return sprite;
+  };
+  const burstColors = {} as Record<ColorKey, THREE.Color>;
+  for (const k of Object.keys(T.MOVE_COLOR) as ColorKey[]) burstColors[k] = neon(T.MOVE_COLOR[k]);
+  const hitBurstColor = neon(T.COLOR_HIT);
+
   const applyPalette = (root: THREE.Object3D, p: Palette): void => {
     root.traverse((o) => {
       const role = o.userData.role as Role | undefined;
@@ -120,23 +152,35 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
 
   function buildBlock(): ObstacleView {
     const root = new THREE.Group();
-    const lanes = [-1, 0, 1].map((lane) => {
+    const walls = [-1, 0, 1].map((lane) => {
       const g = new THREE.Group();
+      g.position.x = laneX(lane);
       const wall = neonBox(L * 0.86, T.BLOCK_HEIGHT, T.BLOCK_DEPTH);
       wall.position.set(0, T.BLOCK_HEIGHT / 2, -T.BLOCK_DEPTH / 2);
       const stripe = glowBox(L * 0.86, 0.08, 0.06);
       stripe.position.set(0, T.BLOCK_HEIGHT * 0.62, 0.02);
-      const plate = floorPlate();
-      plate.scale.set(L * 0.9, T.TELEGRAPH_LENGTH, 1);
-      plate.position.z = -T.TELEGRAPH_LENGTH / 2;
-      g.add(wall, stripe, plate);
-      g.position.x = laneX(lane);
+      g.add(wall, stripe);
       root.add(g);
       return g;
     });
-    return simpleView('block', root, (spawn) => {
-      lanes.forEach((g, i) => (g.visible = spawn.lanes.includes((i - 1) as -1 | 0 | 1)));
-    });
+    // The free lane gets the floor marker and the "go here" icon.
+    const guide = floorPlate();
+    guide.scale.set(L * 0.8, T.TELEGRAPH_LENGTH, 1);
+    guide.position.z = -T.TELEGRAPH_LENGTH / 2 + 1;
+    const icon = makeIcon();
+    icon.position.y = T.BLOCK_HEIGHT * 0.75;
+    root.add(guide, icon);
+    return simpleView(
+      'block',
+      root,
+      (spawn) => {
+        const free = ([-1, 0, 1] as const).find((l) => !spawn.lanes.includes(l)) ?? 0;
+        walls.forEach((g, i) => (g.visible = spawn.lanes.includes((i - 1) as -1 | 0 | 1)));
+        guide.position.x = icon.position.x = laneX(free);
+      },
+      icon,
+      'go',
+    );
   }
 
   function buildHurdle(): ObstacleView {
@@ -157,8 +201,10 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     const plate = floorPlate();
     plate.scale.set(W, 2.5, 1);
     plate.position.z = 1.25;
-    root.add(plate);
-    return simpleView('hurdle', root, () => {});
+    const icon = makeIcon();
+    icon.position.y = T.HURDLE_HEIGHT + 1.1;
+    root.add(plate, icon);
+    return simpleView('hurdle', root, () => {}, icon, 'up');
   }
 
   function buildBeam(): ObstacleView {
@@ -199,18 +245,29 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       backPosts.push(back);
       root.add(front, back);
     }
-    return simpleView('beam', root, (_spawn, length) => {
-      const long = length > T.BEAM_MIN_DEPTH;
-      const depth = Math.max(T.BEAM_MIN_DEPTH, length);
-      span.visible = long;
-      span.scale.z = depth;
-      const ribCount = long ? Math.min(T.BEAM_MAX_RIBS, Math.floor(depth / T.BEAM_RIB_SPACING)) : 0;
-      ribs.forEach((rib, i) => {
-        rib.visible = i < ribCount;
-        rib.position.z = -((i + 1) * depth) / (ribCount + 1);
-      });
-      for (const p of backPosts) p.position.z = -depth;
-    });
+    const icon = makeIcon();
+    icon.position.y = top + 1.2;
+    root.add(icon);
+    return simpleView(
+      'beam',
+      root,
+      (_spawn, length) => {
+        const long = length > T.BEAM_MIN_DEPTH;
+        const depth = Math.max(T.BEAM_MIN_DEPTH, length);
+        span.visible = long;
+        span.scale.z = depth;
+        const ribCount = long
+          ? Math.min(T.BEAM_MAX_RIBS, Math.floor(depth / T.BEAM_RIB_SPACING))
+          : 0;
+        ribs.forEach((rib, i) => {
+          rib.visible = i < ribCount;
+          rib.position.z = -((i + 1) * depth) / (ribCount + 1);
+        });
+        for (const p of backPosts) p.position.z = -depth;
+      },
+      icon,
+      'down',
+    );
   }
 
   function buildCrate(): ObstacleView {
@@ -256,19 +313,37 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     plate.position.z = 1.25;
     root.add(plate);
 
+    const icon = makeIcon();
+    icon.position.y = T.CRATE_HEIGHT + 0.9;
+    root.add(icon);
     let smashT = -1;
-    const view = simpleView('crate', root, (spawn, length) => {
-      smashT = -1;
-      for (const p of pieces) {
-        p.obj.position.copy(p.home);
-        p.obj.rotation.set(0, 0, 0);
-        p.obj.visible = true;
-      }
-      rails.visible = (spawn.holdSec ?? 0) > 0;
-      rails.scale.z = Math.max(1, length);
-    });
-    view.engage = () => {
+    const view = simpleView(
+      'crate',
+      root,
+      (spawn, length) => {
+        smashT = -1;
+        icon.visible = true;
+        for (const p of pieces) {
+          p.obj.position.copy(p.home);
+          p.obj.rotation.set(0, 0, 0);
+          p.obj.scale.setScalar(1);
+          p.obj.visible = true;
+        }
+        rails.visible = (spawn.holdSec ?? 0) > 0;
+        rails.scale.z = Math.max(1, length);
+      },
+      icon,
+      'arms',
+    );
+    const smash = (): void => {
       if (smashT < 0) smashT = 0;
+      icon.visible = false;
+    };
+    view.engage = smash;
+    const baseVerdict = view.setVerdict;
+    view.setVerdict = (v) => {
+      baseVerdict(v);
+      if (v === 'hit') smash(); // the runner crashes through: red pieces
     };
     view.tick = (dt) => {
       if (smashT < 0) return;
@@ -281,6 +356,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
           p.home.z + p.vel.z * t,
         );
         p.obj.rotation.set(p.spin.x * t, p.spin.y * t, p.spin.z * t);
+        p.obj.scale.setScalar(Math.max(0.01, 1 - (t / T.SMASH_SEC) * 0.7));
         p.obj.visible = t < T.SMASH_SEC;
       }
     };
@@ -314,25 +390,41 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       return { g, float, shell, halo };
     });
     let collectT = -1;
+    let attract: (() => THREE.Vector3) | null = null;
+    const local = new THREE.Vector3();
     const view = simpleView('orb', root, (spawn) => {
       collectT = -1;
+      attract = null;
       orbs.forEach((o, i) => {
         o.g.visible = spawn.lanes.includes((i - 1) as -1 | 0 | 1);
         o.float.scale.setScalar(1);
-        o.float.position.y = T.ORB_HEIGHT;
+        o.float.position.set(0, T.ORB_HEIGHT, 0);
       });
     });
-    view.engage = () => {
-      if (collectT < 0) collectT = 0;
+    view.engage = (attractor) => {
+      if (collectT >= 0) return;
+      collectT = 0;
+      attract = attractor ?? null;
     };
     view.tick = (dt, time) => {
       if (collectT >= 0) collectT += dt;
-      const k = collectT >= 0 ? Math.min(1, collectT / (T.SMASH_SEC * 0.5)) : 0;
+      const k = collectT >= 0 ? Math.min(1, collectT / T.COLLECT_SEC) : 0;
       for (const o of orbs) {
         o.shell.rotation.set(time * 0.9, time * 1.3, 0);
         o.halo.rotation.set(Math.PI / 2 + Math.sin(time * 2) * 0.3, 0, time);
-        o.float.position.y = T.ORB_HEIGHT + Math.sin(time * 3) * 0.08 + k * 1.2;
-        o.float.scale.setScalar(collectT >= 0 ? (1 + k) * (1 - k) + 0.001 : 1);
+        if (collectT < 0) {
+          o.float.position.y = T.ORB_HEIGHT + Math.sin(time * 3) * 0.08;
+          continue;
+        }
+        if (!o.g.visible) continue;
+        if (attract) {
+          // Fly into the hand: ease toward it in the lane group's own space.
+          o.g.worldToLocal(local.copy(attract()));
+          o.float.position.lerp(local, 1 - Math.exp(-T.COLLECT_PULL * dt));
+        } else {
+          o.float.position.y += dt * 2;
+        }
+        o.float.scale.setScalar(Math.max(0.001, 1 - k * k));
       }
     };
     return view;
@@ -342,6 +434,8 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     kind: ObstacleKind,
     root: THREE.Group,
     configure: (spawn: Spawn, length: number) => void,
+    icon?: THREE.Sprite,
+    glyph?: Glyph,
   ): ObstacleView {
     root.visible = false;
     scene.add(root);
@@ -349,13 +443,17 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       kind,
       root,
       show(spawn, length) {
-        applyPalette(root, palettes[colorKeyFor(spawn.requires)]);
+        const key = colorKeyFor(spawn.requires);
+        applyPalette(root, palettes[key]);
+        if (icon && glyph) icon.material = iconMaterial(glyph, key);
         configure(spawn, length);
         root.visible = true;
       },
       engage() {},
       setVerdict(v) {
-        if (v === 'hit') applyPalette(root, hitPalette);
+        if (v !== 'hit') return;
+        applyPalette(root, hitPalette);
+        if (icon && glyph) icon.material = iconMaterial(glyph, 'hit');
       },
       tick() {},
     };
@@ -410,9 +508,23 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       const b = bursts[nextBurst]!;
       nextBurst = (nextBurst + 1) % bursts.length;
       b.t = 0;
-      b.mat.color.copy(neon(T.MOVE_COLOR[colorKeyFor(move)]));
+      b.mat.color.copy(move === 'hit' ? hitBurstColor : burstColors[colorKeyFor(move)]);
       b.mesh.position.x = x;
       b.mesh.visible = true;
+    },
+    dispose() {
+      for (const g of boxCache.values()) {
+        g.geo.dispose();
+        g.edges.dispose();
+      }
+      planeGeo.dispose();
+      for (const p of [...Object.values(palettes), hitPalette])
+        for (const m of Object.values(p)) m.dispose();
+      for (const m of iconMats.values()) {
+        m.map?.dispose();
+        m.dispose();
+      }
+      ringGeo.dispose();
     },
     tick(dt) {
       for (const b of bursts) {
@@ -428,4 +540,92 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       }
     },
   };
+}
+
+/** A round neon badge with a move glyph, drawn once per glyph and colour. */
+function drawGlyph(glyph: 'go' | 'up' | 'down' | 'arms', hex: number): THREE.CanvasTexture {
+  const size = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d')!;
+  const color = `#${hex.toString(16).padStart(6, '0')}`;
+  g.fillStyle = 'rgba(7, 9, 13, 0.72)';
+  g.beginPath();
+  g.arc(64, 64, 58, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = color;
+  g.lineWidth = 6;
+  g.stroke();
+  g.lineWidth = 11;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  const path = (pts: [number, number][]): void => {
+    g.beginPath();
+    pts.forEach(([x, y], i) => (i === 0 ? g.moveTo(x, y) : g.lineTo(x, y)));
+    g.stroke();
+  };
+  if (glyph === 'go') {
+    path([
+      [40, 38],
+      [64, 58],
+      [88, 38],
+    ]);
+    path([
+      [40, 66],
+      [64, 86],
+      [88, 66],
+    ]);
+  } else if (glyph === 'up') {
+    path([
+      [64, 96],
+      [64, 34],
+    ]);
+    path([
+      [40, 56],
+      [64, 32],
+      [88, 56],
+    ]);
+  } else if (glyph === 'down') {
+    path([
+      [64, 30],
+      [64, 84],
+    ]);
+    path([
+      [40, 62],
+      [64, 86],
+      [88, 62],
+    ]);
+    path([
+      [38, 100],
+      [90, 100],
+    ]);
+  } else {
+    // a figure with both arms up
+    g.fillStyle = color;
+    g.beginPath();
+    g.arc(64, 46, 9, 0, Math.PI * 2);
+    g.fill();
+    path([
+      [64, 60],
+      [64, 88],
+    ]);
+    path([
+      [64, 88],
+      [52, 106],
+    ]);
+    path([
+      [64, 88],
+      [76, 106],
+    ]);
+    path([
+      [42, 26],
+      [50, 62],
+      [64, 64],
+      [78, 62],
+      [86, 26],
+    ]);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
