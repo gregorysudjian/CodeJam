@@ -3,7 +3,7 @@
 // tab (see src/data/index.ts), so the game's saved player in this browser is never touched.
 import { useEffect, useState, type ReactNode } from 'react';
 import type { DataStore, LeaderboardEntry, PlayMode, WorkoutId } from '@/contracts';
-import { LeaderboardScreen } from '@/ui/screens';
+import { LeaderboardScreen } from '@/ui/screens/LeaderboardScreen';
 import { KIOSK_REFRESH_MS, LEADERBOARD_SIZE } from './tuning';
 
 const leaveKiosk = () => window.location.assign(`${window.location.origin}/`);
