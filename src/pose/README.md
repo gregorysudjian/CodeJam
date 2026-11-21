@@ -9,7 +9,10 @@ your replayed clips. Nothing touched `main`. It has **not** met a real camera si
 **Do this first (≈20 min):**
 1. **10-minute camera check:** `HANDOFF.md` §6 (FPS, calibration, 10 of each move with the new move
    tally, no false moves, crouch-and-jump, treadmill). Tune with the D overlay's sliders if needed.
-2. **Send Greg** `NEEDS.md` items 1 (ready `DevPose.tsx` for `?dev=pose`) and 2 (who mirrors the video).
+2. **Tell Greg** both requests in his `main` docs (PROGRESS.md, AUDIT.md #1 and #7) are done on
+   `abdo-1`: the real `createPoseInput()`, and `mountPoseDebug` exported from `src/pose/index.ts`.
+   Send `NEEDS.md` items 1 (ready `DevPose.tsx`) and 2 (who mirrors the video). He plans to merge
+   `abdo-1` after Patrick's `p1-workout` and `p2-game`.
 3. **Decide the merge:** `main` has moved (PR #19, new packages). Merge `origin/main` into `abdo-1`,
    `npm install`, `npm run check`, then open the PR with the text in `HANDOFF.md` §8. A dry run
    (`git merge-tree`, nothing changed) shows **no conflicts**: `main` never touched `src/pose`,
