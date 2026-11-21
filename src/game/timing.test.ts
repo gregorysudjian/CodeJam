@@ -32,7 +32,7 @@ const itemsOf = (waves: Wave[]) =>
 
 /** Runs the probe at 60 fps over 0..30 s with `stateAt(elapsed)`. */
 function probe(waves: Wave[], stateAt: (e: number) => InputState, leads = NO_LEAD) {
-  const p = createTimingProbe(itemsOf(waves), 'floor', leads);
+  const p = createTimingProbe(itemsOf(waves), 'floor', () => leads);
   for (let e = 0; e <= 30; e += 1 / 60) p.sample(e, stateAt(e));
   return p.report();
 }

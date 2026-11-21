@@ -250,7 +250,7 @@ describe('cues with latency leads', () => {
       reachRight: 0.3,
     };
     const lv = level([w(4, hurdle), w(6, crate)], 8);
-    const core = createCore(lv, {}, leads);
+    const core = createCore(lv, {}, () => leads);
     const cues: { at: number; inSec: number }[] = [];
     core.onEvent((e) => {
       if (e.type === 'cue') cues.push({ at: core.elapsed(), inSec: e.inSec });
@@ -261,6 +261,31 @@ describe('cues with latency leads', () => {
     expect(cues[0]!.at + cues[0]!.inSec).toBeCloseTo(4 - leads.jump, 2);
     expect(cues[1]!.at + cues[1]!.inSec).toBeCloseTo(6 - leads.armsUp, 2);
     expect(cues[1]!.inSec).toBeCloseTo(CUE_LEAD_SEC, 1);
+  });
+
+  it('follow an input switch mid-round (K): the lead is read when each cue fires', () => {
+    const pose = {
+      jump: 0.1,
+      sidestep: 0.25,
+      squat: 0.3,
+      armsUp: 0.3,
+      reachLeft: 0.3,
+      reachRight: 0.3,
+    };
+    const none = { jump: 0, sidestep: 0, squat: 0, armsUp: 0, reachLeft: 0, reachRight: 0 };
+    let current = none; // starts on the keyboard
+    const core = createCore(level([w(4, crate), w(9, crate)], 12), {}, () => current);
+    const ends: number[] = [];
+    core.onEvent((e) => {
+      if (e.type === 'cue') ends.push(core.elapsed() + e.inSec);
+    });
+    core.start();
+    for (let i = 0; i < 12 * 60; i++) {
+      if (i === 5 * 60) current = pose; // switched to the camera at 5 s
+      core.step(1 / 60, idle, i);
+    }
+    expect(ends[0]).toBeCloseTo(4, 2); // keyboard: judging time
+    expect(ends[1]).toBeCloseTo(9 - pose.armsUp, 2); // camera: visual arrival
   });
 
   it('without leads (keyboard) they count down to the judging time, as before', () => {

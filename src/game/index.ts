@@ -16,7 +16,8 @@ import { create3DView, type GameView, type Phase } from './view3d';
 export function createGame(canvas: HTMLCanvasElement, level: Level, input: InputSource): Game {
   const audio = createGameAudio();
   let view: GameView | null = null;
-  const leads = T.VISUAL_LEAD_SEC[input.kind];
+  // Read on every use: the app's input can switch between keyboard and camera mid-round (K).
+  const leads: T.Leads = () => T.VISUAL_LEAD_SEC[input.kind];
   const core = createCore(
     level,
     {

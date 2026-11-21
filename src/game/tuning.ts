@@ -16,7 +16,10 @@ export const CUE_LEAD_SEC = 2.0; // 'cue' fires this long before a wave arrives
  * and model latency. Lead = lag - 0.15 + 0.05 margin. The keyboard has no lag, so no lead.
  * Judging itself never changes (contract); latency.test.ts checks these numbers.
  */
-export const VISUAL_LEAD_SEC: Record<'pose' | 'keyboard', Readonly<Record<MoveType, number>>> = {
+export type LeadTable = Readonly<Record<MoveType, number>>;
+/** The current lead table. A function, because the app can switch input mid-round (K). */
+export type Leads = () => LeadTable;
+export const VISUAL_LEAD_SEC: Record<'pose' | 'keyboard', LeadTable> = {
   pose: { jump: 0.1, sidestep: 0.25, squat: 0.3, armsUp: 0.3, reachLeft: 0.3, reachRight: 0.3 },
   keyboard: { jump: 0, sidestep: 0, squat: 0, armsUp: 0, reachLeft: 0, reachRight: 0 },
 };

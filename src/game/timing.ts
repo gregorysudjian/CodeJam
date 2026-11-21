@@ -31,7 +31,7 @@ const WINDOW_MID = (T.WINDOW_AFTER_SEC - T.WINDOW_BEFORE_SEC) / 2; // -0.1 s: mi
 export function createTimingProbe(
   items: readonly Item[],
   mode: PlayMode,
-  leads: Readonly<Record<MoveType, number>>,
+  leads: T.Leads,
 ): TimingProbe {
   const seenAt = new Map<Item, number>();
   const skipped = new WeakSet<Item>();
@@ -63,14 +63,14 @@ export function createTimingProbe(
         // offset ≈ lag - lead, so raising the lead by (median - middle) centres the median.
         const suggested = Math.min(
           T.TIMING_MAX_LEAD_SEC,
-          Math.max(0, leads[move] + median - WINDOW_MID),
+          Math.max(0, leads()[move] + median - WINDOW_MID),
         );
         return {
           move,
           seen: offsets.length,
           medianOffsetSec: round2(median),
           inWindowShare: round2(inWindow / offsets.length),
-          leadSec: leads[move],
+          leadSec: leads()[move],
           suggestedLeadSec: round2(suggested),
         };
       });

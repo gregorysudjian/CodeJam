@@ -1,4 +1,4 @@
-import type { GameEvent, InputState, Level, MoveType, Spawn, Wave } from '@/contracts';
+import type { GameEvent, InputState, Level, Spawn, Wave } from '@/contracts';
 import { createJudge, requirementMet, type Judge, type Verdict } from './judge';
 import * as T from './tuning';
 
@@ -44,15 +44,11 @@ export interface Core {
  * The cue counts down to when the wave *visually* reaches the runner, t - lead, so a player who
  * follows the HUD countdown moves when the latency compensation expects it.
  */
-export function createCore(
-  level: Level,
-  hooks: CoreHooks = {},
-  leads?: Readonly<Record<MoveType, number>>,
-): Core {
+export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads): Core {
   const { mode, durationSec } = level.config;
   const arrivesAt = (wave: Wave): number => {
     const move = wave.spawns[0]?.requires;
-    return wave.t - (move && leads ? leads[move] : 0);
+    return wave.t - (move && leads ? leads()[move] : 0);
   };
   // Sorted copy: the contract says waves come sorted, but cues and judging rely on it.
   const waves = [...level.waves].sort((a, b) => a.t - b.t);

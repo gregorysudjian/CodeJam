@@ -1,4 +1,4 @@
-import type { Level, MoveType, Spawn } from '@/contracts';
+import type { Level, Spawn } from '@/contracts';
 import type { Item } from './core';
 import type { Verdict } from './judge';
 import { colorKeyFor } from './obstacles';
@@ -21,7 +21,7 @@ export function create2DView(
   level: Level,
   items: readonly Item[],
   /** Seconds each object is drawn ahead of the judging clock, by move (latency compensation). */
-  leads: Readonly<Record<MoveType, number>>,
+  leads: T.Leads,
 ): GameView {
   const ctx = canvas.getContext('2d');
   const track = createTrack(level.waves, level.config.durationSec);
@@ -83,10 +83,11 @@ export function create2DView(
       }
 
       // Objects, far to near.
+      const lead = leads(); // read per frame: K can switch input mid-round
       const visible = items
         .map((item) => ({
           item,
-          z: track.distanceAt(item.wave.t) - track.distanceAt(elapsed + leads[item.spawn.requires]),
+          z: track.distanceAt(item.wave.t) - track.distanceAt(elapsed + lead[item.spawn.requires]),
         }))
         .filter(
           ({ item, z }) => z < T.VIEW_DISTANCE && z > -4 && !isGone(item.spawn, verdicts.get(item)),
