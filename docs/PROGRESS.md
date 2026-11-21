@@ -1,42 +1,26 @@
 # Progress (Greg: D + C)
 
-## Status (Saturday about 6:30 AM, unattended night run)
+## Status (Saturday about 1:15 PM)
 
-**First 3 things for Greg at 10 AM**
-1. **Merge PR #13** (the Lovable UI pass: cleanup, race progress bar, "REACH" label). I reviewed it: clean merge, check green, click-through fine. Your rule says only you merge other people's PRs.
-2. **Get Patrick and Abdo to open their PRs.** Patrick: `p1-workout`, then `p2-game`, **and fix the 3 slow tests in `src/workout/level.test.ts` first**, or `npm run check` goes red. Abdo: wire `detect.ts` into `createPoseInput()` (still the stub) and export `mountPoseDebug`. Everything merges cleanly with `main` today (dry run in `docs/AUDIT.md`).
-3. **Add `ANTHROPIC_API_KEY` in Vercel.** It's safe now: the per-user rate limit is live (#16). Then play one round on the live site and check the coach card says AI, not rules.
+**First 3 things for Greg**
+1. **Get Patrick and Abdo to open their PRs, and to merge `main` into their branches first** (that brings in `vercel.json`, which stops their pushes from using up Vercel's daily deploy quota). Patrick also fixes the 3 slow tests in `src/workout/level.test.ts`. Abdo's `createPoseInput()` is real now; his branch tracked Greg's body this morning.
+2. **Check the live site has redeployed.** Vercel's Hobby cap (100 deployments per 24 h) was hit at 12:38: #20, #21 and #22 are merged but **not live**; the live site is #13. Once the cap clears, the next push to `main` deploys everything. If nothing has gone out by tonight, redeploy `main` from the Vercel dashboard.
+3. **Add `ANTHROPIC_API_KEY` in Vercel** (still missing). The rate limit is live, so it's safe. Then play one round and check the coach card says AI.
 
-**Live:** https://codejam-jet.vercel.app, deployed from `main` at #18. Working end to end with the keyboard:
-- landing → profile → select → "try each move" (first round) → play → results (1.5 s fanfare delay) → dashboard → leaderboard → New guest.
-- Supabase saves with an offline queue. The rules coach answers until the key is added.
-- `?store=local` (offline path) and `?kiosk=1` (board for between players).
-- Camera error, player-lost and offline states.
-- Panic keys K, R, D and Esc, with K continuing the round.
-- The game is still the 2D placeholder (Patrick's 3D game isn't merged), and body control is still the pose stub.
+**On `main` (5643424):** everything from last night, plus #13 (Lovable UI pass), #20 (camera/keyboard switch on the select screen), #21 (offline fixes), #22 (Vercel deploys `main` only).
 
-**Merged tonight (each with `npm run check` green, a short real test and a live deploy check)**
-- #5 `signOut`: New guest is a new player · #7 revert of my `src/workout` demo preset · #8 `signOut` never hangs on bad wifi
-- #9 1.5 s finish delay · #10 error states · #11 kiosk leaderboard plus a sign-in race fix · #12 audit
-- #14 HUD reads `level.config` · #15 K mid-round without a restart · #16 coach rate limit (1 call per 10 s, Postgres) · #17 lazy loading (main chunk −36 %) · #18 "try each move" tutorial
-- Skipped: the low-graphics toggle. No room on the select screen without editing `src/ui`; `?gfx=low` already works. UI request filed.
+**Tested today:** `npm run check` green (67 tests) for each PR. Browser: the switch starts the camera and falls back with the error dialog when there is none; a full keyboard pass over every screen with no console errors; a wifi-drop drill against live Supabase (offline mid-round → results and rules coach at once, round queued; back online → uploaded within 4 s, row checked and deleted).
 
-**How it was tested:** unit tests (60, plus 128 more in Patrick's branches); one scripted keyboard round per change; the live database for the security rules and the rate limit; the live site for a full round (session in Supabase, on the dashboard and leaderboard); an integration dry run of all branches (3D game at 46 FPS on this laptop's Intel UHD).
+**Not tested (needs hardware or a person):** the switch with a real webcam; pose and the 3D game together on the demo laptop; a real Claude answer.
 
-**Not tested (needs hardware or a human):** a camera and real body input; R recalibration with real pose; a real Claude coach answer; the demo laptop's frame rate with pose and 3D together; projector, stage, lighting.
+**Open problems, ranked by demo risk**
+1. Patrick's 3D game and Abdo's body control aren't on `main` (no PRs). **Patrick, Abdo**
+2. The live site is behind `main` until the Vercel cap clears. **Greg** (check)
+3. Patrick's 3 slow tests turn `check` red after his merge. **Patrick**
+4. No Claude key, so the coach is always rules. **Greg**
+5. `?dev=pose` and the `?demo=1` preset wait for Abdo's and Patrick's merges. **Greg**, right after
 
-**Open problems, ranked by demo risk** (details and owners in `docs/AUDIT.md`)
-1. Body control doesn't exist yet: Abdo's `createPoseInput()` is a stub. **Abdo**
-2. The 3D game and real generator aren't on `main`; no PRs opened. **Patrick**
-3. Patrick's 3 fairness tests time out at 5 s, so `check` goes red after his merge. **Patrick**
-4. No Claude key, so the coach card is always rules. **Greg** (now safe to add)
-5. With `?demo=1` the select screen shows the app's default (90 s) while the demo plays 45 s; the HUD is already correct. **Greg**, after `p1-workout` merges: preselect its `DEMO_CONFIG`
-6. `?dev=pose` is a placeholder until Abdo exports `mountPoseDebug`. **Abdo**, then Greg
-7. An offline save waits up to about 10 s before the coach card falls back (results show at once). **Greg**, low priority
-
-**Next 3 for me:** preselect the demo config with `?demo=1` once `p1-workout` is merged → wire `?dev=pose` once Abdo exports `mountPoseDebug` → review Patrick's and Abdo's PRs as they open (verdict before merging, merge order `p1-workout` → `p2-game` → `abdo-1`).
-
-**Testing rule (from Greg):** unit tests first; one scripted round per change; browser tests time-boxed to 5 minutes.
+**Next for me:** review Patrick's and Abdo's PRs as they open (order `p1-workout` → `p2-game` → `abdo-1`), then wire `?dev=pose` and the demo preset.
 
 ## Log
 
@@ -96,16 +80,34 @@
 - Shown before a player's first round only (no sessions and not yet seen), after calibration when the camera is used. "New guest" shows it again.
 - **Tested:** 4 unit tests (60 in total). One scripted pass: the tutorial showed on the first Start; a quick double sidestep advanced exactly one step; Space advanced past jump; Esc went into the round; after the round, "Play again" went straight to play. No errors.
 
+### #13 Lovable UI pass (merged)
+- Re-checked after its last commit (`settingsSlot` on the select screen): only `src/ui`, clean merge, `check` green, verdict posted on the PR. Merged on Greg's go-ahead to proceed without waiting.
+
+### #20 Camera/keyboard switch
+- `src/app/InputSwitch.tsx`: a kit `SegmentedControl` in the select screen's `settingsSlot`. Picking Camera starts it at once, so Chrome's permission prompt comes on the select screen, not mid-round. A failed start shows the existing camera dialog and the switch returns to Keyboard. K still works.
+- **Tested:** `check` green; in the browser the switch renders next to Low impact, and clicking Camera with no webcam shows the dialog and falls back. **Not tested:** a real webcam.
+
+### #21 Offline fixes (wifi-drop drill)
+- **postgrest-js retries failed reads 3 times (1 + 2 + 4 s)**, so offline every leaderboard or session read hung until our 5 s timeout. Turned off (`db: { retry: false }`); the store has its own offline path. Offline reads now answer in about 20 ms.
+- Results show the coach card and rank as soon as each arrives, not after the session list and leaderboard too.
+- **False "#1 on the leaderboard" offline:** an empty board (offline, nothing cached) meant nobody beat you. Empty board now shows no rank.
+- 4 tests: offline save queues and still lists the round; a hanging network gives up after the timeout; coach falls back to rules; leaderboard answers from cache.
+
+### #22 Vercel deploys `main` only
+- The Hobby cap (100 per 24 h) was hit because every branch push made a preview (about 270 branch commits in 24 h). `vercel.json` sets `git.deploymentEnabled` to `{ "*": false, "main": true }`. **Checked:** the PR branch push got no Vercel deployment, while the previous branch got one within 5 s.
+- Branches based on an older `main` still preview until they merge `main`.
+- Skipped: preloading the pose model on the landing screen. The model files and loader are only on `abdo-1`, and his loader already shares one model per page; worth measuring after his merge.
+
 ## Requests
 
 _For things outside my folders: src/ui (Lovable Claude), src/pose (Abdo), src/game, src/input and src/workout (Patrick), packages, keys._
 
-- **Abdo:** wire `detect.ts` and calibration into `createPoseInput()`, which is still the stub on `abdo-1`, and open the PR. Export `mountPoseDebug` from `src/pose/index.ts` so the app can wire `?dev=pose`.
-- **Patrick:** open PRs for `p1-workout`, then `p2-game`. Fix the 3 slow fairness tests in `src/workout/level.test.ts` (5 s vitest timeout; they take 6.5–57 s here) so `npm run check` stays green.
-- **Lovable UI:** the "REACH" label on the HUD (Patrick's request #3), in PR #13, which waits for Greg's merge. **New:** an optional `settingsSlot?: ReactNode` on `WorkoutSelectScreen`, shown near the duration and low-impact rows, so the app can add a "Low graphics" switch without overlapping the header (it overlapped both the header button and the Floor/Treadmill control).
+- **Patrick and Abdo:** merge `main` into your branches before pushing again (`vercel.json` stops branch previews, which used up the deploy quota), then open your PRs. Patrick: fix the 3 slow tests in `src/workout/level.test.ts` first.
+- **Abdo:** optional, after merging: preload the pose model while the player is on the landing screen, if it makes calibration start faster on the demo laptop.
 
 ## Needs Greg
 
-- Add `ANTHROPIC_API_KEY` in Vercel, but only after the coach rate limit is merged.
+- Add `ANTHROPIC_API_KEY` in Vercel (the rate limit is live).
+- Check that `main` redeployed once the Vercel cap clears; if not by tonight, redeploy it from the dashboard.
 - Pick the demo laptop. Record the backup video. Prepare the localhost preview tab and the second laptop (DEMO.md).
 - After the hackathon: restore the paused Supabase project "dailydle".
