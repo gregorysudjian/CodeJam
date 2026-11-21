@@ -12,7 +12,7 @@
 3. **#58** (leaderboard readable before sign-in, migration 0005) waits on Greg's yes; #65 is stacked on it. **Greg**
 4. Backup video on the demo Mac (it's on Gregory 2's laptop); repo visibility for the Devpost link. **Greg**
 
-**Sunday morning (Greg's Claude):** run Jiscar 2's cleanup SQL after Greg checks the list (QA-% players; ask before "Test-Guest" and "Guest-4300"), the live smoke test, check the live site has the final `main`; Gregory 2's 9 AM sweep. After 10 AM: crash or unplayable fixes only.
+**Sunday morning (Greg's Claude), in this order:** check the live site has the final `main` (`node supabase/tests/live-headers.mjs`); the live smoke test (`node --env-file=.env.local supabase/tests/smoke.mjs`; it leaves a `QA-smoke` row on the 45 s board, so it runs **before** the cleanup); then Jiscar 2's cleanup SQL (`docs/LIVE.md`) after Greg checks the list (ask before "Test-Guest", "Guest-4300" and "Guest-9688"); Gregory 2's 9 AM sweep. After 10 AM: crash or unplayable fixes only.
 
 ## Log
 
