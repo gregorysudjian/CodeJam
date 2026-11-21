@@ -55,6 +55,7 @@ export const QUALITY_WINDOW_SEC = 3;
 export const QUALITY_SKIP_SEC = 1;
 export const QUALITY_PANIC_FPS = 20; // below this, step down after QUALITY_PANIC_SEC, not a full window
 export const QUALITY_PANIC_SEC = 0.5;
+export const QUALITY_MAX_FRAME_SEC = 0.25; // a longer frame (hidden tab, hitch) counts as this long
 
 /* ── Speed and distance (world units: 1 ≈ 1 m) ── */
 export const SPEED_MIN = 12; // units per second at intensity 0

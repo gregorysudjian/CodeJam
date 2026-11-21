@@ -77,6 +77,22 @@ describe('quality governor', () => {
     expect(g.level).toBe(0);
   });
 
+  it('a hidden tab or a single hitch is not a slow GPU', () => {
+    const g = createQualityGovernor(0, true, 2);
+    expect(run(g, 60, 2)).toEqual([]);
+    // Back from 30 s in another tab: requestAnimationFrame delivers it as one frame.
+    expect(g.sample(30, true)).toBeNull();
+    expect(run(g, 60, 1)).toEqual([]);
+    expect(g.sample(0.8, true)).toBeNull(); // a hitch
+    expect(run(g, 60, WINDOW * 3)).toEqual([]);
+    expect(g.level).toBe(0);
+  });
+
+  it('a GPU that really draws 2 frames a second still steps down at once', () => {
+    const g = createQualityGovernor(0, true, 2);
+    expect(run(g, 2, 6)).toEqual([1, 2]);
+  });
+
   it('does nothing when fixed by ?gfx', () => {
     const fixedHigh = createQualityGovernor(0, false, 2);
     expect(run(fixedHigh, 10, 30)).toEqual([]);

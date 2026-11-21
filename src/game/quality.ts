@@ -42,7 +42,11 @@ export function createQualityGovernor(
     },
     sample(realDtSec, running) {
       if (!auto || level === 2 || !running) return null;
-      time += realDtSec;
+      // One long frame is a stall, not a slow GPU: a hidden tab (requestAnimationFrame stops,
+      // so the first frame back spans the whole absence), a minimised window, a hitch. Counted
+      // whole, it would read as a frame rate near 0 and drop the graphics for the rest of the
+      // round. Capped, a GPU that really draws 2 frames a second still measures 4 fps: a panic.
+      time += Math.min(realDtSec, T.QUALITY_MAX_FRAME_SEC);
       if (time < T.QUALITY_SKIP_SEC) return null; // just started or just stepped: ignore
       frames++;
       const measured = time - T.QUALITY_SKIP_SEC;
