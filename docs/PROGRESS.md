@@ -18,6 +18,7 @@ _Updated after every PR._
 - #13 The HUD reads `level.config`, so with `?demo=1` the countdown matches the 45 s demo (audit #5)
 - #15 K mid-round switches input without restarting the round (audit #4)
 - #16 Per-user rate limit on `/api/coach`: 1 call per 10 s (audit #6)
+- #17 Lazy loading: play screen, dashboard (Recharts) and pose module load only when needed; main chunk 1,198 → 762 KB (audit #8)
 
 **Testing rule (from Greg):** unit tests first. One scripted round per change, using `?demo=1&store=local` once Patrick's demo is on `main`. Browser testing is time-boxed to 5 minutes.
 
@@ -32,7 +33,7 @@ _Updated after every PR._
 
 **Requests:** none open (see below).
 
-**Next 3:** lazy-load the game and pose (audit #8) → low-graphics toggle → the "try each move" tutorial.
+**Next 3:** low-graphics toggle (game.gfx) → the "try each move" tutorial → select screen preselects the demo with `?demo=1` (after `p1-workout` merges).
 
 **Audit:** see `docs/AUDIT.md` (top 10 problems with owners).
 
@@ -82,6 +83,12 @@ _Updated after every PR._
 - Migration `0002_coach_rate_limit.sql`, already applied: `coach_calls` (RLS, no policies, no grants) and `claim_coach_slot(p_min_interval_seconds)`, security definer and atomic (`insert … on conflict do update … where last_call_at <= now() - gap`). The interval is clamped to 1–3600 s.
 - `/api/coach` claims a slot right after the token check: 429 with `Retry-After: 10` if refused, 503 (fail closed, no Claude call) if the check errors. `COACH_MIN_INTERVAL_SEC = 10` is in `api/_lib/advice.ts`.
 - **Tested:** live database with a guest token: first claim true, immediate second false, direct table read denied, signed-out caller denied, true again after the gap, and interval 0 clamped to 1 s. 3 endpoint tests with a fake Supabase (429 before any history or Claude call; 503 when the check fails; normal path when claimed). 56 tests in total.
+
+### #17 Lazy loading (audit #8)
+- `PlayScreen` (and with it the game, plus Three.js once Patrick's game merges) and `DashboardScreen` (Recharts) are `React.lazy` with a plain `Suspense` fallback. The pose module (MediaPipe once Abdo's tracker lands) is imported when the player switches to the camera; the keyboard stays the input until it has loaded.
+- The screens are now imported from their own files instead of the `src/ui/screens` barrel, which kept the dashboard in the main chunk.
+- **Result:** main chunk 1,198 KB → 762 KB (gzip 355 → 232 KB); dashboard 429 KB on demand.
+- **Tested:** `npm run check` passes (56 tests). One scripted round with `?store=local`: no lazy chunk on landing; K loaded the pose module and showed the camera overlay; Start loaded the play screen; the round finished; the dashboard loaded and rendered. No errors.
 
 ## Requests
 

@@ -1,6 +1,6 @@
 // Owner: Greg (D). Screen state machine and wiring: the only place that imports the modules.
 // Screens come from src/ui (pure: props in, callbacks out); see src/ui/README.md.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import type {
   CoachAdvice,
@@ -17,23 +17,20 @@ import type {
 } from '@/contracts';
 import { createStore } from '@/data';
 import { createKeyboardInput } from '@/input';
-import { createPoseInput } from '@/pose';
-import {
-  DashboardScreen,
-  LandingScreen,
-  LeaderboardScreen,
-  ProfileScreen,
-  ResultsScreen,
-  WorkoutSelectScreen,
-  type ProfileInput,
-} from '@/ui/screens';
+// Screens are imported from their own files, not the src/ui/screens barrel, so the lazily
+// loaded dashboard (and Recharts) can split into its own chunk.
+import { LandingScreen } from '@/ui/screens/LandingScreen';
+import { LeaderboardScreen } from '@/ui/screens/LeaderboardScreen';
+import { ProfileScreen } from '@/ui/screens/ProfileScreen';
+import { ResultsScreen } from '@/ui/screens/ResultsScreen';
+import { WorkoutSelectScreen } from '@/ui/screens/WorkoutSelectScreen';
+import type { ProfileInput } from '@/ui/screens/ProfileScreen';
 import { WORKOUTS } from '@/workout';
 import { CalibrateStep } from './CalibrateStep';
 import { DevPose } from './DevPose';
 import { KioskBoard } from './KioskBoard';
 import { CameraErrorOverlay, OfflineBanner } from './ErrorStates';
 import { classifyCameraError, type CameraErrorInfo } from './errors';
-import { PlayScreen } from './PlayScreen';
 import { createSwitchableInput } from './switchableInput';
 import { LEADERBOARD_SIZE } from './tuning';
 import { useOnline } from './useOnline';
@@ -43,6 +40,15 @@ type Screen =
 
 const APP_NAME = 'Neon Arena';
 const NOTICE_MS = 4000;
+
+// Heavy parts load only when needed (audit #8): the game (Three.js) when a round starts, the
+// dashboard charts (Recharts) when the dashboard opens, the pose module (MediaPipe) when the
+// player switches to the camera.
+const PlayScreen = lazy(() => import('./PlayScreen').then((m) => ({ default: m.PlayScreen })));
+const DashboardScreen = lazy(() =>
+  import('@/ui/screens/DashboardScreen').then((m) => ({ default: m.DashboardScreen })),
+);
+type PoseModule = typeof import('@/pose');
 
 const store = createStore();
 const isDevPose = new URLSearchParams(window.location.search).get('dev') === 'pose';
@@ -97,9 +103,28 @@ function MainApp() {
   }, [screen]);
 
   // ── Input: one source at a time, started here and stopped when it changes ──
+  const [poseModule, setPoseModule] = useState<PoseModule | null>(null);
+  useEffect(() => {
+    if (inputKind !== 'pose' || poseModule) return;
+    let cancelled = false;
+    import('@/pose')
+      .then((m) => {
+        if (!cancelled) setPoseModule(m);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setCameraError(classifyCameraError(err));
+        setInputKind('keyboard');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [inputKind, poseModule]);
+  // Until the pose module has loaded, the keyboard stays the input.
   const input: InputSource = useMemo(
-    () => (inputKind === 'pose' ? createPoseInput() : createKeyboardInput()),
-    [inputKind],
+    () =>
+      inputKind === 'pose' && poseModule ? poseModule.createPoseInput() : createKeyboardInput(),
+    [inputKind, poseModule],
   );
   useEffect(() => {
     let cancelled = false;
@@ -336,16 +361,18 @@ function MainApp() {
         />
       )}
       {screen === 'play' && config && (
-        <PlayScreen
-          config={config}
-          input={gameInput}
-          pose={pose}
-          weightKg={profile?.weightKg}
-          debug={debug}
-          onGame={handleGame}
-          onFinish={(s) => void handleFinish(s)}
-          onUseKeyboard={switchToKeyboard}
-        />
+        <Suspense fallback={<div className="h-screen bg-bg" />}>
+          <PlayScreen
+            config={config}
+            input={gameInput}
+            pose={pose}
+            weightKg={profile?.weightKg}
+            debug={debug}
+            onGame={handleGame}
+            onFinish={(s) => void handleFinish(s)}
+            onUseKeyboard={switchToKeyboard}
+          />
+        </Suspense>
       )}
       {screen === 'results' && summary && (
         <ResultsScreen
@@ -364,15 +391,17 @@ function MainApp() {
         />
       )}
       {screen === 'dashboard' && profile && (
-        <DashboardScreen
-          profile={profile}
-          sessions={sessions}
-          coachPick={coachPick}
-          onPlay={() => setScreen('select')}
-          onPlayCoachPick={startSession}
-          onLeaderboard={openLeaderboard}
-          onEditProfile={() => setScreen('profile')}
-        />
+        <Suspense fallback={<div className="h-screen bg-bg" />}>
+          <DashboardScreen
+            profile={profile}
+            sessions={sessions}
+            coachPick={coachPick}
+            onPlay={() => setScreen('select')}
+            onPlayCoachPick={startSession}
+            onLeaderboard={openLeaderboard}
+            onEditProfile={() => setScreen('profile')}
+          />
+        </Suspense>
       )}
       {screen === 'leaderboard' && (
         <LeaderboardScreen

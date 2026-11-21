@@ -11,7 +11,7 @@ import type {
   SessionSummary,
 } from '@/contracts';
 import { createGame } from '@/game';
-import { GameHud } from '@/ui/screens';
+import { GameHud } from '@/ui/screens/GameHud';
 import { createSessionTracker, generateLevel } from '@/workout';
 import { VideoSlot } from './slots';
 import { TrackingLostHint } from './ErrorStates';
