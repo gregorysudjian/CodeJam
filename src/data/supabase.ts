@@ -219,6 +219,8 @@ export function createSupabaseStore(
     async getLeaderboard(workout, mode, limit = 10) {
       const key = KEYS.board(workout, mode);
       try {
+        // The leaderboard is for signed-in players only (CONTRACTS.md); before sign-in, use the cache.
+        if (!(await userId())) return readJson<LeaderboardEntry[]>(kv, key, []);
         const { data, error } = await withTimeout(
           sb
             .from('leaderboard')
