@@ -14,7 +14,8 @@ import { createGame } from '@/game';
 import { GameHud } from '@/ui/screens';
 import { createSessionTracker, generateLevel } from '@/workout';
 import { VideoSlot } from './slots';
-import { FINISH_DELAY_MS, HUD_POLL_MS } from './tuning';
+import { TrackingLostHint } from './ErrorStates';
+import { FINISH_DELAY_MS, HUD_POLL_MS, TRACKING_LOST_HINT_MS } from './tuning';
 
 type HudEvent = {
   kind: 'cleared' | 'hit' | 'collected';
@@ -30,6 +31,7 @@ export function PlayScreen({
   debug,
   onGame,
   onFinish,
+  onUseKeyboard,
 }: {
   config: SessionConfig;
   input: InputSource;
@@ -37,6 +39,8 @@ export function PlayScreen({
   debug: boolean;
   onGame: (game: Game | null) => void;
   onFinish: (summary: SessionSummary) => void;
+  /** Switch to keyboard input (offered when the camera has lost the player for a while). */
+  onUseKeyboard: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
@@ -46,6 +50,15 @@ export function PlayScreen({
   const [lastEvent, setLastEvent] = useState<HudEvent | null>(null);
   const [paused, setPaused] = useState(false);
   const [trackingLost, setTrackingLost] = useState(false);
+  const [lostLong, setLostLong] = useState(false);
+  useEffect(() => {
+    if (!trackingLost) return;
+    const t = setTimeout(() => setLostLong(true), TRACKING_LOST_HINT_MS);
+    return () => {
+      clearTimeout(t);
+      setLostLong(false);
+    };
+  }, [trackingLost]);
   const onFinishRef = useRef(onFinish);
   const onGameRef = useRef(onGame);
   /** True from the 'finished' event on: the round is over, the fanfare is playing. */
@@ -162,6 +175,7 @@ export function PlayScreen({
           }}
         />
       )}
+      {trackingLost && lostLong && <TrackingLostHint onUseKeyboard={onUseKeyboard} />}
       {debug && stats && (
         <pre className="absolute bottom-4 left-4 z-50 rounded bg-black/70 p-3 text-xs text-white">
           {JSON.stringify({ input: input.kind, state: input.getState(), stats }, null, 2)}

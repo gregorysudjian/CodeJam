@@ -30,7 +30,10 @@ import {
 import { WORKOUTS } from '@/workout';
 import { CalibrateStep } from './CalibrateStep';
 import { DevPose } from './DevPose';
+import { CameraErrorOverlay, OfflineBanner } from './ErrorStates';
+import { classifyCameraError, type CameraErrorInfo } from './errors';
 import { PlayScreen } from './PlayScreen';
+import { useOnline } from './useOnline';
 
 type Screen =
   'landing' | 'profile' | 'select' | 'calibrate' | 'play' | 'results' | 'dashboard' | 'leaderboard';
@@ -56,6 +59,8 @@ function MainApp() {
   const [inputKind, setInputKind] = useState<'keyboard' | 'pose'>('keyboard');
   const [debug, setDebug] = useState(false);
   const [notice, setNotice] = useState('');
+  const [cameraError, setCameraError] = useState<CameraErrorInfo | null>(null);
+  const online = useOnline();
 
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [advice, setAdvice] = useState<CoachAdvice | null>(null);
@@ -90,7 +95,8 @@ function MainApp() {
     let cancelled = false;
     input.start().catch((err: unknown) => {
       if (cancelled) return;
-      setNotice(err instanceof Error ? err.message : 'Camera unavailable, using the keyboard.');
+      // Fall back to the keyboard at once, and explain what happened with a way to retry.
+      setCameraError(classifyCameraError(err));
       setInputKind('keyboard');
     });
     return () => {
@@ -105,6 +111,8 @@ function MainApp() {
     const t = setTimeout(() => setNotice(''), NOTICE_MS);
     return () => clearTimeout(t);
   }, [notice]);
+
+  const switchToKeyboard = useCallback(() => setInputKind('keyboard'), []);
 
   // ── Returning player and top scores for the landing screen ──
   useEffect(() => {
@@ -322,6 +330,7 @@ function MainApp() {
           debug={debug}
           onGame={handleGame}
           onFinish={(s) => void handleFinish(s)}
+          onUseKeyboard={switchToKeyboard}
         />
       )}
       {screen === 'results' && summary && (
@@ -365,6 +374,21 @@ function MainApp() {
         />
       )}
 
+      {cameraError && (
+        <CameraErrorOverlay
+          error={cameraError}
+          onUseKeyboard={() => {
+            setCameraError(null);
+            // Calibration needs the camera; with the keyboard there is nothing to calibrate.
+            if (screen === 'calibrate') setScreen('play');
+          }}
+          onRetry={() => {
+            setCameraError(null);
+            setInputKind('pose');
+          }}
+        />
+      )}
+      {!online && <OfflineBanner onUseKeyboard={inputKind === 'pose' ? switchToKeyboard : undefined} />}
       {notice && (
         <div
           role="status"
