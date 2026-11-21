@@ -25,7 +25,7 @@ const f = (v: number, digits = 2) => (Number.isFinite(v) ? v.toFixed(digits) : '
 const flag = (on: boolean) => (on ? '■' : '□');
 
 /** The overlay's text for a snapshot. Pure, so it is unit-tested. */
-export function describe(s: EngineSnapshot): string {
+export function overlayText(s: EngineSnapshot): string {
   const K = DETECTION;
   const lines = [
     `pose · ${s.mode} · ${f(s.fps, 1)} FPS ${s.delegate} · bodies ${s.bodies}`,
@@ -160,7 +160,7 @@ export function createOverlay(getSnapshot: () => EngineSnapshot): Overlay {
       const now = performance.now();
       if (now - lastRefresh < OVERLAY_REFRESH_MS) return;
       lastRefresh = now;
-      text.textContent = describe(getSnapshot());
+      text.textContent = overlayText(getSnapshot());
     },
   };
   return overlay;
