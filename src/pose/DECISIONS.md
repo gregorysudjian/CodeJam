@@ -30,3 +30,19 @@ or the named file.
     T 96 px). Treadmill mode needs T only for arm heights.
 12. **Did not merge `main` into `abdo-1`** (A's call). The pose module is built to match how `main`'s
     app uses it, read with `git show origin/main:…` (see NEEDS.md).
+13. **The pose module handles D (debug overlay) itself; R stays with the app** (A's call). `main`'s
+    `App.tsx` already calls `pose.calibrate()` on R; `calibrate()` is safe to call again mid-round
+    (the older call is rejected with "Calibration restarted.", tracking is false until done).
+14. **If play starts without `calibrate()`** (pose switched on mid-round with K), the input calibrates
+    quietly in the last mode once the player stands still for 1.5 s. Until then `tracking` is false.
+15. **One shared MediaPipe model per page** (`landmarker.ts`). The app makes a new pose input on each
+    K toggle and StrictMode starts it twice; loading once avoids 1–2 s reloads and leaked GPU contexts.
+16. **The camera stream is taken before touching the video**, and attached only if that start is
+    still current. Found with a stubbed camera: StrictMode's start/stop/start leaked a live stream.
+17. **Size gate:** once calibrated, a body whose shoulder width is more than 40% off the player's is
+    not the player (`PICK_SIZE_TOLERANCE`). A's own clips vary by about ±30% (arms up, slight turns).
+18. **Calibration status is sent in 5% progress steps**, not every frame, because the app sets React
+    state on each call.
+19. **Treadmill mode ignores the hips for tracking** (shoulders only) and has no lanes, jumps or
+    squats, per PLAN.md. Squatting at treadmill distance pushes the shoulders out of frame, so
+    tracking is lost there; that is expected.

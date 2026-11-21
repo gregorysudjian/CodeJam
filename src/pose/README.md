@@ -1,61 +1,81 @@
 # src/pose — Vision (owner A)
 
-## MORNING REPORT (in progress, updated through the night)
+## MORNING REPORT (last update: Sat 06:35 — refreshed through the night)
 
-- **Done and pushed (`abdo-1`):** live-tunable detector with floor and treadmill modes, the lane
-  hysteresis fix, a pure calibrator, `pickBody` for background people, replay helpers with synthetic
-  variants. `npm run check` passes.
-- **In progress:** the real `createPoseInput()` in `index.ts`.
-- **Decisions:** `DECISIONS.md`. **For Greg:** `NEEDS.md`. **New session:** `HANDOFF.md`.
-- **Needs real-camera test:** see `HANDOFF.md` section 6.
+**State:** Phase 1 (real detection), most of Phase 2 (robustness) and Phase 3 (treadmill input) are
+done and pushed to `abdo-1`. `npm run check` passes: **153 tests**. Nothing was ever pushed to `main`.
 
-## Phase 0: pose spike
+**What works (tested on your recorded clips, no camera needed)**
+- `createPoseInput()` is real: camera, MediaPipe, `calibrate()` with status messages, smoothing,
+  lane (hysteresis), jump, squat, arms up, reach left/right, `tracking`, move events, `drawSkeleton`.
+- Every clip gives the right moves, and so do 8 synthetic variants of every clip (shorter/taller,
+  closer/farther, ±0.5–1% jitter, 20–40% dropped frames) with the same timing (±100–250 ms).
+- Standing still: zero moves. Standing up out of a squat, even springing onto the toes: no jump
+  (and a test proves the guard is what prevents it). Squats up to 4× slower still count.
+- Background people: picks the largest, nearest body; ignores bodies far from the player's size
+  (so a person behind you is not tracked after you walk off). `MAX_POSES` stays 1 until you measure.
+- Treadmill mode: calibrates on the shoulders at 1–1.5 m, arms only; bouncing gives no moves.
+  Floor results are unchanged.
+- **D** toggles a debug overlay during play: live values next to thresholds, sliders, Reset, Copy.
+- `?dev=pose` page now runs the real input with calibrate buttons, overlay and recorder.
+- Browser-checked with a stubbed camera: 30 FPS GPU loop, overlay, StrictMode start/stop/start
+  leaves exactly one camera track, stop leaves none, denied camera gives a readable message.
 
-`mountPoseDebug(container: HTMLElement): () => void` in `debug.ts` starts the webcam, runs the MediaPipe
-Pose Landmarker (lite, VIDEO mode, one pose, GPU with CPU fallback), draws the skeleton over the mirrored
-video and shows an FPS counter, the delegate in use and whether a body is found. The returned function stops
-the camera, closes the model and removes the DOM.
+**Fixed overnight:** a leaked camera stream on React StrictMode start/stop/start (camera light
+would stay on); lane hysteresis when leaving a side lane; a lint error that slipped into one commit.
 
-Wiring (D): in the `?dev=pose` screen, call it from an effect:
+**Decisions:** `DECISIONS.md` (19 items). **For Greg:** `NEEDS.md` (5 messages, copy-paste ready).
+**New session:** `HANDOFF.md`.
 
-```tsx
-useEffect(() => mountPoseDebug(ref.current!), []);
-```
+**Needs real-camera test** (10 min checklist with exact steps in `HANDOFF.md` §6):
+1. FPS with the real input (overlay) — still ≥ 25?
+2. Calibration flow messages at your playing distance.
+3. Each move 10/10 for you; 8/10 for a teammate of a different height.
+4. Skeleton lines up in the app's calibration screen (object-cover crop).
+5. `MAX_POSES = 2`: FPS cost, and a person walking behind you.
+6. Treadmill at 1–1.5 m: jogging on the spot gives no arm moves; reaches and presses count.
+7. D overlay sliders change detection live.
 
-Until that lands, open `/?dev=pose` with `npm run dev` and paste into the Chrome console:
+## How to use it
+
+- App: `createPoseInput()` from `@/pose` (the contract). Press **D** in the app for the overlay.
+- Debug page: `npm run dev`, open `/?dev=pose`, then in the Chrome console (until Greg wires it):
 
 ```js
+const host = document.createElement('div');
+host.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#111;overflow:auto';
+document.body.append(host);
 const { mountPoseDebug } = await import('/src/pose/debug.ts');
-mountPoseDebug(document.body);
+mountPoseDebug(host);
 ```
 
 ## Files
 
 | File | What |
 | --- | --- |
-| `tuning.ts` | Every tunable number (paths, video size, confidences, drawing, FPS window) |
-| `camera.ts` | `getUserMedia` at 640×480, front camera |
-| `landmarker.ts` | Creates the Pose Landmarker from `public/`, GPU first, CPU fallback |
-| `skeleton.ts` | `toPlayerX` (the only `1 - x` in the app) and `drawPose` |
-| `debug.ts` | The `?dev=pose` view, with the clip recorder |
-| `recording.ts` | Clip format and JSON download for test fixtures |
-| `index.ts` | `createPoseInput()` — still the scaffold stub; real version is Phase 1 |
+| `index.ts` | `createPoseInput()` — the only export the contract names |
+| `engine.ts` | Browser side: camera, `requestVideoFrameCallback` loop, D key, overlay, `PoseInputSource` |
+| `session.ts` | Pure core per frame: pick the player, calibrate or detect, status throttling, listeners |
+| `calibration.ts` | Pure calibrator: noBody / tooFar / tooClose / holdStill / done, median over 1.5 s |
+| `detect.ts` | Pure detector: smoothing, lane, jump, squat, arms, tracking, drift; `toPlayerX` (the only `1 - x`) |
+| `tuning.ts` | Every number. `DETECTION` is live (sliders); `DETECTION_DEFAULTS` is what is committed |
+| `overlay.ts` | Debug overlay DOM and its text |
+| `skeleton.ts` | Skeleton drawing with the app's object-cover crop |
+| `landmarker.ts` | One shared MediaPipe model per page, GPU with CPU fallback |
+| `camera.ts` | Camera stream, attach, stop, readable errors |
+| `debug.ts` | `mountPoseDebug` for `?dev=pose`: calibrate buttons, overlay, clip recorder |
+| `recording.ts` | Clip format and JSON download |
+| `fixtures/*.json` | A's recorded clips (landmarks only, no images) |
+| `fixtures.ts` | Test helpers: replay clips, synthetic variants |
+| `*.test.ts` | Unit, replay, variant, session, treadmill tests |
 
 ## Assets (served from `public/`, never a CDN)
 
 - `public/models/pose_landmarker_lite.task` — from
   `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`
-- `public/mediapipe/wasm/` — copied from `node_modules/@mediapipe/tasks-vision/wasm` (version 1.2.3). If the
-  package version changes, re-copy: `cp node_modules/@mediapipe/tasks-vision/wasm/* public/mediapipe/wasm/`
+- `public/mediapipe/wasm/` — copied from `node_modules/@mediapipe/tasks-vision/wasm` (1.2.3). If the
+  package version changes: `cp node_modules/@mediapipe/tasks-vision/wasm/* public/mediapipe/wasm/`
 
-## Status
+## History
 
-- Works: `npm run check` passes. In headless Chrome the model and WASM load from `public/` (GPU delegate,
-  about 1.2 s) and `detectForVideo` runs; the cleanup removes everything.
-- Tested on A's laptop (2026-11-21): 25.9 FPS, GPU delegate, 640×480; skeleton lines up, mirroring is
-  correct (right hand up shows on the right of the screen), full body tracked. FPS is likely capped by the
-  webcam in low light, not the model.
-- Recorder: buttons at the bottom of the debug view record 8 s of raw landmarks after a 3 s countdown and
-  download `pose-<label>-<time>.json`. Fixtures go in `src/pose/fixtures/`.
-- Next (Phase 1): `createPoseInput()` with calibration, smoothing, lane hysteresis, jump, squat, arms, tracking
-  flag, move events and a debug overlay with sliders.
+- Phase 0 (Sat ~3 AM): spike at 25.9 FPS GPU on A's laptop, mirroring correct, full body tracked.

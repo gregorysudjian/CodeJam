@@ -30,3 +30,9 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > 0.55 W (was 0.8 W), arm "down" near the nose (was below the shoulder), arms ignored mid-jump, and
 > tracking lost when the hips leave the frame. Details in `src/pose/DECISIONS.md`. Types and
 > interfaces are unchanged.
+
+## 5. Optional: "raise both arms to start" (PLAN.md Phase 2, A's list, but it lives in the app)
+
+> The pose input already emits an `armsUp` move event. For a hands-free start, the ready screen can
+> subscribe with `pose.onMove((e) => { if (e.type === 'armsUp') startRound(); })` and unsubscribe
+> on unmount. No pose change needed.
