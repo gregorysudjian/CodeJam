@@ -23,7 +23,7 @@ Pure and seeded (mulberry32): the same complete config always gives the same lev
    - The last object finishes 1 s before the round ends, so every object is judged before `finished`.
    - Orb labels: floor uses `reachLeft` on lane −1 and `reachRight` otherwise (either arm works on the floor). Treadmill uses the arm the lane needs (−1 left, +1 right, 0 `armsUp`).
 
-**Demo round:** `generateLevel(DEMO_CONFIG)` is Full body, floor, 45 s, seed 594. Its first five waves are block, hurdle, orb, beam, crate. It also has a held squat and a combo. A test locks this, so a tuning change that alters the demo fails CI and has to be done on purpose. The Player should rehearse it after any such change.
+**Demo round:** open the app with `?demo=1` (for example `https://<deploy>/?demo=1`) and every round is the demo level, whatever card is picked. No app change needed. Without the flag, `generateLevel(DEMO_CONFIG)` is Full body, floor, 45 s, seed 594. Its first five waves are block, hurdle, orb, beam, crate. It also has a held squat and a combo. A test locks this, so a tuning change that alters the demo fails CI and has to be done on purpose. The Player should rehearse it after any such change.
 
 ## createSessionTracker(config, opts) — `tracker.ts`
 
