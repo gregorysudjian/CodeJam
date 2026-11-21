@@ -144,22 +144,42 @@ export function createGameAudio(): GameAudio {
   };
 
   const lastSaw = new Map<string, number>();
-  const play = (fn: () => void): void => {
-    if (ctx.state === 'closed') return;
+  // Before the page's first gesture Chrome keeps the context suspended and logs a warning for
+  // each resume() call (the game called it every frame: about 60 a second). So: resume in the
+  // gesture itself, and otherwise try at most every L.AUDIO_WAKE_GAP_MS.
+  let lastWake = -Infinity;
+  const wake = (): void => {
+    if (ctx.state !== 'suspended') return;
+    const now = performance.now();
+    if (now - lastWake < L.AUDIO_WAKE_GAP_MS) return;
+    lastWake = now;
+    void ctx.resume().catch(() => {});
+  };
+  const onGesture = (): void => {
     if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+  };
+  const GESTURES = ['keydown', 'pointerdown'] as const;
+  for (const g of GESTURES) window.addEventListener(g, onGesture, true);
+  const guard = (fn: () => void): void => {
+    if (ctx.state === 'closed') return;
     try {
       fn();
     } catch {
       // a sound must never break the game loop
     }
   };
+  const play = (fn: () => void): void => {
+    wake();
+    guard(fn);
+  };
   const musicGain = ctx.createGain();
   musicGain.connect(master);
   const beat = musicOff() ? null : createMusic(ctx, musicGain, noise);
   const music: GameAudio['music'] = beat
     ? {
-        start: () => play(() => beat.start()),
-        stop: () => play(() => beat.stop()),
+        // Called every frame (start while running, stop otherwise): never a resume attempt.
+        start: () => guard(() => beat.start()),
+        stop: () => guard(() => beat.stop()),
         update: (s) => {
           if (ctx.state !== 'running') return;
           try {
@@ -173,7 +193,7 @@ export function createGameAudio(): GameAudio {
 
   return {
     resume() {
-      if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+      wake();
     },
     cue(move) {
       play(() => {
@@ -257,6 +277,9 @@ export function createGameAudio(): GameAudio {
       });
     },
     dispose() {
+      for (const g of GESTURES) window.removeEventListener(g, onGesture, true);
+      // A round left mid-beat (K, END ROUND) fades the music out instead of cutting it.
+      guard(() => beat?.stop());
       // Close after the tail of the last sounds: the app unmounts the game on 'finished',
       // and closing at once would cut the finish fanfare.
       setTimeout(() => {

@@ -95,6 +95,9 @@ export const SFX = {
   finish: 0.35,
 } as const;
 export const MUSIC_VOLUME = 0.35; // the beat, relative to AUDIO_VOLUME
+// While Chrome keeps audio suspended (no gesture on the page yet), at most one resume attempt
+// per this long; a key press or click resumes it at once (audio.ts).
+export const AUDIO_WAKE_GAP_MS = 1000;
 /** Peak level of each voice of the beat, before MUSIC_VOLUME. */
 export const MUSIC_VOICES = {
   kick: 0.9,
