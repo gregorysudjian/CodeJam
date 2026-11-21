@@ -55,7 +55,7 @@ describe('local store', () => {
     await store.saveSession(summary(700, 'arms'));
     const list = await store.listSessions();
     expect(list.map((s) => s.score)).toEqual([700, 900, 500]);
-    expect(list.every((s) => s.synced === false)).toBe(true);
+    expect(list.every((s) => s.synced === true)).toBe(true); // nothing is queued locally
     const board = await store.getLeaderboard('fullBody', 'floor');
     expect(board.map((r) => [r.displayName, r.score])).toEqual([
       ['Greg', 900],

@@ -89,7 +89,8 @@ export function createLocalStore(kv: KeyValue | null = browserStorage()): DataSt
         ...summary,
         id: crypto.randomUUID(),
         at: Date.now(),
-        synced: false,
+        // Nothing waits in a queue here (CONTRACTS: false only while queued), so no "NOT SYNCED" tag.
+        synced: true,
       };
       writeJson(kv, KEYS.sessions, [saved, ...sessions()].slice(0, LOCAL_MAX_SESSIONS));
       return saved;

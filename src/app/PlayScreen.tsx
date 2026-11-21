@@ -160,6 +160,16 @@ export function PlayScreen({
     };
   }, [level, input, weightKg]);
 
+  // Switching tab or window mid-round: pause, so the player comes back to the PAUSED screen
+  // instead of being thrown straight back in (QA Q8). Esc, RESUME or the X gesture resume.
+  useEffect(() => {
+    const onHide = () => {
+      if (document.hidden && !finishedRef.current) gameRef.current?.pause();
+    };
+    document.addEventListener('visibilitychange', onHide);
+    return () => document.removeEventListener('visibilitychange', onHide);
+  }, []);
+
   // Arms crossed in an X (the pose 'pause' gesture): pause the round, or resume a pause the
   // player made. A pause for lost tracking ends when the player is seen again, as before.
   useEffect(() => {
