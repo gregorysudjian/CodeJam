@@ -339,3 +339,40 @@ test('an overhead press with ±1% landmark noise is never a jump (Patrick, 20 se
     expect(kinds(r.events).filter((x) => x === 'jump')).toEqual([]);
   }
 });
+
+/*
+ * A's third session (Sat ~3:20 PM, ~1.4 m, head to knees, feet at the bottom edge): the closer
+ * play distance. Calibrated on its own standing clip. His deep squats take the hips to the bottom
+ * edge of the frame; tracking must hold. `pauseX` is a real X (two holds), the only clip with pauses.
+ */
+describe('closer play (~1.4 m, head to knees): real clips', () => {
+  const near = (clip: string, opts: ReplayOptions = {}) =>
+    replay(`near/${clip}`, { calibrate: 'near/standing', ...opts });
+  const expected: Record<string, string[]> = {
+    standing: [],
+    sidestep: Array(4).fill('sidestep'),
+    jump: Array(4).fill('jump'),
+    squat: ['squat', 'squat'],
+    armsUp: Array(3).fill('armsUp'),
+    pauseX: [],
+  };
+  const variants: Record<string, ReplayOptions> = {
+    plain: {},
+    'jitter ±0.5%': { transform: jitter(0.005, 21) },
+    '15 FPS steady': { everyNth: 2 },
+  };
+  for (const [v, opts] of Object.entries(variants)) {
+    test.each(Object.keys(expected))(`%s (${v}): expected moves, tracking never lost`, (clip) => {
+      const r = near(clip, { holdLastMs: clip === 'squat' ? 1000 : 0, ...opts });
+      expect(kinds(r.events)).toEqual(expected[clip]);
+      expect(r.tracking).toEqual([]);
+    });
+    test(`pauseX (${v}): the two real X holds give exactly two pauses`, () => {
+      expect(near('pauseX', opts).gestures.map((g) => g.type)).toEqual(['pause', 'pause']);
+    });
+  }
+  test.each(['standing', 'sidestep', 'jump', 'squat', 'armsUp', 'reach', 'leaveFrame', 'mixed'])(
+    '%s: no pause from real moves',
+    (clip) => expect(near(clip).gestures).toEqual([]),
+  );
+});

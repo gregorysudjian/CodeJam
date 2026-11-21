@@ -1,25 +1,22 @@
 # Progress (Greg: D + C)
 
-## Status (Saturday about 2:30 PM)
+## Status (Saturday about 4:30 PM)
 
-**All three parts are on `main`:** Patrick's game and workout (#24, #25) and Abdo's body control (#27). `npm run check`: 530 tests.
+**On `main` and working end to end:** Patrick's 3D game with the polish (runner rig, city/tunnel/bridge/finale zones, music, PERFECT/GOOD/LATE, intro) and the colour/readability pass; Abdo's body control with calibration at about 1.5 m (head to knees), the X pause gesture and camera-by-default when a camera exists; Greg's wiring (camera switch, hands-free play again, X pause/resume, End round, pause on tab switch, offline fixes) and every QA finding fixed (docs/QA.md). Demo on Patrick's Mac: `npm run dev`, `http://localhost:5173/?demo=1` (DEMO.md). Coach: rule-based (no Claude key).
 
-**First 3 things for Greg**
-1. **Demo on Patrick's Mac:** `npm run dev`, `http://localhost:5173/?demo=1`, pick Camera, calibrate, play (DEMO.md station checklist). No deploy needed.
-2. **Coach:** rule-based for the demo (no Claude key for now).
-3. **Play a few camera rounds** on the demo laptop with Patrick and Abdo (Patrick's prompt: latency leads, holds, FPS with pose and 3D, demo level, ghost rehearsals).
-
-**Vercel:** the Hobby cap (100 deployments per 24 h) is used up; Vercel's API says it fully resets **Sunday 1:40 PM**, slots may free from about 3 AM. The live site is at #25 (game, no body control) until then. The demo doesn't need it: `vercel dev` runs everything locally, coach included. No trial is offered to this account; Pro would be $20.
-
-**Tested:** #27 reviewed and checked merged with `main` and `?dev=pose` (530 tests). Browser: a keyboard demo round to results; the Camera switch started the real webcam (MediaPipe running) and Keyboard stopped it; `?dev=pose` shows Abdo's page; no console errors. `vercel dev` locally: a round saved to Supabase, `/api/coach` passed auth and the rate limit, then "not configured" (no key yet), so rules.
-
-**Not tested:** a full calibrated camera round through the app with a person in front of it (Greg did calibration and moves on the debug page this morning); a real Claude answer.
+**Who is doing what**
+- Patrick's Mac (`p5-game`, level with main): his camera session, then latency leads, hit causes, ghost rehearsals, one PR. Meanwhile: leaderboard fairness numbers (a 180 s round outscores a 45 s one on the same board), judge edge-case tests, load audit.
+- Patrick's second laptop (`p6-look`): ghost readability, hit effects, banners vs the top-band cue; the three items deferred until `p5-game` merges.
+- Abdo: real X clips and near-miss checks; on call for detection cases from Patrick's session.
+- Fourth helper: re-sweep of the new main, Devpost screenshots, operator card (`docs/OPERATOR.md`), pitch Q&A.
+- Greg: his 9 teammate clips at 1.5 m (`?dev=pose`), pitch rehearsal.
 
 **Open problems, ranked by demo risk**
-1. Camera play through the app on the demo laptop: calibration, holds, FPS. **Everyone**, now
-2. No Claude key. **Greg**
-3. The HUD cue word covers the obstacle it announces. **Lovable UI**
-4. The live site lags `main` until the Vercel cap frees. **Greg** (check Sunday morning)
+1. The camera session on the demo Mac (calibration at 1.5 m, X, grades, music volume, FPS) hasn't happened yet. **Patrick**
+2. Leaderboard mixes round lengths; judges play 45 s. Waiting for Patrick's numbers; the likely fix is a duration filter (Greg: `src/data`, the view). **Greg + Patrick**
+3. Vercel's daily deploy cap: the live site can lag `main`; the demo runs locally, so it doesn't block the demo. **Greg** (check Sunday morning)
+
+**Sunday morning (Greg's Claude):** delete test players from the database, check the leaderboard, make sure the live site has the final `main`. After about 10 AM: crash or unplayable fixes only.
 
 ## Log
 

@@ -2,9 +2,17 @@
 // Runs after the move detector and only reads it, so move detection and its timing are unchanged.
 // A fist is not visible to the pose model, so the X is the pause sign.
 import type { InputState } from '@/contracts';
-import { L_SHOULDER, L_WRIST, mid, type Point, R_SHOULDER, R_WRIST, toPlayerX } from './detect';
 import {
-  GESTURE_ABOVE_SHOULDER_T,
+  L_SHOULDER,
+  L_WRIST,
+  mid,
+  NOSE,
+  type Point,
+  R_SHOULDER,
+  R_WRIST,
+  toPlayerX,
+} from './detect';
+import {
   GESTURE_BELOW_SHOULDER_T,
   GESTURE_CROSS_W,
   GESTURE_GRACE_MS,
@@ -36,7 +44,8 @@ export function isCrossed(pose: Point[], W: number, T: number): boolean {
   const rw = pose[R_WRIST];
   const ls = pose[L_SHOULDER];
   const rs = pose[R_SHOULDER];
-  if (!lw || !rw || !ls || !rs) return false;
+  const nose = pose[NOSE];
+  if (!lw || !rw || !ls || !rs || !nose) return false;
   // Player coordinates: normally the left wrist is left of the right one (smaller x). Crossed: the
   // left wrist is clearly to the right of the right wrist.
   const lx = toPlayerX(lw.x);
@@ -44,8 +53,7 @@ export function isCrossed(pose: Point[], W: number, T: number): boolean {
   if (lx - rx < GESTURE_CROSS_W * W) return false;
   const s = mid(ls, rs);
   const cx = toPlayerX(s.x);
-  const atChest = (w: Point) =>
-    w.y >= s.y - GESTURE_ABOVE_SHOULDER_T * T && w.y <= s.y + GESTURE_BELOW_SHOULDER_T * T;
+  const atChest = (w: Point) => w.y >= nose.y && w.y <= s.y + GESTURE_BELOW_SHOULDER_T * T;
   const nearCentre = (x: number) => Math.abs(x - cx) <= GESTURE_NEAR_CENTRE_W * W;
   return atChest(lw) && atChest(rw) && nearCentre(lx) && nearCentre(rx);
 }

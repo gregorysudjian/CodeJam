@@ -43,12 +43,12 @@ export const GAP_RESET_MS = 500;
  * the calibrated W (x) and T (y), like the moves.
  */
 /** The wrists must be past each other by this much (hands just touching or clapping is not an X). */
-export const GESTURE_CROSS_W = 0.2;
+export const GESTURE_CROSS_W = 0.08; // A's real X: 0.13–0.38 W
 /**
- * Chest height: both wrists between this far above the shoulders (still under the nose, so it
- * never overlaps arms up) and this far below them (above the hips: arms hanging are not an X).
+ * Chest height: both wrists no higher than the nose (so it never overlaps arms up) and at most this
+ * far below the shoulders (above the hips: arms hanging are not an X). A's real X sits at chin
+ * height, 0.2–0.27 T above the shoulders.
  */
-export const GESTURE_ABOVE_SHOULDER_T = 0.3;
 export const GESTURE_BELOW_SHOULDER_T = 0.7;
 /** Both wrists within this distance of the body's centre line (in front of the chest). */
 export const GESTURE_NEAR_CENTRE_W = 1.2;
@@ -98,13 +98,14 @@ export const CALIBRATION_MIN_W_FRAME = 0.12;
  */
 export const CALIBRATION_FEET_IN_VIEW = false;
 /**
- * Floor calibration also needs room in the frame for the moves, in T: above the shoulders for a
- * jump (A's shoulders rose 0.68 T, Greg's 0.45 T) and below the hips for a squat (A's hips dropped
- * 1.03 T, Greg's 0.68 T), or tracking drops mid-move. This, not the knees, sets the closest
- * distance (about 1.2 m).
+ * Floor calibration also needs a little room in the frame for the moves, in T: above the shoulders
+ * so a crouch-and-jump still crosses its line (0.45 T) in view, and below the hips so a squat
+ * crosses its line (0.3 T) in view. Deeper squats may take the hips to the bottom edge: detection
+ * keeps tracking on the shoulders while ducking. In practice head and knees in view set the
+ * distance. (1.0 T below the hips pushed A back to ~2 m; DECISIONS 42.)
  */
-export const CALIBRATION_JUMP_ROOM_T = 0.7;
-export const CALIBRATION_SQUAT_ROOM_T = 1.0;
+export const CALIBRATION_JUMP_ROOM_T = 0.5;
+export const CALIBRATION_SQUAT_ROOM_T = 0.5;
 /** A landmark counts as in frame inside this margin (fraction of the frame). */
 export const CALIBRATION_EDGE_MARGIN = 0;
 /** A problem shorter than this (a flicker) pauses the hold instead of restarting it. */
