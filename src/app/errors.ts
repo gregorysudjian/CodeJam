@@ -40,11 +40,16 @@ const COPY: Record<CameraProblem, Omit<CameraErrorInfo, 'kind'>> = {
   },
 };
 
+const nameOf = (err: unknown): string =>
+  typeof err === 'object' && err !== null && 'name' in err
+    ? String((err as { name: unknown }).name)
+    : '';
+
 export function classifyCameraError(err: unknown): CameraErrorInfo {
-  const name =
-    err instanceof Error || (typeof err === 'object' && err !== null && 'name' in err)
-      ? String((err as { name: unknown }).name)
-      : '';
-  const kind = BY_NAME[name] ?? 'other';
+  // The pose module rethrows the getUserMedia error with a readable message and the original as
+  // `cause` (docs/QA.md Q2), so look through one level of wrapping.
+  const cause =
+    typeof err === 'object' && err !== null ? (err as { cause?: unknown }).cause : undefined;
+  const kind = BY_NAME[nameOf(err)] ?? BY_NAME[nameOf(cause)] ?? 'other';
   return { kind, ...COPY[kind] };
 }
