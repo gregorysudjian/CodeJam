@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { curvatureAt, lateralOffset } from './curve';
 import { buildSkyline } from './montreal';
 import type { Quality } from './quality';
 import * as T from './tuning';
@@ -338,6 +339,15 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
       }
       dashes.instanceMatrix.needsUpdate = true;
 
+      // The route bends: the city is pushed sideways by how far ahead it is,
+      // so it swings around the player and straightens as they reach it.
+      // See curve.ts — the lanes never move.
+      //
+      // The bend is applied to scenery ONLY. The arches straddle the track and
+      // the player runs through them, so they have to stay square to the lanes:
+      // bent, they read as gates sliding out of alignment rather than as a
+      // curve, because the lane lines beside them are visibly straight.
+      const curve = curvatureAt(distance);
       for (let i = 0; i < arches.length; i++) {
         arches[i]!.position.z = zNear - wrap(i * T.ARCH_SPACING - distance + 10, archSpan);
       }
@@ -345,16 +355,18 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
       const parallax = distance * T.TOWER_PARALLAX;
       for (let i = 0; i < towerCount && towers.visible; i++) {
         const t = towerInfo[i]!;
-        const z = zNear - wrap(t.z0 - parallax, towerSpan);
+        const ahead = wrap(t.z0 - parallax, towerSpan);
+        const z = zNear - ahead;
+        const bend = lateralOffset(ahead, curve);
         if (t.lean) {
           // Leaning pieces (the Montréal Tower) need a real rotation, so
           // compose instead of the scale-only fast path the rest use.
           leanQ.setFromAxisAngle(leanAxis, t.lean);
           boxScale.set(t.w, t.h, t.d);
-          boxPos.set(t.x + Math.sin(t.lean) * (t.h / 2), t.cy, z);
+          boxPos.set(t.x + bend + Math.sin(t.lean) * (t.h / 2), t.cy, z);
           m4.compose(boxPos, leanQ, boxScale);
         } else {
-          m4.makeScale(t.w, t.h, t.d).setPosition(t.x, t.cy, z);
+          m4.makeScale(t.w, t.h, t.d).setPosition(t.x + bend, t.cy, z);
         }
         towers.setMatrixAt(i, m4);
         // A lit roofline marks the top, except on hillsides and bridge piers.
@@ -363,7 +375,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
           capsA.setMatrixAt(i, m4);
           capsB.setMatrixAt(i, m4);
         } else {
-          m4.makeScale(t.w, 1, t.d).setPosition(t.x, t.cy + t.h / 2, z);
+          m4.makeScale(t.w, 1, t.d).setPosition(t.x + bend, t.cy + t.h / 2, z);
           (t.capB ? capsB : capsA).setMatrixAt(i, m4);
           m4.makeScale(0, 0, 0);
           (t.capB ? capsA : capsB).setMatrixAt(i, m4);

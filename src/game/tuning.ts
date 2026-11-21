@@ -83,6 +83,14 @@ export const ARCH_COUNT = 6;
 export const ARCH_HEIGHT = 6.2; // above the camera, so the top bar never sweeps across the view
 export const TOWER_COUNT = 48;
 export const TOWER_PARALLAX = 0.6; // skyline scrolls slower than the track
+
+/* Route bends (curve.ts). The lanes stay straight in play space; only the
+   drawn world swings, so none of these touch movement, collision or scoring. */
+export const CURVE_PERIOD_A = 46; // distance units per cycle of the first sine
+export const CURVE_PERIOD_B = 97; // and the second, out of phase, so bends do not repeat
+export const CURVE_STRENGTH = 0.0016; // lateral push per unit² ahead; the bend's tightness
+export const CURVE_LOOKAHEAD = 18; // the camera leans into the bend it is about to enter
+export const CURVE_YAW_MAX = 0.06; // radians; small, or the straight lanes slide off centre
 export const SPEED_LINE_COUNT = 60;
 export const SPEED_LINE_LENGTH = 2.6;
 export const SPEED_LINE_SPAN = 70; // they recycle over this distance
