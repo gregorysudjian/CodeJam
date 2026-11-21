@@ -75,7 +75,9 @@ still; size gate 40%; `MAX_POSES = 1`; pose handles D, app handles R; video kept
 1. **Not yet run on a real camera since Phase 0.** All detection evidence is from recorded clips.
 2. **FPS with the full input is unmeasured** (overlay shows it). Phase 0 spike: 25.9 FPS GPU.
 3. **Only one body type recorded** (A). A teammate of a different height is the Phase 1 done-check.
-4. **Treadmill was simulated** by scaling floor clips; real jogging arm swing is untested.
+4. **Treadmill was simulated** by scaling floor clips; real jogging arm swing is untested. Treadmill
+   does not re-baseline size while jogging, so if the runner drifts much closer or further on the
+   belt, press R (a ~40% size change also trips the size gate and pauses tracking).
 5. **The app moves the `<video>` between screens.** Removing it pauses it; the engine now resumes it
    and processes frames on a watchdog timer (verified in Chromium). Watch FPS in the play screen.
 6. **Video mirroring owner mismatch**: contract says UI mirrors, app says A does; pose mirrors now.

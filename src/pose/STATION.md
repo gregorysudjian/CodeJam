@@ -43,6 +43,7 @@ For the demo laptop and anyone running the station. Chrome only.
 | Arms up when resting hands on head | — | `ARM_UP_ABOVE_NOSE_T` higher |
 | Presses counted only once | Lower arms to the chin between reps | `ARM_DOWN_ABOVE_NOSE_T` higher (0.05 → 0.15) |
 | Game pauses ("tracking lost") | Step back into view, face the camera | Light; hips visible |
+| Treadmill: arm moves too easy / too hard after a while | Runner drifted on the belt: press R | — |
 | Everything jittery | Light | `SMOOTHING_ALPHA` lower (0.5 → 0.35; more lag) |
 | Low FPS (< 20) | Overlay line 2: camera fps low → add light; camera ~30 → close tabs, plug in | Keyboard (K) as fallback |
 | "The camera needs https or localhost" | Use the Vercel https link or `localhost`, not a LAN IP | — |
