@@ -293,7 +293,12 @@ export function GameHud({
             ) : (
               <>
                 <h1 className="hud-pause-title font-display-italic text-display-xl">PAUSED</h1>
-                <p className="text-body text-text-muted">Cross your arms to resume</p>
+                {/* Camera players only, readable from the 1.5 m mark (QA Q14). */}
+                {cameraSlot && (
+                  <p className="font-display-italic text-display-sm text-text">
+                    Cross your arms to resume
+                  </p>
+                )}
                 <GameButton
                   size="lg"
                   keyHint="ESC"

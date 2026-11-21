@@ -29,6 +29,7 @@ import {
   CALIBRATION_STILL_T,
   CALIBRATION_STILL_T_TREADMILL,
   CALIBRATION_SQUAT_ROOM_T,
+  DEFAULT_ASPECT,
   TREADMILL_T_PER_W_PX,
 } from './tuning';
 
@@ -96,7 +97,7 @@ export function measureForMode(pose: Point[], mode: PlayMode, aspect: number): C
 /** `aspect`: the video's width / height, or a getter (the camera may not be running yet). */
 export function createCalibrator(
   mode: PlayMode,
-  aspect: number | (() => number) = 4 / 3,
+  aspect: number | (() => number) = DEFAULT_ASPECT,
   feetInView = CALIBRATION_FEET_IN_VIEW,
 ): Calibrator {
   const getAspect = typeof aspect === 'function' ? aspect : () => aspect;
@@ -126,8 +127,8 @@ export function createCalibrator(
     if (!pose || !m) return 'noBody';
     if (mode === 'floor') {
       if (m.T < CALIBRATION_MIN_T_FRAME) return 'tooFar';
-      // Head and feet in view (contract). In a small room, CALIBRATION_FEET_IN_VIEW = false
-      // asks only for the knees: detection itself uses the hips.
+      // Head and knees in view by default (about 1.5 m; DECISIONS 40); head and feet when
+      // CALIBRATION_FEET_IN_VIEW is true. Detection itself uses the hips, never the feet.
       const ends = feetInView
         ? [pose[NOSE], pose[L_ANKLE], pose[R_ANKLE]]
         : [pose[NOSE], pose[L_KNEE], pose[R_KNEE]];

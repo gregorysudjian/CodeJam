@@ -1,6 +1,6 @@
 # HANDOFF — src/pose (role A, Vision)
 
-_Last refresh: Sat ~4:45 PM. A new conversation starts here: read this, then do §8 task 1._
+_Last refresh: Sat ~5:15 PM. A new conversation starts here: read this, then do §8 task 1._
 
 ## 1. Context
 
@@ -12,8 +12,8 @@ _Last refresh: Sat ~4:45 PM. A new conversation starts here: read this, then do 
 
 ## 2. Current state
 
-- **Branch:** `abdo-1` = `main` at `b0a02bd` (Merge #44), plus this handoff commit (`git log -1`). Nothing is unmerged and no PR is open.
-- **`npm run check` passes:** 729 tests, 411 of them in `src/pose` (Sat ~4:45 PM).
+- **Branch:** `abdo-1` = `main` at `b0a02bd` (Merge #44) plus the commits after it (`git log origin/main..abdo-1`): the STATION.md operator card and self-review fixes (DECISIONS 43). Not in a PR yet: Greg asked for one PR at the end of his list, so open it after §8 tasks 1–3, or earlier if the freeze gets close.
+- **`npm run check` passes:** 729 tests, 411 of them in `src/pose` (Sat ~5:15 PM). The 7 lint warnings are in `src/ui`, not ours.
 - **Merged today:** #27/#30 (self-check: 15 FPS, flicker), #32 (no false jump during a press), #37/#39 (head-to-knees calibration at about 1.5 m and the pause X), #43/#44 (the app picks the camera on the select screen when one exists, and remembers the choice).
 - **Works (all in `main`):**
   - `createPoseInput()`, which returns `PoseSource` = the contract's `PoseInputSource` + `onGesture`. It covers the camera, MediaPipe, `calibrate()` with status messages, lane / jump / squat / armsUp / reachLeft / reachRight, `tracking`, move events and `drawSkeleton`.
@@ -24,7 +24,8 @@ _Last refresh: Sat ~4:45 PM. A new conversation starts here: read this, then do 
   - `?dev=pose`: calibrate buttons, a move tally including `pause X`, and a recorder with `standing … mixed`, `pauseX`, `xLow`, `xTouch` and `xOverhead`.
   - `src/pose/clip-viewer.html`: open it in Chrome and drop clip JSONs on it to play back the skeleton.
 - **Real camera (A's laptop, Sat ~4 PM):** calibration at about 1.4–1.5 m works. In the app, the X paused and resumed a round. A's clips at about 1.4 m (`fixtures/near/`) give 4/4 sidesteps, 4/4 jumps, 2/2 squats and 3/3 presses with tracking never lost, and the real X gives 2/2 pauses.
-- **Half-done:** the X near-miss clips aren't recorded yet. The `debug.ts` `CLIP_LABELS` buttons for them exist; the clips go into `fixtures/near/` with tests in `variants.test.ts` (`describe('closer play …')`). That's §8 task 1.
+- **Done Sat ~5 PM:** `STATION.md` operator card (1 minute: distance, light, calibration messages, R, when to give up and press K) and a strict self-review of every `src/pose` file (DECISIONS 43).
+- **Half-done:** the X near-miss clips aren't recorded yet (`~/Downloads` has only the chest `pauseX`, already in `near/`). The `debug.ts` `CLIP_LABELS` buttons for them exist; the clips go into `fixtures/near/` with tests in `variants.test.ts` (`describe('closer play …')`). That's §8 task 1.
 - **Local dev:** `npm run dev`, then `http://localhost:5173` (the app) and `/?dev=pose` (the debug page). Close the `?dev=pose` tab before playing the app; on Windows only one tab can hold the camera.
 
 ## 3. Architecture of `src/pose/`
@@ -63,11 +64,11 @@ engine.ts      source: getState() (the game polls it), onMove, onGesture, drawSk
 | `fixtures.ts`, `fixtures/` | Replay helpers (`replay()` returns events, tracking and gestures). Clips: A's (`*.json`), `greg/`, `near/` (A at about 1.4 m, with the real `pauseX`); `extra/<move>-<N>-<name>.json` become tests automatically |
 | `*.test.ts` | detect, gesture, session, calibration, treadmill, skeleton, overlay, variants (every clip × 14 variants, the near clips, and the **pinned state timing** the game's latency leads rely on) |
 | `clip-viewer.html` | Offline skeleton playback of clip JSONs |
-| `DECISIONS.md`, `NEEDS.md`, `STATION.md`, `README.md` | Why, requests for Greg, demo station setup, status |
+| `DECISIONS.md`, `NEEDS.md`, `STATION.md`, `README.md` | Why (43 entries), requests for Greg, demo operator card + tuning table, file list |
 
 ## 4. Decisions
 
-`src/pose/DECISIONS.md` has 42 entries, each with its reason. The most important ones:
+`src/pose/DECISIONS.md` has 43 entries, each with its reason. The most important ones:
 
 - **Pinned timing:** `variants.test.ts` › "when states turn on" must pass. Patrick's game draws objects early by the measured pose lag. Arm line 0.3 T above the nose (33), lane 0.55 / 0.3 W, jump speed above 1.0 T/s.
 - The squat rep is decided after standing up (36). After a squat, a jump must rise 0.45 T (37: a fast rise up to 150 ms earlier counts, for 15 FPS). With both arms up, a jump must rise 0.3 T (39).
@@ -115,7 +116,7 @@ NEEDS 1, 2, 5, 6, 7, 9, 10, 11 and 12 are done. 3, 4 and 8 are FYI. Open items:
 1. **Phase 4 (hardening): X near-miss clips.** After §6 step 5, copy the new `~/Downloads/pose-{pauseX,xLow,xTouch,xOverhead}-*.json` into `src/pose/fixtures/near/` with clear names (for example `pauseX-chest.json`, `pauseX-armsOut.json`, `xLow.json`). In `variants.test.ts` › `describe('closer play …')`, expect the real number of pauses for the pauseX clips and 0 for the x* clips. If one fails, look at `isCrossed` with real values (see the probe pattern in DECISIONS 42) before changing `GESTURE_*` thresholds, and only before Sunday 10 AM. Run `npm run check`, then open a PR from `abdo-1`.
 2. **Phase 4: on call for Patrick's Mac session** (§7). His cases come in as clips; fix them in `src/pose`. The pinned timing test must pass.
 3. **Phase 1/2 done-check: the teammate check** with Greg's clips at 1.5 m (§7), added as `fixtures/extra/` tests.
-4. **Phase 4: `STATION.md`.** Add what the Mac session shows: distance, light, whether `?gfx=low` is needed.
+4. **Phase 4: `STATION.md`.** The operator card is done; add what the Mac session shows (distance, light, whether `?gfx=low` is needed) to the "Before the demo" list.
 5. **Phase 5 (Sunday):** fresh-eyes playtest. Only crash or unplayable fixes, a second reader for each, no threshold changes after 10 AM. Rehearse the X on the pause screen.
 6. Skip: new features, `MAX_POSES = 2`, treadmill tuning.
 

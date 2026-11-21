@@ -1,7 +1,7 @@
 // Owner: A. The camera-free core of the pose input: per frame, pick the player among the bodies,
 // then either calibrate or detect moves. Pure (no DOM), so the whole calibrate() → moves flow is
 // tested on recorded clips. engine.ts feeds it camera frames.
-import type { CalibrationStatus, InputState, MoveEvent, PlayMode } from '@/contracts';
+import type { CalibrationStatus, Gesture, InputState, MoveEvent, PlayMode } from '@/contracts';
 import { type Calibrator, createCalibrator } from './calibration';
 import {
   type Calibration,
@@ -14,8 +14,13 @@ import {
   R_SHOULDER,
   toPlayerX,
 } from './detect';
-import { createGestureDetector, type Gesture } from './gesture';
-import { CALIBRATION_STATUS_STEP, PICK_SIZE_TOLERANCE, RECENT_EVENTS } from './tuning';
+import { createGestureDetector } from './gesture';
+import {
+  CALIBRATION_STATUS_STEP,
+  DEFAULT_ASPECT,
+  PICK_SIZE_TOLERANCE,
+  RECENT_EVENTS,
+} from './tuning';
 
 export const NEUTRAL_STATE: InputState = Object.freeze({
   tracking: false,
@@ -76,7 +81,7 @@ export function isPlayerSized(pose: Point[], playerW: number): boolean {
 
 export function createSession(): Session {
   let mode: PlayMode = 'floor';
-  let aspect = 4 / 3;
+  let aspect = DEFAULT_ASPECT;
   let calibration: Calibration | null = null;
   let detector: Detector | null = null;
   let pending: Pending | null = null;

@@ -178,3 +178,13 @@ or the named file.
       0 false pauses in 1,440 noisy replays of every clip from all three sessions.
     - A's `near/reach` has two low reaches (wrist only 0.2–0.3 T above the nose) that do not
       count: that is the 0.3 T arm line Patrick's timing is tuned on, not a bug.
+43. **Demo-day card and a self-review (Sat ~5 PM, no behaviour change).** `STATION.md` now opens
+    with a 1-minute operator card: 1.5 m mark, face the light with nothing bright behind, what each
+    calibration message means, R during a round when moves feel off, and **K to give up on the
+    camera** after a camera error, ~30 s stuck in calibration, or moves still wrong after one R.
+    The tuning table moved below it, marked "A only, never after Sunday 10 AM". Review fixes:
+    `Gesture` now comes from `src/contracts` (it was a local copy from before D added it);
+    `DEFAULT_ASPECT` in `tuning.ts` replaces three inline `4 / 3`; stale comments (feet as the
+    default, `p2-game`, "once that lands") updated; the wobble test now also wobbles *after* the
+    pause, so "nor re-arms it" is really tested (checked: it fails if the grace is removed). No
+    threshold changed; 729 tests pass.

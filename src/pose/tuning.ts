@@ -7,6 +7,8 @@ export const MODEL_PATH = '/models/pose_landmarker_lite.task';
 /** Camera request. 640×480 keeps the model fast on weak laptops. */
 export const VIDEO_WIDTH = 640;
 export const VIDEO_HEIGHT = 480;
+/** Video width / height assumed until the camera reports its real size. */
+export const DEFAULT_ASPECT = VIDEO_WIDTH / VIDEO_HEIGHT;
 
 /** MediaPipe confidences (0 to 1). */
 export const MIN_DETECTION_CONFIDENCE = 0.5;
@@ -173,7 +175,7 @@ export const DETECTION_DEFAULTS = Object.freeze({
   SQUAT_JUMP_GRACE_MS: 350,
 
   /** Arms: wrist height above the nose, in T (contract: up above nose, down below shoulder). */
-  // Keep at 0.3: the game's pose latency leads (src/game VISUAL_LEAD_SEC on p2-game) were tuned on
+  // Keep at 0.3: the game's pose latency leads (VISUAL_LEAD_SEC in src/game/tuning.ts) were tuned on
   // it. 0.4 would ignore hands resting on the head but adds ~70 ms of arm lag (DECISIONS.md 33).
   ARM_UP_ABOVE_NOSE_T: 0.3,
   ARM_DOWN_ABOVE_NOSE_T: 0.05,
