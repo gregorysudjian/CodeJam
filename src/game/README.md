@@ -2,6 +2,19 @@
 
 `createGame(canvas, level, input): Game` from `index.ts`. Plain Three.js. Its own `requestAnimationFrame` loop; nothing is pushed into React per frame.
 
+| File | Job |
+| --- | --- |
+| `index.ts` | The loop: polls input once per frame, steps the core, draws the view, plays sounds, auto low graphics |
+| `core.ts` | The rules, with no drawing: clock, cues, judging, pause, finish (tested) |
+| `judge.ts`, `timeline.ts` | One object's collision verdict; distance and speed (tested) |
+| `view3d.ts` + `scene.ts`, `obstacles.ts`, `player.ts` | The Three.js picture |
+| `view2d.ts` | Canvas 2D fallback, used automatically when WebGL cannot start |
+| `audio.ts` | Synthesised sound effects |
+
+**URL switches** (also localStorage `game.gfx` / `game.muted`): `?gfx=low` (no bloom, pixel ratio 1), `?gfx=high` (never drop to low), `?gfx=2d` (force the fallback), `?mute=1`. Without a switch, low graphics turns on by itself under 45 fps.
+
+**Failure handling:** if WebGL can't start, the 2D view takes over (tested in a Chrome with the GPU disabled). If drawing throws mid-round, the game logs it and keeps running without drawing, so events, the HUD and the results still work.
+
 ## How to use it (for D)
 
 ```ts
@@ -69,6 +82,17 @@ See the bottom of this file (kept up to date per phase).
 - Frame rate on a real GPU, especially next to MediaPipe. If it stutters, set `BLOOM_ENABLED = false` first.
 - Real webcam input. Tested only with the keyboard and a scripted input.
 - Long-term WebGL memory over many rounds.
+
+### Requests for D (Greg), not done because they are outside src/game
+1. A "Demo" entry point. `?demo=1` already works without any change (see `src/workout/README.md`).
+2. Optional: a low-graphics toggle on the select screen that writes localStorage `game.gfx` = `low` or `high`.
+3. HUD cue words: orbs carry `reachLeft` / `reachRight` / `armsUp`, and a floor orb in the centre lane says `reachRight` though either arm works. Show "REACH" for both reach moves.
+4. Docs: AGENTS.md ownership (Patrick also owns `src/workout/`); CONTRACTS.md crate row: "both arms up (for the whole `holdSec` if set, with 0.3 s of grace)".
+
+### Checked end to end (local merge of main + p1-game + p1-workout)
+- `npm run check`: 78 tests pass.
+- Real app with `?store=local&demo=1&gfx=2d`, demo round played by scripted keyboard: score 4200, 100 % accuracy, best streak 21, reps per move and calories correct, rule-based coach card shown, no console errors.
+- Same app in 3D: renders, HUD cues show, auto low graphics engaged on the software renderer, no audio autoplay warning after the "Start round" click.
 
 ### Phase 2 so far (`p1-game`)
 - **Sound** (`audio.ts`): Web Audio synthesis, so no files and no package. Each move has its own pitch for the cue, plus sounds for clear, orb collect, crate smash and hit. Mute with `?mute=1` or localStorage `game.muted = '1'`. Chrome only lets audio start after a click on the page; the app's "Start round" click counts. Headless tests ran silent because nothing was clicked, and the game carried on fine.
