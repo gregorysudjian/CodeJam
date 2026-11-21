@@ -41,6 +41,8 @@ export const FPS_WINDOW_MS = 1000;
  */
 export const WATCHDOG_INTERVAL_MS = 30;
 export const WATCHDOG_STALE_MS = 100;
+/** No new camera frame for this long = the camera stalled; frames count as "no body" from then. */
+export const CAMERA_STALL_MS = 1000;
 
 /** Debug overlay text refresh interval (not every frame). */
 export const OVERLAY_REFRESH_MS = 150;

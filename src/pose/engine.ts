@@ -8,7 +8,7 @@ import { type Delegate, getLandmarker, type Landmarker } from './landmarker';
 import { createOverlay, type Overlay } from './overlay';
 import { createSession, NEUTRAL_STATE } from './session';
 import { drawGuides, drawPose, guides } from './skeleton';
-import { FPS_WINDOW_MS, WATCHDOG_INTERVAL_MS, WATCHDOG_STALE_MS } from './tuning';
+import { CAMERA_STALL_MS, FPS_WINDOW_MS, WATCHDOG_INTERVAL_MS, WATCHDOG_STALE_MS } from './tuning';
 
 /** Everything the debug overlay shows. */
 export interface EngineSnapshot {
@@ -54,7 +54,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   let frameHandle = 0;
   let watchdog = 0;
   let lastProcessedAt = 0;
-  let lastMediaTime = -1;
+  let lastFrameId = -1;
   const frameListeners = new Set<() => void>();
 
   let fps = 0;
@@ -76,11 +76,18 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3;
 
   let errorLogged = false;
-  /** Runs the model on the current video frame, once per new frame (deduplicated by video time). */
+  /**
+   * Identifies the current camera frame: the decoded-frame count, which stops when the camera
+   * stalls (currentTime keeps running on a dead stream, verified in Chromium).
+   */
+  const frameId = () => video.getVideoPlaybackQuality?.().totalVideoFrames ?? video.currentTime;
+
+  /** Runs the model on the current video frame, once per new frame. */
   const processFrame = () => {
     if (!running || !landmarker || video.readyState < 2) return;
-    if (video.currentTime === lastMediaTime) return;
-    lastMediaTime = video.currentTime;
+    const id = frameId();
+    if (id === lastFrameId) return;
+    lastFrameId = id;
     const t = performance.now();
     lastProcessedAt = t;
     try {
@@ -117,7 +124,12 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   const onWatchdog = () => {
     if (!running) return;
     if (video.paused) onPause();
-    if (performance.now() - lastProcessedAt > WATCHDOG_STALE_MS) processFrame();
+    const now = performance.now();
+    if (now - lastProcessedAt > WATCHDOG_STALE_MS) processFrame();
+    // The camera stopped delivering frames (unplugged, taken by another app, laptop asleep): tell
+    // the session nobody is visible, so tracking goes false and the game pauses instead of
+    // holding the last pose forever.
+    if (now - lastProcessedAt > CAMERA_STALL_MS) session.frame([], now, aspect());
   };
 
   const onKey = (e: KeyboardEvent) => {

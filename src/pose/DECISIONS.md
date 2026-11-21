@@ -89,3 +89,8 @@ or the named file.
     landing page loads faster on venue wifi and keyboard players never download it. Verified: dev
     page runs at 30 FPS GPU with a stubbed camera; the production build references the chunk and
     copies the model and WASM.
+31. **A stalled camera (unplugged, taken by another app, laptop asleep) now loses tracking** within
+    ~1.5 s, so the game pauses instead of holding the last pose. New frames are identified by the
+    decoded-frame count: verified in Chromium, `currentTime` keeps running on a dead stream while the
+    frame count freezes (and the count still rises while the video is off the page and playing).
+    After 1 s without a new frame the watchdog feeds "no body" frames.

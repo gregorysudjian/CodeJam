@@ -46,12 +46,13 @@ your replayed clips. Nothing touched `main`. It has **not** met a real camera si
 4. Baseline stuck after stepping closer; quick step back fired a jump; overhead holds shrank W/T.
 5. Smaller ones: lane hysteresis leaving a side lane; a GPU error stopped the loop; a throwing game
    listener or UI callback corrupted tracking; a bigger stranger in front hid the player;
-   calibration restarted on every one-frame flicker; unhandled rejection on camera failure.
+   calibration restarted on every one-frame flicker; unhandled rejection on camera failure; an
+   unplugged or stalled camera kept `tracking: true` with a frozen pose.
 
 **Also new:** MediaPipe JS loads only when pose starts (main bundle 407 → 254 kB); `STATION.md` (demo
 setup, keys, symptom → fix table); small-room switch `CALIBRATION_FEET_IN_VIEW`.
 
-**Pointers:** decisions `DECISIONS.md` (30) · messages for Greg `NEEDS.md` (7) · new session
+**Pointers:** decisions `DECISIONS.md` (31) · messages for Greg `NEEDS.md` (7) · new session
 `HANDOFF.md` (starter prompt in §9) · demo `STATION.md`.
 
 ## How to use it
