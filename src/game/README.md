@@ -40,6 +40,12 @@ game.start(); // after your countdown
 - Before `start()` the scene renders and the runner copies the player's arms, crouch and jump in place. That's useful behind a "raise both arms to start" prompt.
 - `destroy()` stops the loop and disposes every geometry, material, texture, the bloom passes and the renderer. It does not force a context loss, so React StrictMode can create a second game on the same canvas.
 
+## Ghost runner (in progress)
+
+Race your best run: during a round the game records the player's moves (lane, airborne, ducking, arms) at 20 Hz of game time. When the same level is played again, a translucent ghost replays the best run beside the player.
+
+**Ghost status:** (a) `ghost.ts` done (encoding, recorder, playback, level fingerprint, ranking, parsing; tested). Next: (b) `ghostStore.ts`, (c) recording and saving, (d) 3D ghost, (e) end banner, (f) 2D ghost, (g) docs.
+
 ## Events
 
 | Event | When |
