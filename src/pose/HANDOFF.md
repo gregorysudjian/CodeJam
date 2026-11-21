@@ -23,6 +23,7 @@ _Last refresh: Sat 07:20 (overnight autonomous session). Read this first in a ne
     station setup notes (Phase 4), real-camera tuning (needs A).
 - **Last commit:** see `git log -1`.
 - **`npm run check`:** passes (205 tests). Use its exit code; a `| grep` can hide a failure.
+  A clean checkout of `origin/abdo-1` + `npm ci` + `npm run check` passes too (nothing local needed).
 - **End to end:** `main`'s full flow (calibrate → tutorial with the video off-page → play) ran on
   replayed clips with only the model swapped, in floor and treadmill mode (see §6 "Testing without
   a camera"). Phase 3's "treadmill round playable" holds on replayed data.
