@@ -34,6 +34,7 @@ import { KioskBoard } from './KioskBoard';
 import { CameraErrorOverlay, OfflineBanner } from './ErrorStates';
 import { classifyCameraError, type CameraErrorInfo } from './errors';
 import { PlayScreen } from './PlayScreen';
+import { createSwitchableInput } from './switchableInput';
 import { LEADERBOARD_SIZE } from './tuning';
 import { useOnline } from './useOnline';
 
@@ -114,6 +115,9 @@ function MainApp() {
     };
   }, [input]);
   const pose = input.kind === 'pose' ? (input as PoseInputSource) : null;
+  // The game always gets this one stable input; K swaps what it forwards to, so the round goes on.
+  const [gameInput] = useState(() => createSwitchableInput(input));
+  useEffect(() => gameInput.setSource(input), [gameInput, input]);
 
   useEffect(() => {
     if (!notice) return;
@@ -334,7 +338,8 @@ function MainApp() {
       {screen === 'play' && config && (
         <PlayScreen
           config={config}
-          input={input}
+          input={gameInput}
+          pose={pose}
           weightKg={profile?.weightKg}
           debug={debug}
           onGame={handleGame}
