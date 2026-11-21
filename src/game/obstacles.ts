@@ -93,6 +93,8 @@ export interface Obstacles {
 }
 
 export function createObstacles(scene: THREE.Scene): Obstacles {
+  // Reduced motion: crate pieces shrink where they stand, burst rings fade without expanding.
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   const L = T.LANE_WIDTH;
   const W = 3 * L;
   const palettes = {} as Record<ColorKey, Palette>;
@@ -592,13 +594,14 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
         if (smashT < 0) return;
         smashT += dt;
         const t = smashT;
+        const fly = reduceMotion ? 0 : t; // reduced motion: no flight, no spin
         for (const p of pieces) {
           p.obj.position.set(
-            p.home.x + p.vel.x * t,
-            p.home.y + p.vel.y * t - 4.9 * t * t,
-            p.home.z + p.vel.z * t,
+            p.home.x + p.vel.x * fly,
+            p.home.y + p.vel.y * fly - 4.9 * fly * fly,
+            p.home.z + p.vel.z * fly,
           );
-          p.obj.rotation.set(p.spin.x * t, p.spin.y * t, p.spin.z * t);
+          p.obj.rotation.set(p.spin.x * fly, p.spin.y * fly, p.spin.z * fly);
           // Gone in SMASH_SHRINK_SEC: the pieces never sweep across the camera (look.ts).
           p.obj.scale.setScalar(Math.max(0.01, 1 - t / LK.SMASH_SHRINK_SEC));
           p.obj.visible = t < LK.SMASH_SHRINK_SEC;
@@ -774,7 +777,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
           b.mesh.visible = false;
           continue;
         }
-        b.mesh.scale.setScalar(1 + k * 3.2);
+        b.mesh.scale.setScalar(reduceMotion ? 1.6 : 1 + k * 3.2);
         b.mat.opacity = 1 - k;
       }
     },
