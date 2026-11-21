@@ -1,4 +1,4 @@
-import { beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { MODEL_PATH, WASM_PATH } from './tuning';
 
 const { files, make } = vi.hoisted(() => ({ files: vi.fn(), make: vi.fn() }));
@@ -9,7 +9,9 @@ vi.mock('@mediapipe/tasks-vision', () => ({
 beforeEach(() => {
   vi.resetModules();
   vi.resetAllMocks();
+  vi.stubGlobal('document', { createElement: () => new EventTarget() });
 });
+afterEach(() => vi.unstubAllGlobals());
 
 test('a rejected GPU delegate falls back to CPU and shares that model across inputs', async () => {
   const { getLandmarker } = await import('./landmarker');
@@ -44,3 +46,27 @@ test.each(['WASM', 'model'])(
     expect(files).toHaveBeenCalledTimes(2);
   },
 );
+
+test('a camera retry after WebGL context loss shares one fresh model', async () => {
+  const { getLandmarker } = await import('./landmarker');
+  const canvas = new EventTarget();
+  // The first camera loses its GL context. A second camera receives a fresh canvas.
+  const createElement = vi.fn().mockReturnValueOnce(canvas).mockReturnValue(new EventTarget());
+  vi.stubGlobal('document', { createElement });
+  const lost = { close: vi.fn(), detectForVideo: vi.fn(() => ({ landmarks: [[]] })) };
+  const fresh = { close: vi.fn(), detectForVideo: vi.fn(() => ({ landmarks: [[]] })) };
+  files.mockResolvedValue({});
+  make.mockResolvedValueOnce(lost).mockResolvedValueOnce(fresh);
+  const first = await getLandmarker();
+  const video = {} as HTMLVideoElement;
+  expect(first.detect(video)).toEqual([[]]);
+  canvas.dispatchEvent(new Event('webglcontextlost'));
+  const [retry, concurrent] = await Promise.all([getLandmarker(), getLandmarker()]);
+  expect(retry).not.toBe(first);
+  expect(concurrent).toBe(retry);
+  expect(retry.detect(video)).toEqual([[]]);
+  expect(first.detect(video)).toEqual([]);
+  expect(lost.close).toHaveBeenCalledOnce();
+  expect(lost.detectForVideo).toHaveBeenCalledOnce();
+  expect(make).toHaveBeenCalledTimes(2);
+});

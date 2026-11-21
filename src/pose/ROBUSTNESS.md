@@ -149,3 +149,13 @@ Calling `stop()` now interrupts the pending setup. In five repeats of 30 stops, 
 For the judges' privacy question, the decoded SDK request contained counters and timing data. The warmed page completed the demo offline. A physical webcam, a live crowd and Patrick's Mac GPU are **not tested** on laptop 2. This Windows machine has no camera or ffmpeg; plain Node can drive Chrome and a file-backed camera.
 
 Next hour, verify camera re-entry after a mid-round GPU loss, replay incoming live near-miss and passerby clips first, and retire the obsolete drift expectations when decision 48 reaches main. Further repeats of unchanged landmark scale sweeps have low priority.
+
+## Switching back to camera after mid-round GPU loss
+
+**Possible if the browser loses its pose graphics context.** In Windows headless Chrome, the production app calibrated on the file-backed camera. At 0:45 on the round clock, DevTools invoked `WEBGL_lose_context.loseContext()` on MediaPipe's WebGL context. The Three.js context stayed live. In five trials the round paused, the keyboard button stopped the track, and the same round advanced to 0:43.
+
+On `88baf4d`, pressing K to return to camera acquired a new live track. The shared model still owned the lost context. The clock stayed at 0:43 on the tracking-lost screen through seven seconds of observation, even with the same visible calibration subject.
+
+The GPU landmarker now observes context loss on its canvas, closes the unusable model and lets the next camera start create a fresh one. Old inputs report no body. The regression in `landmarker.robust.test.ts` checks that two concurrent retries share the replacement, that the old model closes once, and that no stale input calls it. Reverting the change reproduced the failure. In five browser repeats, the camera resumed the same round without reloading the page, its timer reached 0:39, and Chrome reported zero uncaught page exceptions. This was injected WebGL context loss; a physical Mac GPU reset is **not tested**.
+
+A repeat on the shipping build also resumed camera play. Forcing CPU fallback in a separate file-camera soak used one model for one warm-up and 30 new sessions. All 31 tracks ended, with zero pending frame loops or watchdogs. Across 93 measured frames, CPU inference took 16.3 ms median and 22.8 ms p95 on this machine.
