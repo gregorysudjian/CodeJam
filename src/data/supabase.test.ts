@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import type { MoveType, SavedSession } from '@/contracts';
+import { describe, expect, it, vi } from 'vitest';
+import type { LeaderboardEntry, MoveType, SavedSession } from '@/contracts';
 import type { KeyValue } from './local';
 import { createSupabaseStore } from './supabase';
-import { SIGNOUT_FLUSH_TIMEOUT_MS } from './tuning';
+import { SIGNOUT_FLUSH_TIMEOUT_MS, SUPABASE_TIMEOUT_MS } from './tuning';
 
 const URL = 'https://test.supabase.co';
 const AUTH_KEY = 'sb-test-auth-token'; // supabase-js storage key for this URL
@@ -149,5 +149,57 @@ describe('supabase store signOut', () => {
     expect(Date.now() - t0).toBeLessThan(SIGNOUT_FLUSH_TIMEOUT_MS);
     expect(sent.some((r) => r.startsWith('POST') && r.includes('/rest/v1/sessions'))).toBe(true);
     expect(kv.dump()).toEqual({});
+  });
+});
+
+// The venue wifi drops out or hangs: every call must still answer, from the queue and the caches.
+describe('supabase store offline', () => {
+  const offline = (() => Promise.reject(new TypeError('Failed to fetch'))) as typeof fetch;
+  const summary = { ...queued, id: undefined, at: undefined, synced: undefined };
+
+  it('saveSession keeps the round in the queue, and listSessions still shows it', async () => {
+    const { store, kv } = storeWith(offline);
+
+    const saved = await store.saveSession(summary);
+
+    expect(saved.synced).toBe(false);
+    const ids = JSON.parse(kv.getItem('codejam.sb.queue') ?? '[]').map((s: SavedSession) => s.id);
+    expect(ids).toEqual([queued.id, saved.id]);
+    const list = await store.listSessions();
+    expect(list.map((s) => s.id)).toEqual([saved.id, queued.id]); // newest first
+  });
+
+  it('saveSession gives up on a hanging network after the timeout instead of waiting forever', async () => {
+    const neverAnswers = (() => new Promise<Response>(() => {})) as typeof fetch;
+    const { store } = storeWith(neverAnswers);
+
+    const t0 = Date.now();
+    const saved = await store.saveSession(summary);
+
+    expect(saved.synced).toBe(false);
+    expect(Date.now() - t0).toBeLessThan(SUPABASE_TIMEOUT_MS + 1000);
+  }, 10_000);
+
+  it('getCoachAdvice falls back to the rules when /api/coach cannot be reached', async () => {
+    const { store } = storeWith(offline);
+    vi.stubGlobal('fetch', offline); // the coach call uses the page's fetch
+    try {
+      const advice = await store.getCoachAdvice({ ...queued, synced: true });
+      expect(advice.source).toBe('rules');
+      expect(advice.recap.length).toBeGreaterThan(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('getLeaderboard answers from the last board it fetched', async () => {
+    const { store, kv } = storeWith(offline);
+    const cached: LeaderboardEntry[] = [
+      { displayName: 'Ana', score: 900, workout: 'fullBody', mode: 'floor', at: 1 },
+    ];
+    kv.setItem('codejam.sb.board.fullBody.floor', JSON.stringify(cached));
+
+    expect(await store.getLeaderboard('fullBody', 'floor')).toEqual(cached);
+    expect(await store.getLeaderboard('legs', 'floor')).toEqual([]);
   });
 });

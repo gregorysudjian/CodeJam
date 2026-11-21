@@ -257,14 +257,22 @@ function MainApp() {
     setScreen('results');
 
     const saved = await store.saveSession(s);
-    const [list, coach, top] = await Promise.all([
-      store.listSessions(50),
-      store.getCoachAdvice(saved),
-      store.getLeaderboard(s.config.workout, s.config.mode, LEADERBOARD_SIZE),
-    ]);
+    // Each result shows as soon as it arrives: on slow wifi the coach card must not wait for the
+    // session list and leaderboard to time out too.
+    void store.getCoachAdvice(saved).then((coach) => {
+      setAdvice(coach);
+      setCoachPick(coach);
+    });
+    void store
+      .getLeaderboard(s.config.workout, s.config.mode, LEADERBOARD_SIZE)
+      .then((top) => {
+        // An empty board means offline with nothing cached, not "you are #1". When the round
+        // synced, the board includes it, so it is never empty then.
+        const better = top.filter((e) => e.score > s.score).length;
+        setRank(top.length > 0 && better < LEADERBOARD_SIZE ? better + 1 : null);
+      });
+    const list = await store.listSessions(50);
     setSessions(list);
-    setAdvice(coach);
-    setCoachPick(coach);
     const previousBest = list
       .filter(
         (x) =>
@@ -274,8 +282,6 @@ function MainApp() {
       )
       .reduce((m, x) => Math.max(m, x.score), 0);
     setPersonalBest(s.score > 0 && s.score > previousBest);
-    const better = top.filter((e) => e.score > s.score).length;
-    setRank(better < LEADERBOARD_SIZE ? better + 1 : null);
   }, []);
 
   const handleGame = useCallback((g: Game | null) => {
