@@ -16,6 +16,8 @@ _Updated after every PR._
 - #11 Kiosk leaderboard `?kiosk=1`: the board with the QR code, refreshing every 15 s, with its own in-memory guest so it never touches the game tab's player. Also fixes a sign-in race (two concurrent `signInGuest` calls)
 - #12 Audit (`docs/AUDIT.md`)
 - #13 The HUD reads `level.config`, so with `?demo=1` the countdown matches the 45 s demo (audit #5)
+- #15 K mid-round switches input without restarting the round (audit #4)
+- #16 Per-user rate limit on `/api/coach`: 1 call per 10 s (audit #6)
 
 **Testing rule (from Greg):** unit tests first. One scripted round per change, using `?demo=1&store=local` once Patrick's demo is on `main`. Browser testing is time-boxed to 5 minutes.
 
@@ -30,7 +32,7 @@ _Updated after every PR._
 
 **Requests:** none open (see below).
 
-**Next 3:** K mid-round without a restart (audit #4) → per-user rate limit on /api/coach (audit #6) → lazy-load the game and pose (audit #8).
+**Next 3:** lazy-load the game and pose (audit #8) → low-graphics toggle → the "try each move" tutorial.
 
 **Audit:** see `docs/AUDIT.md` (top 10 problems with owners).
 
@@ -71,6 +73,15 @@ _Updated after every PR._
 ### #13 HUD reads level.config (audit #5)
 - `PlayScreen` generates the level in a `useMemo` and gives the HUD `level.config.durationSec` and `mode`, not the app's choice. Patrick's `?demo=1` swaps in the 45 s demo inside `generateLevel`.
 - **Tested:** `npm run check` passes (50 tests). In a throwaway local merge with `p1-workout` (never pushed, deleted), `?demo=1&store=local`: the select screen said 90 s and the HUD started at 0:43, so it follows the real 45 s level.
+
+### #15 K mid-round without a restart (audit #4)
+- The game gets one stable `createSwitchableInput()` (`src/app/switchableInput.ts`) that forwards to the active source. K swaps the source instead of remounting `PlayScreen`, so the round goes on, and pose to keyboard resumes a round paused for tracking loss.
+- **Tested:** 3 unit tests. One round: K at 0:34 → camera overlay → the timer went on (0:33, then 0:32) → one 45 s session saved.
+
+### #16 Coach rate limit (audit #6)
+- Migration `0002_coach_rate_limit.sql`, already applied: `coach_calls` (RLS, no policies, no grants) and `claim_coach_slot(p_min_interval_seconds)`, security definer and atomic (`insert … on conflict do update … where last_call_at <= now() - gap`). The interval is clamped to 1–3600 s.
+- `/api/coach` claims a slot right after the token check: 429 with `Retry-After: 10` if refused, 503 (fail closed, no Claude call) if the check errors. `COACH_MIN_INTERVAL_SEC = 10` is in `api/_lib/advice.ts`.
+- **Tested:** live database with a guest token: first claim true, immediate second false, direct table read denied, signed-out caller denied, true again after the gap, and interval 0 clamped to 1 s. 3 endpoint tests with a fake Supabase (429 before any history or Claude call; 503 when the check fails; normal path when claimed). 56 tests in total.
 
 ## Requests
 
