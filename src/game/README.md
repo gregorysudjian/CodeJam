@@ -34,7 +34,7 @@ A frame longer than 0.25 s (a hidden tab, a hitch) counts as 0.25 s, so switchin
 
 **URL switches** (also localStorage `game.gfx` / `game.muted` / `game.ghost` / `game.music` / `game.intro`): `?gfx=high|medium|low` fixes the level (0, 1, 2), `?gfx=2d` forces the fallback, `?mute=1`, `?music=off` (effects only), `?intro=off` (no countdown), `?ghost=off|reset`, `?debug=timing`. Without a switch the ladder is automatic.
 
-**Keyboard and the page:** while a round runs the game sets `<body data-game="running">` (cleared on pause, finish and `destroy()`). `src/input` only consumes its keys then, so the rest of the app keeps normal keyboard behaviour.
+**Keyboard and the page:** during the 3-2-1 intro and while a round runs, the game sets `<body data-game="running">` (cleared on pause, finish and `destroy()`; it turns on `INTRO_SEC` before the round clock starts). `src/input` only consumes its keys then, so the rest of the app keeps normal keyboard behaviour.
 
 **Failure handling:** if WebGL can't start, the 2D view takes over, with the same move icons (tested in a Chrome with the GPU disabled). If drawing throws mid-round, the game logs it and keeps running without drawing, so events, the HUD and the results still work.
 
@@ -221,6 +221,7 @@ Newest first.
 - **Camera-session step 2 in one paste:** the console prints the leads line for `tuning.ts` and the measured lags for `SESSION_LAG_SEC` in `latency.test.ts` together; step 3 has a checklist (cause, meaning, who fixes it) and a "Requests for A" template.
 - **Edge cases pinned as tests (`core.test.ts`):** a hold across a pause, tracking loss or a K switch (the new input has the 0.3 s grace), a paused core never finishes (END ROUND saves nothing), and a round that ends mid-hold gives no verdict.
 - **Checked in Chrome on this branch:** a scripted round with one of each failure gets the right cause on every row; rounds unchanged (16/7/0, idle 13 hits, 2D); ghost line; graphics carry-over over three rounds; the held beam ends at the runner as it is cleared.
+- **Checked after merging #45 and #46 (Sat ~5 PM, Chrome 157 on the demo Mac, M4 Pro, built-in display at 1512×945):** a scripted perfect keyboard round of the demo level on `?demo=1&store=local&music=off` scored 4,750, 100 %, best streak 23, 0 hits; average 120 fps, slowest 5 % of frames 10 ms, graphics quality 0 throughout; the round saved; no console errors. At 5, 10 and 20 COMBO the banner (bottom centre) and the VS GHOST chip (bottom right) stay clear of the HUD cue. Not checked: the camera, an external screen.
 
 ### Game feel pass (`p4-game-feel`, Sat afternoon)
 Judging, events and `src/contracts` are unchanged: a scripted perfect run of the demo level still gives 16 cleared, 7 collected, 0 hits, with the camera leads or without.

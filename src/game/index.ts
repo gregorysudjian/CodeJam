@@ -215,8 +215,9 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   let raf = 0;
   let prevState = input.getState();
   let lastTier = 0;
-  // <body data-game="running"> while the round runs: keyboard input (src/input) consumes its
-  // keys only then, so the rest of the app keeps normal keyboard behaviour.
+  // <body data-game="running"> during the 3-2-1 intro and while the round runs: keyboard input
+  // (src/input) consumes its keys only then, so the rest of the app keeps normal keyboard behaviour.
+  // It turns on INTRO_SEC before the round clock starts.
   let marked = false;
   const markRunning = (on: boolean): void => {
     if (on === marked) return;
