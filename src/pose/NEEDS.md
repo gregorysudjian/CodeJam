@@ -8,6 +8,7 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 > move tally, clip recorder). Once `abdo-1` is merged, could you replace `src/app/DevPose.tsx` with
 > this? It is plain DOM, owns its own camera, and cleans up fully on unmount (StrictMode-safe). It
 > imports `@/pose/debug`, the one extra export from `src/pose` that PLAN.md planned for this page.
+> (Checked against `main` PR #19 in a scratch copy: your `npm run check` passes and the page runs.)
 >
 > ```tsx
 > // ?dev=pose: A's pose debug view (src/pose/debug.ts).
