@@ -82,9 +82,10 @@ README "How to use it". Stand at playing distance (feet in view).
 1. **FPS:** overlay top line. Expect ≥ 25 FPS and `GPU`. If < 25, tell the session.
 2. **Calibration:** click `⟳ calibrate floor`, walk back. Expect `tooClose` while your feet are cut
    off, then `holdStill` climbing to 100%, then "Calibrated". Step far back first: expect `tooFar`.
-3. **Moves (10 each, watch the overlay's `moves` line):** sidestep right / left (lane ±1, back to 0),
-   jump (one `jump` each), squat (one `squat`, `duck ■` while held), both arms up (one `armsUp`),
-   left arm only (`reachLeft`), right arm only (`reachRight`). Expect 10/10. Count misses and extras.
+3. **Moves, 10 each:** press `Reset tally` (right panel), do 10 sidesteps (right, back, left,
+   back… each lane change counts), then read the tally; repeat for jump, squat, both arms up, left
+   arm only, right arm only. Expect 10/10 each, nothing counted under the other moves. With the
+   overlay on, the coloured lines show the lane, squat, jump and arm-up thresholds on the video.
 4. **No false moves:** stand still 20 s, shuffle a little, scratch your head. Expect nothing.
 5. **Squat then stand up fast onto your toes:** expect `squat` only, no `jump`.
 6. **Walk out of frame:** `tracking □` within ~0.5 s; walk back: `■` within ~0.3 s.
