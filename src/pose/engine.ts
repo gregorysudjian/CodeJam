@@ -63,6 +63,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   const session = createSession();
   let gen = 0; // bumps on every start/stop, so a stale async start gives up
   let starting: Promise<void> | null = null;
+  let interruptSetup: (() => void) | null = null;
   let running = false;
   let stream: MediaStream | null = null;
   let landmarker: Landmarker | null = null;
@@ -192,6 +193,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
       };
       try {
         checkTrack();
+        interruptSetup = onEnded;
         track.addEventListener('ended', onEnded);
         await Promise.race([attachStream(video, s), ended]);
         if (my !== gen) return;
@@ -207,6 +209,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
         throw err instanceof Error ? err : new Error('The pose model could not start.');
       } finally {
         track?.removeEventListener('ended', onEnded);
+        if (interruptSetup === onEnded) interruptSetup = null;
       }
       running = true;
       frames = 0;
@@ -227,6 +230,9 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   function stop(): void {
     gen++;
     starting = null;
+    // track.stop() does not fire 'ended'. Wake a start waiting for playback or the shared model.
+    interruptSetup?.();
+    interruptSetup = null;
     if (running) video.cancelVideoFrameCallback(frameHandle);
     running = false;
     window.clearInterval(watchdog);

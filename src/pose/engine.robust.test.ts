@@ -196,3 +196,29 @@ test('a five-second model load starts one frame loop and permits a clean stop', 
   }
   expect(track.stop).toHaveBeenCalledOnce();
 });
+
+test('stop releases a pending startup and its track listener while the shared model is still loading', async () => {
+  const { source } = createPoseEngine();
+  const { stream, track } = camera();
+  const add = vi.spyOn(track, 'addEventListener');
+  const remove = vi.spyOn(track, 'removeEventListener');
+  getUserMedia.mockResolvedValue(stream);
+  const loading = deferred<Awaited<ReturnType<typeof getLandmarker>>>();
+  vi.mocked(getLandmarker).mockReturnValue(loading.promise);
+  const opening = source.start();
+  await nextTurn();
+  expect(getLandmarker).toHaveBeenCalledOnce();
+  source.stop();
+  try {
+    expect(
+      await Promise.race([opening.then(() => 'stopped'), nextTurn().then(() => 'waiting')]),
+    ).toBe('stopped');
+    expect(remove).toHaveBeenCalledWith('ended', add.mock.calls[0][1]);
+    expect(track.readyState).toBe('ended');
+    expect(video.srcObject).toBeNull();
+  } finally {
+    loading.resolve({ delegate: 'CPU', detect: () => [] });
+    await opening;
+  }
+  expect(video.requestVideoFrameCallback).not.toHaveBeenCalled();
+});
