@@ -23,6 +23,9 @@ export const VISUAL_LEAD_SEC: Record<'pose' | 'keyboard', LeadTable> = {
   pose: { jump: 0.1, sidestep: 0.25, squat: 0.3, armsUp: 0.3, reachLeft: 0.3, reachRight: 0.3 },
   keyboard: { jump: 0, sidestep: 0, squat: 0, armsUp: 0, reachLeft: 0, reachRight: 0 },
 };
+// A mid-round switch (K) blends the drawn leads at this many seconds of lead per second, so
+// objects slow down for at most 0.6 s instead of jumping (timeline.ts createLeadBlend).
+export const LEAD_BLEND_PER_SEC = 0.5;
 /* ── Ghost runner (ghost.ts, ghostStore.ts) ── */
 export const GHOST_HZ = 20; // recorded samples per second of game time
 export const GHOST_MAX_SAMPLES = 15_000; // rounds last at most 600 s: 12,000 samples, plus margin

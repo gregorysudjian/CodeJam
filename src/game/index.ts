@@ -12,6 +12,7 @@ import {
 import { createGhostRace, raceLead } from './ghostRace';
 import { browserStorage, createGhostStore } from './ghostStore';
 import { createQualityGovernor, type Quality } from './quality';
+import { createLeadBlend } from './timeline';
 import { createTimingProbe } from './timing';
 import * as T from './tuning';
 import { create2DView } from './view2d';
@@ -28,6 +29,8 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   let view: GameView | null = null;
   // Read on every use: the app's input can switch between keyboard and camera mid-round (K).
   const leads: T.Leads = () => T.VISUAL_LEAD_SEC[input.kind];
+  // What objects are drawn (and cued) with: `leads` followed at a limited rate (createLeadBlend).
+  const shownLeads = createLeadBlend(leads());
   const result: GhostResult = { cleared: 0, collected: 0, hit: 0 }; // this run, for the ghost
   const core = createCore(
     level,
@@ -47,7 +50,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         view?.verdict(item, v);
       },
     },
-    leads,
+    shownLeads.get,
   );
 
   // Ghost runner: race the best stored run of this exact level (?ghost=off, ?ghost=reset).
@@ -107,8 +110,8 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
   });
 
   const gfx = readGfxSetting();
-  view = gfx === '2d' ? null : tryCreate3D(canvas, level, core.items, leads);
-  view ??= create2DView(canvas, level, core.items, leads);
+  view = gfx === '2d' ? null : tryCreate3D(canvas, level, core.items, shownLeads.get);
+  view ??= create2DView(canvas, level, core.items, shownLeads.get);
   const startQuality: Quality = gfx === 'low' ? 2 : gfx === 'medium' ? 1 : 0;
   if (startQuality > 0) view.setQuality(startQuality);
   const quality = createQualityGovernor(startQuality, gfx === 'auto', window.devicePixelRatio || 1);
@@ -136,6 +139,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     const state = input.getState(); // polled once per frame
     currentState = state;
     if (!core.finished() && input.kind !== startKind) mixedInput = true;
+    if (core.pauseReason() === null) shownLeads.step(leads(), Math.min(realDt, T.MAX_DT_SEC));
     core.step(realDt, state, now);
     race?.syncTo(core.elapsed());
     if (recorder && core.started() && !core.finished() && core.pauseReason() === null)

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Wave } from '@/contracts';
-import { createTrack, intensityAt, speedFor } from './timeline';
-import { SPEED_MAX, SPEED_MIN } from './tuning';
+import { createLeadBlend, createTrack, intensityAt, speedFor } from './timeline';
+import { LEAD_BLEND_PER_SEC, SPEED_MAX, SPEED_MIN, VISUAL_LEAD_SEC } from './tuning';
 
 const wave = (t: number, intensity: number): Wave => ({ t, intensity, spawns: [] });
 
@@ -47,5 +47,39 @@ describe('track distance', () => {
     const a = track.distanceAt(19.99);
     const b = track.distanceAt(30);
     expect(b - a).toBeCloseTo(10.01 * SPEED_MAX, 3);
+  });
+});
+
+describe('lead blend (mid-round input switch)', () => {
+  const { pose, keyboard } = VISUAL_LEAD_SEC;
+
+  it('starts on the given table and follows a switch at a limited rate, without overshoot', () => {
+    const blend = createLeadBlend(pose);
+    expect(blend.get()).toEqual(pose);
+    blend.step(keyboard, 0.1); // K: camera to keyboard
+    expect(blend.get().squat).toBeCloseTo(pose.squat - LEAD_BLEND_PER_SEC * 0.1);
+    expect(blend.get().jump).toBeCloseTo(pose.jump - LEAD_BLEND_PER_SEC * 0.1);
+    for (let i = 0; i < 100; i++) blend.step(keyboard, 1 / 60);
+    expect(blend.get()).toEqual(keyboard); // settled exactly, never below 0
+  });
+
+  it('never moves an object faster than the blend rate allows (no jump on screen)', () => {
+    const blend = createLeadBlend(keyboard);
+    let prev = blend.get().armsUp;
+    for (let i = 0; i < 60; i++) {
+      blend.step(pose, 1 / 60);
+      const now = blend.get().armsUp;
+      expect(now - prev).toBeLessThanOrEqual(LEAD_BLEND_PER_SEC / 60 + 1e-12);
+      prev = now;
+    }
+    expect(blend.get().armsUp).toBeCloseTo(pose.armsUp);
+  });
+
+  it('stands still while paused (dt 0) and with an unchanged table', () => {
+    const blend = createLeadBlend(pose);
+    blend.step(keyboard, 0);
+    expect(blend.get()).toEqual(pose);
+    blend.step(pose, 1);
+    expect(blend.get()).toEqual(pose);
   });
 });

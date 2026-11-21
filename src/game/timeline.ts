@@ -1,5 +1,12 @@
-import type { Wave } from '@/contracts';
-import { SPEED_MAX, SPEED_MIN, SPEED_TABLE_STEP_SEC } from './tuning';
+import type { MoveType, Wave } from '@/contracts';
+import {
+  LEAD_BLEND_PER_SEC,
+  SPEED_MAX,
+  SPEED_MIN,
+  SPEED_TABLE_STEP_SEC,
+  type LeadTable,
+  type Leads,
+} from './tuning';
 
 /** Speed for a wave intensity (0 to 1, clamped). */
 export function speedFor(intensity: number): number {
@@ -53,6 +60,32 @@ export function createTrack(waves: readonly Wave[], durationSec: number): Track 
       const i = Math.floor(x);
       if (i >= n - 1) return dist[n - 1]! + (t - (n - 1) * step) * speedAt(t);
       return dist[i]! + (dist[i + 1]! - dist[i]!) * (x - i);
+    },
+  };
+}
+
+/**
+ * The leads objects are drawn with (latency compensation), following the current table at a
+ * limited rate. A mid-round input switch (K, step 2 of the demo fallback ladder) changes the
+ * table by up to 0.3 s; applied at once, every object on screen would jump by up to 6 m.
+ * Rate-limited, they briefly slow down (camera to keyboard) or speed up (back), never reverse.
+ */
+export interface LeadBlend {
+  /** The blended table, updated in place by `step`. */
+  readonly get: Leads;
+  /** Moves each lead toward `target` by at most LEAD_BLEND_PER_SEC × dt seconds. */
+  step(target: LeadTable, dt: number): void;
+}
+
+export function createLeadBlend(start: LeadTable): LeadBlend {
+  const shown: Record<MoveType, number> = { ...start };
+  return {
+    get: () => shown,
+    step(target, dt) {
+      const max = LEAD_BLEND_PER_SEC * Math.max(0, dt);
+      for (const m of Object.keys(shown) as MoveType[]) {
+        shown[m] += Math.max(-max, Math.min(max, target[m] - shown[m]));
+      }
     },
   };
 }
