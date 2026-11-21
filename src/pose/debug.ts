@@ -119,6 +119,11 @@ export function mountPoseDebug(container: HTMLElement): () => void {
   overlay.show(side);
   side.append(tally);
 
+  // Buttons hand the keyboard back after a click, so Space or Enter does not click them again.
+  page.addEventListener('click', (e) => {
+    if (e.target instanceof HTMLButtonElement) e.target.blur();
+  });
+
   const offFrame = engine.onFrame(() => {
     if (ctx) {
       if (canvas.width !== video.videoWidth) canvas.width = video.videoWidth;
