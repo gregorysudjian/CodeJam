@@ -5,8 +5,8 @@
 **All three parts are on `main`:** Patrick's game and workout (#24, #25) and Abdo's body control (#27). `npm run check`: 530 tests.
 
 **First 3 things for Greg**
-1. **Demo from the laptop:** `git pull`, `npx vercel dev`, open `http://localhost:3000/?demo=1`, pick Camera, calibrate, play. It needs no deploy (DEMO.md station checklist).
-2. **Add `ANTHROPIC_API_KEY`** to `.env.local` for the local demo (no `VITE_`, never committed), and to Vercel for the live site. Then check the coach card says AI.
+1. **Demo on Patrick's Mac:** `npm run dev`, `http://localhost:5173/?demo=1`, pick Camera, calibrate, play (DEMO.md station checklist). No deploy needed.
+2. **Coach:** rule-based for the demo (no Claude key for now).
 3. **Play a few camera rounds** on the demo laptop with Patrick and Abdo (Patrick's prompt: latency leads, holds, FPS with pose and 3D, demo level, ghost rehearsals).
 
 **Vercel:** the Hobby cap (100 deployments per 24 h) is used up; Vercel's API says it fully resets **Sunday 1:40 PM**, slots may free from about 3 AM. The live site is at #25 (game, no body control) until then. The demo doesn't need it: `vercel dev` runs everything locally, coach included. No trial is offered to this account; Pro would be $20.
@@ -109,6 +109,10 @@
 - Reviewed against the contracts and AGENTS.md: `src/pose` plus the model and WASM in `public/` (rule 11, no CDN); no contract, package or config change; no imports from other modules; no network calls in pose code (rule 5). `main` + #27 + `?dev=pose`: 530 tests, build OK.
 - Greg's clips are in `src/pose/fixtures/greg/` and both findings are fixed (DECISIONS 34 to 36). Squats shorter than 0.8 s now count when the player stands up, unless a jump follows; the game judges beams on the instant `ducking` state, so play is unchanged, and the tutorial's squat tick comes a moment later.
 - Merged in one push with `?dev=pose` (mounts `mountPoseDebug`) and the DEMO.md station plan (demo on `npx vercel dev` locally), to spend one deployment.
+
+### #27 follow-up (Abdo) and the demo laptop
+- Abdo's follow-up: a crouch-then-jump at 15 FPS no longer counts a squat; a one-frame tracking flicker no longer loses a quick reach; `src/pose/clip-viewer.html` plays recorded clips (loads nothing external). Only `src/pose`, contains `main`, check green (564 tests). No screen adds a second mirror to the camera video (his NEEDS 2).
+- DEMO.md: the demo runs on **Patrick's Mac** with `npm run dev` at `http://localhost:5173/?demo=1` (rule-based coach, no Claude key for now); ghosts are rehearsed on that URL.
 
 ## Requests
 
