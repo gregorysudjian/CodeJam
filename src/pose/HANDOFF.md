@@ -21,6 +21,9 @@ _Last refresh: Sat ~2:20 PM, after a self-check pass (low FPS, visibility flicke
 - **Last commit:** see `git log -1` (this handoff's own commit). **`npm run check` passes:** 564 tests
   with the whole team's code, 351 of them in `src/pose`. A's local `node_modules` is fixed (`npm ci`
   worked once the old dev server was gone).
+- **Greg merged `abdo-1` (up to `187a57f`) into `main` via PR #28** and wired `?dev=pose` (NEEDS 1
+  done). `main` was merged back into `abdo-1`; PR #27 now carries only the self-check commits and
+  `src/pose/clip-viewer.html` (open the file in Chrome, drop clip JSONs on it: skeleton playback).
 - **Self-check, Sat ~2 PM** (DECISIONS 37–38): at a steady 15 FPS a crouch-and-jump read as a
   squat, and a one-frame visibility flicker made the next frame raw (lost a quick reach). Both
   fixed, with new variants "15 FPS steady" and "hip visibility flicker". State timing for the
