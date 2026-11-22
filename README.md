@@ -1,8 +1,14 @@
 # Neon Arena
 
-**Run Montréal with your body.** A workout you play in Chrome with your laptop's webcam: no controller, no install, no equipment. Built at CodeJam 16 (McGill).
+**Your body is the controller.** A full-body workout you play in Chrome with your laptop's webcam: no controller, no install, no equipment. Built at CodeJam 16 (McGill).
 
-You stand about 1.5 m from the laptop and your body steers a neon robot runner along a 3-lane street: sidestep to change lane, jump hurdles, squat under beams, raise both arms to smash crates, raise one arm to grab orbs. You pick what to train (legs, arms, shoulders or full body) and the level is generated for that workout. A round is 6 levels of 30 seconds, each one faster than the last, played inside AI-generated video clips of real Montreal streets (made with Higgsfield, the road lined up with the 3D track): the cobblestones of Old Montreal, the deck of the Jacques Cartier Bridge and the Old Port at blue hour. You have 3 lives. Pose tracking runs in the browser, so **your video never leaves your laptop**. Every round is saved to your profile, and a dashboard, a public and a friends leaderboard and a coach show you how you're doing and what to play next.
+Neon Arena is three things in one app:
+
+- **A game.** You stand about 1.5 m from the laptop and your body steers a neon robot runner along a 3-lane track: sidestep to change lane, jump hurdles, squat under beams, raise both arms to smash crates, raise one arm to grab orbs. A round is 6 levels of 30 seconds, each one faster than the last, and you have 3 lives.
+- **A workout.** You pick what to train (legs, arms, shoulders or full body) and a tier, and the levels are generated for that workout. Every rep is counted, and low impact and treadmill modes adapt it to you.
+- **A training log.** Every round is saved to your profile. A dashboard tracks your week, a public and a friends leaderboard rank your best rounds, and a coach recaps each round and recommends the next one.
+
+The levels have two looks: the game's own neon scenery (a city, a tunnel, a bridge), and AI-generated video clips of real Montreal streets (made with Higgsfield, the road lined up with the 3D track): Old Montreal, the Jacques Cartier Bridge and the Old Port. Pose tracking runs in the browser, so **your video never leaves your laptop**.
 
 **Live:** https://codejam-jet.vercel.app (Chrome on a laptop; deployed from `main`)
 
@@ -45,7 +51,7 @@ Treadmill mode is for people already running on one: it uses upper-body moves on
 ## Features
 
 - **Body-controlled 3D runner** in plain Three.js, with a Canvas 2D fallback and automatic graphics levels for slow laptops.
-- **6 levels × 30 s** inside generated clips of Montreal streets (built-in 3D scenery if a clip can't load or on Low graphics), 3 lives, PERFECT / GOOD / LATE grades and streak multipliers.
+- **6 levels × 30 s**, 3 lives, PERFECT / GOOD / LATE grades and streak multipliers. Levels play inside generated clips of Montreal streets, or in the built-in neon scenery when a clip can't load or on Low graphics.
 - **Fair on a webcam:** webcam moves arrive late, so obstacles are drawn early by each move's measured detection lag. Only the drawing moves; the judging rules stay the same.
 - **Generated levels:** a seeded generator builds each round from the workout's mix of moves, with fairness rules (minimum gaps, a breather between squats, time to stand up between a beam and a hurdle) tested on every workout and mode.
 - **Hands-free:** X-arms pause and resume, arms up to replay. A second person stepping into the play area pauses the round.
@@ -135,5 +141,4 @@ AI coding assistants helped write code against interfaces the team designed. The
 | [docs/CONTRACTS.md](docs/CONTRACTS.md) | Shared interfaces, database schema, endpoint, collision and level rules, detection thresholds |
 | [docs/LIVE.md](docs/LIVE.md) | Live site, backend security checks, privacy |
 | [docs/PLAN.md](docs/PLAN.md) | The original build plan (Saturday 2 AM; the game changed since) |
-| [docs/archive/](docs/archive/) | Working notes from the weekend, kept as written |
 | [AGENTS.md](AGENTS.md) | Rules every AI coding tool on the team follows |
