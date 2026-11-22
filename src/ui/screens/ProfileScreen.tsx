@@ -14,12 +14,14 @@ import type { FitnessLevel, Goal, Profile } from '@/contracts';
 import {
   Eyebrow,
   GameButton,
+  NavBar,
   SectionTitle,
   SegmentedControl,
   Screen,
   ScreenFooter,
   TextField,
   useHotkey,
+  type NavBarProps,
 } from '@/ui/kit';
 import { cn } from '@/ui/lib/utils';
 import {
@@ -35,6 +37,9 @@ export interface ProfileScreenProps {
   initial?: Partial<ProfileInput>;
   onSubmit(p: ProfileInput): void;
   onBack(): void;
+  /** The nav bar on top (current: 'profile'), only when an existing player edits their profile;
+   *  absent (first-time setup): no bar, as before. */
+  nav?: NavBarProps;
 }
 
 /** Skip's values. Its displayName is only a type filler: Skip and an empty field save the
@@ -141,7 +146,7 @@ function GoalPicker({ value, onChange }: { value: Goal; onChange: (g: Goal) => v
 }
 
 /** Player setup (edit profile): name, goal, level, weekly minutes and optional weight, age and height. */
-export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps) {
+export function ProfileScreen({ initial, onSubmit, onBack, nav }: ProfileScreenProps) {
   const [name, setName] = React.useState(initial?.displayName ?? '');
   const [goal, setGoal] = React.useState<Goal>(initial?.goal ?? PROFILE_DEFAULTS.goal);
   const [level, setLevel] = React.useState<FitnessLevel>(initial?.level ?? PROFILE_DEFAULTS.level);
@@ -219,6 +224,8 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
         />
       }
     >
+      {nav && <NavBar {...nav} />}
+
       <SectionTitle
         as="h1"
         size="lg"
