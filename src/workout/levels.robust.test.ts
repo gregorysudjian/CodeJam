@@ -86,10 +86,11 @@ describe.each(['legs', 'arms', 'shoulders', 'fullBody'] as const)('%s generation
   );
 });
 
-// Full serialised levels from main 7be4281, including lane assignments and intensity.
+// Full serialised levels (seed 11475, the six levels), including lane assignments, intensity
+// and stages. Was seed 41492 (45 s) up to the level system.
 it.each([
-  [false, '516a7189ad6e859c4b89bc0d1d9052f641a6627d99a1ef25c1382b97566a3bdb'],
-  [true, '5c0bf4914136f150e4183c043463df079651aee32b2e6a74f2e7667f2c6ef430'],
+  [false, '4b24911104319d91d8a507bf3194ae99d417137d25a7650810656d11e21024bc'],
+  [true, 'c6c95e1c1f9786b6e48224005a6180a4bd1a10b997db81c1c0f7d8ad9b8813b0'],
 ] as const)('pins every demo byte, low impact %s', async (lowImpact, digest) => {
   const bytes = JSON.stringify(generateLevel({ ...T.DEMO_CONFIG, lowImpact }));
   const hash = new Uint8Array(

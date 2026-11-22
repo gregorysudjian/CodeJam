@@ -142,6 +142,15 @@ describe('calories (an estimate)', () => {
     expect(setup({ weightKg: 90 }).tracker.finish(60).kcal).toBeCloseTo(kcalFor(config, 90, 60));
   });
 
+  it('levelReached is the highest level entered, 1 when no stage event came', () => {
+    const stage = (index: number) => ({ index, startSec: (index - 1) * 30, endSec: index * 30 });
+    const t = setup().tracker;
+    for (const i of [1, 2, 3]) t.handleGameEvent({ type: 'stage', stage: stage(i) });
+    t.handleGameEvent({ type: 'finished', reason: 'outOfLives' });
+    expect(t.finish(70).levelReached).toBe(3);
+    expect(setup().tracker.finish(10).levelReached).toBe(1);
+  });
+
   it('a round that ends on the last life says so; a complete one does not', () => {
     const out = setup().tracker;
     out.handleGameEvent(hit());

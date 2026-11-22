@@ -5,6 +5,7 @@ import { comboLabel, GRADE_LABEL, type Grade } from './feedback';
 import { OUTCOME_LABEL, raceLabel, racePulse, type GhostOutcome, type GhostPose } from './ghost';
 import { countdownAt, flyProgress, resumeCountAt } from './intro';
 import { requirementMet, type Verdict } from './judge';
+import { backdropFor } from './backdrop';
 import { colorKeyFor, createObstacles, variantFor, type ObstacleView } from './obstacles';
 import { createPlayer } from './player';
 import type { Quality } from './quality';
@@ -42,6 +43,8 @@ export interface FrameInfo {
   outOfLives: boolean;
   /** Game seconds of grace left after a lost life (core.graceLeft), else 0. */
   grace: number;
+  /** The level the round is in (core.stageIndex), 0 before the first 'stage'. */
+  stage: number;
   /** The ghost runner's pose at this moment, or null when there is no ghost to race. */
   ghost: GhostPose | null;
   /** The player's live lead over the ghost (cleared + collected), or null: no chip. */
@@ -78,8 +81,8 @@ export function create3DView(
   leads: T.Leads,
 ): GameView {
   const { mode, durationSec } = level.config;
-  const track = createTrack(level.waves, durationSec);
-  const stage = createStage(canvas, planZones(durationSec, track.distanceAt));
+  const track = createTrack(level.waves, durationSec, level.stages);
+  const stage = createStage(canvas, planZones(durationSec, track.distanceAt, level.stages));
   const player = createPlayer();
   stage.scene.add(player.root);
   const obstacles = createObstacles(stage.scene);
@@ -165,6 +168,25 @@ export function create3DView(
     reduceMotion ? LK.LIFE_FLASH.reducedPeak : LK.LIFE_FLASH.peak,
     LK.LIFE_FLASH.sec,
   );
+  // Levels: a portal at each boundary after the first, a white flash and the milestone
+  // shockwave as the runner passes through, and "LEVEL n" big in the middle (look.ts PORTAL).
+  const boundaries = (level.stages ?? []).slice(1).map((s) => ({
+    d: track.distanceAt(s.startSec),
+    veil: backdropFor(s.index).look.horizon,
+  }));
+  const portal = createPortal();
+  stage.scene.add(portal.group);
+  let passed = 0; // boundaries the runner has passed through
+  const portalFlash = createScreenFlash(
+    stage.camera,
+    0xffffff,
+    reduceMotion ? LK.PORTAL.reducedFlash : LK.PORTAL.flash,
+    LK.PORTAL.flashSec,
+  );
+  const levelLabel = createLabel(stage.scene, T.BANNER_WIDTH, 1024, T.BANNER_POS, 1000);
+  stage.camera.add(levelLabel.sprite);
+  let levelShown = 0;
+  let levelT = Infinity; // seconds since "LEVEL n" appeared (< 0: waits for the intro's GO)
   let outroT = 0; // seconds since the finish
 
   // Trail motes leading into the next free lane or orb (trail.ts): one instanced mesh.
@@ -323,6 +345,39 @@ export function create3DView(
       finish.group.position.z = finishZ;
       finish.group.visible = -finishZ < T.VIEW_DISTANCE && fade > 0.01;
       finish.setFade(fade);
+
+      // The portal: the one just passed while it fades behind the runner, else the next one.
+      while (passed < boundaries.length && distance >= boundaries[passed]!.d) {
+        passed++;
+        portalFlash.flash();
+        stage.milestone();
+      }
+      const behind = boundaries[passed - 1];
+      const shown = behind && distance - behind.d < T.FINISH_FADE_END ? behind : boundaries[passed];
+      if (shown) {
+        const z = distance - shown.d;
+        const k = (T.FINISH_FADE_END - z) / (T.FINISH_FADE_END - T.FINISH_FADE_START);
+        const portalFade = Math.min(1, Math.max(0, k));
+        portal.set(z, shown.veil, portalFade);
+        portal.group.visible = -z < T.VIEW_DISTANCE && portalFade > 0.01;
+      } else portal.group.visible = false;
+      portalFlash.update(realDt);
+
+      // "LEVEL n" in the middle as each level starts (level 1 once the intro's GO has gone).
+      if (f.stage > levelShown) {
+        levelShown = f.stage;
+        levelLabel.draw({ text: `LEVEL ${f.stage}`, color: T.COLOR_LIME });
+        levelT = f.stage === 1 ? -T.INTRO_GO_SEC : 0;
+      }
+      levelT += realDt;
+      levelLabel.sprite.visible =
+        phase !== 'finished' && levelT >= 0 && levelT < LK.LEVEL_LABEL_SEC;
+      if (levelLabel.sprite.visible) {
+        const k = reduceMotion ? 1 : Math.min(1, levelT / T.BANNER_POP_SEC);
+        placeOnScreen(levelLabel.sprite, endBannerBox, 1 - (1 - k) ** 3);
+        const u = levelT / LK.LEVEL_LABEL_SEC;
+        levelLabel.sprite.material.opacity = u < 0.7 ? 1 : 1 - (u - 0.7) / 0.3;
+      }
 
       obstacles.tick(visDt);
       const runSpeed =
@@ -539,6 +594,44 @@ export function create3DView(
     dispose() {
       obstacles.dispose();
       stage.dispose(); // also frees the labels and the trail motes, which live in its scene
+    },
+  };
+}
+
+/**
+ * The portal between two levels: a neon ring standing on the track, wide enough for every lane,
+ * with a faint veil inside in the next level's horizon colour. One mesh, moved to the next
+ * boundary each time the runner passes through one. Fades out as it passes the runner, like the
+ * finish arch, so it never sweeps across the camera.
+ */
+function createPortal(): { group: THREE.Group; set(z: number, veil: number, fade: number): void } {
+  const group = new THREE.Group();
+  const r = (3 * T.LANE_WIDTH) / 2 + LK.PORTAL.margin;
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: neon(LK.PORTAL.color, T.NEON_BOOST * LK.PORTAL.glow),
+    transparent: true,
+  });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(r, LK.PORTAL.tube, 10, 64), ringMat);
+  ring.position.y = r * LK.PORTAL.lift;
+  const veilMat = new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: LK.PORTAL.veil,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const veil = new THREE.Mesh(new THREE.CircleGeometry(r, 48), veilMat);
+  veil.position.y = ring.position.y;
+  group.add(ring, veil);
+  group.visible = false;
+  return {
+    group,
+    set(z, veilColor, fade) {
+      group.position.z = z;
+      veilMat.color.set(veilColor);
+      veilMat.opacity = LK.PORTAL.veil * fade;
+      ringMat.opacity = fade;
+      ringMat.depthWrite = fade >= 1;
     },
   };
 }

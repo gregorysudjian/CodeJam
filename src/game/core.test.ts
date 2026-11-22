@@ -222,6 +222,33 @@ describe('pause and resume', () => {
   });
 });
 
+describe('levels (level.stages)', () => {
+  const stages = [0, 10, 20].map((s, i) => ({ index: i + 1, startSec: s, endSec: s + 10 }));
+  it("emits 'stage' for level 1 on the first frame, then as time reaches each level", () => {
+    const lv: Level = { ...level([w(4, block), w(12, hurdle)], 30), stages };
+    const core = createCore(lv);
+    const got: string[] = [];
+    core.onEvent((e) => {
+      if (e.type === 'stage') got.push(`stage ${e.stage.index} @${core.elapsed().toFixed(2)}`);
+    });
+    core.start();
+    expect(core.stageIndex()).toBe(0);
+    core.step(1 / 60, idle, 0);
+    expect(core.stageIndex()).toBe(1);
+    for (let i = 1; i < 30 * 60 && !core.finished(); i++)
+      core.step(1 / 60, perfect(lv)(core.elapsed()), i);
+    expect(got.map((g) => g.split(' @')[0])).toEqual(['stage 1', 'stage 2', 'stage 3']);
+    const at = got.map((g) => Number(g.split('@')[1]));
+    expect(at[1]).toBeCloseTo(10, 1);
+    expect(at[2]).toBeCloseTo(20, 1);
+    expect(core.stageIndex()).toBe(3);
+  });
+
+  it('a level without stages emits none', () => {
+    expect(run(level([w(4, block)], 6)).count('stage')).toBe(0);
+  });
+});
+
 describe('lives', () => {
   const lifeEvents = (events: GameEvent[]) =>
     events.flatMap((e) => (e.type === 'lifeLost' ? [e.livesLeft] : []));

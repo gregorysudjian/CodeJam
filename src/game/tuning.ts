@@ -109,6 +109,8 @@ export const QUALITY_MAX_FRAME_SEC = 0.25; // a longer frame (hidden tab, hitch)
 export const SPEED_MIN = 12; // units per second at intensity 0
 export const SPEED_MAX = 21; // units per second at intensity 1
 export const SPEED_TABLE_STEP_SEC = 0.05; // resolution of the precomputed distance table
+// At a level boundary (the portal) the speed eases to the new level's over this long.
+export const LEVEL_SPEED_EASE_SEC = 1;
 export const VIEW_DISTANCE = 95; // objects appear this far ahead
 export const DESPAWN_BEHIND = 8; // and are recycled this far behind the player
 export const COAST_DECAY = 1.4; // after the finish the world slows to a stop (per second)
