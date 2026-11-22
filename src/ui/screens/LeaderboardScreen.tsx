@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useReducedMotion } from 'motion/react';
 import { ArrowLeft, Crown, Play, QrCode, Trophy } from 'lucide-react';
 import type { LeaderboardEntry, PlayMode, WorkoutId } from '@/contracts';
@@ -15,10 +15,11 @@ import {
   WORKOUT_LABELS,
   MODE_LABELS,
   useHotkey,
+  useNow,
 } from '@/ui/kit';
 import { cn } from '@/ui/lib/utils';
 import { relativeTime } from '@/ui/screens/dashboardStats';
-import { leaderboardFilter } from '@/ui/screens/leaderboardRules';
+import { POSTED_CLOCK_MS, leaderboardFilter } from '@/ui/screens/leaderboardRules';
 
 export interface LeaderboardScreenProps {
   entries: LeaderboardEntry[];
@@ -78,7 +79,11 @@ function Podium({
             <span className="podium-rank font-display-italic text-display-xl leading-none">
               {rank}
             </span>
-            <h2 className="podium-name max-w-full break-words font-display-italic text-title text-text">
+            {/* One line, so a 20-character name can't make one card taller than the others. */}
+            <h2
+              title={entry.displayName}
+              className="podium-name w-full truncate pr-[0.06em] font-display-italic text-title text-text"
+            >
               {entry.displayName}
             </h2>
             {entry.displayName === currentName && (
@@ -128,7 +133,8 @@ export function LeaderboardScreen({
   onPlay,
 }: LeaderboardScreenProps) {
   const reduce = useReducedMotion();
-  const [now] = useState(() => Date.now());
+  // Ticks, so the kiosk's "POSTED" times don't freeze at "JUST NOW" (it stays open for an hour).
+  const now = useNow(POSTED_CLOCK_MS);
   const youRow = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -311,7 +317,10 @@ export function LeaderboardScreen({
                             {i + 4}
                           </span>
                           <span className="flex min-w-0 items-center gap-3">
-                            <span className="break-words font-display-italic text-[26px]">
+                            <span
+                              title={entry.displayName}
+                              className="min-w-0 truncate pr-[0.06em] font-display-italic text-[26px]"
+                            >
                               {entry.displayName}
                             </span>
                             {you && (

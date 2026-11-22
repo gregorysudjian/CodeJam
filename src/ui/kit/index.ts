@@ -13,6 +13,7 @@ export * from "./KeyHint";
 export * from "./ToggleRow";
 export * from "./EmptyState";
 export * from "./useHotkey";
+export * from "./useNow";
 export * from "./MoveFigure";
 export * from "./TextField";
 export * from "./BustOutline";
