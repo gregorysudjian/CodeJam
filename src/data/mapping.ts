@@ -2,6 +2,7 @@
 import type {
   CoachAdvice,
   FitnessLevel,
+  FriendBoardEntry,
   Goal,
   LeaderboardEntry,
   MoveType,
@@ -11,6 +12,7 @@ import type {
   WorkoutId,
 } from '@/contracts';
 import { nameOrGuest, shownName } from './names';
+import { AGE_MAX, AGE_MIN, HEIGHT_CM_MAX, HEIGHT_CM_MIN } from './tuning';
 
 export interface ProfileRow {
   id: string;
@@ -18,6 +20,9 @@ export interface ProfileRow {
   goal: Goal;
   level: FitnessLevel;
   weight_kg: number | string | null;
+  // Migration 0006; optional so a row from before it still maps.
+  age?: number | null;
+  height_cm?: number | string | null;
   weekly_goal_min: number;
 }
 
@@ -66,14 +71,30 @@ function fullMoves(
   return out;
 }
 
+/**
+ * Age in whole years and height to 0.1 cm, or null (unknown) when missing, not a number or out of
+ * the contract's range: the database would refuse the whole profile write for one bad field.
+ */
+const inRange = (v: unknown, min: number, max: number, step: number): number | null => {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+  const r = Math.round(v / step) * step;
+  return r >= min && r <= max ? Math.round(r * 10) / 10 : null;
+};
+const ageOrNull = (v: unknown) => inRange(v, AGE_MIN, AGE_MAX, 1);
+const heightOrNull = (v: unknown) => inRange(v, HEIGHT_CM_MIN, HEIGHT_CM_MAX, 0.1);
+
 export function profileFromRow(r: ProfileRow): Profile {
   const weight = r.weight_kg === null ? undefined : num(r.weight_kg);
+  const age = ageOrNull(r.age);
+  const height = heightOrNull(r.height_cm == null ? null : num(r.height_cm, NaN));
   return {
     id: r.id,
     displayName: shownName(r.display_name),
     goal: r.goal,
     level: r.level,
     ...(weight === undefined ? {} : { weightKg: weight }),
+    ...(age === null ? {} : { age }),
+    ...(height === null ? {} : { heightCm: height }),
     weeklyGoalMin: r.weekly_goal_min,
   };
 }
@@ -85,6 +106,8 @@ export function profilePatchToRow(patch: Partial<Omit<Profile, 'id'>>): Partial<
   if (patch.goal !== undefined) row.goal = patch.goal;
   if (patch.level !== undefined) row.level = patch.level;
   if ('weightKg' in patch) row.weight_kg = patch.weightKg ?? null;
+  if ('age' in patch) row.age = ageOrNull(patch.age);
+  if ('heightCm' in patch) row.height_cm = heightOrNull(patch.heightCm);
   if (patch.weeklyGoalMin !== undefined) row.weekly_goal_min = patch.weeklyGoalMin;
   return row;
 }
@@ -151,6 +174,31 @@ export function leaderboardFromRow(r: LeaderboardRow): LeaderboardEntry {
     mode: r.mode,
     durationSec: r.duration_sec,
     at: Date.parse(r.created_at),
+  };
+}
+
+/** A row of the friends_board function (migration 0007). */
+export interface FriendBoardRow {
+  display_name: string;
+  score: number;
+  created_at: string;
+  is_me: boolean;
+}
+
+export function friendBoardFromRow(
+  r: FriendBoardRow,
+  workout: WorkoutId,
+  mode: PlayMode,
+  durationSec: number,
+): FriendBoardEntry {
+  return {
+    displayName: shownName(r.display_name),
+    score: num(r.score),
+    workout,
+    mode,
+    durationSec,
+    at: Date.parse(r.created_at),
+    isMe: r.is_me === true,
   };
 }
 
