@@ -53,7 +53,7 @@ anywhere; the model is served from the app itself, so it also works offline.
 5. Very baggy or dark clothes can hide the hips; contrast with the background helps.
 6. Treadmill mode: 1–1.5 m, head and shoulders in view. If the runner drifts on the belt, press R.
 
-## Symptoms → tuning (A only, and never after Sunday 10 AM)
+## Symptoms → tuning (A only)
 
 Try the operator fix first (R, light, distance). Sliders are in the D overlay; "Copy changed values"
 copies them as JSON for `DETECTION_DEFAULTS` in `src/pose/tuning.ts`. Any change must keep

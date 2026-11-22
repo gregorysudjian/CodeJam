@@ -20,7 +20,7 @@
 | `view2d.ts` | Canvas 2D fallback, used automatically when WebGL cannot start |
 | `audio.ts`, `music.ts` | Synthesised sound effects; the synthesised beat (its plan is tested) |
 
-**Graphics quality** (`quality.ts`). The ladder steps down one level per 3 s window under 45 fps:
+**Graphics quality** (`quality.ts`). In automatic mode the ladder steps down one level when a 2 s window (after 1 s of start-up) runs under 45 fps:
 - Level 1: pixel ratio 1, bloom kept, half the particles. That's 4× fewer pixels on a Retina screen, and measured 5 → 32 fps in software rendering.
 - Level 2: no bloom, and none of the extras (towers, far skyline, particles, water glints, tunnel light strips). The track, obstacles, cues, tunnel and bridge structure all stay.
 
@@ -38,20 +38,12 @@ A frame longer than 0.25 s (a hidden tab, a hitch) counts as 0.25 s, so switchin
 
 **Failure handling:** if WebGL can't start, the 2D view takes over, with the same move icons (tested in a Chrome with the GPU disabled). If drawing throws mid-round, the game logs it and keeps running without drawing, so events, the HUD and the results still work.
 
-## Sunday morning, before the judges
-
-On the demo Mac, in `~/CodeJam`, once `main` is final:
-1. `git pull`. `git log -1` should show Greg's last merge.
-2. `node src/game/e2e/run.mjs --quick` (about 3 minutes; the full set takes about 15 without `--quick`). It plays the demo level, its low-impact version and END ROUND at 0:01 in a Chrome window with a keyboard autopilot, and exits 0 when every check passes (details in "End-to-end rounds" below). It runs its own dev server on port 5174 and a throwaway Chrome profile, so it never touches the ghosts or the saved player on `localhost:5173`. Leave the window alone while it runs.
-3. It ends by printing a one-line check for the Player's camera ghosts. Open `http://localhost:5173/?demo=1` in the normal Chrome (start `npm run dev -- --strictPort` first), paste the line in the console: both lines should say `camera ghost`, with the rehearsal's result.
-4. From 10 AM: crash or unplayable fixes only.
-
 ## End-to-end rounds (`e2e/`)
 
 `node src/game/e2e/run.mjs` plays real rounds in Chrome and checks how each ends. It needs Node 22+ and Chrome, and no npm package (plain DevTools protocol, like `docs/qa/sweep/`, which covers the app flow; this covers the game). Options: `--quick`, `--only '<case>'`, `--headless` (frame rates are then not meaningful), `--url http://localhost:5173/` (use a running dev server).
 
-- **Cases:** the demo level (must score 4,750 with 0 hits) and its low-impact version; END ROUND from the pause screen at 0:01 (nothing saved, back on the select screen); every floor workout in low impact and every treadmill workout, perfect (0 hits); standing still; mashing keys; Esc 9 times, then once more (paused, then running); K mid-round to the camera and back.
-- **Every case:** the level played matches the pick (workout, mode, 45 s, low impact), the round saves exactly once (END ROUND: never), no console errors. Ghost lines (`[game] ghost: …`) are printed for the demo rounds. Other rounds print their seed. A click, real key, lost focus or hidden tab during a round is printed with its time; when a round fails, that is the first suspect. A protocol call with no reply fails its round after 20 s, and a round after 4 minutes, so the run never hangs.
+- **Cases:** the demo level (must score 24,800 with 0 hits) and its low-impact version; END ROUND from the pause screen at 0:01 (nothing saved, back on the select screen); every floor workout in low impact and every treadmill workout, perfect (0 hits); standing still; mashing keys; Esc 9 times, then once more (paused, then running); K mid-round to the camera and back.
+- **Every case:** the level played matches the pick (workout, mode, low impact) and is the six levels (180 s), the round saves exactly once (END ROUND: never), no console errors. Ghost lines (`[game] ghost: …`) are printed for the demo rounds. Other rounds print their seed. A click, real key, lost focus or hidden tab during a round is printed with its time; when a round fails, that is the first suspect. A protocol call with no reply fails its round after 20 s, and a round is given its length plus 45 s, so the run never hangs.
 - **How it plays:** `autopilot.js` does what `core.test.ts`'s perfect player does, with real key events. It reads the level from React's fiber tree (the select screen picks a random seed except on the demo) and starts its clock `INTRO_SEC` after `<body data-game="running">` turns on. So it needs the dev server, not `npm run preview`.
 - **The camera** is Chrome's fake device (a test pattern), so the real webcam never turns on; the K case only checks that switching to it and back keeps the round alive.
 
@@ -73,63 +65,6 @@ Chrome on the M4 Pro MacBook Pro, built-in display at 1512×945, the MacBook Pro
 - **D overlay** shows, under the camera line, frames per second, model ms, capture-to-state ms, missed frames and watchdog frames (`window.__poseTiming`).
 - `?gfx=low` is not needed on this Mac: render FPS stays at 114–120 with the camera on.
 
-## Camera session: the next steps
-
-Everything here needs the webcam, the demo laptop and a body; the game prints what you need. Branch `p5-game` (merged as #47; it follows `main`). The results go in one small follow-up PR: push `p5-game`, then tell Greg "ready".
-
-**Set-up.** Patrick's Mac is the demo laptop, and the demo runs on plain `npm run dev` (no coach key, so the coach card is the rule-based one).
-- **Folder:** use a clone outside iCloud, e.g. `~/CodeJam`; a branch switch in the iCloud Desktop folder makes "name 2" copies. Its `.env.local` holds the Supabase URL and anon key from D's message (gitignored, never committed), so rounds save and the leaderboard works.
-- **Start it:** `npm run dev -- --strictPort`. If port 5173 is taken, Vite would move to 5174 without asking: a different origin, so no ghosts and no saved settings. With `--strictPort` it stops with an error instead.
-- **URL:** always exactly `http://localhost:5173`, never `127.0.0.1`. For the session, open `/?demo=1&debug=timing` with the console open and pick Camera on the select screen. **D** shows A's pose overlay with its FPS.
-
-Do the steps in this order: the frame rate changes the webcam lag, and the ghosts belong to one level.
-
-1. **Frame rate.** Play one round with the camera.
-   - The console prints `[game] frame rate this round: average … fps, slowest 5% of frames … ms` and any quality step. The overlay shows the pose FPS.
-   - If pose drops under about 25 fps while the game runs, fix a lower level on this laptop: in the console on `http://localhost:5173`, `localStorage.setItem('game.gfx', 'medium')`, or `'low'`.
-   - Otherwise leave it on automatic: it steps at 3 s if needed, and later rounds start at the level found.
-2. **Latency leads.** Play 2–3 rounds, moving when each object reaches the runner.
-   - After every camera round the console prints `[game] camera session, paste both lines:`, over all camera rounds of this page load (from the second round, with a combined table). After 2–3 rounds, paste the first after `VISUAL_LEAD_SEC.pose = ` in `src/game/tuning.ts`, the second after `SESSION_LAG_SEC = ` in `src/game/latency.test.ts`. Then `npm run check`.
-   - If `latency.test.ts` still fails, a lead is below what its measured lag needs (the suggestion is capped at `TIMING_MAX_LEAD_SEC`): look at that move's `inWindowShare` before raising anything.
-3. **Holds and fair attempts.** After each round the console lists every hit and missed orb (`[game] N hits and missed orbs this round, and why:`, also in `window.__gameMisses`). Read it row by row:
-
-   | `cause` | What happened | Who fixes it, and how |
-   | --- | --- | --- |
-   | `late`, by X s | first seen after the window closed (t + 0.15 s) | Patrick: the move's lead, from the combined table, not from one row. A single late row with the rest in the window is the player. |
-   | `early`, by X s | seen only before the window opened (t − 0.35 s) | Patrick: the lead is too high for this move, or the player anticipated. Same rule: the combined table decides. |
-   | `not seen` | never seen within 1 s of its time | The player really moved: a request to A under "Requests for A" below. A missed orb where nobody reached is just a miss. |
-   | `dropped`, gone at +X s for Y s | held, off for longer than the 0.3 s grace, back before the end | A, if the player stayed down or up (flicker). The player, if they really stood up. |
-   | `let go`, X s before the hold ended | the hold ended early and did not come back | The player, if they stood up. A, if they were still down (the state ended early). |
-   | `in window` | the probe saw the move in time, yet it was a hit | Patrick: the probe and the judge disagree. Note the row; it is a bug in `judge.ts` or `timing.ts`. |
-
-   The `detail` column gives the times; `at` is the object's judging time in the level, the same in every round of the demo level, so a row that repeats across rounds is the level or the detector, not the player.
-
-   What recorded clips already say, from A's clips replayed through his detector with ±1 % landmark noise and 30 % dropped frames:
-   - Held squats and both-arms-up never flickered.
-   - At the end of a hold the state stays on after the player starts to rise: 0.3–0.7 s for squats, 0.1–0.5 s for both arms. Held objects now end visually at the judging end, so on top of that, letting go up to 0.3 s early still clears.
-   - Greg's clips (a second body): under heavy landmark noise, an overhead press could start a false jump that ended the hold. A fixed it on `main` (`3e696e8`, a higher jump line with both arms up).
-   - The tight spot is the start of a squat: about 0.39 s of lag against a 0.3 s lead leaves about 0.06 s of slack. Greg's slowest recorded squat would be about 0.02 s late, so watch for `late` squats. The combined table will probably suggest about 0.35 s.
-4. **Three body rounds, normal and low impact.**
-   - Note any combo that feels unfair or tiring. The hit report gives its time.
-   - In one of them, step about 50 cm closer to the screen mid-round (A's closer-play change, #50). The round should keep playing, without a tracking-lost pause.
-   - Low impact already gives the hurdles' share to sidesteps and reaches, and no level has holds in its cool-down (`src/workout/README.md`).
-   - `npm run check` keeps `demo.test.ts` honest after any change.
-5. **Look and sound, 10 minutes**, on the Mac's own display and speakers at the volume the demo will use, the browser at the size the demo will use. Headless Chrome can't check any of this. Tick each box, and note any "no" with the fix next to it:
-   - [ ] **Music against a voice** (3 min). Play a demo round while someone talks from where the presenter will stand, at pitch volume. Can you follow every word? If not, lower `MUSIC_VOLUME` in `look.ts` (0.35 → 0.25), or turn the beat off on this laptop: `localStorage.setItem('game.music', 'off')` (effects stay). Can you still hear the cue beeps and the hit thud over the voice? If not, raise `AUDIO_VOLUME` in `tuning.ts` rather than single effects (`mix.test.ts` pins the effect levels).
-   - [ ] **No crackle at full volume.** At the Mac's top volume, reach the 20 combo and the finish (the loudest moments). Any crackle or pumping: lower `AUDIO_VOLUME`, never the limiter.
-   - [ ] **First sound in a fresh tab.** Reload, click through, and start a round: the 3-2-1 beeps play. If they don't, click the page once before START.
-   - [ ] **PERFECT / GOOD / LATE from the mark** (2 min). From 1.5 m, with the camera, read the word for five clears in a row. Readable? If not, raise `GRADE_WIDTH` in `look.ts` (3.5). Does it match how it felt? If on-time moves mostly say LATE or GOOD, the camera's grade bands are off: note it for `GRADE_BANDS.pose` in `tuning.ts`, with the hit table from step 3.
-   - [ ] **The rest from the mark:** the move icons on far objects, the `5 COMBO!` banner (bottom centre), the race chip (bottom right) and `YOUR BEST` under the ghost. Anything you can't read: its size is in `look.ts`.
-   - [ ] **The finish on this display** (2 min). Play to 0:00 twice, racing a ghost. The FINISH arch passes, the camera swings smoothly to the celebrating runner, and the verdict (`GHOST BEATEN`, `GHOST WINS`, `TIE`) sits big in the middle, under the score and clock plates and clear of them. The results come after the swing has settled (it takes 1.3 s of the app's 1.5 s). Any stutter in the swing: check the frame rate line in the console. A cut-off banner: note the window size.
-   - [ ] **Pause with the X** mid-round: the beat fades out and comes back on resume, no note left ringing.
-   - [ ] **Reduce motion** (macOS Settings → Accessibility → Display): if it's on, the game drops the fly-in, the finish swing, shake and flying pieces. Is that what you want on stage?
-6. **Ghost rehearsals, right after this session.**
-   - A ghost belongs to one exact level, and both demo levels are pinned (`demo.test.ts`). Changing the latency leads, the look or the sound keeps ghosts valid.
-   - In the normal Chrome (not a test profile), on exactly `http://localhost:5173/?demo=1` with the camera, play the demo level once in normal and once in low impact. Extra flags like `&debug=timing` don't matter; the origin does.
-   - Each round start prints `[game] ghost: racing …` or `none yet …`.
-
-**Send me** the console output (the tables are copyable) if you'd like me to update the numbers and tests.
-
 ## How to use it (for D)
 
 ```ts
@@ -142,7 +77,7 @@ game.start(); // runs the 3 s intro (3, 2, 1, GO), then the round clock starts
 
 - **`start()` includes a 3 s intro.** The camera flies in from the runner's front to the chase position while 3, 2, 1 count down (with beeps), then GO, and only then does game time start. `getElapsedSec()` stays 0 and no events fire during the intro, so the HUD shows the full time. `pause()` during the intro skips it into a paused round. With reduced motion the camera does not fly; the countdown still shows. `?intro=off` starts at once, as before.
 
-- The canvas is sized by CSS. The game watches it with a `ResizeObserver` and caps the pixel ratio at 2.
+- The canvas is sized by CSS. The game watches it with a `ResizeObserver` and caps the pixel ratio at 2 (1 while a level shows its street clip).
 - The game only calls `input.getState()`, once per frame. The app owns `input.start()` and `input.stop()`, and wires `input.onMove` to the tracker.
 - Before `start()` the scene renders and the runner copies the player's arms, crouch and jump in place. That's useful behind a "raise both arms to start" prompt.
 - `destroy()` stops the loop and disposes every geometry, material, texture, the bloom passes and the renderer. It does not force a context loss, so React StrictMode can create a second game on the same canvas.
@@ -156,21 +91,21 @@ game.start(); // runs the 3 s intro (3, 2, 1, GO), then the round clock starts
 
 At the finish a banner says GHOST SAVED (first run of a level), GHOST BEATEN, GHOST WINS or TIE. The app's 1.5 s celebration keeps it on screen.
 
-**Live race:** while racing, a chip at the top centre shows the player's lead in cleared + collected: "+2 VS GHOST" in lime, "−1 VS GHOST" in magenta, "EVEN VS GHOST" in cyan. It works because `ghostRace.ts` judges the ghost's recorded moves with a shadow copy of the game rules, synced to the round's game time. Re-judging a recording reproduces the ghost's real result.
+**Live race:** while racing, a chip at the bottom right shows the player's lead in cleared + collected: "+2 VS GHOST" in lime, "−1 VS GHOST" in magenta, "EVEN VS GHOST" in cyan. It works because `ghostRace.ts` judges the ghost's recorded moves with a shadow copy of the game rules, synced to the round's game time. Re-judging a recording reproduces the ghost's real result.
 
 **For the demo:** the presenter plays the demo level (`?demo=1`) once on the demo laptop. Every judge after that races the presenter's ghost. A judge who beats it becomes the new ghost.
 
 - **Ranking:** cleared + collected, then fewer hits. The game counts these itself. A tie keeps the stored ghost.
 - **Per input:** camera and keyboard ghosts are kept apart (the input at the start of the round). A keyboard run has no webcam lag, so as a ghost it would be unbeatable for people playing with their body. A round that switches input with K mid-round is never stored; its banner still compares it with the ghost it raced.
 - **Level identity:** a ghost only replays on the identical level. A 64-bit fingerprint covers duration, mode and every wave (time, kinds, lanes, holds), so a new seed or a changed generator never shows a wrong ghost.
-- **Storage:** browser localStorage on this device, `game.ghost.<fingerprint>`, about 1 KB per 45 s level (one base64 character per sample). The 10 most recent levels are kept. Private mode, a full quota or corrupt data mean no ghost, never a crash.
+- **Storage:** browser localStorage on this device, `game.ghost.<fingerprint>`, about 4 KB per 180 s round (one base64 character per sample). The 10 most recent levels are kept. Private mode, a full quota or corrupt data mean no ghost, never a crash.
 - **Privacy:** only those five game states. No video, no landmarks, nothing sent anywhere (AGENTS.md rule 5).
 - **Switches:** `?ghost=off` (or localStorage `game.ghost = off`) turns it off. `?ghost=reset` clears every stored ghost once per page load.
 - **Judging:** the ghost never affects it. It is drawn from the recording only, and full scripted rounds give the same event counts with or without it.
 - **Console:** one line at the finish, for example `[game] ghost: lost. This run 3 cleared, 13 hits; ghost 23 cleared, 0 hits`.
 
 **How it was checked:**
-- 19 unit tests:
+- Unit tests (`ghost.test.ts`, `ghostStore.test.ts`, `ghostRace.test.ts`):
   - all 48 poses round-trip through one character;
   - sampling by game time with slow frames;
   - playback clamping;
@@ -186,9 +121,15 @@ In the real app (main + `p1-workout` + `p2-game`, keyboard): a rehearsal round s
 
 ## Levels (`level.stages`)
 
-A round is six levels of 30 s (`src/workout`). Speed is flat within a level and eases to the next level's over `LEVEL_SPEED_EASE_SEC` (1 s) from the boundary (`timeline.ts` `levelIntensityAt`; objects and floor still move together). No object comes within 2 s of a boundary: there the runner passes through a **portal**, a white neon ring with a veil in the next level's horizon colour, with a white flash, the milestone shockwave, a chime, and "LEVEL n".
+A round is six levels of 30 s (`src/workout`). Speed is flat within a level and eases to the next level's over `LEVEL_SPEED_EASE_SEC` (1 s) from the boundary (`timeline.ts` `levelIntensityAt`; objects and floor still move together). No object comes within 2 s of a boundary: there the runner passes through a **portal**, a white neon ring with a veil in the next level's horizon colour, with a white flash, the milestone shockwave, a chime, and "LEVEL n". A change into a level that shows its street clip is a white fade instead.
 
-**Backdrops:** `backdrop.ts` is the one place that says which backdrop each level has: 1 city, 2 tunnel, 3 bridge, 4 city at dawn, 5 bridge at night, 6 finale (scenery from `scene.ts`, palette from `look.ts` `ZONE_LOOK`). `world.ts` plans one track segment per level from it, and scenery runs on across levels that share it. A level's `video` there (a path under `public/`) is its Higgsfield city clip (`videoBackdrop.ts`), and the runner runs inside it: a `THREE.VideoTexture` as the scene background filling the screen, muted, darkened to `VIDEO_BACKDROP.brightness` (`look.ts`), zoomed (up to `zoomMax`) so the clip's street vanishing point (`backdrop.ts` `horizon`, measured per clip) sits on the track's, shifting slightly as the runner changes lane, and playing at 0.8× on the slowest level up to 1× on the fastest (never faster, so a 30 s clip lasts its level). While a clip shows, `scene.ts` hides the grid floor, the horizon glow, the gates and all side scenery (towers, tunnel, bridge, skyline), tints the track strip lightly on the clip's road, puts a soft contact shadow under the runner, and shades the top of the screen so GameHud's move cue reads over a bright sky; all of it stays built and comes back as it was without a clip. The next level's clip loads during the current one and the switch happens as the runner passes through the portal, under its flash; a clip still loading keeps the previous one on screen. It stands still while paused. A level without a clip, a clip that fails to load, and graphics quality 2 (`?gfx=low`, `game.gfx = low`, or the ladder's last step) show the built-in scenery exactly, and at quality 2 no clip is ever loaded. Checked with six synthetic 960 px clips in a keyboard round of the demo (Sun ~1 AM, Windows, NVIDIA GPU, 1512×945): the right clip on every frame of every level, 60 fps in all six levels, at most 2 clips loaded at once. Then with the real 1280×720 clips (`g2-immersive`, Sun ~2:30 AM, same PC, perfect keyboard round on `?demo=1&store=local&music=off`): 60 fps in all six levels (the display's cap; slowest 5 % of frames 17 ms), a clip at every portal, the clip still while paused, and `?gfx=low` the old scenery with no clip loaded.
+**Backdrops:** `backdrop.ts` is the one place that says which backdrop each level has. All six levels are in realistic mode (`style: 'real'`) on a Montreal street clip (1280×720, 30 s, no sound, in `public/media`). There are three clips, each used twice: levels 1 and 4 Old Montreal (`level-2-london.mp4`), 2 and 5 the Jacques Cartier Bridge deck (`level-3-paris.mp4`), 3 and 6 the Old Port at blue hour (`level-5-barcelona.mp4`). The file names are kept from an earlier set.
+
+The clip (`videoBackdrop.ts`) is a `THREE.VideoTexture` as the scene background filling the screen, muted, shown at `REAL_MODE.brightness` (`look.ts`) and zoomed (up to `VIDEO_BACKDROP.zoomMax`) so its street vanishing point (`backdrop.ts` `horizon` and `vanishX`, measured per clip) sits on the track's. It plays at the game's speed divided by the clip's road speed (`REAL_CAMERA.roadSpeed` in `tuning.ts`, clamped to 0.5× to 1.5×), so its road keeps pace with the obstacles. While a clip shows, `scene.ts` hides the grid floor, the horizon glow, the gates, all side scenery (towers, tunnel, bridge, skyline), the particles, the speed lines and the bloom. It lays a scrolling road strip under the track (`realRoad.ts`) with the lanes as faint white road paint, lowers the chase camera (`REAL_MODE.camera`), renders at pixel ratio 1, and shades the top of the screen so GameHud's move cue reads over a bright sky. Obstacles get lit textures (`props.ts`, `public/media/obstacles`) and soft contact shadows; there are no shadow maps. The runner stays the neon robot.
+
+The next level's clip loads during the current one and the switch happens at the level boundary; a clip still loading keeps the previous one on screen. It stands still while paused. A clip that fails to load and graphics quality 2 (`?gfx=low`, `game.gfx = low`, or the ladder's last step) show the built-in neon scenery exactly, and at quality 2 no clip is ever loaded. That scenery is, by level: 1 city, 2 tunnel, 3 bridge, 4 city at dawn, 5 bridge at night, 6 finale (built in `scene.ts`, palette from `look.ts` `ZONE_LOOK`). `world.ts` plans one track segment per level from it, and scenery runs on across levels that share it.
+
+Earlier checks, from before realistic mode (one darkened clip per level behind the neon track): checked with six synthetic 960 px clips in a keyboard round of the demo (Sun ~1 AM, Windows, NVIDIA GPU, 1512×945): the right clip on every frame of every level, 60 fps in all six levels, at most 2 clips loaded at once. Then with the real 1280×720 clips (`g2-immersive`, Sun ~2:30 AM, same PC, perfect keyboard round on `?demo=1&store=local&music=off`): 60 fps in all six levels (the display's cap; slowest 5 % of frames 17 ms), a clip at every portal, the clip still while paused, and `?gfx=low` the old scenery with no clip loaded.
 
 **Lives:** see `lifeLost` and `finished` below. **Resume:** see `resuming`.
 
@@ -214,7 +155,7 @@ Each spawn gets its own judge, fed the game time and the polled state every fram
 
 - Cleared if the required state is true on any frame in `[t − 0.35 s, t + 0.15 s]`. The verdict comes as soon as that happens, so a crate shatters the moment both arms go up.
 - Hit is decided on the first frame after `t + 0.15 s`.
-- `beam` and `crate` with `holdSec > 0` must engage in the window and then hold until `t + holdSec`. A gap longer than 0.3 s counts as a hit. **Assumption:** the contract only spells out the hold rule for beams; crates use the same rule (ask C).
+- `beam` and `crate` with `holdSec > 0` must engage in the window and then hold until `t + holdSec`. A gap longer than 0.3 s counts as a hit. Crates use the same hold rule as beams (CONTRACTS.md).
 - Orbs: floor mode needs the orb's lane plus either arm. Treadmill mode: lane −1 needs the left arm, +1 the right arm, 0 both.
 
 ## Latency compensation (`VISUAL_LEAD_SEC`, tested in `latency.test.ts`)
@@ -250,7 +191,7 @@ Judging, events and the contract are unchanged; only where objects are drawn mov
 - the current lead, and the lead that would put the median in the middle of the window;
 - `lagSec` (median + lead): the whole webcam lag, if the player moved as the object reached the runner.
 
-Objects the player did not have to move for are skipped (already standing in the free lane). From the second round on (no page reload in between, "play again" is fine), a second table combines every round of this page load with the same input. Rounds where K was pressed are left out. The demo level has only 2 to 5 of each move, so copy the combined table's `suggestedLeadSec` into `VISUAL_LEAD_SEC.pose` after two or three rounds. The same reports are in `window.__gameTiming` (last round) and `window.__gameTimingAll` (combined). `latency.test.ts` checks the leads against the lags measured on A's clips, or against `SESSION_LAG_SEC` for moves measured in a camera session. The console prints that line next to the leads line, so step 2 is one paste into each file. Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
+Objects the player did not have to move for are skipped (already standing in the free lane). From the second round on (no page reload in between, "play again" is fine), a second table combines every round of this page load with the same input. Rounds where K was pressed are left out. The demo level has only 2 to 5 of each move, so copy the combined table's `suggestedLeadSec` into `VISUAL_LEAD_SEC.pose` after two or three rounds. The same reports are in `window.__gameTiming` (last round) and `window.__gameTimingAll` (combined). `latency.test.ts` checks the leads against the lags measured on A's clips, or against `SESSION_LAG_SEC` for moves measured in a camera session. The console prints that line next to the leads line, so it is one paste into each file. Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
 
 ## Placement (`timeline.ts`, pure, tested)
 
@@ -258,13 +199,13 @@ Speed comes from wave `intensity` (interpolated between waves). Each object sits
 
 ## Look ("Neon Arena")
 
-Background `#07090D` with fog. Lime lane lines and gates. Dark obstacles with neon edges, coloured by the move that clears them: sidestep cyan, jump lime, squat amber, arms up magenta, reach violet. Floor markers in the same colour under each object. Hits turn the object red, flash the runner and shake the camera (no shake with `prefers-reduced-motion`). Bloom uses `UnrealBloomPass`, which ships inside `three`, so there's no extra package. Only colours pushed above 1.0 (`NEON_BOOST`) glow. Turn it off with `BLOOM_ENABLED` in `tuning.ts` for weak laptops.
+This is the built-in neon look; a level showing its street clip replaces it with the realistic one (see Levels). Background `#07090D` with fog. Lime lane lines and gates. Dark obstacles with neon edges, coloured by the move that clears them: sidestep cyan, jump lime, squat amber, arms up magenta, reach violet. Floor markers in the same colour under each object. Hits turn the object red, flash the runner and shake the camera (no shake with `prefers-reduced-motion`). Bloom uses `UnrealBloomPass`, which ships inside `three`, so there's no extra package. Only colours pushed above 1.0 (`NEON_BOOST`) glow. Turn it off with `BLOOM_ENABLED` in `tuning.ts` for weak laptops.
 
-All numbers are in `tuning.ts`.
+All numbers are in `tuning.ts` and `look.ts`.
 
 ## Status
 
-Newest first.
+A dated log, newest first. Each entry describes the build at its time: rounds were 45 or 60 s then, with no levels, lives or street clips.
 
 ### `p5-game` (Sat evening): camera-session report on top of the game-feel pass
 `main` already had the game-feel pass (`p4-game-feel`, #38). This branch adds what `p3-game` had that main lacked, without its duplicate polish:
@@ -338,25 +279,6 @@ Rechecked after Greg's PRs #13 and #20 (the select screen's camera/keyboard swit
 - Real webcam input. Tested only with the keyboard and a scripted input.
 - Long-term WebGL memory over many rounds.
 
-### Requests for A (Abdo), from the camera session
-None yet. Template for a `not seen`, `dropped` or `let go` row where the player really held the move:
-- Move, round and time: e.g. "squat, demo level, `at` 21.40 s, rounds 1 and 3".
-- The `cause` and `detail` columns, pasted.
-- What the body did (e.g. "deep squat, held until the beam passed") and the pose FPS on the overlay.
-
-### Requests for D (Greg), not done because they are outside src/game
-1. A "Demo" entry point. `?demo=1` already works without any change (see `src/workout/README.md`).
-2. Optional: a low-graphics toggle on the select screen that writes localStorage `game.gfx` = `low` or `high`. The `settingsSlot` from PR #13 was meant for it; it now holds the camera/keyboard switch (#20).
-3. ~~HUD cue words: show "REACH" for both reach moves~~: done (`hudCueLabel`, PR #13).
-4. ~~Docs: AGENTS.md ownership and the CONTRACTS.md crate row~~: done.
-5. ~~Show the finish~~: done (`FINISH_DELAY_MS`). Was: show the finish: in `PlayScreen`, wait about 1.5 s after `finished` before calling `onFinish`. The game shows a finish arch, the world coasts to a stop and the runner raises both arms, but today the results screen replaces it at once. The fanfare already rings out after `destroy()`.
-6. ~~A pause overlay with text~~: done in `GameHud`.
-7. The HUD cue word ("SIDESTEP" with its countdown ring) sits in the middle of the screen, exactly where the announced obstacle approaches. It covers the obstacle and the game's free-lane chevron for those 2 seconds. Move it to the top band (between score and timer) or make it much more transparent. Screenshot: the game at 2 s into the demo level. Still open on Sat midday: in the real app "SQUAT" covers the incoming beam.
-8. Demo prep (`docs/DEMO.md`), for the ghost:
-   - **Ghosts are stored per browser origin.** The Vercel tab and the localhost backup tab each need their own rehearsal round, or the backup has no ghost.
-   - **The low-impact toggle makes a different level.** It is the same seed without hurdles, so it has its own ghost. Rehearse it once too if judges will get it.
-   - **One ghost per input.** Rehearse with the camera, since judges play with their body. A round where the Operator pressed K is never stored.
-
 ### Checked end to end (local merge of main + p1-game + p1-workout)
 - `npm run check`: 78 tests pass.
 - Real app with `?store=local&demo=1&gfx=2d`, demo round played by scripted keyboard: score 4200, 100 % accuracy, best streak 21, reps per move and calories correct, rule-based coach card shown, no console errors.
@@ -377,8 +299,3 @@ Checked with screenshots at each moment and full scripted rounds (perfect: 0 hit
 ### Phase 2 so far (`p1-game`)
 - **Sound** (`audio.ts`): Web Audio synthesis, so no files and no package. Each move has its own pitch for the cue, plus sounds for clear, orb collect, crate smash and hit. Mute with `?mute=1` or localStorage `game.muted = '1'`. Chrome only lets audio start after a click on the page; the app's "Start round" click counts. Headless tests ran silent because nothing was clicked, and the game carried on fine.
 - **Low graphics**: no bloom, pixel ratio 1, no skyline. Turns on by itself when a round runs under 45 fps over 3 s (checked: the software renderer at 19 fps switched). `?gfx=low` forces it on, `?gfx=high` keeps full graphics (also localStorage `game.gfx`). D could put a toggle on the select screen that writes `game.gfx`.
-
-**Next (Phase 2)**
-- Music loop (optional; sound effects are done).
-- Hit vignette; speed lines at peak intensity.
-- Tune `SPEED_*` and the cue lead in front of the camera with A.

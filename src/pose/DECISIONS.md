@@ -8,7 +8,7 @@ or the named file.
 2. **Arm "down" is back near nose height** (`ARM_DOWN_ABOVE_NOSE_T = 0.05`), not below the shoulder.
    In `armsUp.json` and `mixed.json` A lowered the arms only to shoulder height between presses, every
    time; with the contract's rule, 3 presses read as 1. "Up" was 0.3 T above the nose (raised
-   to 0.4 T later, see 26).
+   to 0.4 T later, see 26, and back to 0.3 T, see 33).
 3. **Arms are ignored while airborne, and a take-off resets them.** Arms swing above the nose during a
    jump (`jump.json`, `mixed.json`), which fired false `armsUp` / `reachRight`.
 4. **One arm must stay up alone for 250 ms before it is a reach.** When raising both arms one leads by
@@ -43,6 +43,7 @@ or the named file.
     still current. Found with a stubbed camera: StrictMode's start/stop/start leaked a live stream.
 17. **Size gate:** once calibrated, a body whose shoulder width is more than 40% off the player's is
     not the player (`PICK_SIZE_TOLERANCE`). A's own clips vary by about ±30% (arms up, slight turns).
+    **Superseded by 49** (the constant is gone; see `FOLLOW_*` and `REFIND_*`).
 18. **Calibration status is sent in 5% progress steps**, not every frame, because the app sets React
     state on each call.
 19. **Treadmill mode ignores the hips for tracking** (shoulders only) and has no lanes, jumps or
@@ -82,7 +83,8 @@ or the named file.
     although detection only needs the hips. Setting it to false asks for head and knees only.
 28. **Bodies far from the player's size are dropped before picking**, not after: a bigger stranger
     right in front of the camera used to win the "largest" pick, get rejected, and hide the real
-    player. A throwing `onStatus` (UI bug) is isolated like `onMove` listeners.
+    player. A throwing `onStatus` (UI bug) is isolated like `onMove` listeners. The picking part is
+    **superseded by 49**.
 29. **Calibration grace of 250 ms:** a brief problem (feet flickering at the frame edge, one dropped
     detection) pauses the hold instead of restarting it; a lasting one restarts it and shows its
     message. In A's squat session the ankles sat at the bottom edge (40 frames with y > 1), so the
@@ -91,7 +93,8 @@ or the named file.
     On `abdo-1` the main bundle drops from 407 kB to 254 kB (MediaPipe becomes a 154 kB chunk), so the
     landing page loads faster on venue wifi and keyboard players never download it. Verified: dev
     page runs at 30 FPS GPU with a stubbed camera; the production build references the chunk and
-    copies the model and WASM.
+    copies the model and WASM. Later, `download.ts` also starts the download on the profile and
+    select screens when a camera exists.
 31. **A stalled camera (unplugged, taken by another app, laptop asleep) now loses tracking** within
     ~1.5 s, so the game pauses instead of holding the last pose. New frames are identified by the
     decoded-frame count: verified in Chromium, `currentTime` keeps running on a dead stream while the
@@ -189,7 +192,7 @@ or the named file.
     default, `p2-game`, "once that lands") updated; the wobble test now also wobbles *after* the
     pause, so "nor re-arms it" is really tested (checked: it fails if the grace is removed). No
     threshold changed; 729 tests pass.
-44. **A judge who steps closer or backs off keeps playing** (`RESCALE_*`, HANDOFF risk 7).
+44. **A judge who steps closer or backs off keeps playing** (`RESCALE_*`).
     - **Problem (synthetic drift on A's real 1.4 m clips, scaled over 1 s about the image point that
       stays put):** with the camera aimed above the hips (`cy` 0.35), a 30 cm step closer (1.3×)
       moved the hips down the frame by more than the squat line: a **false squat**, then `ducking`
@@ -217,10 +220,10 @@ or the named file.
       the pinned timing calibrates on the clip itself and is unchanged); (3) `greg/mixed`: one
       more sidestep at 5.5 s, where Greg, shrunk to 0.77×, moved 0.51 calibrated W right =
       0.66 W in his real size, a real step the stale W missed.
-    - **Still to check on real clips:** A's `● drift` and `● turnStep` (turning narrows W, but
+    - Not checked on real clips: `● drift` and `● turnStep` recordings (turning narrows W, but
       not T).
 45. **Lag study: no threshold can buy back the squat and arm lag without new false moves.**
-    Proposal for Greg: **change nothing**; the game's leads stay valid. Method: each state's onset
+    Result: **change nothing**; the game's leads stay valid. Method: each state's onset
     line swept lower, one at a time; a value counts only if all 19 real clips (3 sessions) keep
     their exact moves, ±0.5% noise (4 seeds per clip) adds nothing new, and then the full test
     suite (variants, crouches, drift) passes.
@@ -244,7 +247,7 @@ or the named file.
     (`CALIBRATION_STILL_WINDOW`) gets 7–10/10 under ±1% noise, still rejects the bob, keeps W/T
     within 1.5% median (worst 3–8%), but restarts ~100 ms after a real step instead of at once.
     It changes nothing measurable on real still clips, so it waits for real fidgeting to show a
-    need. Patch: HANDOFF §8.
+    need. Not applied; the patch is kept as `pending-calibration-median.patch` in this folder.
 47. **Codex finding "a lone passerby controls a standing player" (`a2-pose-robust` f7c6525):
     plausible, needs a real repro before any change.** Synthetic: when the session is fed only a
     passerby 0.6× the player's size or bigger, it accepts them at once (a false jump and sidestep on
@@ -257,8 +260,7 @@ or the named file.
     moves lanes, and in between the round pauses ("tracking lost"). Not worth a logic change on
     synthetic evidence the night before the freeze. Next: A records `● passerby` (someone walks
     behind, near and far, while A stands still); if the model switches bodies in that clip, the
-    continuity check comes back as a candidate with the clip as its test. Codex's `test.fails`
-    cases stay as they are.
+    continuity check comes back as a candidate with the clip as its test. **Resolved by 49.**
 48. **The drift re-baseline (44) no longer fires for a body walking into or across the frame.**
     Codex (`a2-pose-robust`, matrix at irregular 10 FPS): `greg/leaveFrame` gave 2 extra sidesteps
     (5.25 s, 6.2 s). Trace: Greg re-enters smaller and turned (W 0.65–0.76×, T 0.70–0.82×) while
@@ -272,8 +274,9 @@ or the named file.
     shared factor √(kW·kT), so a later step back still reads as the same ratio. Evidence: new test
     in `drift.test.ts` red before, green after; the 32 drift cases still pass; across 149 replays
     (every real clip, 2 calibrations, 30/15/10 FPS) the only change is those two false sidesteps
-    gone. Codex's matrix passes against this tree (875 + 17 expected failures); its known entries
-    `extra sidestep 155/184` for `fps 10|greg/leaveFrame` can be removed.
+    gone. Codex's matrix passed against that tree (875 + 17 expected failures). Its known entries
+    `extra sidestep 155/184` for `fps 10|greg/leaveFrame` are still listed in
+    `matrix.robust.test.ts`.
 49. **Two bodies; follow the calibrated player; `otherPerson` (Greg's call, Sat night, Patrick 1,
     `p5-camera`).** `MAX_POSES = 2`, so a second person is reported next to the player instead of
     replacing them (the "lone passerby" of 47 no longer needs the model to drop the player).

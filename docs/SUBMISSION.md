@@ -1,6 +1,6 @@
 # Devpost submission: Neon Arena
 
-The form checklist and the screenshots. The text for "About the project" is in [DEVPOST.md](DEVPOST.md). Both match the live build, `main` b27c6a6: dark neon menus, one round of 6 levels × 30 s inside the Montreal clips, 3 lives, the neon robot runner, sign-up with a unique username, and the friends leaderboard.
+The form checklist and the screenshots. The text for "About the project" is in [DEVPOST.md](DEVPOST.md). Both match the live build (`main` at the Sunday 12:00 code freeze): dark neon menus, one round of 6 levels × 30 s inside the Montreal clips, 3 lives, the neon robot runner, sign-up with a unique username, and the friends leaderboard.
 
 ## Form checklist
 
@@ -25,11 +25,11 @@ Run Montréal with your body: a webcam workout game. Your video never leaves the
 
 TypeScript, React, Vite, Three.js, MediaPipe (`@mediapipe/tasks-vision`, Pose Landmarker), Tailwind CSS, shadcn/ui, Radix UI, Motion, Recharts, Supabase (Auth, Postgres, row-level security), Vercel serverless functions, Claude API (`@anthropic-ai/sdk`), Vitest, Web Audio API, Higgsfield (the generated Montreal clips).
 
-The Claude API is in the list because the coach endpoint is built on it. No key is configured on the live site, so the coach card players see is the rule-based coach (its badge says RULES). Say so if asked.
+The Claude API is in the list because the coach is built on it: the live site has a key set, so the coach card is written by Claude Haiku 5.5 (its badge says AI). If a call fails or times out, the card is the rule-based coach instead (badge RULES).
 
 ## Screenshots
 
-Captured at 1280×720 on `main` b27c6a6 by the scripted Chrome sweep (`docs/qa/sweep/`), in [docs/submission/](submission/), ready to upload. All are from `http://localhost:5173/?demo=1&store=local`: the fixed demo round, played **with the keyboard** by a script, on the local store. So no camera preview appears, and the boards hold only the script's own player.
+Captured at 1280×720 on `main` b27c6a6 (the same game and screens as the live build; only the coach model and prompt changed since) by the scripted Chrome sweep (`docs/qa/sweep/`), in [docs/submission/](submission/), ready to upload. All are from `http://localhost:5173/?demo=1&store=local`: the fixed demo round, played **with the keyboard** by a script, on the local store. So no camera preview appears, and the boards hold only the script's own player.
 
 | File | Screen | Shows |
 | --- | --- | --- |
@@ -39,7 +39,7 @@ Captured at 1280×720 on `main` b27c6a6 by the scripted Chrome sweep (`docs/qa/s
 | [04-level-1](submission/04-level-1.jpg) | Play, level 1 | Old Montreal (Rue Saint-Paul), the neon robot, hearts, the move cue |
 | [05-level-3](submission/05-level-3.jpg) | Play, level 3 | The Old Port at blue hour |
 | [06-level-6](submission/06-level-6.jpg) | Play, level 6 | The Old Port again, the fastest level |
-| [07-results](submission/07-results.jpg) | Results | ALL 6 LEVELS CLEARED, 24,800 at 100%, grade S, reps per move, the coach card (RULES) with NEXT UP |
+| [07-results](submission/07-results.jpg) | Results | ALL 6 LEVELS CLEARED, 24,800 at 100%, grade S, reps per move, the coach card with NEXT UP (RULES here: a local run has no Claude key; the live site shows AI) |
 | [08-dashboard](submission/08-dashboard.jpg) | Dashboard (PROGRESS) | Active minutes against the weekly goal, day streak, rounds, reps and estimated calories this week |
 | [09-leaderboard](submission/09-leaderboard.jpg) | Leaderboard, EVERYONE | The Full body · floor podium, with the EVERYONE / FRIENDS, workout and mode filters |
 | [10-friends](submission/10-friends.jpg) | Leaderboard, FRIENDS | The FRIENDS tab and the ADD FRIEND card. On the local store there are no friends, and adding one answers "Friends need the internet" |

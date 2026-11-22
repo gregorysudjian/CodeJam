@@ -1,17 +1,17 @@
-# Live site, backend and visitors' devices (Jiscar 2, branch `j2-live`)
+# Live site, backend and visitors' devices
 
-**A dated findings log, mostly from Saturday evening**, when rounds were 45, 90 or 180 s and usernames were not yet unique. Since then: a round is always 6 levels × 30 s, usernames are unique and the friends functions exist (`0007`, `0008`), and "New guest" is now "New player". Migrations on `main` are `0001` to `0004` and `0006` to `0008`; `0005` (the board readable before sign-in) is on hold in PR #58 and has not been applied. The "Privacy" section is current.
+**A dated findings log, mostly from Saturday evening**, when rounds were 45, 90 or 180 s and usernames were not yet unique. Since then: a round is always 6 levels × 30 s, usernames are unique and the friends functions exist (`0007`, `0008`), and "New guest" is now "New player". Migrations on `main` are `0001` to `0004` and `0006` to `0008`; `0005` (the board readable before sign-in) was never applied: PR #58 was closed without merging. The "Privacy" section is current.
 
 Every hole has its reproduction (tokens shown as placeholders) and its fix or status.
 Re-run the checks with `supabase/tests/rls-harness.mjs` (local Postgres, no network) and
 `supabase/tests/live-probes.mjs` (the live project, creates `QA-` guests).
 
-## Sunday cleanup: test players (Greg's Claude runs it after Greg checks the list)
+## Cleanup: test players
 
-Test players are every profile named `QA-…` (any case: `ilike`) plus one stray guest of mine that
+Test players are every profile named `QA-…` (any case: `ilike`) plus one stray test guest that
 kept its default name (`Guest-NNNN`, id starting `17c6592d`). Run in the Supabase SQL editor.
 
-**1. List** (read only). Show Greg this list before step 2:
+**1. List** (read only). Check this list before step 2:
 
 ```sql
 select p.id, p.display_name, p.created_at,
@@ -70,9 +70,6 @@ first frame comes at 809, 829 and 825 ms for a player who spends 0 + 0, 3 + 1 an
 profile and select screens: no wait left for a fast clicker. Unthrottled: 668 ms cold, 425 ms for a
 second round.
 
-**When hx-media lands**: `node scripts/media-budget.mjs` first, then the same measurement, cold and
-warm, with the verdict per file: loaded after the first frame (lazy) or before it (holding it up).
-
 ### Camera path: the pose model on a first visit (Saturday 10:15 PM, live site)
 
 Headless Chrome with a fake webcam, a new guest, Camera chosen on the select screen, 8 s there,
@@ -115,7 +112,7 @@ applies to it: only to visitors on the live site.
 Every run so far: deploy current, board readable, FAIL only on `QA-` players in the projector's top
 5 (until the cleanup).
 
-## Rollback plan for 0004 (and 0005): only if it blocks legitimate saves
+## Rollback plan for 0004: only if it blocks legitimate saves
 
 Not run. Each block undoes one part of `0004_session_limits.sql`, so only what is actually
 blocking goes. All were tested on a local Postgres (PGlite) with 0001 to 0004: the refused request
@@ -131,7 +128,7 @@ still readable and still a plain view (no `security_invoker`).
 | --- | --- | --- |
 | `23514 … sessions_score_ceiling` on an honest round | the cap (300 × duration) is too low after a scoring change | **A** |
 | `23514 … sessions_reps_small` or `sessions_missed_small` | `reps`/`missed` changed shape (not an object, or over 1 KB) | **B** |
-| `42501 permission denied for table profiles` on a profile save | the app updates a column outside the 5 granted ones | **C** |
+| `42501 permission denied for table profiles` on a profile save | the app updates a column outside the granted ones (5 in `0004`, plus age and height in `0006`) | **C** |
 | a round's date looks wrong | the clamp trigger (it never refuses a save) | **D** |
 
 ```sql
@@ -164,30 +161,29 @@ grant update on public.profiles to authenticated;
 commit;
 ```
 
-**0005** (only if it gets applied): it can't block a save; it only lets visitors who aren't signed
-in read the board. To close the board to them again: `revoke select on public.leaderboard from anon;`
-
 ## Privacy: what we store and who sees it (for the judges)
 
-Checked against `supabase/migrations/0001` to `0004`, `api/coach.ts` and the code (`src/pose` makes
+Checked against `supabase/migrations/0001` to `0008`, `api/coach.ts` and the code (`src/pose` makes
 no network call at all; only `src/data` talks to the network).
 
 - **The video never leaves the laptop.** Pose tracking (MediaPipe) runs in the browser; the model is
   downloaded from our own site. No frame and no body landmark is sent anywhere.
 - **What we store per player** (Supabase, Postgres): an anonymous account (no email, no password,
   no phone), and a profile with the **name they type**, goal, fitness level, weekly goal, and
-  **weight only if they choose to enter it**. Per round: workout, mode, length, score, accuracy,
-  streak, moves counted, misses per move, estimated calories, date. For the coach's rate limit, the
-  time of the last coach call.
+  **weight, age and height only if they choose to enter them**. Per round: workout, mode, length,
+  score, accuracy, streak, moves counted, misses per move, estimated calories, date. For the
+  coach's rate limit, the time of the last coach call. For the friends board, the list of players
+  they added.
 - **Who can read it.** Row-level security on every table: a player can read and write only their
-  own profile and rounds, and can't change or delete a round once saved. The **leaderboard** is the
-  only shared view: name, workout, mode, round length, score and date, each player's best only:
-  no weight, no calories, no moves.
+  own profile and rounds, and can't change or delete a round once saved. The **leaderboard** and
+  the friends board are the only shared views: name, workout, mode, round length, score and date,
+  each player's best only: no weight, age or height, no calories, no moves. Anyone can also ask
+  whether a username is taken (yes or no).
 - **On the laptop**: the same profile and rounds are cached in the browser's local storage, so it
   works offline.
-- **The AI coach** (off tonight: no key is set): when on, the server sends the profile's name, goal,
-  level and weekly goal plus the last 10 rounds to Claude for a recap. Never the weight, never video.
-- **Being forgotten.** "New guest" signs the player out on this laptop and erases their local copy.
+- **The AI coach** (on since Sunday morning, Claude Haiku 5.5; off on Saturday, when this log was written): the server sends the profile's name, goal,
+  level and weekly goal plus the last 10 rounds to Claude for a recap. Never the weight, age or height, never video.
+- **Being forgotten.** "New player" signs the player out on this laptop and erases their local copy.
   The rows on the server stay, anonymous (no contact details), until we delete them: test players
   are deleted Sunday, and any player can ask us to delete theirs (deleting the profile deletes its
   rounds). There is no self-service delete button.
@@ -238,7 +234,7 @@ From supabase.com/pricing and the Auth rate-limit docs (checked Saturday night):
 
 | Limit | Free plan | Our use tonight | Risk |
 | --- | --- | --- | --- |
-| **Anonymous sign-ins** | **30 per hour per IP by default** (configurable in Authentication → Rate Limits) | Every visitor on the venue wifi shares one public IP. Each new guest, each kiosk page load and each test run counts | **High if still at the default.** Guest 31 in an hour falls back to the local store (#64 now says "server busy"), so their rounds never reach the board. The brief assumes 1000/h. **Greg's Claude: confirm the configured value in the dashboard**; I can't read it from outside (no rate-limit headers). All of today's sign-ups from this campus network succeeded, about 20 within one hour. Also stop scripted tests from the venue wifi during the expo. |
+| **Anonymous sign-ins** | **30 per hour per IP by default** (configurable in Authentication → Rate Limits) | Every visitor on the venue wifi shares one public IP. Each new guest, each kiosk page load and each test run counts | **High if still at the default.** Guest 31 in an hour falls back to the local store (#64 now says "server busy"), so their rounds never reach the board. The brief assumes 1000/h (later confirmed in the dashboard); it can't be read from outside (no rate-limit headers). All of today's sign-ups from this campus network succeeded, about 20 within one hour. Also stop scripted tests from the venue wifi during the expo. |
 | Token refresh | 150 per 5 min per IP | One per player per hour | Low |
 | Monthly active users | 50,000 | Hundreds at most | None |
 | Database size | 500 MB | A session row is under 1 KB; 10,000 rounds is under 10 MB | None |
@@ -289,25 +285,3 @@ never reports them as synced. A network or server error still keeps the whole qu
 with 100 guests a collision is likely, and today a failed profile insert drops the player to the
 local store with no explanation. Fixing it needs a client retry with a suffix. Proposed for later
 if time allows; judges see names only on the board.
-
-## Self-grade
-
-- **Saturday 6:30 PM.** A visitor could have put 999,999 on any board from DevTools in two
-  requests: real and judge-visible. Migration 0004 closes it, but it isn't applied yet.
-  Theoretical: the 300 KB rows and TRUNCATE (not reachable through REST). Next: the live site
-  end to end, then devices.
-- **Saturday 8:10 PM.**
-  - **What a visitor or judge would actually have hit:** a reversed (right-to-left override) name
-    on the projector (fixed, #74); "No rounds yet" for 10 s on the dashboard and a 5 s coach card
-    on dead wifi, and 10 s of "Play as guest" for a returning player (fixed, #76: 1.35 s, 3 s,
-    1 s on live); the phone path ending on an empty board (#58, waiting on Greg); test players in
-    3 of the top 5 on the projector board (cleanup); the kiosk's frozen "posted" times (Jiscar 1).
-    I also caused one: #76 would have stranded the demo laptop's rounds after the cleanup; #80
-    fixes it and must merge first.
-  - **What turned out theoretical:** a slur in a name (no one tried; the blocklist is cheap
-    insurance); the kiosk's token expiry (it refreshes fine); Supabase free-plan limits; the sign-in
-    rate limit (1000/h, confirmed by Greg's Claude); refused or dead Supabase on the first visit
-    (every step under 1.3 s).
-  - **Next hour, differently:** before merging a speed-up, ask what the cache could be wrong about
-    (#76 trusted a cached profile the cleanup would delete). Test against the state Sunday will
-    have, not tonight's. Drop: more device and limit checks; they came back empty.

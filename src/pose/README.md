@@ -26,10 +26,11 @@ Why each threshold is what it is: `DECISIONS.md`. Demo day: `STATION.md`.
 | `skeleton.ts` | Skeleton drawing with the app's object-cover crop |
 | `landmarker.ts` | One shared MediaPipe model per page, GPU with CPU fallback |
 | `camera.ts` | Camera stream, attach, stop, readable errors |
+| `download.ts` | Early download of the model and WASM (profile and select screens), with progress |
 | `debug.ts` | `mountPoseDebug` for `?dev=pose`: calibrate buttons, overlay, move tally, clip recorder |
 | `STATION.md` | Demo station setup, keys, symptom → fix table |
 | `recording.ts` | Clip format and JSON download |
-| `fixtures/` | Recorded clips (landmarks only, no images): A's, `greg/`, `near/` (~1.4 m), `extra/` (auto-tested) |
+| `fixtures/` | Recorded clips (landmarks only, no images): A's, `greg/`, `near/` (~1.4 m); clips dropped into an `extra/` folder are auto-tested |
 | `fixtures.ts` | Test helpers: replay clips, synthetic variants |
 | `*.test.ts` | Unit, replay, variant, session, treadmill tests |
 
