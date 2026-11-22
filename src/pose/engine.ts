@@ -3,6 +3,7 @@
 // ?dev=pose page uses the rest. Video and landmarks never leave the device (AGENTS.md rule 5).
 import type { CalibrationStatus, Gesture, MoveEvent, PlayMode, PoseInputSource } from '@/contracts';
 import { attachStream, cameraErrorMessage, getCameraStream, stopStream } from './camera';
+import { downloadMessage, onPoseDownload } from './download';
 import type { Calibration, Detector, Point } from './detect';
 import { type Delegate, getLandmarker, type Landmarker } from './landmarker';
 import { createOverlay, type Overlay } from './overlay';
@@ -341,10 +342,19 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
         () => {}, // the caller gets the rejection
       );
       if (!running) {
-        onStatus({ step: 'noBody', progress: 0, message: 'Starting the camera…' });
+        // A first visit downloads the pose files (download.ts): show how far along, not a minute
+        // of "Starting the camera…". Messages change only when the whole-MB count does.
+        let last = '';
+        const stopProgress = onPoseDownload((p) => {
+          const message = p.done || p.loaded === 0 ? 'Starting the camera…' : downloadMessage(p);
+          if (running || message === last) return;
+          last = message;
+          onStatus({ step: 'noBody', progress: 0, message });
+        });
         // Observe cancellation even while a permission prompt or model load is still pending.
         // Register the caller's startup error before cleanup rejects the calibration promise.
         const started = start();
+        void started.then(stopProgress, stopProgress);
         const ready = Promise.all([started, done]);
         void started.catch(() => session.cancel('The camera could not start.'));
         await ready;

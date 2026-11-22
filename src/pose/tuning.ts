@@ -3,6 +3,12 @@
 /** Assets served from public/ — never a CDN (AGENTS.md rule 11). */
 export const WASM_PATH = '/mediapipe/wasm';
 export const MODEL_PATH = '/models/pose_landmarker_lite.task';
+/**
+ * Uncompressed sizes of the WASM binary and the model, for the download progress on the
+ * calibration screen: the live site sends them compressed, with no length (download.ts).
+ */
+export const WASM_BYTES = 14_665_716;
+export const MODEL_BYTES = 5_777_746;
 
 /** Camera request. 640×480 keeps the model fast on weak laptops. */
 export const VIDEO_WIDTH = 640;
