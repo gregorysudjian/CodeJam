@@ -6,7 +6,7 @@ Neon Arena is three things in one app:
 
 - **A game.** You stand about 1.5 m from the laptop and your body steers a neon robot runner along a 3-lane track: sidestep to change lane, jump hurdles, squat under beams, raise both arms to smash crates, raise one arm to grab orbs. A round is 6 levels of 30 seconds, each one faster than the last, and you have 3 lives.
 - **A workout.** You pick what to train (legs, arms, shoulders or full body) and a tier, and the levels are generated for that workout. Every rep is counted, and low impact and treadmill modes adapt it to you.
-- **A training log.** Every round is saved to your profile. A dashboard tracks your week, a public and a friends leaderboard rank your best rounds, and a coach recaps each round and recommends the next one.
+- **A training log.** Every round is saved to your profile. A dashboard tracks your week, a public and a friends leaderboard rank your best rounds, and an AI coach (Claude) recaps each round, recommends the next one and lays out today's plan.
 
 The levels have two looks: the game's own neon scenery (a city, a tunnel, a bridge), and AI-generated video clips of real Montreal streets (made with Higgsfield, the road lined up with the 3D track): Old Montreal, the Jacques Cartier Bridge and the Old Port. Pose tracking runs in the browser, so **your video never leaves your laptop**.
 
@@ -57,7 +57,7 @@ Treadmill mode is for people already running on one: it uses upper-body moves on
 - **Hands-free:** X-arms pause and resume, arms up to replay. A second person stepping into the play area pauses the round.
 - **Accounts and progress:** sign-up with a unique username, or play as a guest; a dashboard with your week, day streak and recent rounds.
 - **Leaderboards:** a public board of each player's best per workout and mode, and a **Friends** view: add a friend by username to see their best next to yours.
-- **Coach:** after every round, a recap, a tip for the move you missed most and a recommended next session (workout and tier). If you entered an age of 60 or more, it recommends low impact (no jumps).
+- **AI coach:** after every round, Claude (Haiku 5.5) writes a short recap, a physical tip for the move you missed most and why the next session. The game itself decides the next tier and builds "Today's plan": 2 or 3 rounds with 1 minute of rest between them, the active minutes and estimated calories from your own rounds, and the share of your weekly goal that covers. On a strength goal the plan adds light weights (a water bottle in each hand) to the arms and shoulders rounds, never to rounds with jumps or squats. If you entered an age of 60 or more, the next session is low impact (no jumps). If the AI is slow or off, a rule-based coach takes over.
 - **Ghost runner:** replay the same level and a see-through runner replays your best run beside you (stored in this browser only).
 - **Kiosk mode** (`?kiosk=1`): a leaderboard-only screen for a demo table, with a QR code to the live site, refreshing every 15 s.
 - **Works offline:** rounds played without a connection wait in a local queue and sync later; with no backend at all, everything runs on the local store.
@@ -67,7 +67,7 @@ Treadmill mode is for people already running on one: it uses upper-body moves on
 - **The video never leaves the laptop.** Pose tracking (MediaPipe) runs in the browser, and the model is downloaded from our own site, not a CDN. No frame and no body landmark is sent anywhere. Only `src/data` talks to the network; `src/pose` makes no network call.
 - **What we store per player** (Supabase Postgres): an anonymous account (no email, no password, no phone) and a profile with the username you type, goal, fitness level, weekly goal, and age, weight and height only if you enter them. Per round: workout, mode, length, score, accuracy, streak, reps and misses per move, estimated calories, date.
 - **Who can read it:** row-level security on every table. You can read and write only your own profile and rounds, and a saved round can't be changed or deleted. The leaderboard shares only a name, workout, mode, round length, score and date (each player's best). Friends see the same, nothing more; adding a friend is one-way, so nobody can put themselves on your board.
-- **The coach:** on the live site the card is written by Claude (Haiku 5.5; its badge says AI). The server sends Claude your profile's name, goal, level and weekly goal and your last 10 rounds' numbers. Never your age, weight or height, never video. If the call fails or takes too long, or with no key (local runs), the card is the rule-based coach (badge RULES), which runs in the browser on your own numbers.
+- **The coach:** on the live site the card is written by Claude (Haiku 5.5; its badge says AI). The server sends Claude your profile's name, goal, level and weekly goal and your last 10 rounds' numbers. Never your age, weight or height, never video: the calories in the plan come from the estimates the game already made on your laptop. If the call fails or takes too long, or with no key (local runs), the card is the rule-based coach (badge RULES), which runs in the browser on your own numbers.
 - **Being forgotten:** "New player" signs you out on this laptop and erases the local copy. Server rows stay anonymous until we delete them; ask us and we will.
 
 Full details: [docs/LIVE.md](docs/LIVE.md) ("Privacy").
@@ -96,7 +96,7 @@ flowchart LR
 - **One contract file** (`src/contracts/index.ts`): modules never import each other; only `src/app` wires them together. Every outside dependency has a stand-in behind the same interface: keyboard for the camera, local store for Supabase, rule-based coach for Claude.
 - **Pose** (`src/pose`): calibration records hip centre, shoulder width and torso length; every threshold is a fraction of those. Design notes: [src/pose/DECISIONS.md](src/pose/DECISIONS.md).
 - **Game** (`src/game`): its own loop, outside React. Details: [src/game/README.md](src/game/README.md).
-- **Backend** (`src/data`, `supabase/migrations`, `api/`): anonymous sign-in, `profiles` and `sessions` behind row-level security, a `leaderboard` view of each player's best, friends through security-definer functions, and database checks that refuse impossible scores. The coach endpoint checks the player's token, reads their history under row-level security (no service key), allows one call per player per 10 s, asks Claude Haiku 5.5 for structured JSON with a 7 s timeout and validates the answer; any failure falls back to the rules.
+- **Backend** (`src/data`, `supabase/migrations`, `api/`): anonymous sign-in, `profiles` and `sessions` behind row-level security, a `leaderboard` view of each player's best, friends through security-definer functions, and database checks that refuse impossible scores. The coach endpoint checks the player's token, reads their history under row-level security (no service key), allows one call per player per 10 s, asks Claude Haiku 5.5 for structured JSON with a 7 s timeout and validates the answer; the next tier and the "Today's plan" line are computed in code, not by the model; any failure falls back to the rules.
 
 ## Run it locally
 
