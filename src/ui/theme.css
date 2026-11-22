@@ -469,7 +469,41 @@
     row-gap: 8px;
   }
 }
+/* 150 % scaling (480-512 px tall): the pause messages kept their subtitle 35 px off the bottom. */
+@media (max-height: 520px) {
+  .hud-tracking-title {
+    font-size: 72px;
+  }
+  .hud-overlay .hud-guide-pulse svg {
+    max-height: 130px;
+  }
+}
+/* Level and hearts pill: it sits between the score and clock plates, so it narrows with them
+   (853 px wide at 150 % leaves ~360 px between the plates). */
+@container (max-width: 1100px) {
+  .hud-status {
+    gap: 12px;
+    padding-inline: 14px;
+  }
+  .hud-status-level {
+    font-size: 32px;
+  }
+  .hud-heart {
+    width: 32px;
+    height: 32px;
+  }
+}
 @container (max-width: 800px) {
+  .hud-status {
+    top: 12px;
+  }
+  .hud-status-level {
+    font-size: 22px;
+  }
+  .hud-heart {
+    width: 22px;
+    height: 22px;
+  }
   .hud-score {
     top: 12px;
     left: 12px;
@@ -676,8 +710,13 @@
 @media (max-width: 900px) {
   .hud-race {
     left: 270px;
-    right: 225px;
+    /* The clock plate is 264 px from the edge: at 225 the FINISH flag sat on TIME LEFT. */
+    right: 280px;
     top: 75px;
+  }
+  /* The race bar is 19 px higher here: the level and hearts pill moves up with it. */
+  .hud-status {
+    top: 6px;
   }
 }
 @media (max-width: 600px) {

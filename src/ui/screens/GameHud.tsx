@@ -1,6 +1,6 @@
 import { memo, useEffect, type ReactNode } from 'react';
 import { AnimatePresence, motion, useAnimationControls, useReducedMotion } from 'motion/react';
-import { Flame, Pause, PersonStanding } from 'lucide-react';
+import { Flame, Heart, HeartCrack, Pause, PersonStanding } from 'lucide-react';
 import type { LiveStats, MoveType, PlayMode } from '@/contracts';
 import { Button } from '@/ui/components/ui/button';
 import {
@@ -17,7 +17,14 @@ import {
 import { formatTime } from '@/ui/lib/format';
 import { cn } from '@/ui/lib/utils';
 import { cueProgress } from '@/ui/screens/resultsRules';
-import { hudCueLabel, raceProgress } from '@/ui/screens/hudRules';
+import {
+  heartCount,
+  heldByGame,
+  hudCueLabel,
+  hudOverlay,
+  raceProgress,
+  type PauseReason,
+} from '@/ui/screens/hudRules';
 
 export interface GameHudProps {
   stats: LiveStats;
@@ -33,6 +40,14 @@ export interface GameHudProps {
   } | null;
   paused?: boolean;
   trackingLost?: boolean;
+  /** Why the round is paused; picks the message. Missing = from `trackingLost` / `paused`. */
+  pauseReason?: PauseReason;
+  /** The 3-2-1 before a resume (the game draws it): hides the pause messages. */
+  resuming?: boolean;
+  /** Hearts, top centre. A lost heart cracks and fades. */
+  lives?: { left: number; total: number };
+  /** "LEVEL 2/6", top centre. */
+  stage?: { index: number; total: number };
   cameraSlot?: ReactNode;
   onPause(): void;
   onResume(): void;
@@ -80,6 +95,64 @@ const Feedback = memo(
   (prev, next) => prev.event.id === next.event.id,
 );
 
+/** Level and hearts in one pill above the race bar, read from the floor mark (2-3 m). */
+function RoundStatus({
+  lives,
+  stage,
+}: {
+  lives: GameHudProps['lives'];
+  stage: GameHudProps['stage'];
+}) {
+  const reduce = useReducedMotion();
+  const { left, total } = lives ? heartCount(lives) : { left: 0, total: 0 };
+  return (
+    <div className="hud-status absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-5 rounded-full border border-glass-border bg-bg/75 px-5 py-1 backdrop-blur-md">
+      {stage && (
+        <motion.span
+          key={stage.index}
+          initial={reduce ? false : { scale: 1.35, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: reduce ? 0 : 0.35 }}
+          className="hud-status-level whitespace-nowrap pr-[0.06em] font-display-italic text-[40px] leading-none text-text"
+        >
+          LEVEL {stage.index}/{stage.total}
+        </motion.span>
+      )}
+      {lives && total > 0 && (
+        <span
+          role="img"
+          aria-label={`${left} of ${total} lives left`}
+          className="flex items-center gap-1.5"
+        >
+          {Array.from({ length: total }, (_, i) =>
+            i < left ? (
+              <Heart
+                key={`${i}-on`}
+                aria-hidden="true"
+                className={cn(
+                  'hud-heart size-10 fill-danger text-danger drop-shadow-[0_0_8px_rgba(255,77,79,0.7)]',
+                  left === 1 && !reduce && 'hud-clock-pulse',
+                )}
+              />
+            ) : (
+              <motion.span
+                key={`${i}-off`}
+                aria-hidden="true"
+                initial={reduce ? false : { scale: 1.5, opacity: 1 }}
+                animate={{ scale: 1, opacity: 0.4 }}
+                transition={{ duration: reduce ? 0 : 0.5 }}
+                className="text-text-muted"
+              >
+                <HeartCrack className="hud-heart size-10" />
+              </motion.span>
+            ),
+          )}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** Transparent, prop-driven overlay. The host owns the canvas and the game loop. */
 export function GameHud({
   stats,
@@ -90,6 +163,10 @@ export function GameHud({
   lastEvent,
   paused = false,
   trackingLost = false,
+  pauseReason,
+  resuming = false,
+  lives,
+  stage,
   cameraSlot,
   onPause,
   onResume,
@@ -99,7 +176,9 @@ export function GameHud({
   const plates = useAnimationControls();
   const timeLeft = Math.max(0, durationSec - elapsedSec);
   const remaining = durationSec > 0 ? timeLeft / durationSec : 0;
-  useHotkey('Escape', paused ? onResume : onPause, !trackingLost);
+  const lost = heldByGame(trackingLost, pauseReason);
+  const overlay = hudOverlay({ paused, trackingLost, pauseReason, resuming });
+  useHotkey('Escape', paused ? onResume : onPause, !lost && !resuming);
   const eventId = lastEvent?.id;
   const kind = lastEvent?.kind;
   useEffect(() => {
@@ -155,7 +234,7 @@ export function GameHud({
             title="Pause (Esc)"
             aria-label="Pause"
             onClick={onPause}
-            disabled={paused || trackingLost}
+            disabled={paused || lost || resuming}
             className="pointer-events-auto focus-ring"
           >
             <Pause />
@@ -227,8 +306,9 @@ export function GameHud({
           </div>
         </div>
       </div>
+      {(lives || stage) && <RoundStatus lives={lives} stage={stage} />}
       <AnimatePresence mode="wait">
-        {cue && !paused && !trackingLost && (
+        {cue && !paused && !lost && (
           <motion.div
             key={cue.move}
             initial={reduce ? false : { opacity: 0, y: 18 }}
@@ -269,16 +349,43 @@ export function GameHud({
         </div>
       )}
       <AnimatePresence>
-        {(trackingLost || paused) && (
+        {overlay && (
           <motion.div
-            key={trackingLost ? 'tracking' : 'paused'}
+            key={overlay}
             initial={reduce ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reduce ? 0 : 0.2 }}
             className="hud-overlay absolute inset-0 z-20 flex flex-col items-center justify-center gap-7 px-8 text-center"
           >
-            {trackingLost ? (
+            {overlay === 'otherPerson' ? (
+              <>
+                {/* The player, and a second person who should step out (dimmed). */}
+                <div className="hud-guide-pulse flex items-end gap-6 text-amber">
+                  {mode === 'treadmill' ? (
+                    <>
+                      <BustOutline color="var(--na-amber)" className="h-36" />
+                      <BustOutline color="var(--na-text-muted)" className="h-24 opacity-50" />
+                    </>
+                  ) : (
+                    <>
+                      <MoveFigure pose="stand" color="var(--na-amber)" size={180} dashed />
+                      <MoveFigure
+                        pose="stand"
+                        color="var(--na-text-muted)"
+                        size={130}
+                        dashed
+                        className="opacity-50"
+                      />
+                    </>
+                  )}
+                </div>
+                <h1 className="hud-tracking-title max-w-[1100px] text-balance font-display-italic text-display-lg text-amber">
+                  SOMEONE ELSE IS IN THE FRAME
+                </h1>
+                <p className="text-title text-text">Only the player should be in view.</p>
+              </>
+            ) : overlay === 'trackingLost' ? (
               <>
                 <div className="hud-guide-pulse text-amber">
                   {mode === 'treadmill' ? (
@@ -287,7 +394,7 @@ export function GameHud({
                     <MoveFigure pose="stand" color="var(--na-amber)" size={180} dashed />
                   )}
                 </div>
-                <h1 className="hud-tracking-title max-w-[1100px] font-display-italic text-display-lg text-amber">
+                <h1 className="hud-tracking-title max-w-[1100px] text-balance font-display-italic text-display-lg text-amber">
                   STEP BACK INTO THE FRAME
                 </h1>
                 <p className="text-title text-text">The round is paused until we can see you.</p>
