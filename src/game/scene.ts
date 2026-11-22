@@ -1131,16 +1131,10 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
           renderer.compile(scene, camera);
           renderer.setRenderTarget(null);
         }
-        renderer.compile(scene, camera); // straight to the screen (quality 2)
-        // Realistic mode draws straight to the screen with shadows: compile only builds the
-        // programs, so draw it once now, during the intro (the next frame paints over it), with
-        // its pieces showing; the first real level then starts without a stall.
-        const shown = [catcher, ...paint].map((o) => o.visible);
-        catcher.visible = true;
-        for (const p of paint) p.visible = true;
-        renderer.render(scene, camera);
-        catcher.visible = shown[0]!;
-        paint.forEach((p, i) => (p.visible = shown[i + 1]!));
+        renderer.compile(scene, camera); // straight to the screen (quality 2, every real level)
+        // (A warm-up draw and compileAsync were tried here for the first-frame stall: no change
+        // on the lab PC; the round's first frame still links what it draws. Measured: the
+        // 450 ms frame at round start is 280 ms first AudioContext, ~170 ms first-frame link.)
       } catch (err) {
         console.warn('[game] shader precompile failed: only first-use stalls', err);
       } finally {
