@@ -111,6 +111,7 @@ If something misses: `STATION.md` symptom → fix table. Record a clip. No thres
 ## 8. Next tasks (priority; PLAN.md phases)
 
 1. **Phase 4 (polish), UI: `ab-calib`.** After #113 merges (4:00 AM batch): `git fetch && git checkout -b ab-calib origin/main`; restyle `src/ui/screens/CalibrationScreen.tsx` to the Montreal theme; keep behaviour and all pose logic. The stage stays dark (`.calibration-stage` scope in `theme.css`); fix its `border-white/…` overlays; guide colour `var(--na-lime)` instead of `ACCENT_HEX` so it stays bright on the video. Check, screenshots 1280×720 + 1920×1080 (0 console errors), PR + 3-line READY **before 8 AM**.
+   Also on `ab-calib`: `git cherry-pick e1a2967` (local branch `ab-calib-prep`, never push it): `ProfileScreen` gets `nav?: NavBarProps` like select (#115), `{nav && <NavBar {...nav} />}` on top. Needs #113 **and** #115 in main first. READY must say: App passes `nav={navFor('profile')}` only when an existing player edits (not first-time setup).
 2. **Token requests** from Patrick 3 / Gabriel: add to `theme.css`/`tokens.ts`, never rename.
 3. **Phase 4, pose: A's camera session** (§6), `drift` first → `judge.test.ts`. Decide risk 1 and risk 2 **before 10 AM**.
 4. **Phase 1/2 done-check:** Greg's 9 clips → `fixtures/extra/` (≥ 8 in 10).
