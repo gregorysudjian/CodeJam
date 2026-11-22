@@ -115,11 +115,18 @@ export async function launch({ port, profile, base, camera = false }) {
     /** WCAG AA text contrast on what is on screen now. Each visible text run is compared with the
      *  pixels behind it (a second screenshot with all text made transparent), so glass, gradients,
      *  images and video count. Returns the runs under 4.5:1 (3:1 for large text: 24 px, or 18.66 px
-     *  bold), worst first. Skips aria-hidden and disabled text (WCAG exempts inactive controls). */
-    async contrast() {
+     *  bold), worst first. Skips aria-hidden and disabled text (WCAG exempts inactive controls).
+     *  Options, for the in-game HUD: `root` limits it to one element; `cover: false` skips the
+     *  covered-text test (the HUD is pointer-events: none, so elementFromPoint never returns it);
+     *  `graphics` is a selector of icons (hearts) checked at 3:1 against what is behind their box,
+     *  hidden in the second screenshot like the text. */
+    async contrast({ root = 'body', cover = true, graphics = '' } = {}) {
       const runs = await b.eval(`(() => {
         const out = [];
-        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        const rootEl = document.querySelector(${JSON.stringify(root)});
+        if (!rootEl) return out;
+        const cover = ${cover ? 'true' : 'false'}, graphics = ${JSON.stringify(graphics)};
+        const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
         for (let n = walker.nextNode(); n; n = walker.nextNode()) {
           const el = n.parentElement;
           if (!n.textContent.trim() || !el || el.closest('[aria-hidden="true"], :disabled, [aria-disabled="true"], script, style, noscript')) continue;
@@ -138,14 +145,30 @@ export async function launch({ port, profile, base, camera = false }) {
             const x = Math.max(0, r.left), y = Math.max(0, r.top), x2 = Math.min(innerWidth, r.right), y2 = Math.min(innerHeight, r.bottom);
             if (x2 - x < 2 || y2 - y < 2) continue;
             // Covered by something else (the pause overlay over the HUD, a sticky footer): not visible.
-            const top = document.elementFromPoint((x + x2) / 2, (y + y2) / 2);
-            if (!top || !(top === el || el.contains(top) || top.contains(el))) continue;
+            const top = cover && document.elementFromPoint((x + x2) / 2, (y + y2) / 2);
+            if (cover && (!top || !(top === el || el.contains(top) || top.contains(el)))) continue;
             const size = parseFloat(cs.fontSize), weight = Number(cs.fontWeight) || 400;
             out.push({ text: n.textContent.trim().slice(0, 30), x, y, w: x2 - x, h: y2 - y, rgb: c.slice(0, 3), alpha, large: size >= 24 || (size >= 18.66 && weight >= 700), size });
           }
         }
         // Text fields: the typed value, or the placeholder when empty (neither is a text node).
-        for (const el of document.querySelectorAll('input, textarea')) {
+        // Icons: a graphic needs 3:1 (WCAG 1.4.11). Its fill (or stroke colour) against its whole box.
+        if (graphics) for (const el of rootEl.querySelectorAll(graphics)) {
+          const cs = getComputedStyle(el);
+          if (cs.visibility !== 'visible') continue;
+          const paint = /^rgba?\\(/.test(cs.fill) ? cs.fill : cs.color;
+          if (!/^rgba?\\(/.test(paint)) continue;
+          const c = paint.match(/[\\d.]+/g).map(Number);
+          let op = 1;
+          for (let a = el; a; a = a.parentElement) op *= Number(getComputedStyle(a).opacity);
+          const alpha = (c[3] ?? 1) * op;
+          const r = el.getBoundingClientRect();
+          const x = Math.max(0, r.left), y = Math.max(0, r.top), x2 = Math.min(innerWidth, r.right), y2 = Math.min(innerHeight, r.bottom);
+          if (x2 - x < 2 || y2 - y < 2 || alpha < 0.05) continue;
+          const name = [...el.classList].find((k) => /^lucide-/.test(k))?.replace('lucide-', '') || el.tagName.toLowerCase();
+          out.push({ text: 'icon: ' + name, x, y, w: x2 - x, h: y2 - y, rgb: c.slice(0, 3), alpha, need: 3, size: Math.round(r.height) });
+        }
+        if (rootEl === document.body) for (const el of document.querySelectorAll('input, textarea')) {
           if (el.closest('[aria-hidden="true"]') || el.disabled || /^(hidden|checkbox|radio|range|color|file)$/.test(el.type)) continue;
           const text = el.value || el.placeholder;
           if (!text) continue;
@@ -170,7 +193,8 @@ export async function launch({ port, profile, base, camera = false }) {
         }
         const s = document.createElement('style'); s.id = '__qa_hide_text';
         // transition: none, or transition-colors elements fade out instead of hiding before the shot.
-        s.textContent = '*, *::before, *::after, ::placeholder { color: transparent !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important; caret-color: transparent !important; transition: none !important; } svg text, svg tspan { fill: transparent !important; stroke: transparent !important; }';
+        s.textContent = '*, *::before, *::after, ::placeholder { color: transparent !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important; caret-color: transparent !important; transition: none !important; } svg text, svg tspan { fill: transparent !important; stroke: transparent !important; }'
+          + (graphics ? graphics + ' { visibility: hidden !important; }' : '');
         document.head.appendChild(s);
         return out;
       })()`);
@@ -208,7 +232,7 @@ export async function launch({ port, profile, base, camera = false }) {
           }
           ratios.sort((p, q) => p - q);
           const ratio = ratios[Math.floor(ratios.length * 0.1)]; // 10th percentile: ignores grain, keeps real hot spots
-          const need = t.large ? 3 : 4.5;
+          const need = t.need ?? (t.large ? 3 : 4.5);
           if (ratio < need) fails.push({ text: t.text, ratio: +ratio.toFixed(2), need, size: t.size });
         }
         return fails.sort((p, q) => p.ratio / p.need - q.ratio / q.need);

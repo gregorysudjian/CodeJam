@@ -57,7 +57,7 @@ async function sweep([w, h, dsf], port) {
       return true;
     })()`);
   try {
-    const url = `${BASE}?demo=1&store=local`;
+    const url = `${BASE}?demo=1&store=local&music=off`;
     // Open the kiosk first on this fresh browser: it must not save a player (QA Q17).
     await b.go(`${BASE}?kiosk=1&store=local`, 2500);
     await b.go(url, 2500);
@@ -95,13 +95,47 @@ async function sweep([w, h, dsf], port) {
     await b.eval(`(${AUTO})([])`);
     // Zones at 30 % and 52 % of the round, the finale in the last 10 s (src/game/tuning.ts); a level
     // portal every 30 s washes the scene out, so no shot on a multiple of 30.
-    for (const [name, t] of [['05-play-city', 8], ['06-play-tunnel', 70], ['07-play-bridge', 100], ['08-play-finale', 174]]) {
+    // HUD over the city clips: for each level n (portal at 30(n - 1) s), the HUD just after the
+    // portal (+1 s), the first move cue after it, and the first cue from mid-level (+15 s). Text needs
+    // AA, the hearts 3:1, against the clip at that moment (glow not counted: shadows are removed).
+    const gameNow = () => b.eval('window.__auto && Number.isFinite(window.__auto.offset) ? window.__auto.gameNow() : -1');
+    const untilGame = async (t) => {
       const t0 = Date.now();
       while (Date.now() - t0 < 90000) {
-        const g = await b.eval('window.__auto && Number.isFinite(window.__auto.offset) ? window.__auto.gameNow() : -1');
-        if (g >= t) break;
+        if ((await gameNow()) >= t) return;
         await sleep(30);
       }
+    };
+    const hud = { root: '[aria-label="Game HUD"]', cover: false, graphics: '.hud-heart' };
+    const cueReady = `(() => { const c = document.querySelector('.hud-cue-label'); if (!c) return false;
+      let op = 1; for (let a = c; a; a = a.parentElement) op *= Number(getComputedStyle(a).opacity); return op > 0.97; })()`;
+    const hudSample = async (name, from, cue) => {
+      await untilGame(from);
+      if (cue) {
+        const t0 = Date.now();
+        while (Date.now() - t0 < 5000 && !(await b.eval(cueReady))) await sleep(40);
+        if (!(await b.eval(cueReady))) return check(`${name}: a move cue showed`, false, `none by game ${(await gameNow()).toFixed(1)} s`);
+      }
+      const at = (await gameNow()).toFixed(1);
+      const fails = await b.contrast(hud);
+      await b.shot(dir, name);
+      const cueText = await b.eval(`document.querySelector('.hud-cue-label')?.textContent.trim() || ''`);
+      check(`${name} (game ${at} s${cueText ? `, cue ${cueText}` : ''}): HUD AA over the clip`, fails.length === 0, fails.slice(0, 5).map((f) => `"${f.text}" ${f.ratio}<${f.need}`).join(' | '));
+    };
+    const plan = [['05-play-city', 8], ['06-play-tunnel', 70], ['07-play-bridge', 100], ['08-play-finale', 174]].map(([name, t]) => ({ t, name, play: true }));
+    for (let n = 1; n <= (process.env.HUD_AA === '0' ? 0 : 6); n++) {
+      const s = 30 * (n - 1);
+      plan.push({ t: s + 1, name: `hud-L${n}-a-portal` }, { t: s + 1.6, name: `hud-L${n}-b-first-cue`, cue: true }, { t: s + 15, name: `hud-L${n}-c-mid`, cue: true });
+    }
+    plan.sort((p, q) => p.t - q.t);
+    const clipsSeen = new Set();
+    for (const { t, name, play, cue } of plan) {
+      if (!play) {
+        await hudSample(name, t, cue);
+        for (const c of await b.eval(`performance.getEntriesByType('resource').map((e) => e.name).filter((u) => /\\.(mp4|webm)(\\?|$)/.test(u)).map((u) => u.split('/').pop())`)) clipsSeen.add(c);
+        continue;
+      }
+      await untilGame(t);
       await step(name);
       // Stutter, info only: 2 s of frame times (the game catches up at most 50 ms a frame).
       const f = await b.eval(`new Promise((done) => {
@@ -111,6 +145,7 @@ async function sweep([w, h, dsf], port) {
       })`);
       perf.push(`${name}: ${Math.round((f.length / f.reduce((a, x) => a + x, 0)) * 1000)} fps, worst ${Math.round(Math.max(...f))} ms, ${f.filter((x) => x > 50).length} frames > 50 ms`);
     }
+    perf.push(`clips loaded in the round: ${[...clipsSeen].join(', ') || 'none'}`);
     check('round ends on results', await b.waitFor(/ROUND COMPLETE|CLEARED|OUT OF LIVES/i, 30000));
     await sleep(3000);
     await step('09-results', { aa: true });
