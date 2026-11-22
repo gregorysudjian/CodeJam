@@ -4,7 +4,6 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { LEVEL_BACKDROPS } from './backdrop';
-import { backdropRate } from './videoBackdrop';
 import { introCamera, type CameraPose } from './intro';
 import { createRealRoad } from './realRoad';
 import * as L from './look';
