@@ -236,7 +236,14 @@ export function LeaderboardScreen({
           </p>
         </div>
       )}
-      <div className={cn('grid min-w-0 gap-8', kiosk && 'xl:grid-cols-[minmax(0,1fr)_280px]')}>
+      {/* The kiosk keeps the QR beside the podium from 768 px wide, so it stays in view at
+          125–150 % scaling (QA Q20). */}
+      <div
+        className={cn(
+          'grid min-w-0 gap-8',
+          kiosk && 'md:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_280px]',
+        )}
+      >
         <div className="min-w-0">
           {loading ? (
             <div aria-label="Loading leaderboard" aria-busy="true">
