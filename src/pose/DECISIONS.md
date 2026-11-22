@@ -24,7 +24,8 @@ or the named file.
 8. **Detection thresholds live in one mutable `DETECTION` object** in `tuning.ts`, so the debug
    overlay's sliders change them live. `DETECTION_DEFAULTS` holds the committed values.
 9. **`MAX_POSES = 1`** (A's call). `pickBody` (largest and closest to the player's last position) is
-   built and tested; raise `MAX_POSES` to 2 after measuring FPS.
+   built and tested; raise `MAX_POSES` to 2 after measuring FPS. **Superseded by 49** (2 bodies,
+   follow the calibrated player; `pickBody` now only picks during calibration).
 10. **Calibration edge margin 0:** A's feet sit at 0.97 of the frame height at playing distance, so
     any margin would say "step back" for no reason.
 11. **Treadmill T without visible hips is estimated as 1.5 × W in pixels** (A's clips: W 64 px,
@@ -273,3 +274,59 @@ or the named file.
     (every real clip, 2 calibrations, 30/15/10 FPS) the only change is those two false sidesteps
     gone. Codex's matrix passes against this tree (875 + 17 expected failures); its known entries
     `extra sidestep 155/184` for `fps 10|greg/leaveFrame` can be removed.
+49. **Two bodies; follow the calibrated player; `otherPerson` (Greg's call, Sat night, Patrick 1,
+    `p5-camera`).** `MAX_POSES = 2`, so a second person is reported next to the player instead of
+    replacing them (the "lone passerby" of 47 no longer needs the model to drop the player).
+    After calibration `session.ts` never picks the largest or newest body:
+    - **Follow:** the body nearest the player's last pose (mean distance of nose, shoulders, hips),
+      within `FOLLOW_MAX_SPEED_W` = 10 W/s of it (at least 0.4 W, at most 1.2 W, in the last frame's
+      own width), shoulder width within ×0.7–1.43 of the last frame (`FOLLOW_SIZE_TOLERANCE`). From
+      the recorded clips: jumps peak at 8–10 W/s between frames, moves cover at most 1.6 W in 100 ms,
+      width changes at most ×1.30 in 100 ms and ×1.38 in 400 ms.
+    - **Found again** after `FOLLOW_GAP_MS` = 400 ms: a body standing still (0.3 W) for 400 ms within
+      1 W of where the player vanished or of the mark, with the player's W and torso within 25%, or
+      within 40% when it is alone in the play area (players come back a step closer or further:
+      ×1.5 / ×0.7). The one nearest where the player vanished wins.
+    - **`otherPerson`** (and `tracking: false`): another body with both shoulders seen, at least 0.6×
+      the player's width (smaller = the crowd far behind), shoulder centre within 1.5 calibrated W of
+      the mark (outside = at the side or the edge of the image). On after 300 ms, off after 500 ms.
+      A second pose under 0.5 W from the player is the same body twice. With the player away, a
+      body that may be them coming back is not flagged. While the player is missing but not yet
+      lost, the flag keeps its state (no 3-2-1 for a few frames). No moves and no X fire while it is on.
+    - **Camera session (Sat ~10:30 PM, demo Mac):** a newcomer walked in close to the camera in front
+      of the player (only the newcomer reported for 1.4 s), then stood on the mark at ×1.2–1.3. The
+      first version took the newcomer at once: it ranked by the mark and followed at ×1.56. Fixed by
+      ranking by where the player vanished and `FOLLOW_SIZE_TOLERANCE`; the replay of that session
+      now keeps the player, names the newcomer `otherPerson`, and gives the same moves as live in
+      every one-person step. Model time with a body in view: 7.2 ms (1 pose) vs 11.2 ms (2 poses).
+    - **Rivals (second camera session, a real helper):** shoulder to shoulder, the model never
+      reported both people in one frame: it alternated, then reported only the helper, who was
+      followed for 4 s. Now a body seen apart from the player in the same frame, or seen while the
+      player was missing and then the player seen again elsewhere within 100 ms
+      (`RIVAL_WINDOW_MS`), is someone else until out of view for 500 ms (`RIVAL_MEMORY_MS`): never
+      followed (whole pose and size, ×0.7–1.43), never taken back, and it sets `otherPerson`. A
+      missed follow frame of a lone player is no proof, so the drift and single-body tests are
+      unchanged. Session 2 replay: beside → `otherPerson` for as long as the helper stands there;
+      far behind → nothing; the player back a step closer (×1.5) or further, alone → taken back,
+      never "someone else". Close behind (1 m, at the side): the model dropped the player for 1.7 s
+      (tracking lost, nobody else followed). A same-size stranger alone on the mark while the
+      player is fully out of view is still taken (accepted limit).
+    - **Third camera session (live, on the rivals code):** shoulder to shoulder again, following
+      took the helper during the alternation and the real player became the rival: alone on the
+      mark after the helper left, they stayed "someone else" for 6 s. Fixes: a body seen while the
+      player was missing is not followed until settled (`maybeRivals`); a rival who is the only
+      person in the frame for `RIVAL_ALONE_MS` = 1 s is forgotten (replay: 6 s → 1.5 s, then the
+      player is back); a returning body may match the calibrated size too (back behind the mark
+      after a step closer read ×0.55 of the grown baselines, ×0.83 of the calibration).
+      **Limits:** side by side at 1.5 m, the lite model often reports only one of the two for
+      seconds; then nobody can tell who it is: session 2 paused throughout, session 3 paused about
+      half the time and then followed the helper until they left. Walking from behind the mark
+      onto it (×1.4 bigger) reads as 1–3 jumps in `detect.ts` (the drift re-baseline needs
+      stillness); not changed (detection logic).
+    - The play area uses the calibrated W and centre, so a player who steps closer does not widen it.
+    Evidence: `other.test.ts` (beside at 0.65–1.2×, far behind, edge, duplicate, a passer-by crossing,
+    a stranger on the mark while away, coming back closer/further, every clip at 30/15/10 FPS never
+    drops the player, a crowd leaves every clip's moves unchanged); `crowd.robust.test.ts`: the lone
+    passer-by at 0.6–1× now passes. Known limits (kept as `test.fails`): with the player out of the
+    frame, someone alone and standing still on the mark at ×0.6–1.67 their size is taken as them; a
+    0.8–1× spectator under 1 W from where the player stood, right as the player vanishes, is followed.

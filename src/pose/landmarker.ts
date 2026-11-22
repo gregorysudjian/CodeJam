@@ -8,6 +8,8 @@ import {
   MIN_PRESENCE_CONFIDENCE,
   MIN_TRACKING_CONFIDENCE,
   MODEL_PATH,
+  VIDEO_HEIGHT,
+  VIDEO_WIDTH,
   WASM_PATH,
 } from './tuning';
 
@@ -62,14 +64,29 @@ async function create(): Promise<Landmarker> {
     );
   }
   let lastTs = -1;
+  const run = (image: HTMLVideoElement | HTMLCanvasElement) => {
+    // VIDEO mode needs strictly increasing timestamps, even across pose inputs sharing the model.
+    const ts = Math.max(performance.now(), lastTs + 1);
+    lastTs = ts;
+    return model.detectForVideo(image, ts).landmarks;
+  };
+  // Warm-up: the first call sets up the GPU programs (about 0.23 s measured on the demo Mac).
+  // Pay it here, while the camera opens, not on the player's first frame. A blank frame has no
+  // body in it, so it is the same as a frame where nobody stands in view.
+  try {
+    const blank = document.createElement('canvas');
+    blank.width = VIDEO_WIDTH;
+    blank.height = VIDEO_HEIGHT;
+    blank.getContext('2d')?.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+    run(blank);
+  } catch (err) {
+    console.warn('[pose] Model warm-up failed; the first camera frame will be slower', err);
+  }
   return {
     delegate,
     detect(video) {
       if (lost) return [];
-      // VIDEO mode needs strictly increasing timestamps, even across pose inputs sharing the model.
-      const ts = Math.max(performance.now(), lastTs + 1);
-      lastTs = ts;
-      return model.detectForVideo(video, ts).landmarks;
+      return run(video);
     },
   };
 }
