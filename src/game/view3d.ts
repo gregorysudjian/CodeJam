@@ -92,6 +92,14 @@ export function create3DView(
   const finishDistance = track.distanceAt(durationSec);
 
   const views = new Map<Item, ObstacleView>();
+  // The level an object belongs to (its obstacle skin), in a round of levels; else none.
+  const stageList = level.stages ?? [];
+  const levelAt = (t: number): number | undefined => {
+    if (stageList.length < 2) return undefined;
+    let index = stageList[0]!.index;
+    for (const s of stageList) if (s.startSec <= t) index = s.index;
+    return index;
+  };
   // The live race chip and the end banner: built now, hidden, so their shader is precompiled.
   const raceChip = createLabel(stage.scene, T.RACE_WIDTH, 512, T.RACE_POS, 999);
   const banner = createLabel(stage.scene, T.BANNER_WIDTH, 1024, T.BANNER_POS, 1000);
@@ -311,7 +319,12 @@ export function create3DView(
         const view = obstacles.acquire(item.spawn.kind);
         const length = lengthOf(item, lead[item.spawn.requires]);
         lengths.set(item, length);
-        view.show(item.spawn, length, variantFor(item.wave.t, item.spawn.kind));
+        view.show(
+          item.spawn,
+          length,
+          variantFor(item.wave.t, item.spawn.kind),
+          levelAt(item.wave.t),
+        );
         if (item.judge.verdict !== 'pending') view.setVerdict(item.judge.verdict);
         views.set(item, view);
       }
