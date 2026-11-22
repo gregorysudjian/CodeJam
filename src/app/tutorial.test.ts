@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { moveHint, tutorialMoves } from './tutorial';
+import { moveHint, pauseHint, tutorialMoves } from './tutorial';
 
 describe('tutorialMoves', () => {
   it('shows all six moves on the floor', () => {
@@ -20,6 +20,13 @@ describe('tutorialMoves', () => {
 
   it('shows only upper-body moves on the treadmill', () => {
     expect(tutorialMoves({ mode: 'treadmill' })).toEqual(['reachLeft', 'reachRight', 'armsUp']);
+  });
+});
+
+describe('pauseHint', () => {
+  it('names the X for the camera and adds Esc for the keyboard', () => {
+    expect(pauseHint('pose')).toBe('Cross your arms in an X to pause');
+    expect(pauseHint('keyboard')).toBe('Cross your arms in an X to pause: Esc');
   });
 });
 

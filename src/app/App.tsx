@@ -535,7 +535,12 @@ function MainApp() {
         />
       )}
       {screen === 'tutorial' && config && (
-        <TryMoves moves={tutorialMoves(config)} input={gameInput} onDone={finishTutorial} />
+        <TryMoves
+          moves={tutorialMoves(config)}
+          input={gameInput}
+          pose={inputKind === 'pose' ? pose : null}
+          onDone={finishTutorial}
+        />
       )}
       {screen === 'play' && config && (
         <Suspense fallback={<div className="h-screen bg-bg" />}>
