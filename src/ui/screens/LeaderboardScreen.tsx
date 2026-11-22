@@ -9,6 +9,7 @@ import {
   Eyebrow,
   GameButton,
   GlassPanel,
+  NavBar,
   Screen,
   ScreenFooter,
   SegmentedControl,
@@ -17,6 +18,7 @@ import {
   ROUND_SEC,
   useHotkey,
   useNow,
+  type NavBarProps,
 } from '@/ui/kit';
 import { cn } from '@/ui/lib/utils';
 import { relativeTime } from '@/ui/screens/dashboardStats';
@@ -36,7 +38,11 @@ export interface LeaderboardScreenProps {
   qrSlot?: ReactNode;
   onBack(): void;
   onPlay?(): void;
+  /** The nav bar on top (current: 'leaderboard'); absent: no bar, as before. Never on the kiosk. */
+  nav?: NavBarProps;
 }
+/** Kiosk rows stop after this rank: two columns of four, with no scrolling on a projector. */
+const KIOSK_LAST_RANK = 11;
 const PODIUM = [
   { rank: 2, tone: 'text-cyan', height: 'min-h-[300px]' },
   { rank: 1, tone: 'text-lime', height: 'min-h-[350px]' },
@@ -132,6 +138,7 @@ export function LeaderboardScreen({
   qrSlot,
   onBack,
   onPlay,
+  nav,
 }: LeaderboardScreenProps) {
   const reduce = useReducedMotion();
   // Ticks, so the kiosk's "POSTED" times don't freeze at "JUST NOW" (it stays open for an hour).
@@ -158,10 +165,26 @@ export function LeaderboardScreen({
   useHotkey('Escape', onBack, !kiosk);
   useHotkey('Enter', () => onPlay?.(), Boolean(onPlay) && !kiosk);
   const top = entries[0];
+  // The kiosk can't scroll, so it shows ranks 4–11 in two columns (4–9 on short screens).
+  const rows = entries.slice(3, kiosk ? KIOSK_LAST_RANK : 20);
+  const crown =
+    kiosk && top && !loading ? (
+      // Not .kiosk-crown-banner: its opacity pulse drops cream on maple red below 4.5:1.
+      <div className="flex items-center gap-4 rounded-2xl bg-lime px-6 py-3 text-bg shadow-[var(--na-shadow)] tight:py-1.5">
+        <Crown className="size-10 shrink-0 tight:size-8" aria-hidden="true" />
+        <p className="font-display-italic text-[40px] leading-none tight:text-[32px] 2xl:text-display-sm">
+          BEAT {top.score.toLocaleString('en-US')} TO TAKE THE CROWN
+        </p>
+      </div>
+    ) : null;
   return (
     <Screen
       backdrop="track"
-      className={cn('leaderboard-screen polish-screen', kiosk && 'leaderboard-kiosk')}
+      className={cn(
+        'leaderboard-screen polish-screen',
+        // Full screen on the projector: use the width a 1920 px screen has.
+        kiosk && 'leaderboard-kiosk [&>main]:max-w-[1760px]',
+      )}
       footer={
         // Always outside kiosk mode: an empty board must keep Back and the filters (QA Q3).
         !kiosk ? (
@@ -188,14 +211,21 @@ export function LeaderboardScreen({
         ) : null
       }
     >
+      {nav && !kiosk && <NavBar {...nav} />}
       {(!kiosk || loading || entries.length > 0) && (
-        <header className="flex flex-wrap items-end justify-between gap-6">
+        <header
+          className={cn(
+            'flex flex-wrap justify-between gap-6',
+            kiosk ? 'items-center' : 'items-end',
+          )}
+        >
           <div>
-            <Eyebrow className="mb-3">LEADERBOARD</Eyebrow>
+            <Eyebrow className={cn('mb-3', kiosk && 'text-[18px]')}>LEADERBOARD</Eyebrow>
             <h1 className="leaderboard-title font-display-italic text-display-md">
               {WORKOUT_LABELS[workout]} <span className="text-text-dim">·</span> {MODE_LABELS[mode]}
             </h1>
           </div>
+          {crown}
           {!kiosk && (
             <div className="leaderboard-filters flex flex-wrap items-center gap-4">
               <SegmentedControl
@@ -225,21 +255,12 @@ export function LeaderboardScreen({
           )}
         </header>
       )}
-      {kiosk && top && !loading && (
-        <div className="kiosk-crown-banner flex flex-wrap items-center justify-center gap-4 border-y border-lime/40 py-6 text-center text-lime">
-          <Crown className="size-10" />
-          <p className="font-display-italic text-display-sm">
-            BEAT <span className="text-glow-lime">{top.score.toLocaleString('en-US')}</span> TO TAKE
-            THE CROWN
-          </p>
-        </div>
-      )}
       {/* The kiosk keeps the QR beside the podium from 768 px wide, so it stays in view at
           125–150 % scaling (QA Q20). */}
       <div
         className={cn(
           'grid min-w-0 gap-8',
-          kiosk && 'md:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_280px]',
+          kiosk && 'md:grid-cols-[minmax(0,1fr)_200px] 2xl:grid-cols-[minmax(0,1fr)_280px]',
         )}
       >
         <div className="min-w-0">
@@ -273,86 +294,127 @@ export function LeaderboardScreen({
           ) : (
             <>
               <Podium entries={entries} currentName={currentName} now={now} kiosk={kiosk} />
-              {entries.length > 3 && (
-                <section className="mt-8" aria-label="Leaderboard rankings">
-                  <div className="leaderboard-row grid grid-cols-[50px_minmax(0,1fr)_130px_120px] gap-4 px-5 pb-3 font-display text-caption text-text-dim">
-                    <span>RANK</span>
-                    <span>PLAYER</span>
-                    <span className="text-right">SCORE</span>
-                    <span className="text-right">POSTED</span>
-                  </div>
-                  <div
-                    ref={listRef}
-                    className="leaderboard-list max-h-[370px] overflow-y-auto overscroll-contain pr-2"
-                    role="list"
+              {rows.length > 0 &&
+                (kiosk ? (
+                  <section
+                    className="glass mt-6 overflow-hidden rounded-[24px] short:mt-4 tight:mt-3"
+                    aria-label="Leaderboard rankings"
                   >
-                    {entries.slice(3, 20).map((entry, i) => {
-                      const you = entry.displayName === currentName;
-                      return (
+                    <div
+                      role="list"
+                      className="grid grid-flow-col grid-rows-4 gap-x-px bg-glass-border short:grid-rows-3 lg:grid-cols-2 max-lg:grid-flow-row max-lg:grid-rows-none short:[&>*:nth-child(n+7)]:hidden"
+                    >
+                      {rows.map((entry, i) => (
                         <div
                           key={`${entry.displayName}-${entry.at}-${i}`}
-                          ref={you ? youRow : undefined}
                           role="listitem"
-                          tabIndex={0}
-                          aria-label={`Rank ${i + 4}, ${entry.displayName}${you ? ', you' : ''}, ${entry.score} points`}
-                          className={cn(
-                            'leaderboard-row focus-ring grid grid-cols-[50px_minmax(0,1fr)_130px_120px] items-center gap-4 border-t border-glass-border px-5 py-4 transition-colors hover:bg-glass-strong focus-visible:bg-glass-strong',
-                            you && 'border-l-2 border-l-lime bg-lime/10',
-                          )}
+                          aria-label={`Rank ${i + 4}, ${entry.displayName}, ${entry.score} points`}
+                          className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 border-t border-glass-border bg-bg-raised px-6 py-3 short:py-2 tight:grid-cols-[36px_minmax(0,1fr)_auto] tight:gap-3 tight:px-4 tight:py-1.5 2xl:py-4"
                         >
-                          <span
-                            className={cn(
-                              'font-display-italic text-title',
-                              you ? 'text-lime' : 'text-text-dim',
-                            )}
-                          >
+                          <span className="font-display-italic text-[40px] leading-none text-text-dim tight:text-[30px]">
                             {i + 4}
                           </span>
-                          <span className="flex min-w-0 items-center gap-3">
-                            <span
-                              title={entry.displayName}
-                              className="min-w-0 truncate pr-[0.06em] font-display-italic text-[26px]"
-                            >
-                              {entry.displayName}
-                            </span>
-                            {you && (
-                              <span className="rounded bg-lime px-2 py-1 font-display-italic text-caption text-bg">
-                                YOU
-                              </span>
-                            )}
-                          </span>
                           <span
-                            className={cn(
-                              'text-right font-display-italic text-title',
-                              you ? 'text-lime' : 'text-text',
-                            )}
+                            title={entry.displayName}
+                            className="min-w-0 truncate pr-[0.06em] font-display-italic text-[36px] leading-tight tight:text-[26px] 2xl:text-[44px]"
                           >
+                            {entry.displayName}
+                          </span>
+                          <span className="text-right font-display-italic text-[40px] leading-none tabular-nums text-text tight:text-[32px] 2xl:text-[48px]">
                             {entry.score.toLocaleString('en-US')}
                           </span>
-                          <span className="text-right font-display text-caption font-semibold text-text-muted">
-                            {relativeTime(entry.at, now)}
-                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              )}
+                      ))}
+                    </div>
+                  </section>
+                ) : (
+                  <section
+                    className="glass mt-8 overflow-hidden rounded-[24px]"
+                    aria-label="Leaderboard rankings"
+                  >
+                    <div className="leaderboard-row grid grid-cols-[50px_minmax(0,1fr)_130px_120px] gap-4 px-5 pt-4 pb-3 font-display text-caption text-text-dim">
+                      <span>RANK</span>
+                      <span>PLAYER</span>
+                      <span className="text-right">SCORE</span>
+                      <span className="text-right">POSTED</span>
+                    </div>
+                    <div
+                      ref={listRef}
+                      className="max-h-[210px] overflow-y-auto overscroll-contain [scroll-padding:8px] [scrollbar-color:var(--na-text-dim)_transparent] [scrollbar-width:thin] [@media(min-height:1000px)]:max-h-[250px]"
+                      role="list"
+                    >
+                      {rows.map((entry, i) => {
+                        const you = entry.displayName === currentName;
+                        return (
+                          <div
+                            key={`${entry.displayName}-${entry.at}-${i}`}
+                            ref={you ? youRow : undefined}
+                            role="listitem"
+                            tabIndex={0}
+                            aria-label={`Rank ${i + 4}, ${entry.displayName}${you ? ', you' : ''}, ${entry.score} points`}
+                            className={cn(
+                              'leaderboard-row focus-ring grid grid-cols-[50px_minmax(0,1fr)_130px_120px] items-center gap-4 border-t border-glass-border px-5 py-3.5 transition-colors hover:bg-glass-strong/60 focus-visible:bg-glass-strong/60',
+                              you && 'border-l-4 border-l-lime bg-lime/10 pl-4',
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'font-display-italic text-title',
+                                you ? 'text-lime' : 'text-text-dim',
+                              )}
+                            >
+                              {i + 4}
+                            </span>
+                            <span className="flex min-w-0 items-center gap-3">
+                              <span
+                                title={entry.displayName}
+                                className="min-w-0 truncate pr-[0.06em] font-display-italic text-[26px]"
+                              >
+                                {entry.displayName}
+                              </span>
+                              {you && (
+                                <span className="rounded bg-lime px-2 py-1 font-display-italic text-caption text-bg">
+                                  YOU
+                                </span>
+                              )}
+                            </span>
+                            <span
+                              className={cn(
+                                'text-right font-display-italic text-title tabular-nums',
+                                you ? 'text-lime' : 'text-text',
+                              )}
+                            >
+                              {entry.score.toLocaleString('en-US')}
+                            </span>
+                            <span className="text-right font-display text-caption font-semibold text-text-muted">
+                              {relativeTime(entry.at, now)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
             </>
           )}
         </div>
         {kiosk && (
-          <aside className="flex flex-col items-center justify-center gap-6 border-l border-glass-border pl-8 text-center">
-            <QrCode className="size-10 text-cyan" />
-            <h2 className="font-display-italic text-title text-cyan">PLAY ON YOUR LAPTOP</h2>
-            <div className="qr-stage grid aspect-square w-full max-w-[240px] place-items-center rounded-2xl border border-cyan/40 p-4">
+          <section
+            aria-label="Play on your laptop"
+            className="glass flex flex-col items-center justify-center gap-4 self-start rounded-[24px] p-5 text-center tight:gap-2 tight:p-3 2xl:p-6"
+          >
+            <QrCode className="size-9 text-cyan tight:hidden" aria-hidden="true" />
+            <h2 className="font-display-italic text-[28px] leading-none text-cyan tight:text-[22px] 2xl:text-title">
+              PLAY ON YOUR LAPTOP
+            </h2>
+            <div className="grid aspect-square w-full place-items-center rounded-2xl border-2 border-cyan/40 bg-bg-raised p-3 text-text">
               {qrSlot ?? (
                 <div className="grid size-full place-items-center rounded-xl border border-dashed border-glass-border">
                   <QrCode className="size-24 text-text-dim" />
                 </div>
               )}
             </div>
-          </aside>
+          </section>
         )}
       </div>
     </Screen>

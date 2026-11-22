@@ -443,7 +443,8 @@
   --na-glass-border: rgba(255, 255, 255, 0.08);
   --na-text: #f5f7fa;
   --na-text-muted: #8a94a6;
-  --na-text-dim: #5b6475;
+  /* AA on the dark HUD plates (5.3:1); the old #5b6475 was 3.1:1 (j1-a11y-dim). */
+  --na-text-dim: #7a8497;
   --na-lime: #c6ff3d;
   --na-cyan: #22d3ee;
   --na-magenta: #ff3dcb;
@@ -674,12 +675,96 @@
   min-height: 100dvh;
   justify-content: center;
 }
-/* Short screens: the hero and its QR fit in one screen (QA Q12). */
+/* Landing stage: the Montreal clip behind the title on dark slate, so the text inside uses light
+   tokens. The clip is darkened and the scrim is heaviest on the left: over a white frame muted
+   text stays >= 5:1 and the light maple title about 3:1 (large text), plus a soft shadow. */
+.landing-stage {
+  --na-text: #f6f1e7;
+  --na-text-muted: #e2dbcd;
+  --na-lime: #ff7a63;
+  color: var(--na-text);
+  min-height: 300px;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45);
+}
+.landing-stage video {
+  filter: brightness(0.6) saturate(0.9);
+}
+.landing-stage-scrim {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--na-slate) 84%, transparent) 35%,
+    color-mix(in srgb, var(--na-slate) 72%, transparent)
+  );
+}
+.landing-stage .landing-photo {
+  position: absolute;
+  inset: 0;
+  /* The awning's white stripes sit behind "with your body" (reduced motion / no clip): dimmed so
+     the coral stays >= 3:1 (large text) even on the brightest stripe pixel. */
+  filter: brightness(0.85);
+}
+/* The prop-pack crops have their own dark studio background: fade their edges into the slate. */
+.landing-photo-fade {
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, black 62%, transparent 100%);
+}
+/* Short screens: hero and the sign-up card's START fit in one screen at 1280×720 and 1366×768
+   (QA Q12). TextField is h-16; here it is 52 px. */
 @media (max-height: 900px) {
   .landing-screen main {
-    padding-top: 20px;
-    padding-bottom: 20px;
-    gap: 20px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    gap: 16px;
+  }
+  .landing-signup .h-16 {
+    height: 52px;
+  }
+  .landing-signup input {
+    font-size: 20px;
+  }
+  .landing-signup label + div,
+  .landing-signup .gap-3:has(> label) {
+    gap: 6px;
+  }
+}
+/* 125-150 % scaling (1093×614 … 853×480): the photo and pitch line give way to the card. */
+@media (max-height: 640px) {
+  .landing-hero .text-body,
+  .landing-stage-levels {
+    display: none;
+  }
+  .landing-stage {
+    min-height: 0;
+  }
+  .landing-screen main {
+    gap: 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .landing-hero h1 {
+    font-size: 56px;
+  }
+  .landing-signup {
+    padding: 14px 16px;
+  }
+  .landing-signup form {
+    gap: 8px;
+  }
+  .landing-signup .gap-3:has(> label) {
+    gap: 4px;
+  }
+  .landing-signup legend {
+    margin-bottom: 4px;
+  }
+  .landing-signup .h-16 {
+    height: 44px;
+  }
+  .landing-signup [role='radio'] {
+    height: 38px;
+    font-size: 18px;
+  }
+  .landing-signup button[type='submit'] {
+    height: 52px;
+    font-size: 24px;
   }
 }
 .dashboard-empty {

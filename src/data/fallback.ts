@@ -32,6 +32,12 @@ export function withFallback(remote: DataStore, fallback: DataStore): DataStore 
     getLeaderboard: (workout, mode, durationSec, limit) =>
       remote.getLeaderboard(workout, mode, durationSec, limit),
     getCoachAdvice: (session) => active.getCoachAdvice(session),
+    // Friends live on the server: after a fallback (no guest there) they answer "offline".
+    isUsernameTaken: (name) => active.isUsernameTaken(name),
+    addFriend: (username) => active.addFriend(username),
+    listFriends: () => active.listFriends(),
+    getFriendsBoard: (workout, mode, durationSec, limit) =>
+      active.getFriendsBoard(workout, mode, durationSec, limit),
     // Forget the guest in both stores and give Supabase another chance for the next player
     // (the switch to the local store only lasts for one guest).
     async signOut() {

@@ -15,6 +15,7 @@ import {
   MODE_LABELS,
   MoveChip,
   MoveFigure,
+  NavBar,
   ROUND_LEVELS,
   ROUND_LIVES,
   ROUND_SEC,
@@ -29,6 +30,7 @@ import {
   asRound,
   tierOf,
   useHotkey,
+  type NavBarProps,
   type Tier,
 } from '@/ui/kit';
 import { cn } from '@/ui/lib/utils';
@@ -41,6 +43,8 @@ export interface WorkoutSelectScreenProps {
   settingsSlot?: React.ReactNode;
   onStart(config: SessionConfig): void;
   onBack(): void;
+  /** The nav bar on top (current: 'play'); absent: no bar, as before. */
+  nav?: NavBarProps;
 }
 
 /** Signature move drawn on each workout card. */
@@ -120,31 +124,28 @@ function WorkoutCard({
           onKeyNav(-1);
         }
       }}
-      style={
-        selected
-          ? {
-              boxShadow: `0 0 0 1px ${color}99, 0 24px 60px -20px ${color}66, 0 0 80px -20px ${color}55`,
-            }
-          : undefined
-      }
+      // Picked: a 2 px ring in the workout's colour over the card's soft shadow (no neon halo).
+      style={selected ? { boxShadow: `0 0 0 2px ${color}, var(--na-shadow)` } : undefined}
       className={cn(
-        'glass focus-ring group relative flex min-h-[360px] cursor-pointer flex-col overflow-hidden rounded-[28px] p-6 text-left transition-[transform,box-shadow,border-color,filter,opacity] duration-300 ease-arena',
-        // Picked = border, glow and check only: no lift or size change, so the row never jumps.
-        selected ? 'border-transparent' : 'hover:-translate-y-1 hover:border-white/20',
+        // short: 16 px padding, so the nav bar fits above the cards at 1280×720 with the coach's pick.
+        'glass focus-ring group relative flex min-h-[360px] cursor-pointer flex-col overflow-hidden rounded-[24px] p-6 text-left transition-[transform,box-shadow,border-color,filter,opacity] duration-300 ease-arena short:p-4',
+        // Picked = ring and check only: no lift or size change, so the row never jumps.
+        selected ? 'border-transparent' : 'hover:-translate-y-1 hover:border-text/25',
         disabled && 'cursor-not-allowed opacity-45 grayscale hover:translate-y-0',
       )}
     >
+      {/* A street-sign colour band on top, and a light wash of the same colour behind the figure. */}
       <span
         aria-hidden="true"
         className="absolute inset-x-0 top-0 h-1.5"
-        style={{ background: color, boxShadow: `0 0 24px 2px ${color}aa` }}
+        style={{ background: color }}
       />
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[60%] transition-opacity duration-300"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[55%] transition-opacity duration-300"
         style={{
-          background: `radial-gradient(60% 60% at 50% 45%, ${color}33, transparent 70%)`,
-          opacity: selected || hover ? 1 : 0.55,
+          background: `linear-gradient(to bottom, color-mix(in srgb, ${color} 10%, transparent), transparent)`,
+          opacity: selected || hover ? 1 : 0.6,
         }}
       />
       {/* The badge floats in the corner: as a row it made the picked card 36 px taller and the
@@ -154,14 +155,14 @@ function WorkoutCard({
           <span
             aria-hidden="true"
             className="grid size-9 place-items-center rounded-full text-bg"
-            style={{ background: color, boxShadow: `0 0 20px ${color}aa` }}
+            style={{ background: color }}
           >
             <Check className="size-5" strokeWidth={3} />
           </span>
         ) : disabled ? (
           <span
             aria-hidden="true"
-            className="grid size-9 place-items-center rounded-full bg-white/10 text-text-muted"
+            className="grid size-9 place-items-center rounded-full bg-glass-strong text-text-muted"
           >
             <Lock className="size-4" />
           </span>
@@ -169,7 +170,7 @@ function WorkoutCard({
       </span>
       <span
         aria-hidden="true"
-        className="relative flex items-center justify-center py-4 tight:py-1"
+        className="relative flex items-center justify-center py-4 short:py-2 tight:py-1"
       >
         <MoveFigure
           pose={WORKOUT_SIGNATURE[info.id]}
@@ -180,7 +181,7 @@ function WorkoutCard({
       </span>
       {/* flex-1 + top-aligned: every title sits at the same height; a card with fewer chip rows
           keeps its spare space at the bottom. */}
-      <span className="relative flex flex-1 flex-col gap-3 tight:gap-2">
+      <span className="relative flex flex-1 flex-col gap-3 short:gap-2">
         {/* md–xl: four narrow cards, so the title steps down (SHOULDERS must fit). */}
         <span className="font-display-italic pr-[0.06em] text-display-md leading-[0.9] md:text-title xl:text-display-sm tight:text-title">
           {info.name}
@@ -210,6 +211,7 @@ export function WorkoutSelectScreen({
   settingsSlot,
   onStart,
   onBack,
+  nav,
 }: WorkoutSelectScreenProps) {
   const [mode, setMode] = React.useState<PlayMode>(initial?.mode ?? 'floor');
   const [workout, setWorkout] = React.useState<WorkoutId>(() =>
@@ -231,7 +233,7 @@ export function WorkoutSelectScreen({
     if (focus) refs.current[i]?.focus();
   };
 
-  const nav = (from: number, dir: 1 | -1) => {
+  const moveSelection = (from: number, dir: 1 | -1) => {
     const n = workouts.length;
     for (let step = 1; step <= n; step++) {
       const i = (from + dir * step + n) % n;
@@ -298,6 +300,8 @@ export function WorkoutSelectScreen({
         </ScreenFooter>
       }
     >
+      {nav && <NavBar {...nav} />}
+
       <SectionTitle as="h1" size="lg" title="Pick a workout" />
 
       {coachPick && <CoachBanner advice={coachPick} onPlay={onStart} />}
@@ -305,7 +309,7 @@ export function WorkoutSelectScreen({
       <div
         role="radiogroup"
         aria-label="Workout"
-        className="grid gap-4 pt-2 sm:grid-cols-2 md:grid-cols-4 xl:gap-6"
+        className="grid gap-4 pt-2 sm:grid-cols-2 md:grid-cols-4 xl:gap-6 short:pt-0"
       >
         {workouts.map((w, i) => (
           <WorkoutCard
@@ -316,7 +320,7 @@ export function WorkoutSelectScreen({
             selected={w.id === workout}
             disabled={!isAvailable(w, mode)}
             onSelect={() => select(i)}
-            onKeyNav={(dir) => nav(i, dir)}
+            onKeyNav={(dir) => moveSelection(i, dir)}
             buttonRef={(el) => {
               refs.current[i] = el;
             }}
