@@ -6,7 +6,7 @@ Changes outside `src/pose/` that A cannot make. Each item is a copy-paste messag
 
 > Hi Greg, the pose debug page is ready on `abdo-1` (calibrate buttons, live overlay with sliders,
 > move tally, clip recorder). `mountPoseDebug` is now exported from `src/pose/index.ts`, as you
-> asked in PROGRESS.md / AUDIT.md #7. Once `abdo-1` is merged, could you replace
+> asked in docs/archive/PROGRESS.md / docs/archive/AUDIT.md #7. Once `abdo-1` is merged, could you replace
 > `src/app/DevPose.tsx` with this? It is plain DOM, owns its own camera, and cleans up fully on
 > unmount (StrictMode-safe).
 > (Checked against `main` PR #19 in a scratch copy: your `npm run check` passes and the page runs.)

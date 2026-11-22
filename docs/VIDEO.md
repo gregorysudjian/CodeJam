@@ -1,5 +1,7 @@
 # Backup video kit
 
+> **Written on Saturday for the earlier 45-second build.** The game is now one round of 6 levels x 30 s with 3 lives, sign-up on the landing page and one leaderboard per workout and mode. The current script is [DEMO.md](DEMO.md); where this page disagrees with it, DEMO.md is right.
+
 Fallback ladder step 4 (DEMO.md): if the app won't run on stage, play the video and narrate. Record it **Sunday 8 AM on the demo Mac**. This page is written so one person can follow it alone.
 
 ## The 72-second video (one take, no editing)

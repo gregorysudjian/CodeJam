@@ -1,5 +1,7 @@
 # Presenter cue cards
 
+> **Written on Saturday for the earlier 45-second build.** The game is now one round of 6 levels x 30 s with 3 lives, sign-up on the landing page and one leaderboard per workout and mode. The current script is [DEMO.md](../DEMO.md); where this page disagrees with it, DEMO.md is right.
+
 One card per beat of the scripts in DEMO.md. Print one card per A6 page (or index card), **large type**, and hold them at arm's length. Three lines each: what to say, not a speech. Times assume START → results takes about 52 s with the camera (50.0 s measured with the keyboard on `main` d5f2683, plus about 2 s of calibration).
 
 ## Judges: 2:40

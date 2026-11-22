@@ -1,5 +1,7 @@
 # Operator card (demo day)
 
+> **Written on Saturday for the earlier 45-second build.** The game is now one round of 6 levels x 30 s with 3 lives, sign-up on the landing page and one leaderboard per workout and mode. The current script is [DEMO.md](DEMO.md); where this page disagrees with it, DEMO.md is right.
+
 You stand at the laptop, start rounds, and fix problems. You never speak. Chrome only.
 
 ## URLs
