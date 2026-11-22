@@ -283,7 +283,11 @@ async function mainRun(page, w) {
   const fps = fpsByLevel(frames);
   const screen = byLevel(frames, 2, 'real', 'neon');
   const runner = byLevel(frames, 3, 'human', 'robot');
-  if (!hooked)
+  // A production build (the live site) has neither /src/game/backdrop.ts nor Vite's separate
+  // three module: the style and on-screen columns show "?" there (a note, not a failure). On the
+  // dev server, a hook that can't attach is a failure: it would hide a level rendering neon.
+  const devServer = styles !== null;
+  if (!hooked && devServer)
     fails.push("could not read what three.js renders (the app's three module not found)");
   styles?.forEach((st, i) => {
     if (st === 'real' && screen[i] !== 'real')
@@ -317,7 +321,11 @@ async function mainRun(page, w) {
   return {
     fails,
     rows,
-    note: `finished ${fin?.reason ?? 'never'} at ${fin?.sec?.toFixed(1) ?? '?'} s, autopilot clock ${clock}, console errors ${w.errors.length + w.exceptions.length}`,
+    note:
+      `finished ${fin?.reason ?? 'never'} at ${fin?.sec?.toFixed(1) ?? '?'} s, autopilot clock ${clock}, console errors ${w.errors.length + w.exceptions.length}` +
+      (devServer
+        ? ''
+        : ' (production build: style and on-screen state not readable, see the contact sheet)'),
   };
 }
 
