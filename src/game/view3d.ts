@@ -38,6 +38,10 @@ export interface FrameInfo {
   intro: number;
   /** Seconds left of the 3-2-1 before a resume (core.resumingIn), or null. */
   resumeIn: number | null;
+  /** The last life went (core.outOfLives): the ending, with phase 'finished'. */
+  outOfLives: boolean;
+  /** Game seconds of grace left after a lost life (core.graceLeft), else 0. */
+  grace: number;
   /** The ghost runner's pose at this moment, or null when there is no ghost to race. */
   ghost: GhostPose | null;
   /** The player's live lead over the ghost (cleared + collected), or null: no chip. */
@@ -57,6 +61,8 @@ export interface GameView {
   verdict(item: Item, v: Verdict, grade: Grade | null): void;
   /** The combo reached a milestone (5, 10, 20, then every 10). */
   milestone(streak: number): void;
+  /** A hit cost a life ('lifeLost'): flash the canvas red. */
+  lifeLost(livesLeft: number): void;
   setQuality(q: Quality): void;
   /** End of round against the ghost: a banner over the track ("GHOST BEATEN", ...). */
   showGhostOutcome(outcome: GhostOutcome): void;
@@ -153,6 +159,12 @@ export function create3DView(
   };
   let finaleSeen = false;
   let countT = 0;
+  const lifeFlash = createScreenFlash(
+    stage.camera,
+    T.COLOR_HIT,
+    reduceMotion ? LK.LIFE_FLASH.reducedPeak : LK.LIFE_FLASH.peak,
+    LK.LIFE_FLASH.sec,
+  );
   let outroT = 0; // seconds since the finish
 
   // Trail motes leading into the next free lane or orb (trail.ts): one instanced mesh.
@@ -230,18 +242,34 @@ export function create3DView(
   };
 
   return {
-    frame({ elapsed, visDt, realDt, state, phase, streak, intro, resumeIn, ghost, race }) {
+    frame(f) {
+      const { elapsed, visDt, realDt, state, phase, streak, intro, resumeIn, ghost, race } = f;
+      const { outOfLives, grace } = f;
       lastState = state;
       clock += visDt;
       if (phase === 'finished') {
         if (!finishedSeen) {
           finishedSeen = true;
-          for (const move of ['jump', 'armsUp', 'sidestep'] as const)
-            obstacles.burst(player.x, move);
+          if (outOfLives) {
+            // The last life went: the world stops short where it happened, no celebration.
+            coastSpeed = track.speedAt(elapsed);
+            banner.draw({ text: 'OUT OF LIVES', color: T.COLOR_HIT });
+            banner.sprite.visible = true;
+            bannerT = 0;
+          } else {
+            for (const move of ['jump', 'armsUp', 'sidestep'] as const)
+              obstacles.burst(player.x, move);
+          }
         }
         coast += coastSpeed * visDt;
-        coastSpeed *= Math.exp(-T.COAST_DECAY * visDt);
+        coastSpeed *= Math.exp(-T.COAST_DECAY * (outOfLives ? LK.OUT_STOP : 1) * visDt);
       }
+      // A lost life: a red flash over the scene, then the runner flickers through the grace.
+      lifeFlash.update(realDt);
+      player.root.visible =
+        reduceMotion || grace <= 0 || phase !== 'running'
+          ? true
+          : Math.sin(clock * Math.PI * 2 * LK.GRACE_BLINK_HZ) > -0.5;
       // Scenery and the finish use the judging clock; each object runs ahead by its lead.
       const distance = track.distanceAt(elapsed) + coast;
       const ahead = (lead: number): number => track.distanceAt(elapsed + lead) + coast;
@@ -303,7 +331,7 @@ export function create3DView(
           : phase === 'finished' && coastSpeed > 1
             ? coastSpeed
             : 0;
-      player.update(visDt, state, runSpeed, phase === 'finished');
+      player.update(visDt, state, runSpeed, phase === 'finished' && !outOfLives);
 
       // Trail motes: drawn ahead like the object they lead to; the runner pops them in passing.
       while (firstMote < motes.length && motes[firstMote]!.d < distance - 12) {
@@ -350,7 +378,7 @@ export function create3DView(
         placeOnScreen(banner.sprite, endBannerBox, 1 - (1 - k) ** 3); // ease out
       }
       // Outro: seconds since the finish, for the camera's swing toward the celebrating runner.
-      if (phase === 'finished') outroT += realDt;
+      if (phase === 'finished' && !outOfLives) outroT += realDt; // no swing after OUT OF LIVES
       const outroK = reduceMotion ? 0 : Math.min(1, outroT / LK.OUTRO_SEC);
       if (ghost) {
         if (!ghostRunner) {
@@ -496,6 +524,9 @@ export function create3DView(
       // One ring: three at once added up to a white glare over the runner.
       obstacles.burst(player.x, 'jump');
     },
+    lifeLost() {
+      lifeFlash.flash();
+    },
     showGhostOutcome(outcome) {
       if (bannerT >= 0) return;
       banner.draw(OUTCOME_LABEL[outcome]);
@@ -508,6 +539,47 @@ export function create3DView(
     dispose() {
       obstacles.dispose();
       stage.dispose(); // also frees the labels and the trail motes, which live in its scene
+    },
+  };
+}
+
+/**
+ * A full-screen colour flash (a lost life): a plane on the camera, just in front of the labels'
+ * depth, sized to cover the view, fading out over `sec`. Built hidden with the scene.
+ */
+function createScreenFlash(
+  camera: THREE.PerspectiveCamera,
+  color: number,
+  peak: number,
+  sec: number,
+): { flash(): void; update(realDt: number): void } {
+  const mat = new THREE.MeshBasicMaterial({
+    color,
+    transparent: true,
+    opacity: 0,
+    depthTest: false,
+    depthWrite: false,
+    fog: false,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+  const depth = LK.OVERLAY_DEPTH * 0.95;
+  mesh.position.z = -depth;
+  mesh.renderOrder = 990; // over the scene, under the labels
+  mesh.visible = false;
+  camera.add(mesh);
+  let t = Infinity;
+  return {
+    flash() {
+      t = 0;
+    },
+    update(realDt) {
+      t += realDt;
+      const k = t / sec;
+      mesh.visible = k < 1;
+      if (!mesh.visible) return;
+      const h = 2 * depth * Math.tan((camera.fov * Math.PI) / 360) * 1.1;
+      mesh.scale.set(h * Math.max(1, camera.aspect), h, 1);
+      mat.opacity = peak * (1 - k) ** 2;
     },
   };
 }

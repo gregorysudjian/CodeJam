@@ -68,6 +68,10 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         lastStreak = streak;
         if (milestone !== null) view?.milestone(milestone);
       },
+      lifeLost: (livesLeft) => {
+        view?.lifeLost(livesLeft);
+        if (livesLeft === 0) audio.outOfLives();
+      },
     },
     shownLeads.get,
   );
@@ -105,7 +109,10 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     readFlag('debug') === 'timing' ? createTimingProbe(core.items, level.config.mode, leads) : null;
   core.onEvent((e) => {
     if (e.type !== 'finished') return;
-    audio.finish();
+    // Out of lives: the runner stumbled and OUT OF LIVES shows; no fanfare, and the run (which
+    // stops part way) is never stored as a ghost.
+    const out = e.reason === 'outOfLives';
+    if (!out) audio.finish();
     // Frame rate while the round ran, for checking the 45 fps target on the demo laptop.
     const fps = frameStats.summary();
     if (fps) {
@@ -126,14 +133,15 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         result: { ...result },
         savedAt: Date.now(),
       };
-      const saved = !mixedInput && ghostStore.saveIfBetter(run);
-      const outcome = finishOutcome(ghost?.result ?? null, result, saved);
+      const saved = !mixedInput && !out && ghostStore.saveIfBetter(run);
+      const outcome = out ? null : finishOutcome(ghost?.result ?? null, result, saved);
       if (outcome) view?.showGhostOutcome(outcome);
       console.info(
         `[game] ghost: ${outcome ?? 'not saved'}. This run ${told(result)}` +
           (ghost ? `; ghost ${told(ghost.result)}` : '') +
           (saved && ghost ? '. New ghost saved.' : '') +
-          (mixedInput ? '. Input switched mid-round: not stored as a ghost.' : ''),
+          (mixedInput ? '. Input switched mid-round: not stored as a ghost.' : '') +
+          (out ? '. Out of lives: not stored as a ghost.' : ''),
       );
     }
     if (probe) {
@@ -268,15 +276,17 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
       console.info(`[game] ${quality.lastFps.toFixed(0)} fps: graphics quality ${stepped}`);
     }
 
-    const phase: Phase = core.finished()
-      ? 'finished'
-      : core.pauseReason()
-        ? 'paused'
-        : core.started()
-          ? 'running'
-          : introT >= 0
-            ? 'intro'
-            : 'idle';
+    // From the last lost life the round is over for the view: the ending plays out.
+    const phase: Phase =
+      core.finished() || core.outOfLives()
+        ? 'finished'
+        : core.pauseReason()
+          ? 'paused'
+          : core.started()
+            ? 'running'
+            : introT >= 0
+              ? 'intro'
+              : 'idle';
     // The keyboard works during the intro too, so the player can try a move before GO.
     markRunning(phase === 'running' || phase === 'intro');
     // Confirm each detected move with a quiet sound, also before the start, so the player
@@ -309,6 +319,8 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         streak: core.streak(),
         intro: introT,
         resumeIn: core.resumingIn(),
+        outOfLives: core.outOfLives(),
+        grace: core.graceLeft(),
         ghost: ghost ? ghostPoseAt(ghost.samples, ghost.hz, core.elapsed(), ghostPose) : null,
         race: race && phase !== 'finished' ? raceLead(result, race.ghost) : null,
       });
@@ -322,6 +334,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         engage() {},
         verdict() {},
         milestone() {},
+        lifeLost() {},
         setQuality() {},
         showGhostOutcome() {},
         dispose() {},

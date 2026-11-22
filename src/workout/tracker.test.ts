@@ -142,6 +142,24 @@ describe('calories (an estimate)', () => {
     expect(setup({ weightKg: 90 }).tracker.finish(60).kcal).toBeCloseTo(kcalFor(config, 90, 60));
   });
 
+  it('a round that ends on the last life says so; a complete one does not', () => {
+    const out = setup().tracker;
+    out.handleGameEvent(hit());
+    out.handleGameEvent({ type: 'lifeLost', livesLeft: 0 });
+    out.handleGameEvent({ type: 'finished', reason: 'outOfLives' });
+    // The app passes the game time played (game.getElapsedSec), which stopped at the last life.
+    const s = out.finish(12.4);
+    expect(s.outOfLives).toBe(true);
+    expect(s.activeSec).toBe(12.4);
+    expect(s.score).toBe(0);
+    const done = setup().tracker;
+    done.handleGameEvent({ type: 'finished', reason: 'complete' });
+    expect(done.finish(45).outOfLives).toBe(false);
+    const old = setup().tracker;
+    old.handleGameEvent({ type: 'finished' }); // no reason: complete (contract)
+    expect(old.finish(45).outOfLives).toBe(false);
+  });
+
   it('live calories count only time while the round is running', () => {
     const { tracker, advance } = setup();
     advance(5); // countdown before the first event: not counted

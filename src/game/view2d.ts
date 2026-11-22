@@ -40,6 +40,7 @@ export function create2DView(
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   let gradeShown: Grade | null = null;
   let gradeT = Infinity;
+  let lifeFlashT = Infinity; // seconds since a life was lost (red flash)
   const box: PixelBox = { cx: 0, cy: 0, h: 0 }; // reused by the screen-space plates
 
   const colorOf = (item: Item): string => {
@@ -48,7 +49,8 @@ export function create2DView(
   };
 
   return {
-    frame({ elapsed, visDt, realDt, state, phase, streak, intro, resumeIn, ghost, race }) {
+    frame(f) {
+      const { elapsed, visDt, realDt, state, phase, streak, intro, resumeIn, ghost, race } = f;
       if (!ctx) return;
       const dpr = Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
       const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
@@ -140,7 +142,21 @@ export function create2DView(
         ctx.globalAlpha = 1;
       };
       if (ghost) drawRunner(ghostMotion, ghost, true);
-      drawRunner(playerMotion, state, false);
+      // Through the grace after a lost life the runner flickers (not with reduced motion).
+      const blinkOff =
+        !reduceMotion &&
+        f.grace > 0 &&
+        phase === 'running' &&
+        Math.sin(elapsed * Math.PI * 2 * LK.GRACE_BLINK_HZ) <= -0.5;
+      if (!blinkOff) drawRunner(playerMotion, state, false);
+      lifeFlashT += realDt;
+      if (lifeFlashT < LK.LIFE_FLASH.sec) {
+        const peak = reduceMotion ? LK.LIFE_FLASH.reducedPeak : LK.LIFE_FLASH.peak;
+        ctx.fillStyle = css(T.COLOR_HIT);
+        ctx.globalAlpha = peak * (1 - lifeFlashT / LK.LIFE_FLASH.sec) ** 2;
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalAlpha = 1;
+      }
 
       if (phase === 'paused' && resumeIn === null) {
         ctx.fillStyle = `rgba(0, 0, 0, ${T.PAUSE_DIM})`;
@@ -211,7 +227,8 @@ export function create2DView(
           h * 0.035,
         );
 
-      if (outcome) {
+      if (f.outOfLives) plate(endBannerBox(cssW, cssH, 1, box), 'OUT OF LIVES', T.COLOR_HIT);
+      else if (outcome) {
         // In the middle under GameHud's plates, as in 3D (it sat on the score plate).
         const { text, color } = OUTCOME_LABEL[outcome];
         plate(endBannerBox(cssW, cssH, 1, box), text, color);
@@ -277,6 +294,9 @@ export function create2DView(
       } else if (v === 'hit') gradeT = Infinity;
     },
     milestone() {},
+    lifeLost() {
+      lifeFlashT = 0;
+    },
     setQuality() {},
     showGhostOutcome(o) {
       outcome ??= o;

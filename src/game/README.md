@@ -176,7 +176,8 @@ In the real app (main + `p1-workout` + `p2-game`, keyboard): a rehearsal round s
 | `paused` | `reason: 'user'` from `pause()`; `'trackingLost'` as soon as `getState().tracking` is false; `'otherPerson'` while `getState().otherPerson` is true. Also when either happens during the countdown below. |
 | `resuming` | `inSec: 3` (`RESUME_COUNTDOWN_SEC`): every resume counts 3-2-1 first, in the canvas, with game time frozen. From `resume()`, or when tracking returns or the other person leaves (a user pause never auto-resumes). `pause()` during it pauses again. |
 | `resumed` | When the countdown ends. Never sent if it was interrupted. |
-| `finished` | Once, when game time reaches `durationSec`. Events from the same frame come first. |
+| `lifeLost` | Right after a `hit` on a block, hurdle, beam or crate that cost a life (`LIVES` = 3; a missed orb never costs one). For `LIFE_GRACE_SEC` (1.5 s of game time) after it no other life can go, so a held beam or a block-and-orb is one mistake. The canvas flashes red and the runner flickers through the grace. At `livesLeft: 0` judging and game time stop, the runner stops short and OUT OF LIVES shows. |
+| `finished` | Once: `reason: 'complete'` when game time reaches `durationSec` (events from the same frame come first), or `'outOfLives'` `OUT_OF_LIVES_SEC` (1.5 s, real time) after the last life went. An out-of-lives run plays no fanfare and is never stored as a ghost. |
 
 Event `t` is `performance.now()`. Game time is the sum of frame deltas, each clamped to 50 ms, and stops while paused. A background tab or a stall acts like a short pause instead of skipping objects.
 

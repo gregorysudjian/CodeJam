@@ -157,6 +157,7 @@ const coachText = (page) =>
 async function lives(page, base) {
   const fails = [];
   await toSelect(page, base);
+  await page.eval(DRAW_HOOK);
   await startRound(page, 'idle');
   await waitFinished(page, ROUND_SEC + 30);
   const ev = await events(page);
@@ -171,7 +172,12 @@ async function lives(page, base) {
   const lastLost = ev.filter((e) => e.type === 'lifeLost').at(-1);
   if (fin && lastLost && fin.at < lastLost.at) fails.push('finished came before the last lifeLost');
   const screen = await page.text();
-  if (!/OUT OF LIVES/i.test(screen)) fails.push('"OUT OF LIVES" not on screen');
+  // Drawn on the game's canvas when the last life goes (view3d banner, view2d plate), or page text.
+  const drawnOut = (await page.eval('window.__qaDrawn ?? []')).some((x) =>
+    /out of lives/i.test(x.d),
+  );
+  if (!drawnOut && !/OUT OF LIVES/i.test(screen))
+    fails.push('"OUT OF LIVES" neither drawn on the canvas nor on screen');
   const s = await lastSaved(page);
   if (!s) fails.push('no round saved');
   else {
@@ -241,7 +247,8 @@ const DRAW_HOOK = `(() => {
   for (const fn of ['fillText', 'strokeText']) {
     const orig = P[fn];
     P[fn] = function (text, ...rest) {
-      if (/^\\s*[123]\\s*$/.test(String(text))) window.__qaDrawn.push({ d: String(text).trim(), at: performance.now() });
+      const s = String(text).trim();
+      if (/^[123]$/.test(s) || /out of lives/i.test(s)) window.__qaDrawn.push({ d: s, at: performance.now() });
       return orig.call(this, text, ...rest);
     };
   }
@@ -298,7 +305,7 @@ async function pause(page, base) {
     fails.push(`game time moved ${movedBeforeResumed} ms after Esc, before 'resumed'`);
   // What the game drew between the key and 'resumed', in order of first appearance.
   const drawn = (await page.eval('window.__qaDrawn ?? []')).filter(
-    (x) => x.at >= keyAt && x.at <= (resumed?.at ?? Infinity),
+    (x) => /^[123]$/.test(x.d) && x.at >= keyAt && x.at <= (resumed?.at ?? Infinity),
   );
   const order = [...new Set(drawn.map((x) => x.d))].join('');
   for (const d of order) digits.add(d);

@@ -47,6 +47,7 @@ export function createSessionTracker(
   let bestStreak = 0;
   let cleared = 0;
   let hit = 0;
+  let outOfLives = false; // the round ended on the last life ('finished', reason 'outOfLives')
   // Live calories count time between the first event and now, minus pauses.
   let runningSince: number | null = null;
   let activeMs = 0;
@@ -87,6 +88,7 @@ export function createSessionTracker(
           break;
         case 'paused':
         case 'finished':
+          if (e.type === 'finished' && e.reason === 'outOfLives') outOfLives = true;
           if (runningSince !== null) {
             activeMs += now() - runningSince;
             runningSince = null;
@@ -111,6 +113,7 @@ export function createSessionTracker(
         accuracy: cleared + hit === 0 ? 0 : cleared / (cleared + hit),
         missed: { ...missed },
         activeSec,
+        outOfLives,
       };
     },
   };
