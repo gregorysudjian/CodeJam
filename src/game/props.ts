@@ -1,5 +1,23 @@
 import * as THREE from 'three';
+import { backdropFor } from './backdrop';
 import * as T from './tuning';
+
+export type RealClip = (typeof T.REAL_CLIPS)[number];
+
+/**
+ * The Montreal clip a level plays (tuning.ts REAL_CLIPS), from its backdrop's video file; null if
+ * it matches none. Real levels reuse the clips in any order, so the road pattern and the obstacle
+ * skins follow the clip, not the level number.
+ */
+export function clipOf(level: number): RealClip | null {
+  const file = (backdropFor(level).video ?? '').toLowerCase();
+  return T.REAL_CLIPS.find((c) => c.match.some((m) => file.includes(m))) ?? null;
+}
+
+/** The obstacle skin set (tex-{set}-{kind}.jpg) for a level: its clip's, else its own. */
+export function skinSetFor(level: number): number {
+  return clipOf(level)?.skin ?? level;
+}
 
 /**
  * Realistic-mode helpers for obstacles.ts (levels whose backdrop style is 'real'): the soft
