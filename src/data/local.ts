@@ -8,6 +8,7 @@ import type {
   SessionSummary,
 } from '@/contracts';
 import { ruleBasedAdvice } from './coach';
+import { cleanNamePatch, nameOrGuest } from './names';
 import { DEFAULT_WEEKLY_GOAL_MIN, LOCAL_MAX_SESSIONS } from './tuning';
 
 /** The subset of the Web Storage API we use; injectable for tests. */
@@ -49,9 +50,7 @@ export function memoryStorage(): KeyValue {
   };
 }
 
-export function guestName(): string {
-  return `Guest-${Math.floor(1000 + Math.random() * 9000)}`;
-}
+export { guestName } from './names';
 
 const KEYS = { profile: 'codejam.local.profile', sessions: 'codejam.local.sessions' };
 
@@ -61,7 +60,7 @@ export function createLocalStore(kv: KeyValue | null = browserStorage()): DataSt
 
   const newProfile = (displayName?: string): Profile => ({
     id: crypto.randomUUID(),
-    displayName: displayName?.trim() || guestName(),
+    displayName: nameOrGuest(displayName),
     goal: 'getMoving',
     level: 'beginner',
     weeklyGoalMin: DEFAULT_WEEKLY_GOAL_MIN,
@@ -80,7 +79,7 @@ export function createLocalStore(kv: KeyValue | null = browserStorage()): DataSt
       return profile();
     },
     async saveProfile(patch) {
-      const p: Profile = { ...(profile() ?? newProfile()), ...patch };
+      const p: Profile = { ...(profile() ?? newProfile()), ...cleanNamePatch(patch) };
       writeJson(kv, KEYS.profile, p);
       return p;
     },

@@ -116,9 +116,9 @@ describe('profile mapping: edge cases', () => {
     expect(p.weightKg).toBe(72.5);
   });
 
-  it('caps a display name at the 40 characters the database allows, after trimming', () => {
+  it('caps a display name at the 20 characters of the profile screen, after trimming', () => {
     const row = profilePatchToRow({ displayName: `  ${'x'.repeat(50)}  ` });
-    expect(row.display_name).toHaveLength(40);
+    expect(row.display_name).toHaveLength(20);
   });
 
   it('passes every patched field and nothing else', () => {
