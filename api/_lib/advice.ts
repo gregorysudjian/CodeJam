@@ -23,16 +23,24 @@ export const ROUND_SEC = 180;
 /** The tier rule (as the rule-based coach): above this accuracy one tier up, below the next one down. */
 export const TIER_UP_ABOVE = 0.85;
 export const TIER_DOWN_BELOW = 0.6;
+/** Lives per round (src/game/tuning.ts); a round with this many hits ended out of lives. */
+export const LIVES = 3;
+/** From this age the next session is low impact, like the rule-based coach (src/data/tuning.ts). */
+export const LOW_IMPACT_AGE = 60;
 export const TIER_NAMES: Record<number, string> = { 0: 'Beginner', 0.5: 'Regular', 1: 'Athlete' };
 
 /**
  * The next session's tier, decided in code (the model only puts it into words): the latest
- * round's tier, one up above TIER_UP_ABOVE accuracy, one down below TIER_DOWN_BELOW.
+ * round's tier, one up above TIER_UP_ABOVE accuracy, one down below TIER_DOWN_BELOW. No step up
+ * after a round that ended out of lives (hit counts lives lost), like the rule-based coach.
  */
-export function nextTier(latest: Pick<SessionFacts, 'difficulty' | 'accuracy'>): number {
+export function nextTier(
+  latest: Pick<SessionFacts, 'difficulty' | 'accuracy'> & Partial<Pick<SessionFacts, 'hit'>>,
+): number {
   const i = TIERS.indexOf(snapTier(n(latest.difficulty)));
   const acc = n(latest.accuracy) ?? 0.7;
-  const step = acc > TIER_UP_ABOVE ? 1 : acc < TIER_DOWN_BELOW ? -1 : 0;
+  const outOfLives = (n(latest.hit) ?? 0) >= LIVES;
+  const step = acc > TIER_UP_ABOVE && !outOfLives ? 1 : acc < TIER_DOWN_BELOW ? -1 : 0;
   return TIERS[Math.min(TIERS.length - 1, Math.max(0, i + step))]!;
 }
 
@@ -114,6 +122,8 @@ export interface ProfileFacts {
   goal: string;
   level: string;
   weekly_goal_min: number;
+  /** Read only to set next.lowImpact; never sent to the model (buildUserPrompt). */
+  age?: number | null;
 }
 export interface SessionFacts {
   id: string;

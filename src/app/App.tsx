@@ -446,27 +446,32 @@ function MainApp() {
     });
     // A round on the local store is not on the shared board, so no rank (Jiscar 2, #64).
     // Nor a 0-point round: "#1 on the leaderboard" for nothing reads wrong on a projector.
+    const listed = store.listSessions(50);
+    const previousBestOf = (list: SavedSession[]) =>
+      list
+        .filter(
+          (x) =>
+            x.id !== saved.id &&
+            x.config.workout === s.config.workout &&
+            x.config.mode === s.config.mode &&
+            x.config.durationSec === s.config.durationSec,
+        )
+        .reduce((m, x) => Math.max(m, x.score), 0);
     if (store.kind === 'supabase' && s.score > 0)
       void store
         .getLeaderboard(s.config.workout, s.config.mode, s.config.durationSec, LEADERBOARD_SIZE)
-        .then((top) => {
+        .then(async (top) => {
+          // The board holds each player's best, so the rank is that of the player's best on this
+          // board, not of this round: a weaker second round keeps the place the board shows.
+          const best = Math.max(s.score, previousBestOf(await listed));
           // An empty board means offline with nothing cached, not "you are #1". When the round
           // synced, the board includes it, so it is never empty then.
-          const better = top.filter((e) => e.score > s.score).length;
+          const better = top.filter((e) => e.score > best).length;
           setRank(top.length > 0 && better < LEADERBOARD_SIZE ? better + 1 : null);
         });
-    const list = await store.listSessions(50);
+    const list = await listed;
     setSessions(list);
-    const previousBest = list
-      .filter(
-        (x) =>
-          x.id !== saved.id &&
-          x.config.workout === s.config.workout &&
-          x.config.mode === s.config.mode &&
-          x.config.durationSec === s.config.durationSec,
-      )
-      .reduce((m, x) => Math.max(m, x.score), 0);
-    setPersonalBest(s.score > 0 && s.score > previousBest);
+    setPersonalBest(s.score > 0 && s.score > previousBestOf(list));
   }, []);
 
   const handleGame = useCallback((g: Game | null) => {
@@ -580,7 +585,8 @@ function MainApp() {
           appName={APP_NAME}
           onSignUp={(p) => void withSignIn(() => signUp(p))}
           onPlayAsGuest={() => void withSignIn(playAsGuest)}
-          returning={returning}
+          // Back from the select screen right after signing up: the same player, not a blank card.
+          returning={returning ?? (profile ? { displayName: profile.displayName } : null)}
           onContinue={() => void withSignIn(continueAsReturning)}
           busy={signingIn}
           onLeaderboard={openLeaderboard}
@@ -594,7 +600,7 @@ function MainApp() {
         <ProfileScreen
           initial={profile ?? undefined}
           onSubmit={(p) => void submitProfile(p)}
-          onBack={() => setScreen('landing')}
+          onBack={() => setScreen(editingProfile ? 'dashboard' : 'landing')}
           nav={editingProfile ? navFor('profile') : undefined}
           checkUsername={(n) => store.isUsernameTaken(n)}
         />

@@ -205,7 +205,8 @@ export function ProfileScreen({
 
   useHotkey('Enter', submit, !fieldError && !taken);
   useHotkey('Escape', onBack);
-  useHotkey('s', skip);
+  // Skip saves the defaults: only for a new player, never while editing a profile (nav shown).
+  useHotkey('s', skip, !nav);
 
   return (
     <Screen
@@ -246,9 +247,11 @@ export function ProfileScreen({
         size="lg"
         title="Who's playing?"
         right={
-          <GameButton variant="ghost" size="md" className="h-9 px-2 text-[20px]" onClick={skip}>
-            Skip
-          </GameButton>
+          nav ? undefined : (
+            <GameButton variant="ghost" size="md" className="h-9 px-2 text-[20px]" onClick={skip}>
+              Skip
+            </GameButton>
+          )
         }
       />
 

@@ -18,6 +18,7 @@ import {
   bearerToken,
   buildUserPrompt,
   buildPlanLine,
+  LOW_IMPACT_AGE,
   nextTier,
   parseAdvice,
   planNumbers,
@@ -72,7 +73,7 @@ export async function POST(request: Request): Promise<Response> {
   const [profileRes, sessionsRes] = await Promise.all([
     sb
       .from('profiles')
-      .select('display_name, goal, level, weekly_goal_min')
+      .select('display_name, goal, level, weekly_goal_min, age')
       .eq('id', auth.user.id)
       .maybeSingle<ProfileFacts>(),
     sb
@@ -125,7 +126,9 @@ export async function POST(request: Request): Promise<Response> {
     const advice = parseAdvice(text?.type === 'text' ? text.text : undefined, latest.mode);
     if (!advice) return json({ error: 'coach answer failed validation' }, 502);
     // The tier and today's plan are the game's decisions, whatever the model wrote.
-    const next = { ...advice.next, difficulty: tier };
+    const age = profileRes.data?.age;
+    const lowImpact = typeof age === 'number' && age >= LOW_IMPACT_AGE;
+    const next = { ...advice.next, difficulty: tier, ...(lowImpact ? { lowImpact: true } : {}) };
     return json({ ...advice, next, plan: buildPlanLine(next, profileRes.data?.goal, plan) });
   } catch (err) {
     if (err instanceof Anthropic.APIConnectionTimeoutError)
