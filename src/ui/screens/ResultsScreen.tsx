@@ -138,7 +138,7 @@ export function ResultsScreen({
                   <Button
                     variant="ghost"
                     onClick={onLeaderboard}
-                    className="focus-ring h-auto gap-2 px-2 text-caption text-cyan"
+                    className="focus-ring h-auto gap-2 px-2 text-caption text-cyan focus-visible:outline-solid"
                   >
                     <Trophy />#{rank} ON THE LEADERBOARD
                     <ArrowRight />

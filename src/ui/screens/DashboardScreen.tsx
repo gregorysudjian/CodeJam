@@ -135,7 +135,7 @@ export function DashboardScreen({
                   title="Edit profile"
                   aria-label="Edit profile"
                   onClick={onEditProfile}
-                  className="ml-3 align-middle text-text-muted"
+                  className="focus-ring ml-3 align-middle text-text-muted focus-visible:outline-solid"
                 >
                   <Edit3 className="size-5" />
                 </Button>

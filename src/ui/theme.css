@@ -15,7 +15,9 @@
   --na-glass-border: rgba(255, 255, 255, 0.08);
   --na-text: #f5f7fa;
   --na-text-muted: #8a94a6;
-  --na-text-dim: #5b6475;
+  /* 4.7:1 on glass, 5.3:1 on the background (WCAG AA body text); was #5b6475 at 3.0-3.3:1.
+     Still dimmer than --na-text-muted (6.5:1), so the hierarchy holds. */
+  --na-text-dim: #7a8497;
   --na-lime: #c6ff3d;
   --na-cyan: #22d3ee;
   --na-magenta: #ff3dcb;

@@ -78,64 +78,75 @@ export function DashboardCharts({
         <div
           className="arena-chart h-[260px] w-full"
           role="img"
-          aria-label={days.map((d) => `${d.label}: ${d.activeMin} minutes`).join(', ')}
+          aria-label={days
+            .map((d) => `${d.label}: ${Math.round(d.activeMin * 10) / 10} minutes`)
+            .join(', ')}
         >
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <BarChart
-              data={days}
-              margin={{ top: 15, right: 10, bottom: 0, left: -20 }}
-              accessibilityLayer
-            >
-              <CartesianGrid
-                vertical={false}
-                stroke="var(--na-glass-border)"
-                strokeDasharray="3 6"
-              />
-              <XAxis
-                dataKey="label"
-                tick={tick}
-                axisLine={false}
-                tickLine={false}
-                tickMargin={12}
-              />
-              <YAxis
-                tick={tick}
-                axisLine={false}
-                tickLine={false}
-                allowDecimals={false}
-                domain={[0, (max: number) => Math.max(max, weeklyGoalMin / 7) * 1.2]}
-              />
-              <ReferenceLine
-                y={weeklyGoalMin / 7}
-                stroke="var(--na-cyan)"
-                strokeOpacity={0.6}
-                strokeDasharray="6 6"
-              />
-              <Tooltip
-                cursor={{ fill: 'var(--na-glass)' }}
-                content={({ active, payload, label }) =>
-                  active && payload?.[0] ? (
-                    <ChartTip title={String(label)} value={Number(payload[0].value)} unit="MIN" />
-                  ) : null
-                }
-              />
-              <Bar
-                dataKey="activeMin"
-                radius={[6, 6, 0, 0]}
-                maxBarSize={48}
-                isAnimationActive={!reduce}
-                animationDuration={650}
+          {/* inert: Chrome still tabbed into Recharts' layer <g>s (tabIndex -1) even without the
+              accessibility layer. The role="img" label above reads the data; the cost is the
+              hover tooltips. */}
+          <div inert className="size-full">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              {/* No accessibility layer: it made every bar a Tab stop (13 on the dashboard) inside a
+                role="img" whose label already reads the data. */}
+              <BarChart
+                data={days}
+                margin={{ top: 15, right: 10, bottom: 0, left: -20 }}
+                accessibilityLayer={false}
               >
-                {days.map((day) => (
-                  <Cell
-                    key={day.date}
-                    fill={day.date === localDay(now) ? 'var(--na-lime)' : 'var(--na-activity-bar)'}
-                    className={day.date === localDay(now) ? 'chart-today-bar' : ''}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                <CartesianGrid
+                  vertical={false}
+                  stroke="var(--na-glass-border)"
+                  strokeDasharray="3 6"
+                />
+                <XAxis
+                  dataKey="label"
+                  tick={tick}
+                  axisLine={false}
+                  tickLine={false}
+                  tickMargin={12}
+                />
+                <YAxis
+                  tick={tick}
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
+                  domain={[0, (max: number) => Math.max(max, weeklyGoalMin / 7) * 1.2]}
+                />
+                <ReferenceLine
+                  y={weeklyGoalMin / 7}
+                  stroke="var(--na-cyan)"
+                  strokeOpacity={0.6}
+                  strokeDasharray="6 6"
+                />
+                <Tooltip
+                  cursor={{ fill: 'var(--na-glass)' }}
+                  content={({ active, payload, label }) =>
+                    active && payload?.[0] ? (
+                      <ChartTip title={String(label)} value={Number(payload[0].value)} unit="MIN" />
+                    ) : null
+                  }
+                />
+                <Bar
+                  dataKey="activeMin"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={48}
+                  isAnimationActive={!reduce}
+                  animationDuration={650}
+                >
+                  {days.map((day) => (
+                    <Cell
+                      key={day.date}
+                      fill={
+                        day.date === localDay(now) ? 'var(--na-lime)' : 'var(--na-activity-bar)'
+                      }
+                      className={day.date === localDay(now) ? 'chart-today-bar' : ''}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </section>
       <section className="min-w-0" aria-label="Reps by move chart">
@@ -145,56 +156,61 @@ export function DashboardCharts({
           role="img"
           aria-label={repRows.map((r) => `${MOVE_LABELS[r.move]}: ${r.reps} reps`).join(', ')}
         >
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <BarChart
-              data={repRows}
-              layout="vertical"
-              margin={{ top: 0, right: 22, bottom: 0, left: 0 }}
-              accessibilityLayer
-            >
-              <CartesianGrid
-                horizontal={false}
-                stroke="var(--na-glass-border)"
-                strokeDasharray="3 6"
-              />
-              <XAxis
-                type="number"
-                tick={tick}
-                axisLine={false}
-                tickLine={false}
-                allowDecimals={false}
-              />
-              <YAxis
-                dataKey="move"
-                type="category"
-                width={144}
-                tick={<MoveTick />}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                cursor={{ fill: 'var(--na-glass)' }}
-                content={({ active, payload }) => {
-                  const row = payload?.[0];
-                  const move = MOVE_ORDER.find((m) => m === row?.payload?.move);
-                  return active && row && move ? (
-                    <ChartTip title={MOVE_LABELS[move]} value={Number(row.value)} unit="REPS" />
-                  ) : null;
-                }}
-              />
-              <Bar
-                dataKey="reps"
-                radius={[0, 6, 6, 0]}
-                barSize={16}
-                isAnimationActive={!reduce}
-                animationDuration={650}
+          {/* inert: Chrome still tabbed into Recharts' layer <g>s (tabIndex -1) even without the
+              accessibility layer. The role="img" label above reads the data; the cost is the
+              hover tooltips. */}
+          <div inert className="size-full">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <BarChart
+                data={repRows}
+                layout="vertical"
+                margin={{ top: 0, right: 22, bottom: 0, left: 0 }}
+                accessibilityLayer={false}
               >
-                {repRows.map((row) => (
-                  <Cell key={row.move} fill={MOVE_TOKEN[row.move]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                <CartesianGrid
+                  horizontal={false}
+                  stroke="var(--na-glass-border)"
+                  strokeDasharray="3 6"
+                />
+                <XAxis
+                  type="number"
+                  tick={tick}
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
+                />
+                <YAxis
+                  dataKey="move"
+                  type="category"
+                  width={144}
+                  tick={<MoveTick />}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  cursor={{ fill: 'var(--na-glass)' }}
+                  content={({ active, payload }) => {
+                    const row = payload?.[0];
+                    const move = MOVE_ORDER.find((m) => m === row?.payload?.move);
+                    return active && row && move ? (
+                      <ChartTip title={MOVE_LABELS[move]} value={Number(row.value)} unit="REPS" />
+                    ) : null;
+                  }}
+                />
+                <Bar
+                  dataKey="reps"
+                  radius={[0, 6, 6, 0]}
+                  barSize={16}
+                  isAnimationActive={!reduce}
+                  animationDuration={650}
+                >
+                  {repRows.map((row) => (
+                    <Cell key={row.move} fill={MOVE_TOKEN[row.move]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </section>
     </div>

@@ -156,7 +156,7 @@ export function GameHud({
             aria-label="Pause"
             onClick={onPause}
             disabled={paused || trackingLost}
-            className="pointer-events-auto focus-ring"
+            className="pointer-events-auto focus-ring focus-visible:outline-solid"
           >
             <Pause />
             <span className="sr-only">ESC</span>
