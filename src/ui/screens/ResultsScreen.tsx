@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { ArrowRight, Lightbulb, Play, Sparkles, Trophy } from 'lucide-react';
+import { ArrowRight, Flag, HeartCrack, Lightbulb, Play, Sparkles, Trophy } from 'lucide-react';
 import type { CoachAdvice, SessionConfig, SessionSummary } from '@/contracts';
 import { Button } from '@/ui/components/ui/button';
 import { Skeleton } from '@/ui/components/ui/skeleton';
@@ -20,11 +20,14 @@ import {
   WORKOUT_ACCENTS,
   WORKOUT_LABELS,
   MODE_LABELS,
+  TIER_LABELS,
+  asRound,
+  tierOf,
   useHotkey,
 } from '@/ui/kit';
 import { formatTime } from '@/ui/lib/format';
 import { cn } from '@/ui/lib/utils';
-import { accuracyGrade, mostMissed } from '@/ui/screens/resultsRules';
+import { accuracyGrade, mostMissed, roundHeadline } from '@/ui/screens/resultsRules';
 
 export interface ResultsScreenProps {
   summary: SessionSummary;
@@ -59,11 +62,12 @@ export function ResultsScreen({
   const grade = accuracyGrade(summary.accuracy);
   const missed = mostMissed(summary);
   const maxReps = Math.max(1, ...MOVE_ORDER.map((m) => summary.reps[m]));
+  const headline = roundHeadline(summary);
   useHotkey('Enter', onPlayAgain);
   useHotkey(
     'n',
     () => {
-      if (advice) onStartNext(advice.next);
+      if (advice) onStartNext(asRound(advice.next));
     },
     advice !== null,
   );
@@ -97,10 +101,25 @@ export function ResultsScreen({
       <div className="grid items-start gap-10 short:gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-            <Eyebrow>
-              ROUND COMPLETE · {WORKOUT_LABELS[summary.config.workout]} ·{' '}
-              {MODE_LABELS[summary.config.mode]} · {summary.config.durationSec} S
-            </Eyebrow>
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
+              <h1
+                className={cn(
+                  'results-headline flex items-center gap-2 self-center font-display-italic text-title',
+                  headline.outOfLives ? 'text-amber' : 'text-lime',
+                )}
+              >
+                {headline.outOfLives ? (
+                  <HeartCrack aria-hidden="true" className="size-7" />
+                ) : (
+                  <Flag aria-hidden="true" className="size-7" />
+                )}
+                {headline.text}
+              </h1>
+              <Eyebrow className="text-text-muted">
+                {WORKOUT_LABELS[summary.config.workout]} · {MODE_LABELS[summary.config.mode]} ·{' '}
+                {TIER_LABELS[tierOf(summary.config.difficulty)]}
+              </Eyebrow>
+            </div>
             <span className="text-caption text-text-muted">
               {formatTime(summary.activeSec)} ACTIVE
             </span>
@@ -268,7 +287,7 @@ export function ResultsScreen({
                   />
                   <h2 className="min-w-0 font-display-italic text-title">
                     {WORKOUT_LABELS[advice.next.workout]} · {MODE_LABELS[advice.next.mode]} ·{' '}
-                    {advice.next.durationSec}&nbsp;S
+                    {TIER_LABELS[tierOf(advice.next.difficulty)]}
                   </h2>
                 </div>
                 <p className="text-caption leading-relaxed text-text-muted">{advice.reason}</p>
@@ -277,7 +296,7 @@ export function ResultsScreen({
                 size="lg"
                 variant="secondary"
                 trailingIcon={ArrowRight}
-                onClick={() => onStartNext(advice.next)}
+                onClick={() => onStartNext(asRound(advice.next))}
                 className="w-full px-4 short:h-14"
               >
                 PLAY THIS NEXT
