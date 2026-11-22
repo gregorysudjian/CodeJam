@@ -97,7 +97,8 @@ export function ResultsScreen({
   return (
     <Screen backdrop="arena" className="results-screen polish-screen" footer={footer}>
       {/* One screen tall at 1280×720 and 1366×768 (QA Q5): badges sit beside the score, the
-          active time on the eyebrow line, and `short:` / `tight:` shrink spacing, not text. */}
+          active time on the eyebrow line, and `short:` / `tight:` shrink spacing, not text (except the coach's
+          copy at 125 %, whose length varies: 17 px there). */}
       <div className="grid items-start gap-10 short:gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
@@ -260,10 +261,14 @@ export function ResultsScreen({
           </div>
           {advice ? (
             <>
-              <p className="text-body leading-relaxed tight:leading-snug">{advice.recap}</p>
-              <div className="flex items-start gap-3 border-y border-glass-border py-4 short:py-3 tight:py-2">
+              <p className="text-body leading-relaxed short:leading-normal tight:text-[17px] tight:leading-snug">
+                {advice.recap}
+              </p>
+              <div className="flex items-start gap-3 border-y border-glass-border py-4 short:py-2">
                 <Lightbulb className="mt-1 size-6 shrink-0 text-lime" />
-                <p className="text-body text-text-muted">{advice.tip}</p>
+                <p className="text-body text-text-muted tight:text-[17px] tight:leading-snug">
+                  {advice.tip}
+                </p>
               </div>
               <div
                 className={cn(
@@ -319,7 +324,7 @@ export function ResultsScreen({
               <Skeleton className="coach-shimmer mt-auto h-[72px] w-full short:h-14 tight:h-12" />
             </div>
           )}
-          <p className="mt-auto text-caption text-text-muted tight:leading-snug">
+          <p className="mt-auto text-caption text-text-muted tight:text-[13px] tight:leading-snug">
             General fitness encouragement, not medical advice.
           </p>
         </GlassPanel>
