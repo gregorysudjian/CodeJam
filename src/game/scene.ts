@@ -157,10 +157,34 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   camera.add(dimSheet);
   const look = new THREE.Vector3(T.CAMERA_LOOK.x, T.CAMERA_LOOK.y, T.CAMERA_LOOK.z);
 
-  scene.add(new THREE.HemisphereLight(0x9fb3cc, 0x05070b, 1.1));
+  const hemi = new THREE.HemisphereLight(0x9fb3cc, 0x05070b, 1.1);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
   sun.position.set(3, 9, 7);
-  scene.add(sun);
+  scene.add(sun, sun.target);
+  // Realistic mode (step d): the sun casts shadows onto an invisible road plane (a shadow
+  // catcher), so a runner whose meshes have castShadow = true casts a real shadow on the clip's
+  // road. On from the start, so no material recompiles when a real level begins; with nothing
+  // casting (every neon level), the shadow pass draws nothing and the catcher is hidden.
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is gone in three r187 (it warns)
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(L.REAL_MODE.shadowMap, L.REAL_MODE.shadowMap);
+  const sc = sun.shadow.camera;
+  sc.left = sc.bottom = -L.REAL_MODE.shadowBox;
+  sc.right = sc.top = L.REAL_MODE.shadowBox;
+  sc.near = 1;
+  sc.far = 60;
+  sun.shadow.bias = -0.0005;
+  const catcherMat = new THREE.ShadowMaterial({ opacity: 0.35 });
+  const catcher = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), catcherMat);
+  catcher.rotation.x = -Math.PI / 2;
+  catcher.position.y = 0.003;
+  catcher.receiveShadow = true;
+  catcher.visible = false;
+  scene.add(catcher);
+  const NEON_LIGHT = { sun: sun.color.getHex(), sunI: sun.intensity, sky: hemi.color.getHex() };
+  const NEON_SKY_I = hemi.intensity;
 
   /* Floor: a scrolling grid. */
   const halfTrack = (3 * T.LANE_WIDTH) / 2;
@@ -512,13 +536,15 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   const extras = (): boolean => quality < 2; // the quality ladder drops these at level 2
   let backdrop: THREE.VideoTexture | null = null;
   let real = false; // realistic mode: a 'real' level's clip is showing (look.ts REAL_MODE)
-  /** True if the clip playing is a level whose backdrop.ts style is 'real' (matched by file). */
-  const isRealClip = (tex: THREE.VideoTexture): boolean => {
+  /** The level (1-based) whose 'real' clip is playing, matched by file; 0 if none. */
+  const realLevelOf = (tex: THREE.VideoTexture): number => {
     const src = (tex.image as HTMLVideoElement).currentSrc || (tex.image as HTMLVideoElement).src;
-    return LEVEL_BACKDROPS.some(
+    const i = LEVEL_BACKDROPS.findIndex(
       (b) => b.style === 'real' && b.video !== undefined && src.endsWith(b.video),
     );
+    return i + 1;
   };
+  const isRealClip = (tex: THREE.VideoTexture): boolean => realLevelOf(tex) > 0;
   // With a clip the runner runs inside it: the clip fills the screen, its street lined up with
   // the track, and the grid floor, horizon glow and side scenery step aside (they stay built:
   // no clip, a failed clip or low graphics show them exactly as before).
@@ -646,7 +672,28 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       }
       archPosts.visible = archPlinths.visible = archBars.visible = !inClip;
       // Realistic mode: on while a 'real' level's clip shows (no clip, no realistic mode).
-      real = backdrop !== null && isRealClip(backdrop);
+      const realLevel = backdrop === null ? 0 : realLevelOf(backdrop);
+      real = realLevel > 0;
+      // Step d: the clip's light on the runner, and its shadow on the road (REAL_MODE.light).
+      catcher.visible = real;
+      if (real) {
+        const lt = L.REAL_MODE.light[realLevel] ?? L.REAL_MODE.light[0]!;
+        sun.color.setHex(lt.sunColor);
+        sun.intensity = lt.sun;
+        sun.target.position.set(playerX, 0, 0);
+        sun.position.set(playerX + lt.dir.x * 20, lt.dir.y * 20, lt.dir.z * 20);
+        hemi.color.setHex(lt.sky);
+        hemi.intensity = lt.skyIntensity;
+        catcherMat.opacity = lt.shadow;
+        catcher.position.x = playerX;
+      } else {
+        sun.color.setHex(NEON_LIGHT.sun);
+        sun.intensity = NEON_LIGHT.sunI;
+        sun.position.set(3, 9, 7);
+        sun.target.position.set(0, 0, 0);
+        hemi.color.setHex(NEON_LIGHT.sky);
+        hemi.intensity = NEON_SKY_I;
+      }
       trackStrip.visible = dashes.visible = !real;
       for (const e of neonEdges) e.visible = !real;
       for (const p of paint) p.visible = real;

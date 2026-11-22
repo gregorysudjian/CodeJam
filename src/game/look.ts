@@ -122,12 +122,73 @@ export const VIDEO_BACKDROP = {
 // white road paint (`paintOpacity`, `paintWidth` in world units). A level change into a real
 // level is a white fade (`fadePeak` over `fadeSec`) instead of the neon portal. (Road speed and
 // the straight intro/outro camera are package C steps b and c: videoBackdrop.ts, intro.ts.)
-export const REAL_MODE = {
+// Step d: per real level, the light the runner gets to match its clip: the sun's direction
+// (`dir`, toward the light; +z is toward the camera, so front light puts the shadow ahead of the
+// runner), colour and strength, the sky light (hemisphere) colour and strength, and how dark
+// its shadow is on the road (`shadow`, the catcher's opacity). Key 0: any other real level.
+// The shadow map is `shadowMap` px over a box `shadowBox` world units around the runner.
+export interface RealLight {
+  dir: { x: number; y: number; z: number };
+  sunColor: number;
+  sun: number;
+  sky: number;
+  skyIntensity: number;
+  shadow: number;
+}
+export const REAL_MODE: {
+  brightness: number;
+  paintOpacity: number;
+  paintWidth: number;
+  fadePeak: number;
+  fadeSec: number;
+  shadowMap: number;
+  shadowBox: number;
+  light: Record<number, RealLight>;
+} = {
   brightness: 0.95,
   paintOpacity: 0.2,
   paintWidth: 0.1,
   fadePeak: 0.85,
   fadeSec: 0.5,
+  shadowMap: 1024,
+  shadowBox: 4,
+  light: {
+    0: {
+      dir: { x: 0.3, y: 1, z: 0.5 },
+      sunColor: 0xffffff,
+      sun: 1.4,
+      sky: 0xc0ccdc,
+      skyIntensity: 1.2,
+      shadow: 0.35,
+    },
+    // Old Montreal, overcast: soft light from above, a faint shadow.
+    2: {
+      dir: { x: 0.2, y: 1, z: 0.5 },
+      sunColor: 0xfff4e6,
+      sun: 1.1,
+      sky: 0xc9d3e0,
+      skyIntensity: 1.4,
+      shadow: 0.25,
+    },
+    // Jacques Cartier Bridge, sunny afternoon: sun high on the left, a crisper shadow.
+    3: {
+      dir: { x: -0.5, y: 1, z: 0.4 },
+      sunColor: 0xfff1d6,
+      sun: 2,
+      sky: 0xbcd4f0,
+      skyIntensity: 1.1,
+      shadow: 0.45,
+    },
+    // Old Port at blue hour: warm street lamps overhead, cool sky, a soft shadow.
+    5: {
+      dir: { x: 0.1, y: 1, z: 0.7 },
+      sunColor: 0xffd29a,
+      sun: 0.9,
+      sky: 0x6f86c9,
+      skyIntensity: 1,
+      shadow: 0.22,
+    },
+  },
 };
 
 /* ── Reduced motion (scene.ts) ── */
