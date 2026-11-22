@@ -394,6 +394,24 @@ export const REAL_PROPS = {
    *  the objects. The move icon above each object carries the full colour. */
   markMute: 0.6,
   paintMute: 0.45,
+  /** A smashed crate on a real level: lower and slower than the neon burst (multipliers on its
+   *  launch velocity and spin), then gravity, a small bounce and friction on the road; the
+   *  pieces lie `lieSec` and fade over `fadeSec`. */
+  debris: {
+    lift: 0.55,
+    sideways: 0.75,
+    forward: 0.6,
+    spin: 0.6,
+    gravity: 9.8,
+    bounce: 0.3,
+    friction: 0.82,
+    lieSec: 1.2,
+    fadeSec: 0.35,
+  },
+  /** A collected orb on a real level keeps its size to the hand, then pops in this last share. */
+  catchPop: 0.3,
+  /** The orb badge: disc opacity, white rim (px of 256), emblem size (share), stamp radius (px). */
+  badge: { disc: 0.78, rim: 10, emblem: 0.78, stroke: 3 },
   /** A hit: the texture and paint tinted red (multiplied), still lit. */
   hitTint: 0xff6a5a,
 } as const;
@@ -404,12 +422,12 @@ export const REAL_PROPS = {
 // toward the vanishing point: objects and the runner sit on it; the clip keeps the street,
 // buildings, sky and far road. Tinted to the clip's road (sampled from the video at each level).
 export const REAL_ROAD = {
-  width: 9.6, // across, centred on the track (3 lanes are 6.6)
+  width: 14, // across, centred on the track (3 lanes are 6.6): its sides stay off-screen near the camera
   near: 9, // world z of the near end: behind the camera (7.4)
   far: -36, // world z of the far end: ~90% of the way up the screen to the horizon
-  fade: 0.5, // the far share of the length that fades to nothing
-  sideFade: 0.18, // each side's share of the width that fades out
-  tile: 3, // world units per texture repeat (along and across)
+  fade: 0.6, // the far share of the length that fades to nothing
+  sideFade: 0.3, // each side's share of the width that fades out
+  tile: { asphalt: 3, cobble: 4.5 }, // world units per texture repeat; cobbles sized to the old-town clip's stones
   /** The video patch sampled for the road colour: share of the frame (bottom centre). */
   sample: { x0: 0.38, x1: 0.62, y0: 0.86, y1: 0.98 },
   resampleSec: [0.4, 1.5] as readonly number[], // after a level starts (the clip has switched)

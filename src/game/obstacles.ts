@@ -299,18 +299,16 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       }),
     );
     jobs.push(
-      loadTex(`${S.dir}tex-${level}-orb.jpg`, (tex) =>
+      loadTex(`${S.dir}tex-${level}-orb.jpg`, (tex) => {
+        // A badge like the move icons, so the thin line-art emblem reads on any clip: a dark
+        // disc with a white rim, the emblem drawn thick and bright on it. No glow (bloom is off).
+        const badge = emblemBadge(tex.image as CanvasImageSource);
+        skinTextures.push(badge);
         emblems.set(
           level,
-          new THREE.SpriteMaterial({
-            map: tex,
-            // Cut out by its own brightness (the black background goes), drawn without glow.
-            alphaMap: tex,
-            transparent: true,
-            depthWrite: false,
-          }),
-        ),
-      ),
+          new THREE.SpriteMaterial({ map: badge, transparent: true, depthWrite: false }),
+        );
+      }),
     );
     return Promise.all(jobs).then(() => {
       for (const u of [...unskinned.values()]) if (u.level === level) u.again();
@@ -813,16 +811,62 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     root.add(sprite);
 
     let smashT = -1;
+    // Real levels: the pieces are real crates breaking apart (tuning.ts REAL_PROPS.debris): they
+    // fly lower, fall under gravity, bounce on the road and lie there as the world moves on,
+    // then fade. Neon: the old burst that shrinks away (look.ts SMASH_SHRINK_SEC).
+    let realCrate = false;
+    const D = T.REAL_PROPS.debris;
+    const sim = new Map<THREE.Group, { v: THREE.Vector3; w: THREE.Vector3; half: number }>();
+    const size = new THREE.Vector3();
     const smash = (): void => {
-      if (smashT < 0) smashT = 0;
+      if (smashT < 0) {
+        smashT = 0;
+        if (realCrate)
+          for (const p of pieces) {
+            p.obj.updateMatrixWorld(true);
+            new THREE.Box3().setFromObject(p.obj).getSize(size);
+            sim.set(p.obj, {
+              v: new THREE.Vector3(p.vel.x * D.sideways, p.vel.y * D.lift, p.vel.z * D.forward),
+              w: p.spin.clone().multiplyScalar(D.spin),
+              half: Math.min(size.y, size.x) / 2,
+            });
+          }
+      }
       sprite.visible = false;
       stackShadow.visible = false;
+    };
+    const tickReal = (dt: number): void => {
+      const fade = Math.min(1, Math.max(0, (smashT - D.lieSec) / D.fadeSec));
+      for (const p of pieces) {
+        const s = sim.get(p.obj);
+        if (!s) continue;
+        const o = p.obj;
+        if (!reduceMotion) {
+          s.v.y -= D.gravity * dt;
+          o.position.addScaledVector(s.v, dt);
+          o.rotation.x += s.w.x * dt;
+          o.rotation.y += s.w.y * dt;
+          o.rotation.z += s.w.z * dt;
+          if (o.position.y < s.half) {
+            // On the road: bounce a little, slide to a stop, stop tumbling.
+            o.position.y = s.half;
+            s.v.y = Math.abs(s.v.y) > 1 ? -s.v.y * D.bounce : 0;
+            s.v.x *= D.friction;
+            s.v.z *= D.friction;
+            s.w.multiplyScalar(D.friction);
+          }
+        }
+        o.scale.setScalar(Math.max(0.01, 1 - fade));
+        o.visible = fade < 1;
+      }
     };
     return {
       root,
       icon: sprite,
       configure(spawn, length, variant, level) {
         smashT = -1;
+        sim.clear();
+        realCrate = level !== undefined; // the level comes only on a real level (makeView)
         sprite.visible = true;
         // A skin goes on the six crates (look 0), the look made of crate faces.
         const v = applySkin(root, 'crate', level) ? 0 : variant;
@@ -842,6 +886,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       tick(dt) {
         if (smashT < 0) return;
         smashT += dt;
+        if (realCrate) return tickReal(dt);
         const t = smashT;
         const fly = reduceMotion ? 0 : t; // reduced motion: no flight, no spin
         for (const p of pieces) {
@@ -899,16 +944,20 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       const shadow = shadows.make(0.6, 0.6, 0, 0.3);
       g.add(float, pillar, plate, shadow, paintLine(L * 0.5, 0));
       root.add(g);
-      return { g, float, looks, spinners, halo, rings, emblem, shadow };
+      return { g, float, looks, spinners, halo, rings, emblem, shadow, pillar };
     });
     let collectT = -1;
     let attract: (() => THREE.Vector3) | null = null;
     const local = new THREE.Vector3();
+    // Real levels: the badge is caught, not dissolved: full size all the way to the hand, then a
+    // quick pop in the last REAL_PROPS.catchPop of the flight; its pole goes with it.
+    let realOrb = false;
     return {
       root,
       configure(spawn, _length, variant, level) {
         collectT = -1;
         attract = null;
+        realOrb = level !== undefined; // the level comes only on a real level (makeView)
         const emblem = level === undefined ? undefined : emblems.get(level);
         orbs.forEach((o, i) => {
           pickLook(o.looks, emblem ? -1 : variant);
@@ -917,13 +966,17 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
           o.g.visible = spawn.lanes.includes((i - 1) as -1 | 0 | 1);
           o.float.scale.setScalar(1);
           o.float.position.set(0, T.ORB_HEIGHT, 0);
+          o.pillar.visible = true;
         });
       },
       engage(attractor) {
         if (collectT >= 0) return;
         collectT = 0;
         attract = attractor ?? null;
-        for (const o of orbs) o.shadow.visible = false;
+        for (const o of orbs) {
+          o.shadow.visible = false;
+          if (realOrb) o.pillar.visible = false;
+        }
       },
       tick(dt, time) {
         if (collectT >= 0) collectT += dt;
@@ -944,7 +997,9 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
           } else {
             o.float.position.y += dt * 2;
           }
-          o.float.scale.setScalar(Math.max(0.001, 1 - k * k));
+          const pop = 1 - T.REAL_PROPS.catchPop;
+          const s = realOrb ? (k < pop ? 1 : 1 - (k - pop) / T.REAL_PROPS.catchPop) : 1 - k * k;
+          o.float.scale.setScalar(Math.max(0.001, s));
         }
       },
     };
@@ -1100,6 +1155,42 @@ function drawGlyph(glyph: Glyph, hex: number): THREE.CanvasTexture {
     g.drawImage(base, Math.cos(a) * grow, Math.sin(a) * grow);
   }
   g.drawImage(base, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * The orb on a real level: the level's emblem (a thin neon line drawing on black) as a badge, the
+ * same family as the move icons. A dark disc with a white rim; the emblem added on top (black adds
+ * nothing), stamped in a small circle so its lines read thick from 2 m (tuning.ts REAL_PROPS).
+ */
+function emblemBadge(img: CanvasImageSource): THREE.CanvasTexture {
+  const B = T.REAL_PROPS.badge;
+  const size = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d')!;
+  const r = size / 2 - 6;
+  g.beginPath();
+  g.arc(size / 2, size / 2, r, 0, Math.PI * 2);
+  g.fillStyle = `rgba(7, 9, 13, ${B.disc})`;
+  g.fill();
+  g.lineWidth = B.rim;
+  g.strokeStyle = 'rgba(244, 247, 251, 0.95)';
+  g.stroke();
+  g.save();
+  g.beginPath();
+  g.arc(size / 2, size / 2, r - B.rim, 0, Math.PI * 2);
+  g.clip();
+  g.globalCompositeOperation = 'lighter';
+  const e = size * B.emblem;
+  const o = (size - e) / 2;
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    g.drawImage(img, o + Math.cos(a) * B.stroke, o + Math.sin(a) * B.stroke, e, e);
+  }
+  g.restore();
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
