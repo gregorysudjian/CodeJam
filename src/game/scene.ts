@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { isReal } from './backdrop';
 import { introCamera, type CameraPose } from './intro';
 import * as L from './look';
 import type { Quality } from './quality';
@@ -16,6 +17,7 @@ import {
   type ZoneMix,
   type ZonePlan,
 } from './world';
+import { backdropRate } from './videoBackdrop';
 
 /** A neon colour pushed above 1.0 so only neon parts pass the bloom threshold. */
 export function neon(hex: number, boost = T.NEON_BOOST): THREE.Color {
@@ -608,10 +610,8 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       contactShadow.visible = inClip;
       contactShadow.position.set(playerX, 0.02, 0);
       if (backdrop) {
-        // The street runs at the track's pace: slower levels play the clip slower (never faster
-        // than 1x, so a 30 s clip lasts its 30 s level without looping).
-        const k = Math.min(1, Math.max(0, (speed - T.SPEED_MIN) / (T.SPEED_MAX - T.SPEED_MIN)));
-        const rate = V.rateMin + (1 - V.rateMin) * k;
+        // The street runs at the track's pace (videoBackdrop.ts backdropRate).
+        const rate = backdropRate(backdrop, speed);
         const v = backdrop.image as HTMLVideoElement;
         if (Math.abs(v.playbackRate - rate) > 0.02) v.playbackRate = rate;
       }
@@ -894,13 +894,16 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       const sy = (Math.random() - 0.5) * shakeAmount;
       // The outro runs the intro's path part way back, toward the celebrating runner's front.
       const fly = intro < 1 ? intro : 1 - (1 - L.OUTRO_TO) * outro;
+      // A real level's clip is flat: a straight dolly instead of the orbit (intro.ts), no turn
+      // onto the runner in the outro, and the clip stays lined up throughout.
+      const flat = quality < 2 && isReal(mixed.a + 1);
       if (fly < 1) {
         // Intro fly-in around the runner, landing exactly on the chase camera.
-        introCamera(fly, cam);
+        introCamera(fly, cam, flat);
         const follow = camX * fly + playerX * (1 - fly);
         camera.position.set(cam.px + follow, cam.py, cam.pz);
         // In the outro the look target moves onto the runner (OUTRO_LOOK), not down the track.
-        const o = intro < 1 ? 0 : outro;
+        const o = intro < 1 || flat ? 0 : outro;
         camera.lookAt(
           cam.lx + follow + (playerX - cam.lx - follow) * o,
           cam.ly + (L.OUTRO_LOOK.y - cam.ly) * o,
@@ -909,8 +912,10 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       } else {
         camera.position.set(T.CAMERA_POS.x + camX + sx, T.CAMERA_POS.y + sy, T.CAMERA_POS.z);
         camera.lookAt(look.x + camX * 0.5, look.y, look.z);
-        // The track's vanishing point on screen, for lining up the clip (chase camera only:
-        // the intro and outro orbit the runner, and the clip holds its last fit meanwhile).
+      }
+      if (fly >= 1 || flat) {
+        // The track's vanishing point on screen, for lining up the clip (chase camera and dolly
+        // only: the orbit turns the camera, and the clip holds its last fit meanwhile).
         camera.updateMatrixWorld();
         vanish.set(camera.position.x, 0, camera.position.z - 1e4).project(camera);
         if (Number.isFinite(vanish.y)) vanishY = (1 - vanish.y) / 2;
