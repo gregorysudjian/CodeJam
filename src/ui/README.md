@@ -11,7 +11,7 @@ them so Lovable can pick them up.
 | --- | --- |
 | `theme.css` | Every design token (`@theme`), font imports, glass, glow, grain, grid and keyframes. Imported by `src/index.css`. |
 | `components/ui/` | shadcn primitives (button, card, badge, input, progress, skeleton, slider, switch, tooltip). |
-| `kit/` | Design system: `Screen` (with a measured, full-bleed `footer` slot), `ScreenFooter` (standard Back · Primary bar), `CoachBanner` (one-line coach's pick), `Backdrop`, `GlassPanel`, `GameButton`, `SectionTitle`, `StatTile`, `AnimatedNumber`, `MoveChip`, `MoveFigure`, `BustOutline`, `ProgressRing`, `SegmentedControl`, `ToggleRow`, `TextField`, `KeyHint`, `EmptyState`, `useHotkey`, and `tokens.ts` (move/workout labels, colours, icons). |
+| `kit/` | Design system: `Screen` (with a measured, full-bleed `footer` slot), `ScreenFooter` (standard Back · Primary bar), `CoachBanner` (one-line coach's pick), `Backdrop`, `GlassPanel`, `GameButton`, `SectionTitle`, `StatTile`, `AnimatedNumber`, `MoveChip`, `MoveFigure` (a pose per move, plus `stand` and `pause`, forearms crossed in an X; mirror view: `reachLeft` raises the screen-left arm; data in `figurePoses.ts`), `BustOutline`, `ProgressRing`, `SegmentedControl`, `ToggleRow`, `TextField`, `KeyHint`, `EmptyState`, `useHotkey`, and `tokens.ts` (move/workout labels, colours, icons). |
 | `screens/` | Pure presentational screens: props in, callbacks out. No fetching, no global state. |
 | `lib/` | `cn()` (tailwind-merge taught our type-scale tokens) and `format.ts`. |
 
