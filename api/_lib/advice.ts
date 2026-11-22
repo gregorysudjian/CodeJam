@@ -9,6 +9,7 @@ export const COACH_TIMEOUT_MS = 7000; // the client gives up at 8 s and uses the
 export const RECAP_MAX = 300;
 export const TIP_MAX = 180;
 export const REASON_MAX = 180;
+export const PLAN_MAX = 200;
 export const HISTORY_LIMIT = 10;
 /** At most one coach call per user per this many seconds (claim_coach_slot, migration 0002). */
 export const COACH_MIN_INTERVAL_SEC = 10;
@@ -87,7 +88,8 @@ Rules:
 - recap: at most two short sentences about the round just played (the one marked "latest"): one thing that went well, then the one thing to work on.
 - tip: one concrete, physical cue for the move they missed most (what to do with their body and when), or for keeping a clean round going if they missed nothing. If nothing was missed, don't mention misses at all.
 - next: pick the workout that balances their recent history, with the tier chosen above. durationSec is always 180. In treadmill mode never pick "legs".
-- reason: one short, motivating sentence on why that next session, in plain words (for example "you've earned the Athlete tier" or "let's give your shoulders a rest").`;
+- reason: one short, motivating sentence on why that next session, in plain words (for example "you've earned the Athlete tier" or "let's give your shoulders a rest").
+- plan: one line starting "Today's plan:", a short session for the rest of today matched to their goal and fitness level: 2 or 3 rounds (each round is 3 minutes; name the workout and tier, the first one being the "next" session), "1 min rest" between rounds, then the estimated calories and active minutes. Estimate calories from the estimatedKcal of their recent rounds (their average per round times the number of rounds, rounded), and minutes as 3 per round; if weeklyGoalMinutes is given, say what share of it today's plan covers. No other numbers. At most 180 characters.`;
 
 /** JSON schema for structured output; the server validates the result again anyway. */
 export const COACH_SCHEMA = {
@@ -106,8 +108,9 @@ export const COACH_SCHEMA = {
       additionalProperties: false,
     },
     reason: { type: 'string' },
+    plan: { type: 'string' },
   },
-  required: ['recap', 'tip', 'next', 'reason'],
+  required: ['recap', 'tip', 'next', 'reason', 'plan'],
   additionalProperties: false,
 } as const;
 
@@ -180,12 +183,16 @@ export function parseAdvice(text: string | undefined, mode: PlayMode): CoachAdvi
   if (!workout) return null;
   if (mode === 'treadmill' && workout === 'legs') workout = 'fullBody';
 
+  // Optional: a missing or empty plan just isn't shown (the rest of the card stands).
+  const plan = clean(a.plan, PLAN_MAX);
+
   // A round is always every level; the difficulty is always one of the three tiers.
   return {
     recap,
     tip,
     next: { workout, mode, durationSec: ROUND_SEC, difficulty: snapTier(next.difficulty) },
     reason,
+    ...(plan ? { plan } : {}),
     source: 'ai',
   };
 }

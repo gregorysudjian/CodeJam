@@ -216,6 +216,7 @@ export interface CoachAdvice {
   tip: string; // one concrete thing to try next time
   next: SessionConfig; // the recommended next session
   reason: string; // one sentence on why that session
+  plan?: string; // optional "Today's plan: ..." line (AI coach only; the rule-based coach leaves it out)
   source: 'ai' | 'rules';
 }
 
