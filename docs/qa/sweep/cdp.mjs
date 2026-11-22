@@ -140,14 +140,52 @@ export async function launch({ port, profile, base }) {
             out.push({ text: n.textContent.trim().slice(0, 30), x, y, w: x2 - x, h: y2 - y, rgb: c.slice(0, 3), alpha, large: size >= 24 || (size >= 18.66 && weight >= 700), size });
           }
         }
+        // Text fields: the typed value, or the placeholder when empty (neither is a text node).
+        for (const el of document.querySelectorAll('input, textarea')) {
+          if (el.closest('[aria-hidden="true"]') || el.disabled || /^(hidden|checkbox|radio|range|color|file)$/.test(el.type)) continue;
+          const text = el.value || el.placeholder;
+          if (!text) continue;
+          const cs = getComputedStyle(el);
+          if (cs.visibility !== 'visible') continue;
+          const paint = el.value ? cs.color : getComputedStyle(el, '::placeholder').color;
+          if (!/^rgba?\\(/.test(paint)) continue;
+          const c = paint.match(/[\\d.]+/g).map(Number);
+          let op = 1;
+          for (let a = el; a; a = a.parentElement) op *= Number(getComputedStyle(a).opacity);
+          const alpha = (c[3] ?? 1) * op;
+          if (alpha < 0.05) continue;
+          const r = el.getBoundingClientRect();
+          const px = (p) => parseFloat(cs[p]) || 0;
+          const x = Math.max(0, r.left + px('borderLeftWidth') + px('paddingLeft')), x2 = Math.min(innerWidth, r.right - px('borderRightWidth') - px('paddingRight'));
+          const y = Math.max(0, r.top + px('borderTopWidth') + px('paddingTop')), y2 = Math.min(innerHeight, r.bottom - px('borderBottomWidth') - px('paddingBottom'));
+          if (x2 - x < 2 || y2 - y < 2) continue;
+          const top = document.elementFromPoint((x + x2) / 2, (y + y2) / 2);
+          if (top !== el && !el.contains(top)) continue;
+          const size = parseFloat(cs.fontSize), weight = Number(cs.fontWeight) || 400;
+          out.push({ text: (el.value ? '' : 'placeholder: ') + text.slice(0, 30), x, y, w: x2 - x, h: y2 - y, rgb: c.slice(0, 3), alpha, large: size >= 24 || (size >= 18.66 && weight >= 700), size });
+        }
         const s = document.createElement('style'); s.id = '__qa_hide_text';
-        s.textContent = '*, *::before, *::after, ::placeholder { color: transparent !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important; caret-color: transparent !important; } svg text, svg tspan { fill: transparent !important; stroke: transparent !important; }';
+        // transition: none, or transition-colors elements fade out instead of hiding before the shot.
+        s.textContent = '*, *::before, *::after, ::placeholder { color: transparent !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important; caret-color: transparent !important; transition: none !important; } svg text, svg tspan { fill: transparent !important; stroke: transparent !important; }';
         document.head.appendChild(s);
         return out;
       })()`);
-      await sleep(120);
-      const { data } = await send('Page.captureScreenshot', { format: 'png' });
-      await b.eval(`document.getElementById('__qa_hide_text')?.remove()`);
+      let data;
+      try {
+        await sleep(120);
+        ({ data } = await send('Page.captureScreenshot', { format: 'png' }));
+      } finally {
+        // Always show the text again, or every later shot in this browser would be blank. Colours come
+        // back with transitions still off (flushed), so nothing fades back in during the next shot.
+        await b.eval(`(() => {
+          const s = document.getElementById('__qa_hide_text');
+          if (!s) return;
+          s.textContent = '*, *::before, *::after { transition: none !important; }';
+          void document.body.offsetHeight;
+          for (const el of document.querySelectorAll('*')) getComputedStyle(el).color;
+          s.remove();
+        })()`);
+      }
       return b.eval(`(async (b64, runs) => {
         const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
         const k = img.width / innerWidth;

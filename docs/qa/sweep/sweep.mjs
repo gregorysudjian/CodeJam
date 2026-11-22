@@ -5,7 +5,8 @@
 //   node docs/qa/sweep/sweep.mjs [baseUrl] [outDir]
 //   default baseUrl http://localhost:5173/, default outDir <tmp>/neon-sweep-<time>
 //
-// Exit code 0 = every check passed; 1 = see summary.json. Each size takes about 4 minutes (the demo round is 180 s).
+// Exit code 0 = every check passed; 1 = see summary.json. Each size takes about 10 minutes (the
+// 180 s demo round, then four idle rounds for the nav bar). See README.md for the checks.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -137,7 +138,8 @@ async function sweep([w, h, dsf], port) {
     check('END ROUND saved nothing (1 round)', /\b1 round\b/.test(dash), dash.match(/\d+ rounds? ·/)?.[0]);
 
     await b.key('KeyL');
-    check('leaderboard', await b.waitFor(/LEADERBOARD/i, 5000));
+    // Board-only text: "LEADERBOARD" alone is also on the dashboard and in the nav bar.
+    check('L opens the leaderboard', await b.waitFor(/OPEN SPOT|BE THE FIRST/i, 5000));
     await step('12-leaderboard', { settle: 2000, aa: true });
     const bt = await b.text();
     check('board is workout · mode, no round length', /FULL BODY · FLOOR/.test(bt) && !/\b(45|90|180) S\b/.test(bt));
