@@ -191,7 +191,7 @@ function cobbleTexture(): THREE.CanvasTexture {
   const g = c.getContext('2d')!;
   // Like the clip's street: worn stones of uneven size and shade, lit a little from above, in dark
   // soft joints, slightly blurred (the clip is video, not a sharp texture).
-  g.fillStyle = 'rgb(96,96,96)'; // the joints
+  g.fillStyle = 'rgb(108,108,108)'; // the joints
   g.fillRect(0, 0, size, size);
   const rows = 10; // even: the staggered rows meet seamlessly at the tile edge
   const cols = 6;
@@ -201,8 +201,9 @@ function cobbleTexture(): THREE.CanvasTexture {
     for (let k = -1; k <= cols; k++) {
       const i = r * 31 + ((k + cols) % cols) + 7; // k = -1 and cols - 1 are the same stone
       const x = k * w + (r % 2 ? w / 2 : 0) + (rnd(i + 3) - 0.5) * 8;
-      const sw = w * (0.8 + rnd(i + 4) * 0.12);
-      const sh = h * (0.72 + rnd(i + 5) * 0.14);
+      // Hand-laid, not a grid: uneven sizes and a slight tilt per stone.
+      const sw = w * (0.72 + rnd(i + 4) * 0.22);
+      const sh = h * (0.66 + rnd(i + 5) * 0.22);
       const x0 = x + (w - sw) / 2;
       const y0 = r * h + (h - sh) / 2;
       const shade = 196 + Math.floor((rnd(i) - 0.5) * 70);
@@ -217,11 +218,23 @@ function cobbleTexture(): THREE.CanvasTexture {
       grad.addColorStop(0, `rgb(${shade + 22},${shade + 22},${shade + 22})`);
       grad.addColorStop(1, `rgb(${shade - 38},${shade - 38},${shade - 38})`);
       g.fillStyle = grad;
+      g.save();
+      g.translate(x0 + sw / 2, y0 + sh / 2);
+      g.rotate((rnd(i + 6) - 0.5) * 0.14);
       g.beginPath();
-      g.roundRect(x0, y0, sw, sh, Math.min(sw, sh) * 0.3);
+      g.roundRect(-sw / 2, -sh / 2, sw, sh, Math.min(sw, sh) * (0.25 + rnd(i + 8) * 0.2));
       g.fill();
+      g.restore();
     }
-  blurTile(c, 1.6);
+  // Fine grain over stones and joints alike, so no stone is a flat colour.
+  const img = g.getImageData(0, 0, size, size);
+  for (let p = 0; p < size * size; p++) {
+    const n = (rnd(p + 101) - 0.5) * 26;
+    for (let ch = 0; ch < 3; ch++)
+      img.data[p * 4 + ch] = Math.max(0, Math.min(255, img.data[p * 4 + ch]! + n));
+  }
+  g.putImageData(img, 0, 0);
+  blurTile(c, 1.4);
   // Stones from k = -1 to cols overlap both edges, so the pattern tiles across.
   return canvasTexture(c);
 }
