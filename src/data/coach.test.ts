@@ -53,14 +53,14 @@ describe('ruleBasedAdvice', () => {
     expect(a.next).toEqual({
       workout: 'fullBody',
       mode: 'floor',
-      durationSec: 90,
+      durationSec: 180,
       difficulty: 0.5,
     });
   });
 
-  it('raises difficulty by 0.1 above 85% accuracy and lowers it below 60%', () => {
-    expect(ruleBasedAdvice(profile, [session({ accuracy: 0.9 })], NOW).next.difficulty).toBe(0.6);
-    expect(ruleBasedAdvice(profile, [session({ accuracy: 0.5 })], NOW).next.difficulty).toBe(0.4);
+  it('moves one tier up above 85% accuracy and one tier down below 60%', () => {
+    expect(ruleBasedAdvice(profile, [session({ accuracy: 0.9 })], NOW).next.difficulty).toBe(1);
+    expect(ruleBasedAdvice(profile, [session({ accuracy: 0.5 })], NOW).next.difficulty).toBe(0);
     expect(ruleBasedAdvice(profile, [session({ accuracy: 0.7 })], NOW).next.difficulty).toBe(0.5);
   });
 
@@ -108,12 +108,10 @@ describe('ruleBasedAdvice', () => {
     expect(recap(0.19)).not.toMatch(/Nice work/);
   });
 
-  it('keeps a valid duration and replaces an unknown one with 90 s', () => {
-    expect(
-      ruleBasedAdvice(profile, [session({ config: { durationSec: 180 } })], NOW).next.durationSec,
-    ).toBe(180);
-    expect(
-      ruleBasedAdvice(profile, [session({ config: { durationSec: 60 } })], NOW).next.durationSec,
-    ).toBe(90);
+  it('always recommends a full round: every level, 180 s', () => {
+    for (const durationSec of [45, 60, 90, 180])
+      expect(
+        ruleBasedAdvice(profile, [session({ config: { durationSec } })], NOW).next.durationSec,
+      ).toBe(180);
   });
 });

@@ -1,14 +1,35 @@
 // Rule-based coach: the permanent fallback for /api/coach (docs/CONTRACTS.md, "Server endpoint").
-import type { CoachAdvice, MoveType, Profile, SavedSession, WorkoutId } from '@/contracts';
+import type {
+  CoachAdvice,
+  FitnessLevel,
+  MoveType,
+  Profile,
+  SavedSession,
+  WorkoutId,
+} from '@/contracts';
 import {
   ACCURACY_LOWER_BELOW,
   ACCURACY_RAISE_ABOVE,
-  COACH_DEFAULT_DURATION,
-  COACH_DURATIONS,
+  COACH_ROUND_SEC,
+  COACH_STRUGGLE_BELOW_LEVEL,
+  COACH_TIERS,
   COACH_WEEK_MS,
   DIFFICULTY_DEFAULT,
-  DIFFICULTY_STEP,
+  LEVEL_SEC,
 } from './tuning';
+
+const TIER_NAMES = ['beginner', 'regular', 'athlete'] as const;
+const TIER_OF_LEVEL: Record<FitnessLevel, number> = { beginner: 0, regular: 1, athlete: 2 };
+
+/** Index in COACH_TIERS of the tier nearest to `difficulty` (halves round up; junk → default). */
+export function tierIndex(difficulty: number | undefined): number {
+  const d =
+    typeof difficulty === 'number' && Number.isFinite(difficulty) ? difficulty : DIFFICULTY_DEFAULT;
+  let best = 0;
+  for (let i = 1; i < COACH_TIERS.length; i++)
+    if (Math.abs(COACH_TIERS[i] - d) <= Math.abs(COACH_TIERS[best] - d)) best = i;
+  return best;
+}
 
 const WORKOUT_NAMES: Record<WorkoutId, string> = {
   legs: 'Legs',
@@ -34,9 +55,6 @@ function available(mode: SavedSession['config']['mode']): WorkoutId[] {
   return mode === 'treadmill' ? ORDER.filter((w) => w !== 'legs') : ORDER;
 }
 
-const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
-const round1 = (n: number) => Math.round(n * 10) / 10;
-
 /**
  * Pure. `sessions` is newest first, as listSessions returns them; the first one is the round
  * just played. `now` is injectable for tests.
@@ -56,17 +74,24 @@ export function ruleBasedAdvice(
   const counts = choices.map((w) => thisWeek.filter((s) => s.config.workout === w).length);
   const workout = choices[counts.indexOf(Math.min(...counts))];
 
-  // Difficulty follows the latest accuracy.
-  const base = latest?.config.difficulty ?? DIFFICULTY_DEFAULT;
-  let difficulty = base;
-  if (latest && latest.accuracy > ACCURACY_RAISE_ABOVE) difficulty = base + DIFFICULTY_STEP;
-  else if (latest && latest.accuracy < ACCURACY_LOWER_BELOW) difficulty = base - DIFFICULTY_STEP;
-  difficulty = round1(clamp01(difficulty));
-
-  const duration = latest?.config.durationSec;
-  const durationSec = (COACH_DURATIONS as readonly number[]).includes(duration ?? -1)
-    ? duration!
-    : COACH_DEFAULT_DURATION;
+  // The tier: the latest round's, or for a first round the one matching the player's fitness level.
+  // One tier up after a strong round; one down after a weak one or after running out of lives early.
+  const base = latest
+    ? tierIndex(latest.config.difficulty)
+    : profile
+      ? TIER_OF_LEVEL[profile.level]
+      : tierIndex(DIFFICULTY_DEFAULT);
+  let tier = base;
+  if (latest) {
+    const struggled =
+      latest.outOfLives === true && (latest.levelReached ?? 1) < COACH_STRUGGLE_BELOW_LEVEL;
+    if (latest.accuracy < ACCURACY_LOWER_BELOW || struggled) tier = base - 1;
+    else if (latest.accuracy > ACCURACY_RAISE_ABOVE && latest.outOfLives !== true) tier = base + 1;
+  }
+  tier = Math.min(COACH_TIERS.length - 1, Math.max(0, tier));
+  const difficulty = COACH_TIERS[tier];
+  // A round is always every level (CONTRACTS.md).
+  const durationSec = COACH_ROUND_SEC;
 
   // Tip on the move missed most in the latest round.
   let worst: MoveType | null = null;
@@ -81,18 +106,29 @@ export function ruleBasedAdvice(
       recap: `Welcome, ${name}! Play your first round and your coach will build on it.`,
       tip: 'Stand on your mark, face the screen, and start each move as soon as you see its cue.',
       next: { workout, mode, durationSec, difficulty },
-      reason: 'A balanced first round shows which moves to work on.',
+      reason: `A first round on the ${TIER_NAMES[tier]} tier shows which moves to work on.`,
       source: 'rules',
     };
   }
 
   const pct = Math.round(latest.accuracy * 100);
   const trend =
-    difficulty > base
-      ? 'turning it up a notch'
-      : difficulty < base
-        ? 'easing off a little'
-        : 'keeping the same level';
+    tier > base
+      ? `moving you up to ${TIER_NAMES[tier]}`
+      : tier < base
+        ? `easing back to ${TIER_NAMES[tier]}`
+        : `keeping you on ${TIER_NAMES[tier]}`;
+  // Levels, when the round reports them (a round saved before levels existed does not).
+  const levels = Math.max(1, Math.round(latest.config.durationSec / LEVEL_SEC));
+  const reached = latest.levelReached;
+  const levelPart =
+    reached === undefined
+      ? null
+      : latest.outOfLives
+        ? `you reached level ${reached} before running out of lives`
+        : reached >= levels
+          ? `you cleared all ${levels} levels`
+          : `you reached level ${reached}`;
   // Praise only what earned it: a judge who stood still all round is not told "Nice work".
   const [opener, closer] =
     latest.accuracy >= ACCURACY_RAISE_ABOVE
@@ -101,8 +137,12 @@ export function ruleBasedAdvice(
         ? ['Good round', 'Every round makes the next one easier.']
         : ['Round done', 'Start each move as soon as its cue appears, and the points follow.'];
   return {
-    recap: `${opener}, ${name}: ${latest.score} points at ${pct}% accuracy, with a best streak of ${latest.bestStreak}. ${closer}`,
-    tip: worst ? TIPS[worst] : 'Clean round! Try a longer session to build endurance.',
+    recap: levelPart
+      ? `${opener}, ${name}: ${levelPart}, with ${latest.score} points at ${pct}% accuracy. ${closer}`
+      : `${opener}, ${name}: ${latest.score} points at ${pct}% accuracy, with a best streak of ${latest.bestStreak}. ${closer}`,
+    tip: worst
+      ? TIPS[worst]
+      : 'Clean round! Each level is faster than the last: start every move on its cue.',
     next: { workout, mode, durationSec, difficulty },
     reason: `You have played ${WORKOUT_NAMES[workout]} the least this week, so we are ${trend}.`,
     source: 'rules',
