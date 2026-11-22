@@ -311,6 +311,18 @@ or the named file.
       never "someone else". Close behind (1 m, at the side): the model dropped the player for 1.7 s
       (tracking lost, nobody else followed). A same-size stranger alone on the mark while the
       player is fully out of view is still taken (accepted limit).
+    - **Third camera session (live, on the rivals code):** shoulder to shoulder again, following
+      took the helper during the alternation and the real player became the rival: alone on the
+      mark after the helper left, they stayed "someone else" for 6 s. Fixes: a body seen while the
+      player was missing is not followed until settled (`maybeRivals`); a rival who is the only
+      person in the frame for `RIVAL_ALONE_MS` = 1 s is forgotten (replay: 6 s → 1.5 s, then the
+      player is back); a returning body may match the calibrated size too (back behind the mark
+      after a step closer read ×0.55 of the grown baselines, ×0.83 of the calibration).
+      **Limits:** side by side at 1.5 m, the lite model often reports only one of the two for
+      seconds; then nobody can tell who it is: session 2 paused throughout, session 3 paused about
+      half the time and then followed the helper until they left. Walking from behind the mark
+      onto it (×1.4 bigger) reads as 1–3 jumps in `detect.ts` (the drift re-baseline needs
+      stillness); not changed (detection logic).
     - The play area uses the calibrated W and centre, so a player who steps closer does not widen it.
     Evidence: `other.test.ts` (beside at 0.65–1.2×, far behind, edge, duplicate, a passer-by crossing,
     a stranger on the mark while away, coming back closer/further, every clip at 30/15/10 FPS never

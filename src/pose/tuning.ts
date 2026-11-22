@@ -85,6 +85,11 @@ export const OTHER_OFF_MS = 500;
 export const RIVAL_WINDOW_MS = 100;
 /** ... and is forgotten after this long out of view. It is never followed or taken as the player. */
 export const RIVAL_MEMORY_MS = 500;
+/**
+ * ... or after this long as the only person in the frame: a wrong call (the real player taken for
+ * the rival) never leaves the player alone on the mark under "someone else" (camera session 3).
+ */
+export const RIVAL_ALONE_MS = 1000;
 
 /** Skeleton drawing. Landmarks below this visibility are drawn dimmed. */
 export const DRAW_MIN_VISIBILITY = 0.5;

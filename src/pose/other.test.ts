@@ -186,7 +186,7 @@ describe('someone walks in front of the player, then stands on the mark', () => 
 test('side by side, reported one per frame: the helper is never followed and pauses the round', () => {
   const { s, t: t0 } = calibrated();
   const player = body(0);
-  const helper = body(-1.2, 0.95);
+  const helper = body(-1.4, 0.95); // beside, not on the mark (session 2: 1.25 W)
   const log: Log[] = [];
   let t = t0;
   const step = (bodies: Point[][]) => {
@@ -204,7 +204,9 @@ test('side by side, reported one per frame: the helper is never followed and pau
   for (let i = 0; i < 12; i++) step(i % 3 === 1 ? [helper] : [player]); // alternating
   for (let i = 0; i < 60; i++) step([helper]); // then only the helper, for 2 s
   expect(firstOn(log, 'other')).toBeLessThanOrEqual(12 * FRAME_MS + OTHER_ON_MS + 2 * FRAME_MS);
-  expect(log.at(-1)).toMatchObject({ other: true, tracking: false });
+  // Paused all along (never followed). After RIVAL_ALONE_MS as the only person the helper is no
+  // longer named: if they were the player after all, they would get back in.
+  expect(log.slice(-50).every((l) => !l.tracking)).toBe(true);
   // The helper leaves, the player is reported again where they were: play resumes.
   const back = hold(s, t, 1500, [player]);
   expect(back.log.at(-1)).toMatchObject({ other: false, tracking: true, isPlayer: true });
