@@ -204,6 +204,28 @@ expect(
   await as('authenticated', A, 'select public.sessions_clamp_created_at()'),
   'denied',
 );
+if (last >= 6) {
+  // 0006: age and height, editable by their owner only, within range, never on the board.
+  const upd = (uid, set, id = uid) =>
+    as('authenticated', uid, `update public.profiles set ${set} where id=$1`, [id]);
+  const own = await upd(A, 'age=34, height_cm=171.5');
+  expect('update own age and height', own, 'ok');
+  expect('clear own age and height', await upd(A, 'age=null, height_cm=null'), 'ok');
+  expect('age 9 refused', await upd(A, 'age=9'), 'denied');
+  expect('height 300 refused', await upd(A, 'height_cm=300'), 'denied');
+  const cross = await upd(B, 'age=50', A);
+  const untouched = cross.ok && cross.affected === 0;
+  results.push(untouched);
+  console.log(`${untouched ? 'PASS' : 'FAIL'} B cannot set A's age (rows ${cross.affected})`);
+  const boardCols = (
+    await db.query(
+      `select column_name from information_schema.columns where table_name='leaderboard'`,
+    )
+  ).rows.map((r) => r.column_name);
+  const hidden = !boardCols.some((c) => c === 'age' || c === 'height_cm');
+  results.push(hidden);
+  console.log(`${hidden ? 'PASS' : 'FAIL'} leaderboard columns ${boardCols.join(', ')}`);
+}
 const viewOpts = await db.query(`select reloptions from pg_class where relname='leaderboard'`);
 const plain = !JSON.stringify(viewOpts.rows[0].reloptions ?? '').includes('security_invoker');
 results.push(plain);
