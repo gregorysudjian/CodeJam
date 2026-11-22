@@ -369,3 +369,23 @@ export const REAL_PROPS = {
   /** A hit: the texture and paint tinted red (multiplied), still lit. */
   hitTint: 0xff6a5a,
 } as const;
+
+/* ── Realistic road strip (realRoad.ts), on 'real' levels only ── */
+// The clips' road moves 3-7x slower than the game, so objects slid over it. A road surface under
+// the track scrolls at exactly the game's speed (the floor grid's units) and fades into the clip
+// toward the vanishing point: objects and the runner sit on it; the clip keeps the street,
+// buildings, sky and far road. Tinted to the clip's road (sampled from the video at each level).
+export const REAL_ROAD = {
+  width: 9.6, // across, centred on the track (3 lanes are 6.6)
+  near: 9, // world z of the near end: behind the camera (7.4)
+  far: -36, // world z of the far end: ~90% of the way up the screen to the horizon
+  fade: 0.5, // the far share of the length that fades to nothing
+  sideFade: 0.18, // each side's share of the width that fades out
+  tile: 3, // world units per texture repeat (along and across)
+  /** Which pattern per level; anything else is asphalt. */
+  cobble: [2] as readonly number[],
+  /** The video patch sampled for the road colour: share of the frame (bottom centre). */
+  sample: { x0: 0.38, x1: 0.62, y0: 0.86, y1: 0.98 },
+  resampleSec: [0.4, 1.5] as readonly number[], // after a level starts (the clip has switched)
+  y: 0.002, // under the shadow catcher (0.003), the lane paint (0.006) and the contact shadows
+} as const;
