@@ -290,7 +290,7 @@ Newest first.
   | K at 15 s (to a camera that sees nobody), K again 4 s later | The round paused for calibration, came back on the keyboard and finished 100 %, saved. Side effect in `src/app`: cancelling the calibration shows "Recalibration failed. Press K for the keyboard." for a few seconds although the player is already on the keyboard. |
   | END ROUND from the pause screen at 0:01 | Back to the select screen, nothing saved |
 
-- **Cold start (production build, `vite preview`, cache cleared, new player each time):** landing 318 KB (228 KB JS), ready in 0.11 s locally and 0.36 s at 10 Mbps. Nothing more loads after the select screen (520 KB in all): the game chunk is fetched there. "START THE ROUND" to the first game frame: 0.39 s, with or without the 10 Mbps limit. A new player's first START shows the 15 s "Try each move" first (`src/app`, Esc skips it; `docs/OPERATOR.md` says so). Camera play adds the pose WASM and model (about 9 MB, measured in `docs/QA.md`); not measured here.
+- **Cold start (production build, `vite preview`, cache cleared, new player each time):** landing 318 KB (228 KB JS), ready in 0.11 s locally and 0.36 s at 10 Mbps. Nothing more loads after the select screen (520 KB in all): the game chunk is fetched there. "START THE ROUND" to the first game frame: 0.39 s, with or without the 10 Mbps limit. A new player's first START shows the 15 s "Try each move" first (`src/app`, Esc skips it). Camera play adds the pose WASM and model (about 9 MB); not measured here.
 
 ### Game feel pass (`p4-game-feel`, Sat afternoon)
 Judging, events and `src/contracts` are unchanged: a scripted perfect run of the demo level still gives 16 cleared, 7 collected, 0 hits, with the camera leads or without.

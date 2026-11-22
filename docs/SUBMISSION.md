@@ -12,7 +12,7 @@ The form checklist and the screenshots. The text for "About the project" is in [
 | Built with | the comma list under "Built with" | ready |
 | Try it out (links) | `https://codejam-jet.vercel.app` and the GitHub repo | **Greg:** the repo is private until you make it public; do that before judging, or leave the GitHub link out |
 | Image gallery | the JPGs in `docs/submission/` (table under "Screenshots"); 01, 05, 07 and 10 if only a few | ready; they are 16:9, so check the crop in Devpost's thumbnail preview |
-| Video demo | a YouTube or Vimeo link | **Greg:** record and upload (unlisted is fine), then paste the link. [VIDEO.md](VIDEO.md) has a shot list, but it was written for the earlier 45-second build |
+| Video demo | a YouTube or Vimeo link | **Greg:** record and upload (unlisted is fine), then paste the link. Use the script in [DEMO.md](DEMO.md) |
 | Team members | Abdo, Patrick, Greg | **Greg:** invite both from the project page; each accepts from their own Devpost account |
 | Hackathon questions, prize tracks | whatever the CodeJam 16 form asks | **Greg** |
 | Submit | before the Devpost deadline (check it on the hackathon page; the code freeze is Sunday 12:00) | **Greg** |

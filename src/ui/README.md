@@ -39,7 +39,7 @@ only `src/app/` wires screens to modules.
   still work without a visible cap.
 - Game HUD: a race progress bar (runner marker → finish flag) is derived from
   `elapsedSec / durationSec`, so `PlayScreen` must pass the duration that is actually being played
-  (`level.config.durationSec`, see docs/archive/AUDIT.md #5). Reach cues read "REACH" for both arms.
+  (`level.config.durationSec`). Reach cues read "REACH" for both arms.
   The live rep ticker was removed (reps are on Results).
 - Results headline: from `summary.levelReached` / `summary.outOfLives` ("OUT OF LIVES · LEVEL 3",
   "ALL 6 LEVELS CLEARED"; neither = "ROUND COMPLETE"), so there is nothing to wire once the tracker

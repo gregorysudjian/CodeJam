@@ -2,8 +2,7 @@
 
 ## Status
 
-The current state, risks and next tasks live in **`HANDOFF.md`** (start there). Why each threshold
-is what it is: `DECISIONS.md`. Requests for teammates: `NEEDS.md`. Demo day: `STATION.md`.
+Why each threshold is what it is: `DECISIONS.md`. Demo day: `STATION.md`.
 
 ## How to use it
 
