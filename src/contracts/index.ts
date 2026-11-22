@@ -13,8 +13,8 @@ export type ObstacleKind = 'block' | 'hurdle' | 'beam' | 'crate' | 'orb';
 export interface SessionConfig {
   workout: WorkoutId;
   mode: PlayMode;
-  durationSec: number; // 45 demo, 90 standard, 180 long
-  difficulty?: number; // 0 to 1, default 0.5; the coach sets it from history
+  durationSec: number; // every level, 30 s each (6 levels = 180); the round ends early with no lives left
+  difficulty?: number; // tier, sets how many obstacles: 0 beginner, 0.5 regular, 1 athlete (default 0.5)
   lowImpact?: boolean; // true = no hurdles
   seed?: number; // same seed, same level; integer 0 to 2^31 - 1 (stored as Postgres int)
 }
@@ -23,6 +23,8 @@ export interface SessionConfig {
 
 export interface InputState {
   tracking: boolean; // false = player not visible, game should pause
+  otherPerson?: boolean; // true while someone other than the calibrated player is in the play area
+  //                        (tracking is false then too); pose only, keyboard never sets it
   lane: Lane;
   ducking: boolean; // true while the squat is held
   airborne: boolean; // true from take-off for at least 450 ms
@@ -79,9 +81,20 @@ export interface Wave {
   spawns: Spawn[];
 }
 
+// A round is every level in a row, 30 s each ("LEVEL 1", "LEVEL 2", ...). The tier (difficulty) sets
+// how many obstacles; the level sets the speed: every level is faster than the one before, and
+// level 1 of a higher tier is a little faster than level 1 of a lower one. A portal separates two
+// levels. The player has 3 lives: each hit costs one, and the round ends when none are left.
+export interface Stage {
+  index: number; // 1, 2, 3 ...: shown as "LEVEL 1"
+  startSec: number; // round time the level starts (0 for level 1)
+  endSec: number; // round time it ends; the last one ends at durationSec
+}
+
 export interface Level {
   config: SessionConfig;
   waves: Wave[]; // sorted by t
+  stages?: Stage[]; // sorted, back to back, cover the round; generateLevel always fills it
 }
 
 // src/workout/index.ts   export function generateLevel(config: SessionConfig): Level
@@ -106,9 +119,12 @@ export type GameEvent =
   | { type: 'cleared'; spawn: Spawn; t: number }
   | { type: 'hit'; spawn: Spawn; t: number }
   | { type: 'collected'; spawn: Spawn; t: number } // orbs only
-  | { type: 'paused'; reason: 'trackingLost' | 'user' }
-  | { type: 'resumed' }
-  | { type: 'finished' };
+  | { type: 'paused'; reason: 'trackingLost' | 'user' | 'otherPerson' }
+  | { type: 'resuming'; inSec: number } // 3-2-1 before every resume; game time stays frozen
+  | { type: 'resumed' } // after the countdown
+  | { type: 'stage'; stage: Stage } // entering a level: at start for level 1, then at each portal
+  | { type: 'lifeLost'; livesLeft: number } // after the 'hit' that cost it
+  | { type: 'finished'; reason?: 'complete' | 'outOfLives' }; // missing = 'complete'
 
 export interface Game {
   start(): void;
@@ -140,6 +156,8 @@ export interface SessionSummary extends LiveStats {
   accuracy: number; // cleared / (cleared + hit)
   missed: Record<MoveType, number>; // hits, counted by the move that was required
   activeSec: number;
+  levelReached?: number; // highest Stage.index entered (1 if no stage event came)
+  outOfLives?: boolean; // true if the round ended on the last life
 }
 
 export interface SessionTracker {

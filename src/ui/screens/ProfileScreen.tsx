@@ -22,6 +22,7 @@ import {
   useHotkey,
 } from '@/ui/kit';
 import { cn } from '@/ui/lib/utils';
+import { profileName, randomGuestName } from '@/ui/screens/profileRules';
 
 export type ProfileInput = Omit<Profile, 'id'>;
 
@@ -31,8 +32,10 @@ export interface ProfileScreenProps {
   onBack(): void;
 }
 
+/** Skip's values. Its displayName is only a type filler: Skip and an empty field save the
+ *  screen's fallback name instead (profileRules.ts). */
 export const PROFILE_DEFAULTS: ProfileInput = {
-  displayName: 'Guest-1234',
+  displayName: 'Guest',
   goal: 'getMoving',
   level: 'beginner',
   weeklyGoalMin: 60,
@@ -62,8 +65,6 @@ const WEEKLY = [
   { value: '150', label: '150 min' },
 ] as const;
 type WeeklyValue = (typeof WEEKLY)[number]['value'];
-
-const randomGuest = () => `Guest-${String(Math.floor(1000 + Math.random() * 9000))}`;
 
 export function validateWeight(raw: string): string | null {
   if (raw.trim() === '') return null;
@@ -151,11 +152,15 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
   );
   const [more, setMore] = React.useState(false);
   const weightError = validateWeight(weight);
+  // An empty name or Skip saves this: the player's current name, else a guest name drawn once
+  // for this visit (it is also the field's placeholder, so what you see is what you get).
+  const [fallbackName] = React.useState(() => initial?.displayName?.trim() || randomGuestName());
+  const skip = () => onSubmit({ ...PROFILE_DEFAULTS, displayName: fallbackName });
 
   const submit = () => {
     if (weightError) return;
     const out: ProfileInput = {
-      displayName: name.trim().slice(0, 20) || PROFILE_DEFAULTS.displayName,
+      displayName: profileName(name, fallbackName),
       goal,
       level,
       weeklyGoalMin: Number(weekly),
@@ -166,7 +171,7 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
 
   useHotkey('Enter', submit, !weightError);
   useHotkey('Escape', onBack);
-  useHotkey('s', () => onSubmit({ ...PROFILE_DEFAULTS }));
+  useHotkey('s', skip);
 
   return (
     <Screen
@@ -205,12 +210,7 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
         size="lg"
         title="Who's playing?"
         right={
-          <GameButton
-            variant="ghost"
-            size="md"
-            className="h-9 px-2 text-[20px]"
-            onClick={() => onSubmit({ ...PROFILE_DEFAULTS })}
-          >
+          <GameButton variant="ghost" size="md" className="h-9 px-2 text-[20px]" onClick={skip}>
             Skip
           </GameButton>
         }
@@ -228,7 +228,7 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
         <div className="flex flex-col gap-6">
           <TextField
             label="Name"
-            placeholder="Guest-1234"
+            placeholder={fallbackName}
             maxLength={20}
             autoComplete="nickname"
             value={name}
@@ -238,7 +238,7 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
               <button
                 type="button"
                 aria-label="Random guest name"
-                onClick={() => setName(randomGuest())}
+                onClick={() => setName(randomGuestName())}
                 className="focus-ring grid size-12 cursor-pointer place-items-center rounded-xl text-text-muted transition-colors hover:bg-white/[0.08] hover:text-lime"
               >
                 <Dices className="size-6" />

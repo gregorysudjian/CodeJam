@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { Lock, Trophy, ArrowRight, Play, UserPlus } from 'lucide-react';
+import { Lock, Loader2, Trophy, ArrowRight, Play, UserPlus } from 'lucide-react';
 import type { LeaderboardEntry } from '@/contracts';
 import {
   EASE_ARENA,
@@ -23,7 +23,14 @@ export interface LandingScreenProps {
   topScores?: LeaderboardEntry[];
   qrSlot?: React.ReactNode;
   publicUrl?: string;
+  /** True while the guest sign-in runs: the start buttons show a spinner and ignore clicks/Enter. */
+  busy?: boolean;
 }
+
+/** Busy start button: still bright (it is working, not off), with its leading icon spinning
+ *  (the global reduced-motion rule stops the spin). */
+const SPIN =
+  'cursor-wait disabled:opacity-80 disabled:saturate-100 [&>svg:first-of-type]:animate-spin';
 
 /** First screen: poster-style hero, guest/continue CTA, move demo, top scores and QR. */
 export function LandingScreen({
@@ -35,10 +42,12 @@ export function LandingScreen({
   topScores,
   qrSlot,
   publicUrl,
+  busy = false,
 }: LandingScreenProps) {
   const reduce = useReducedMotion();
   const isReturning = Boolean(returning && onContinue);
-  useHotkey('Enter', () => (isReturning && onContinue ? onContinue() : onPlayAsGuest()));
+  useHotkey('Enter', () => (isReturning && onContinue ? onContinue() : onPlayAsGuest()), !busy);
+  const busyProps = { disabled: busy, 'aria-busy': busy };
   const scores = (topScores ?? []).slice(0, 3);
 
   return (
@@ -87,14 +96,15 @@ export function LandingScreen({
                 <div className="flex flex-wrap items-center gap-4">
                   <GameButton
                     size="xl"
-                    keyHint="ENTER"
-                    trailingIcon={ArrowRight}
-                    pulse
+                    keyHint={busy ? undefined : 'ENTER'}
+                    {...(busy ? { leadingIcon: Loader2 } : { trailingIcon: ArrowRight })}
+                    pulse={!busy}
                     onClick={onContinue}
-                    className="max-w-full"
+                    className={cn('max-w-full', busy && SPIN)}
+                    {...busyProps}
                   >
                     <span className="block max-w-[11ch] truncate sm:max-w-[16ch]">
-                      Continue as {returning.displayName}
+                      {busy ? 'Starting…' : `Continue as ${returning.displayName}`}
                     </span>
                   </GameButton>
                   <GameButton
@@ -102,6 +112,7 @@ export function LandingScreen({
                     size="md"
                     leadingIcon={UserPlus}
                     onClick={onPlayAsGuest}
+                    disabled={busy}
                   >
                     New guest
                   </GameButton>
@@ -111,12 +122,14 @@ export function LandingScreen({
               <div>
                 <GameButton
                   size="xl"
-                  keyHint="ENTER"
-                  leadingIcon={Play}
-                  pulse
+                  keyHint={busy ? undefined : 'ENTER'}
+                  leadingIcon={busy ? Loader2 : Play}
+                  pulse={!busy}
                   onClick={onPlayAsGuest}
+                  className={cn(busy && SPIN)}
+                  {...busyProps}
                 >
-                  Play as guest
+                  {busy ? 'Starting…' : 'Play as guest'}
                 </GameButton>
               </div>
             )}
