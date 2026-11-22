@@ -239,9 +239,9 @@ function MainApp() {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const p = await store.getProfile();
+      // In parallel: on slow wifi a returning player sees "Continue as …" a round trip sooner (#76).
+      const [p, list] = await Promise.all([store.getProfile(), store.listSessions(50)]);
       if (p) {
-        const list = await store.listSessions(50);
         if (cancelled) return;
         const best = list.reduce((m, s) => Math.max(m, s.score), 0);
         setProfile(p);
@@ -278,6 +278,8 @@ function MainApp() {
   // Fetch the game (Three.js) while the player picks a workout, so Start is instant (QA perf 1).
   useEffect(() => {
     if (screen === 'select') void import('./PlayScreen');
+    // And the dashboard's charts while the results show, so Dashboard opens at once (#76).
+    if (screen === 'results') void import('@/ui/screens/DashboardScreen');
   }, [screen]);
 
   const openDashboard = useCallback(async () => {

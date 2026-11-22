@@ -60,7 +60,8 @@ function expectStatus(r, want) {
     throw new Error(`HTTP ${r.status} ${JSON.stringify(r.json).slice(0, 160)}`);
 }
 
-const name = `QA-smoke-${new Date().toISOString().slice(5, 16).replace(/[-:T]/g, '')}`;
+// Down to the second: two runs in the same minute must not share a name (19 chars, under the 20 cap).
+const name = `QA-smoke-${new Date().toISOString().slice(5, 19).replace(/[-:T]/g, '')}`;
 let token;
 let uid;
 const sessionId = randomUUID();

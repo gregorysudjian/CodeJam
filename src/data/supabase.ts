@@ -27,6 +27,8 @@ import {
 import {
   COACH_CLIENT_TIMEOUT_MS,
   DEFAULT_WEEKLY_GOAL_MIN,
+  READ_CACHE_AFTER_MS,
+  SAVE_WAIT_MS,
   SIGNOUT_FLUSH_TIMEOUT_MS,
   SUPABASE_TIMEOUT_MS,
 } from './tuning';
@@ -90,8 +92,35 @@ export function createSupabaseStore(
   const cachedProfile = () => readJson<Profile | null>(kv, KEYS.profile, null);
 
   async function userId(): Promise<string | null> {
-    const { data } = await sb.auth.getSession();
-    return data.session?.user.id ?? null;
+    try {
+      // With an expired access token, getSession refreshes it over the network, with no timeout of
+      // its own: a returning player on dead wifi would wait for minutes. The id does not change on
+      // refresh, so the stored one is right; the refresh carries on.
+      const { data } = await withTimeout(sb.auth.getSession(), READ_CACHE_AFTER_MS);
+      return data.session?.user.id ?? null;
+    } catch {
+      return storedUserId();
+    }
+  }
+  /** The signed-in guest's id from the stored session, with no network (see userId). */
+  function storedUserId(): string | null {
+    return (
+      readJson<{ user?: { id?: string } } | null>(authStorage, authStorageKey, null)?.user?.id ??
+      null
+    );
+  }
+
+  /**
+   * The network's answer if it comes within READ_CACHE_AFTER_MS, else the cached one, so a screen
+   * never waits on bad wifi for what this device already knows. The request carries on and
+   * refreshes the cache for next time. `fromServer` must not reject.
+   */
+  function fastOrCached<T>(fromServer: Promise<T>, cached: T | null): Promise<T> {
+    if (cached === null) return fromServer;
+    return Promise.race([
+      fromServer,
+      new Promise<T>((resolve) => setTimeout(() => resolve(cached), READ_CACHE_AFTER_MS)),
+    ]);
   }
 
   // Sessions the server refused for good (a check constraint, migration 0004): never resent, and
@@ -167,12 +196,17 @@ export function createSupabaseStore(
 
   async function doSignIn(displayName?: string): Promise<Profile> {
     let uid = await userId();
+    let isNew = false;
     if (!uid) {
       const { data, error } = await withTimeout(sb.auth.signInAnonymously());
       if (error || !data.user) throw error ?? new Error('anonymous sign-in failed');
       uid = data.user.id;
+      isNew = true;
     }
-    let profile = await fetchProfile(uid);
+    // Skip a round trip each when the answer is known: a user created a moment ago has no profile
+    // yet, and a cached profile for this user was written only after the server returned the row.
+    const cached = cachedProfile();
+    let profile = isNew ? null : cached?.id === uid ? cached : await fetchProfile(uid);
     if (!profile) {
       const { data, error } = await withTimeout(
         sb
@@ -185,6 +219,7 @@ export function createSupabaseStore(
       profile = profileFromRow(data);
     }
     writeJson(kv, KEYS.profile, profile);
+    if (isNew) writeJson(kv, KEYS.sessions, mergeQueued([])); // a new guest has no rounds yet
     void flush();
     return profile;
   }
@@ -203,15 +238,18 @@ export function createSupabaseStore(
     },
 
     async getProfile() {
-      try {
-        const uid = await userId();
-        if (!uid) return null;
-        const p = await fetchProfile(uid);
-        if (p) writeJson(kv, KEYS.profile, p);
-        return p;
-      } catch {
-        return cachedProfile();
-      }
+      const uid = await userId();
+      if (!uid) return null;
+      const cached = cachedProfile();
+      const fromServer = fetchProfile(uid).then(
+        (p) => {
+          if (p) writeJson(kv, KEYS.profile, p);
+          return p;
+        },
+        () => cachedProfile(),
+      );
+      // A returning player on bad wifi: "Continue as …" shows at once instead of after 5 s.
+      return fastOrCached(fromServer, cached?.id === uid ? cached : null);
     },
 
     async saveProfile(rawPatch) {
@@ -253,7 +291,9 @@ export function createSupabaseStore(
         synced: false,
       };
       writeJson(kv, KEYS.queue, [...queue(), saved]);
-      await flush();
+      // On bad wifi the coach card waits for this: give the send a moment, then answer as queued.
+      // The send carries on, and anything still queued goes on the next save, list or 'online'.
+      await Promise.race([flush(), new Promise((r) => setTimeout(r, SAVE_WAIT_MS))]);
       const synced = !refused.has(saved.id) && !queue().some((s) => s.id === saved.id);
       const result = { ...saved, synced };
       writeJson(kv, KEYS.sessions, mergeQueued([result, ...cachedSessions()]));
@@ -261,23 +301,31 @@ export function createSupabaseStore(
     },
 
     async listSessions(limit = 50) {
-      await flush();
-      try {
-        const { data, error } = await withTimeout(
-          sb
-            .from('sessions')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(limit)
-            .returns<SessionRow[]>(),
-        );
-        if (error) throw error;
-        const list = mergeQueued(data.map(sessionFromRow)).slice(0, limit);
-        writeJson(kv, KEYS.sessions, list);
-        return list;
-      } catch {
-        return mergeQueued(cachedSessions()).slice(0, limit);
-      }
+      const fromCache = () => mergeQueued(cachedSessions()).slice(0, limit);
+      const fromServer = (async () => {
+        await flush();
+        try {
+          const { data, error } = await withTimeout(
+            sb
+              .from('sessions')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(limit)
+              .returns<SessionRow[]>(),
+          );
+          if (error) throw error;
+          const list = mergeQueued(data.map(sessionFromRow)).slice(0, limit);
+          writeJson(kv, KEYS.sessions, list);
+          return list;
+        } catch {
+          return fromCache();
+        }
+      })();
+      // A guest plays on one device, so every round of theirs is already in the cache: on bad wifi
+      // the dashboard showed "No rounds yet" for 10 s right after a round (flush, then select).
+      // An empty list counts once stored: a guest created on this device starts with none.
+      const known = readJson<SavedSession[] | null>(kv, KEYS.sessions, null) !== null;
+      return fastOrCached(fromServer, known || queue().length > 0 ? fromCache() : null);
     },
 
     async getLeaderboard(workout, mode, durationSec, limit = 10) {

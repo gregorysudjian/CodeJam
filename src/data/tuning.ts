@@ -6,6 +6,10 @@ export const COACH_CLIENT_TIMEOUT_MS = 8000;
 export const SIGNOUT_FLUSH_TIMEOUT_MS = 2000;
 /** A Supabase call slower than this counts as offline (the session is queued). */
 export const SUPABASE_TIMEOUT_MS = 5000;
+/** A read slower than this answers from the cache when there is one (the request carries on). */
+export const READ_CACHE_AFTER_MS = 1000;
+/** saveSession waits this long for the send, then answers "queued" (the send carries on). */
+export const SAVE_WAIT_MS = 1500;
 
 /** Rule-based coach (docs/CONTRACTS.md). */
 export const DIFFICULTY_DEFAULT = 0.5;
