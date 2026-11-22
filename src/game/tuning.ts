@@ -367,3 +367,42 @@ export const REAL_CAMERA = {
   dolly: 6,
   calibStep: 0.1, // `?dev=calib`: road speed change per [ or ] press
 } as const;
+
+/* ── Realistic obstacles (props.ts, obstacles.ts), on levels with backdrop style 'real' ── */
+// Gameplay is identical to the neon look: same hitboxes, sizes, positions and timing. Only the
+// materials change (a lit texture, no glow, no neon edges) and a soft contact shadow is laid on
+// the road under every grounded object, so nothing floats over the video.
+export const REAL_PROPS = {
+  /** Contact shadow: darkness at its centre (0 to 1), and how far it spreads past the footprint
+   *  (world units on each side; along the track, the front and back). */
+  shadowOpacity: 0.55,
+  shadowSpread: 0.35,
+  /** Just above the track strip (0.004) and under the floor markers (0.02). */
+  shadowY: 0.012,
+  /** Bodies (posts, frames) are painted steel; the neon bars are paint in the move colour. */
+  steel: 0x5b636e,
+  /** Floor markers become road paint: normal blending at this opacity, not light. */
+  paintOpacity: 0.32,
+  /** A hit: the texture and paint tinted red (multiplied), still lit. */
+  hitTint: 0xff6a5a,
+} as const;
+
+/* ── Realistic road strip (realRoad.ts), on 'real' levels only ── */
+// The clips' road moves 3-7x slower than the game, so objects slid over it. A road surface under
+// the track scrolls at exactly the game's speed (the floor grid's units) and fades into the clip
+// toward the vanishing point: objects and the runner sit on it; the clip keeps the street,
+// buildings, sky and far road. Tinted to the clip's road (sampled from the video at each level).
+export const REAL_ROAD = {
+  width: 9.6, // across, centred on the track (3 lanes are 6.6)
+  near: 9, // world z of the near end: behind the camera (7.4)
+  far: -36, // world z of the far end: ~90% of the way up the screen to the horizon
+  fade: 0.5, // the far share of the length that fades to nothing
+  sideFade: 0.18, // each side's share of the width that fades out
+  tile: 3, // world units per texture repeat (along and across)
+  /** Which pattern per level; anything else is asphalt. */
+  cobble: [2] as readonly number[],
+  /** The video patch sampled for the road colour: share of the frame (bottom centre). */
+  sample: { x0: 0.38, x1: 0.62, y0: 0.86, y1: 0.98 },
+  resampleSec: [0.4, 1.5] as readonly number[], // after a level starts (the clip has switched)
+  y: 0.002, // under the shadow catcher (0.003), the lane paint (0.006) and the contact shadows
+} as const;
