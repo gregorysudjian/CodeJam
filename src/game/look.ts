@@ -191,6 +191,22 @@ export const REAL_MODE: {
   },
 };
 
+/* ── Obstacle skins (obstacles.ts) ── */
+// Each level's themed obstacle textures (Higgsfield, public/media/obstacles/tex-{level}-{kind}.jpg)
+// on the main faces: block walls, the hurdle's low wall, the beam's slab, the six crates, and an
+// emblem sprite for the orb. `repeat`: how many times wider than high each face is, so a square
+// strip repeats along it (a wider image repeats less). `glow`: the texture lights itself this
+// much (emissive), so it reads on a dark street; under the bloom threshold, so only the neon
+// edges bloom. `emblemGlow` and `emblemSize`: the orb emblem's brightness and size (world units).
+export const OBSTACLE_SKIN = {
+  dir: '/media/obstacles/',
+  levels: 6,
+  repeat: { block: 1, hurdle: 12, beam: 16, crate: 1 },
+  glow: 0.55,
+  emblemGlow: 1.6,
+  emblemSize: 2.2, // 1.5 left the emblem hard to make out until the orb was close
+};
+
 /* ── Reduced motion (scene.ts) ── */
 // A milestone brightens the lane lines and horizon; with prefers-reduced-motion, this much of it.
 export const REDUCED_FLASH = 0.4;
