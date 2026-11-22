@@ -3,7 +3,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowBigDown, ArrowBigUp, Check, Keyboard, X } from 'lucide-react';
 import type { CalibrationStatus, PlayMode } from '@/contracts';
 import {
-  ACCENT_HEX,
   BustOutline,
   EASE_ARENA,
   Eyebrow,
@@ -31,13 +30,19 @@ export interface CalibrationScreenProps {
 type Step = CalibrationStatus['step'];
 type CheckState = 'todo' | 'active' | 'done';
 
-const DIM = '#5B6475';
-
+/** The guide is drawn on the video, so it uses the stage's own (dark, bright-accent) tokens:
+ *  `.calibration-stage` in theme.css redefines --na-*, while ACCENT_HEX is the light page's
+ *  maple red and ochre, which go dark on a camera image. */
 function guideColor(step: Step): string {
-  if (step === 'noBody') return DIM;
-  if (step === 'tooClose' || step === 'tooFar') return ACCENT_HEX.amber;
-  return ACCENT_HEX.lime;
+  if (step === 'noBody') return 'var(--na-text-dim)';
+  if (step === 'tooClose' || step === 'tooFar') return 'var(--na-amber)';
+  return 'var(--na-lime)';
 }
+
+/** Same glow as `.calibration-stage .move-figure`, for the treadmill bust (BustOutline's own
+ *  glow appends hex alpha to the colour, which a var() can't take). */
+const GUIDE_GLOW =
+  'drop-shadow(0 0 6px color-mix(in srgb, currentColor 66%, transparent)) drop-shadow(0 0 18px color-mix(in srgb, currentColor 33%, transparent))';
 
 /** Checklist state for IN FRAME / RIGHT DISTANCE / HOLD STILL. */
 export function calibrationChecklist(step: Step): [CheckState, CheckState, CheckState] {
@@ -62,7 +67,7 @@ function Corners() {
     <div
       aria-hidden="true"
       className="pointer-events-none absolute inset-5 z-40"
-      style={{ filter: `drop-shadow(0 0 8px ${ACCENT_HEX.lime}88)` }}
+      style={{ filter: 'drop-shadow(0 0 8px color-mix(in srgb, var(--na-lime) 53%, transparent))' }}
     >
       <span className={cn(base, 'left-0 top-0 rounded-tl-2xl border-l-4 border-t-4')} />
       <span className={cn(base, 'right-0 top-0 rounded-tr-2xl border-r-4 border-t-4')} />
@@ -98,7 +103,7 @@ export function CalibrationScreen({
   ];
 
   return (
-    <Screen backdrop="plain" className="calibration-screen">
+    <Screen backdrop="arena" className="calibration-screen">
       <header className="flex flex-wrap items-end justify-between gap-6">
         <div className="flex flex-col gap-3">
           <Eyebrow>{mode === 'floor' ? 'Floor' : 'Treadmill'}</Eyebrow>
@@ -110,7 +115,7 @@ export function CalibrationScreen({
           height (theme.css .calibration-stage) and the checklist sits beside it from 1024 px. */}
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_280px] min-[1440px]:grid-cols-[minmax(0,1fr)_340px]">
         {/* Stage */}
-        <div className="calibration-stage relative mx-auto aspect-video w-full overflow-hidden rounded-[28px] border border-white/10 bg-bg-raised">
+        <div className="calibration-stage relative mx-auto aspect-video w-full overflow-hidden rounded-[24px] border-4 border-[color:var(--na-page-card)] bg-bg-raised shadow-[var(--na-page-shadow)]">
           {videoSlot ? (
             <div className="absolute inset-0 [&>*]:size-full [&>*]:object-cover">{videoSlot}</div>
           ) : (
@@ -157,7 +162,11 @@ export function CalibrationScreen({
                   className="h-[70%] w-auto transition-[filter] duration-300"
                 />
               ) : (
-                <BustOutline color={color} className="h-full w-auto" />
+                <BustOutline
+                  color={color}
+                  className="h-full w-auto"
+                  style={{ color, filter: GUIDE_GLOW }}
+                />
               )}
             </motion.div>
           </div>
@@ -309,7 +318,7 @@ export function CalibrationScreen({
                           (accent === 'amber'
                             ? 'border-amber text-amber'
                             : 'border-lime text-lime'),
-                        it.state === 'todo' && 'border-white/15 text-text-dim',
+                        it.state === 'todo' && 'border-glass-border text-text-dim',
                       )}
                     >
                       {it.state === 'done' ? (
@@ -351,7 +360,7 @@ export function CalibrationScreen({
         </div>
       </div>
 
-      <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.08] pt-6">
+      <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-glass-border pt-6">
         <GameButton variant="ghost" size="lg" leadingIcon={X} keyHint="ESC" onClick={onCancel}>
           Cancel
         </GameButton>

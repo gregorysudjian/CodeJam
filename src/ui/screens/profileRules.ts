@@ -1,3 +1,5 @@
+import * as React from 'react';
+
 /** Longest name the board shows; longer input is cut. */
 export const MAX_NAME_LENGTH = 20;
 
@@ -55,4 +57,83 @@ export function optionalNumbers(raw: Record<RangedField, string>): {
       field === 'age' ? Math.round(n) : field === 'heightCm' ? Math.round(n * 10) / 10 : n;
   }
   return out;
+}
+
+// ── Unique usernames (PR #116: DataStore.isUsernameTaken) ──
+
+/** Tuning: how long the username field waits after the last keystroke before asking whether
+ *  the name is taken (one request per pause, not per key). */
+export const USERNAME_CHECK_DELAY_MS = 400;
+
+/** "Is this username taken?": true, false, or null when unknown (offline, local store). */
+export type UsernameCheck = (name: string) => Promise<boolean | null>;
+
+/** Shown under the name field when the check says the name is taken. */
+export const USERNAME_TAKEN = 'Username taken';
+
+/**
+ * The name a check asks about: what would be saved (trimmed and cut). '' means nothing to ask:
+ * an empty field, or the player's own current name (usernames are unique ignoring case, and the
+ * player's own name would always come back taken).
+ */
+export function usernameToCheck(typed: string, ownName?: string): string {
+  const name = typed.trim().slice(0, MAX_NAME_LENGTH);
+  if (ownName && name.toLowerCase() === ownName.trim().toLowerCase()) return '';
+  return name;
+}
+
+/**
+ * Debounced username check, without React so it can be tested with fake timers. `update` waits
+ * `delayMs` after the last call, then asks; only the latest name's answer is reported. A check
+ * that throws or rejects counts as unknown (null).
+ */
+export function createUsernameChecker(
+  check: UsernameCheck,
+  onAnswer: (name: string, taken: boolean | null) => void,
+  delayMs: number = USERNAME_CHECK_DELAY_MS,
+): { update(name: string): void; dispose(): void } {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let latest = 0;
+  return {
+    update(name) {
+      clearTimeout(timer);
+      const ticket = ++latest;
+      if (!name) return;
+      timer = setTimeout(() => {
+        Promise.resolve()
+          .then(() => check(name))
+          .catch(() => null)
+          .then((taken) => {
+            if (ticket === latest) onAnswer(name, taken ?? null);
+          });
+      }, delayMs);
+    },
+    dispose() {
+      clearTimeout(timer);
+      latest++;
+    },
+  };
+}
+
+/** True once the check says the typed name is taken; false while typing, for a free or unknown
+ *  name, for the player's own name, and when there is no check. */
+export function useUsernameTaken(typed: string, check?: UsernameCheck, ownName?: string): boolean {
+  const name = usernameToCheck(typed, ownName);
+  const enabled = Boolean(check);
+  const [answer, setAnswer] = React.useState<{ name: string; taken: boolean | null } | null>(null);
+  // The latest check without restarting the timer when the caller passes a new function.
+  const checkRef = React.useRef(check);
+  React.useEffect(() => {
+    checkRef.current = check;
+  });
+  React.useEffect(() => {
+    if (!enabled || !name) return;
+    const checker = createUsernameChecker(
+      (n) => checkRef.current?.(n) ?? Promise.resolve(null),
+      (n, taken) => setAnswer({ name: n, taken }),
+    );
+    checker.update(name);
+    return () => checker.dispose();
+  }, [name, enabled]);
+  return enabled && name !== '' && answer?.name === name && answer.taken === true;
 }
