@@ -384,8 +384,16 @@ export const REAL_PROPS = {
   shadowY: 0.012,
   /** Bodies (posts, frames) are painted steel; the neon bars are paint in the move colour. */
   steel: 0x5b636e,
-  /** Floor markers become road paint: normal blending at this opacity, not light. */
-  paintOpacity: 0.32,
+  /** Floor markers are road paint like the lane lines (look.ts REAL_MODE paint, 0.2 / 0.1 m):
+   *  normal blending at this opacity, never a glowing slab. The neon floor slabs are hidden and
+   *  each object gets one thin line `lineWidth` wide, `lineAhead` in front of it (orbs: under). */
+  paintOpacity: 0.24,
+  lineWidth: 0.12,
+  lineAhead: 0.6,
+  /** How far the move colour is mixed toward white: floor marks (and bursts), and the paint on
+   *  the objects. The move icon above each object carries the full colour. */
+  markMute: 0.6,
+  paintMute: 0.45,
   /** A hit: the texture and paint tinted red (multiplied), still lit. */
   hitTint: 0xff6a5a,
 } as const;
