@@ -1,5 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { nextTier } from './advice';
+import { nextTier, parseAdvice } from './advice';
+
+const card = (extra: Record<string, unknown>) =>
+  JSON.stringify({
+    recap: 'Nice round.',
+    tip: 'Squat earlier.',
+    next: { workout: 'arms', durationSec: 180, difficulty: 0.5 },
+    reason: 'Balance.',
+    ...extra,
+  });
+
+describe("parseAdvice: today's plan line", () => {
+  it('keeps a plan, trimmed and capped', () => {
+    expect(parseAdvice(card({ plan: "  Today's plan: 2 x Arms  " }), 'floor')?.plan).toBe(
+      "Today's plan: 2 x Arms",
+    );
+    expect(parseAdvice(card({ plan: 'x'.repeat(400) }), 'floor')!.plan!.length).toBeLessThanOrEqual(
+      200,
+    );
+  });
+  it('leaves it out when missing or empty, and the card still stands', () => {
+    for (const extra of [{}, { plan: '   ' }, { plan: 42 }]) {
+      const a = parseAdvice(card(extra), 'floor');
+      expect(a?.recap).toBe('Nice round.');
+      expect(a && 'plan' in a).toBe(false);
+    }
+  });
+});
 
 describe('nextTier: the game decides the AI coach tier', () => {
   it('moves one tier up above 85% accuracy, capped at Athlete', () => {
