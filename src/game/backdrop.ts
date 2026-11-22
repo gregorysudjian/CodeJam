@@ -37,9 +37,27 @@ export interface Backdrop {
   style?: 'real' | 'neon';
 }
 
-/** True if level `index`'s style is 'real' (packages A, B and C read it through this). */
+/**
+ * The street videos (and with them realistic mode) play only when switched on: `?video=on` or
+ * localStorage `game.video` = 'on'. Off by default since Sunday 9 AM: smoothness and input latency
+ * come first, and the neon game without videos is the one that played smoothly. `?video=off` forces
+ * them off. Outside a browser (tests) the videos count as on, so realistic mode stays tested.
+ */
+export const VIDEOS_ON: boolean = (() => {
+  if (typeof window === 'undefined') return true;
+  try {
+    const v =
+      new URLSearchParams(window.location.search).get('video') ??
+      window.localStorage.getItem('game.video');
+    return v === 'on' || v === '1';
+  } catch {
+    return false;
+  }
+})();
+
+/** True if level `index` plays realistic (its style is 'real' and the videos are on). */
 export function isReal(index: number): boolean {
-  return backdropFor(index).style === 'real';
+  return VIDEOS_ON && backdropFor(index).style === 'real';
 }
 
 // The Montreal Runner clips (1280x720, 30 s, no sound; sources in release montreal-runner-raw;

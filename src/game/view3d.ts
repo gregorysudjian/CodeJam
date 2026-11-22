@@ -5,7 +5,7 @@ import { comboLabel, GRADE_LABEL, type Grade } from './feedback';
 import { OUTCOME_LABEL, raceLabel, racePulse, type GhostOutcome, type GhostPose } from './ghost';
 import { countdownAt, flyProgress, resumeCountAt } from './intro';
 import { requirementMet, type Verdict } from './judge';
-import { backdropFor, isReal } from './backdrop';
+import { VIDEOS_ON, backdropFor, isReal } from './backdrop';
 import { colorKeyFor, createObstacles, variantFor, type ObstacleView } from './obstacles';
 import { createPlayer } from './player';
 import type { Quality } from './quality';
@@ -405,7 +405,7 @@ export function create3DView(
         videoBackdrop.update(
           level.stages?.[passed]?.index ?? 1,
           phase === 'intro' || phase === 'running' || phase === 'finished', // still while paused
-          quality < 2,
+          quality < 2 && VIDEOS_ON, // no clip is ever loaded when the videos are off (backdrop.ts)
         ),
       );
 
