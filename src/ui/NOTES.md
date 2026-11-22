@@ -2,43 +2,43 @@
 
 Read this first if you pick up `src/ui` in a new conversation.
 
-## Sat 19:35: state
+## Sat 23:00: state
 
-One branch per item, each cut from `main`, pushed, waiting for Greg's Claude to merge.
-They all test-merge cleanly with each other (`git merge-tree`).
+Everything up to the accessibility pass is merged (main 181e9db). Greg's levels/lives queue
+(contracts #89–#91) is one branch per item, pushed, waiting for Greg's Claude to merge.
+**Merge order: `j1-tier` before `j1-board` and `j1-results`** (they use `kit/round.ts`). Every
+pair test-merges cleanly; all five together pass `npm run check` and the sweep at six sizes.
 
-| Branch | Commit | What a judge sees |
+| Branch | What a player sees | Wiring for `src/app` |
 | --- | --- | --- |
-| `j1-q19` | 8c646a8 | Select screen fits at 125–150 % scaling: START and Camera/Keyboard in view |
-| `j1-q20` | 6be6797 | Leaderboard podium and kiosk QR above the fold at 125–150 % |
-| `j1-copy` | 0a6d3d3 | QA copy rows C5, C6, C7, C10 |
-| `j1-q12` | 1c35d83 | Landing QR in the hero, 112 px, dark on light, above the fold (the old one was cropped) |
-| `j1-dashboard` | d0430f3 | Everything under YOUR WEEK is this week; chart Mon–Sun like the dots (built on `j1-copy`) |
-| `j1-camera` | 495dc62 | Calibration fits one screen; the full instruction shows (was 1,346 px tall at 1280×720) |
-| `j1-device` | c912ded | Key caps hidden on touch screens (phone → leaderboard) |
+| `j1-figure-mirror` | `reachLeft` raises the screen-left arm (it was mirrored wrong); new `pause` pose (forearms in an X) | Move check X step: `<MoveFigure pose="pause" />` |
+| `j1-tier` | Select: BEGINNER / REGULAR / ATHLETE row instead of 45/90/180 S; "6 LEVELS · 3 LIVES"; coach's pick shows its tier | None: `onStart` always gets `durationSec: 180` and difficulty 0 / 0.5 / 1 |
+| `j1-board` | Leaderboard and kiosk: no round-length chips, title "FULL BODY · FLOOR" | Store: one board per workout + mode; `durationSec` prop now optional |
+| `j1-hud` | Hearts and "LEVEL 2/6" pill at the top; "Someone else is in the frame" pause | `lives`, `stage`, `pauseReason`, `resuming` (README table) |
+| `j1-results` | "OUT OF LIVES · LEVEL 3" / "ALL 6 LEVELS CLEARED" headline; tier instead of seconds | None: reads `summary.levelReached` / `outOfLives` |
 
-Merged earlier: results fit at 1280×720 / 1366×768 (Q5), footer pinned to the bottom, MISS outline.
+`kit/round.ts` (on `j1-tier`): `ROUND_LEVELS` 6, `ROUND_SEC` 180, `ROUND_LIVES` 3, tiers,
+`tierOf` (snaps the rule coach's tenths), `asRound` (plays a coach pick as 180 s on its tier).
+Every "PLAY" of a coach pick goes through `asRound`.
 
-**A judge will notice:** results, calibration and landing are each one screen at the demo
-sizes; the landing QR scans; the dashboard's numbers agree with each other.
+**Outside src/ui, for Greg:** `docs/qa/sweep/sweep.mjs` still checks "45 S" on select, board and
+kiosk (my scratch copy has the new checks); `DEMO_CONFIG` is still 45 s (`?demo=1` plays it
+whatever the select screen sends); the rule coach (`src/data/coach.ts`) still picks 45/90 s.
 
-**Polish nobody will see:** height variants `short` (≤ 900 px), `tight` (≤ 640, 125 %) and
-`cramped` (≤ 520, 150 %) in theme.css; key caps hidden on phones.
+**Known, not fixed:** the results screen scrolls at 125–150 % (same on main before this batch).
 
-**Not tested here:** a real person calibrating (fake camera only), Supabase boards with many
-players (checked with a 12-entry harness), the AI coach's longer recap, sound.
-
-**Next:** accessibility pass (visible focus and tab order on every screen, reduced motion,
-4.5:1 body contrast: `text-dim` #5b6475 on the background is below it, used for labels like
-OPEN SPOT and the board's column heads); then re-sweep after Greg merges the batch.
-Freeze: from 10:00 Sunday only crash or unplayable fixes, nothing after 11:30.
+**Freeze:** from 10:00 Sunday only crash or unplayable fixes, nothing after 11:30.
 
 ## How I check (Windows, no webcam)
 
 - Node: portable 26.13.1 in `%LOCALAPPDATA%\Programs\nodejs-dl` (not on PATH; prepend it).
 - `node docs/qa/sweep/sweep.mjs` and `SIZES=1093x614@1.25,1024x576@1.25,911x512@1.5,853x480@1.5`.
-- A local screen harness, `preview-local/` (untracked, in `.git/info/exclude`), renders the
-  leaderboard with N fake entries and the HUD with a fake camera. Tailwind skips git-ignored
-  files, so harness-only styles must be inline.
+- Props the app doesn't pass yet: import the screen from the dev server inside the page
+  (`await import('/src/ui/screens/GameHud.tsx')`, React from `/node_modules/.vite/deps/`) and
+  render it over a live round. Write props to a JSON file: PowerShell 5.1 strips quotes from
+  arguments.
 - Fake camera: Chrome `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`.
-- Vite sometimes serves a stale module after a branch switch: touch the file.
+- Vite sometimes serves a stale module after a branch switch: touch the files.
+- Kit files are double-quoted and hand-aligned: don't run prettier on them (it rewrites the whole
+  file); screens are prettier-formatted.
+- Commit messages: write them with the Write tool, not `Set-Content` (PowerShell 5.1 adds a BOM).
