@@ -580,7 +580,8 @@ function MainApp() {
           appName={APP_NAME}
           onSignUp={(p) => void withSignIn(() => signUp(p))}
           onPlayAsGuest={() => void withSignIn(playAsGuest)}
-          returning={returning}
+          // Back from the select screen right after signing up: the same player, not a blank card.
+          returning={returning ?? (profile ? { displayName: profile.displayName } : null)}
           onContinue={() => void withSignIn(continueAsReturning)}
           busy={signingIn}
           onLeaderboard={openLeaderboard}
@@ -594,7 +595,7 @@ function MainApp() {
         <ProfileScreen
           initial={profile ?? undefined}
           onSubmit={(p) => void submitProfile(p)}
-          onBack={() => setScreen('landing')}
+          onBack={() => setScreen(editingProfile ? 'dashboard' : 'landing')}
           nav={editingProfile ? navFor('profile') : undefined}
           checkUsername={(n) => store.isUsernameTaken(n)}
         />

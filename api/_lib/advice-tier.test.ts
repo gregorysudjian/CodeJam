@@ -95,4 +95,10 @@ describe('nextTier: the game decides the AI coach tier', () => {
     expect(nextTier({ difficulty: '1', accuracy: '0.6' })).toBe(1);
     expect(nextTier({ difficulty: null, accuracy: 'x' })).toBe(0.5);
   });
+
+  it('no step up after a round that ended out of lives', () => {
+    expect(nextTier({ difficulty: 0.5, accuracy: 0.9, hit: 3 })).toBe(0.5);
+    expect(nextTier({ difficulty: 0.5, accuracy: 0.9, hit: 2 })).toBe(1);
+    expect(nextTier({ difficulty: 0.5, accuracy: 0.4, hit: 3 })).toBe(0);
+  });
 });

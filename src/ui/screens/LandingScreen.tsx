@@ -304,7 +304,7 @@ export function LandingScreen({
   const scores = (topScores ?? []).slice(0, 3);
   const topThree = (
     <div className="flex min-w-0 flex-wrap items-baseline gap-x-5 gap-y-1">
-      <Eyebrow accent="cyan">Today's top 3</Eyebrow>
+      <Eyebrow accent="cyan">Top 3</Eyebrow>
       <ol className="flex flex-wrap gap-x-5 gap-y-1">
         {scores.map((entry, i) => (
           <li
