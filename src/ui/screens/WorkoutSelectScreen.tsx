@@ -15,13 +15,21 @@ import {
   MODE_LABELS,
   MoveChip,
   MoveFigure,
+  ROUND_LEVELS,
+  ROUND_LIVES,
+  ROUND_SEC,
   Screen,
   SectionTitle,
   SegmentedControl,
+  TIER_DIFFICULTY,
+  TIER_LABELS,
   ToggleRow,
   WORKOUT_COLORS,
   WORKOUT_LABELS,
+  asRound,
+  tierOf,
   useHotkey,
+  type Tier,
 } from '@/ui/kit';
 import { cn } from '@/ui/lib/utils';
 
@@ -48,16 +56,16 @@ const MODES = [
   { value: 'treadmill', label: 'Treadmill', icon: Gauge },
 ] as const satisfies readonly { value: PlayMode; label: string; icon: typeof Gauge }[];
 
-const DURATIONS = [
-  { value: '45', label: '45 S' },
-  { value: '90', label: '90 S' },
-  { value: '180', label: '180 S' },
-] as const;
-type DurationValue = (typeof DURATIONS)[number]['value'];
+// No round length to pick: a round is always every level (ROUND_SEC).
+const TIERS = [
+  { value: 'beginner', label: 'Beginner' },
+  { value: 'regular', label: 'Regular' },
+  { value: 'athlete', label: 'Athlete' },
+] as const satisfies readonly { value: Tier; label: string }[];
 
-/** "LEGS · FLOOR · 90 S" */
-export function sessionLabel(c: Pick<SessionConfig, 'workout' | 'mode' | 'durationSec'>): string {
-  return `${WORKOUT_LABELS[c.workout]} · ${MODE_LABELS[c.mode]} · ${c.durationSec} S`;
+/** "LEGS · FLOOR · REGULAR" */
+export function sessionLabel(c: Pick<SessionConfig, 'workout' | 'mode' | 'difficulty'>): string {
+  return `${WORKOUT_LABELS[c.workout]} · ${MODE_LABELS[c.mode]} · ${TIER_LABELS[tierOf(c.difficulty)]}`;
 }
 
 const isAvailable = (w: WorkoutInfo | undefined, mode: PlayMode) =>
@@ -194,7 +202,7 @@ function WorkoutCard({
   );
 }
 
-/** Step 1 of session setup: mode, workout, duration and low-impact, with an optional coach's pick. */
+/** Step 1 of session setup: mode, workout, tier and low-impact, with an optional coach's pick. */
 export function WorkoutSelectScreen({
   workouts,
   coachPick,
@@ -207,10 +215,7 @@ export function WorkoutSelectScreen({
   const [workout, setWorkout] = React.useState<WorkoutId>(() =>
     firstAvailable(workouts, initial?.mode ?? 'floor', initial?.workout ?? 'fullBody'),
   );
-  const [duration, setDuration] = React.useState<DurationValue>(() => {
-    const v = String(initial?.durationSec ?? 90);
-    return DURATIONS.find((d) => d.value === v)?.value ?? '90';
-  });
+  const [tier, setTier] = React.useState<Tier>(() => tierOf(initial?.difficulty));
   const [lowImpact, setLowImpact] = React.useState(initial?.lowImpact ?? false);
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -237,19 +242,24 @@ export function WorkoutSelectScreen({
     }
   };
 
-  const durationSec = Number(duration);
+  const difficulty = TIER_DIFFICULTY[tier];
   const effectiveLowImpact = mode === 'floor' && lowImpact;
 
   const start = () => {
-    const config: SessionConfig = { workout, mode, durationSec, lowImpact: effectiveLowImpact };
-    if (initial?.difficulty !== undefined) config.difficulty = initial.difficulty;
+    const config: SessionConfig = {
+      workout,
+      mode,
+      durationSec: ROUND_SEC,
+      difficulty,
+      lowImpact: effectiveLowImpact,
+    };
     if (initial?.seed !== undefined) config.seed = initial.seed;
     onStart(config);
   };
 
   useHotkey('Enter', start);
   useHotkey('Escape', onBack);
-  useHotkey('c', () => coachPick && onStart(coachPick.next), Boolean(coachPick));
+  useHotkey('c', () => coachPick && onStart(asRound(coachPick.next)), Boolean(coachPick));
   useHotkey('1', () => select(0));
   useHotkey('2', () => select(1));
   useHotkey('3', () => select(2));
@@ -278,10 +288,13 @@ export function WorkoutSelectScreen({
             </GameButton>
           }
         >
-          <span className="font-display-italic text-title tight:text-body">
-            {sessionLabel({ workout, mode, durationSec })}
+          <span className="block font-display-italic text-title tight:text-body">
+            {sessionLabel({ workout, mode, difficulty })}
           </span>
-          {effectiveLowImpact && <span className="ml-3 text-caption text-cyan">LOW IMPACT</span>}
+          <span className="block text-caption text-text-muted">
+            {ROUND_LEVELS} LEVELS · {ROUND_LIVES} LIVES
+            {effectiveLowImpact && <span className="text-cyan"> · LOW IMPACT</span>}
+          </span>
         </ScreenFooter>
       }
     >
@@ -319,11 +332,11 @@ export function WorkoutSelectScreen({
           options={MODES}
           size="md"
         />
-        <SegmentedControl<DurationValue>
-          aria-label="Duration"
-          value={duration}
-          onChange={setDuration}
-          options={DURATIONS}
+        <SegmentedControl<Tier>
+          aria-label="Tier"
+          value={tier}
+          onChange={setTier}
+          options={TIERS}
           size="md"
         />
         {mode === 'floor' && (
