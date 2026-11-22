@@ -80,8 +80,6 @@ function watch(page) {
     else if (msg.method === 'Log.entryAdded' && p.entry.level === 'error') {
       const { text, url = '' } = p.entry;
       if (/\/api\/coach/.test(url) && /404/.test(text)) return;
-      // This script's own import() probes: a production build (the live site) serves no /src.
-      if (/\/src\/game\/(tuning|backdrop)\.ts/.test(url) && /404/.test(text)) return;
       if (/ERR_BLOCKED_BY_CLIENT/.test(text)) return; // counted below
       w.errors.push(url ? `${text} (${url})` : text);
     } else if (msg.method === 'Network.loadingFailed' && p.blockedReason) w.blocked++;
