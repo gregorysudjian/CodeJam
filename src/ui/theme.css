@@ -762,11 +762,75 @@
     max-width: 190px;
   }
 }
-@media (max-width: 1279px) {
+@media (max-width: 767px) {
   .leaderboard-kiosk aside {
     border-left: 0;
     border-top: 1px solid var(--na-glass-border);
     padding: 24px 0 0;
+  }
+}
+/* 125–150 % display scaling or browser zoom (QA Q20): podium and kiosk QR above the fold.
+   The doubled class matches the :not(.leaderboard-kiosk) rules above. */
+@media (max-height: 640px) {
+  .leaderboard-screen main {
+    gap: 12px;
+    padding-top: 12px;
+  }
+  .leaderboard-title {
+    font-size: 32px;
+  }
+  .leaderboard-screen .eyebrow {
+    margin-bottom: 4px;
+  }
+  .leaderboard-filters {
+    gap: 8px;
+  }
+  .leaderboard-filters [role='radio'] {
+    height: 40px;
+    min-width: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 16px;
+  }
+  .leaderboard-screen.leaderboard-screen .podium-grid > * {
+    min-height: 0;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    gap: 4px;
+  }
+  .leaderboard-screen.leaderboard-screen .podium-rank {
+    font-size: 64px;
+  }
+  .leaderboard-screen .podium-score,
+  .leaderboard-kiosk .podium-score {
+    font-size: 32px;
+  }
+  .leaderboard-kiosk .podium-name {
+    font-size: 28px;
+  }
+  .leaderboard-kiosk .kiosk-crown-banner {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .leaderboard-kiosk .kiosk-crown-banner p {
+    font-size: 32px;
+  }
+  .leaderboard-kiosk aside {
+    justify-content: flex-start;
+    padding-top: 0;
+    gap: 8px;
+  }
+  .leaderboard-kiosk aside > svg {
+    display: none;
+  }
+  .leaderboard-kiosk .qr-stage {
+    max-width: 170px;
+  }
+}
+@media (max-height: 520px) {
+  .podium-grid .eyebrow,
+  .podium-grid .podium-place > span:last-child {
+    display: none;
   }
 }
 @media (max-width: 600px) {
