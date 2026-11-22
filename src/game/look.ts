@@ -116,6 +116,20 @@ export const VIDEO_BACKDROP = {
   topShadeTo: 0.36,
 };
 
+/* ── Realistic mode (backdrop.ts style 'real'; scene.ts, view3d.ts) ── */
+// On while a 'real' level's clip shows. No bloom, particles, speed lines or shockwave; the clip
+// at `brightness` (VIDEO_BACKDROP's top shade stays for the HUD cue); lanes as faint solid
+// white road paint (`paintOpacity`, `paintWidth` in world units). A level change into a real
+// level is a white fade (`fadePeak` over `fadeSec`) instead of the neon portal. (Road speed and
+// the straight intro/outro camera are package C steps b and c: videoBackdrop.ts, intro.ts.)
+export const REAL_MODE = {
+  brightness: 0.95,
+  paintOpacity: 0.2,
+  paintWidth: 0.1,
+  fadePeak: 0.85,
+  fadeSec: 0.5,
+};
+
 /* ── Reduced motion (scene.ts) ── */
 // A milestone brightens the lane lines and horizon; with prefers-reduced-motion, this much of it.
 export const REDUCED_FLASH = 0.4;

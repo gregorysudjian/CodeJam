@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { LEVEL_BACKDROPS } from './backdrop';
 import { introCamera, type CameraPose } from './intro';
 import * as L from './look';
 import type { Quality } from './quality';
@@ -195,11 +196,31 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   const limeMat = new THREE.MeshBasicMaterial({ color: neon(T.COLOR_LIME, T.NEON_BOOST * 0.8) });
   const limeBase = new THREE.Color(T.COLOR_LIME);
   const edgeGeo = new THREE.BoxGeometry(0.06, 0.03, T.TRACK_LENGTH);
+  const neonEdges: THREE.Mesh[] = [];
   for (const x of [-halfTrack, halfTrack]) {
     const edge = new THREE.Mesh(edgeGeo, limeMat);
     edge.position.set(x, 0.015, floor.position.z);
     scene.add(edge);
+    neonEdges.push(edge);
   }
+  // Realistic mode (look.ts REAL_MODE): the lanes are faint solid white road paint, all four
+  // lines, not scrolling (scrolling dashes would show any mismatch with the clip's road).
+  const paintMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: L.REAL_MODE.paintOpacity,
+    depthWrite: false,
+    fog: false,
+  });
+  const paintGeo = new THREE.PlaneGeometry(L.REAL_MODE.paintWidth, T.TRACK_LENGTH);
+  const paint = [-halfTrack, -T.LANE_WIDTH / 2, T.LANE_WIDTH / 2, halfTrack].map((x) => {
+    const m = new THREE.Mesh(paintGeo, paintMat);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(x, 0.006, floor.position.z);
+    m.visible = false;
+    scene.add(m);
+    return m;
+  });
   const dashGeo = new THREE.BoxGeometry(0.06, 0.02, T.DASH_SPACING * 0.45);
   const dashMat = new THREE.MeshBasicMaterial({ color: neon(T.COLOR_LIME, T.NEON_BOOST * 0.45) });
   const dashesPerLine = Math.ceil(T.TRACK_LENGTH / T.DASH_SPACING);
@@ -490,6 +511,14 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   const cam: CameraPose = { px: 0, py: 0, pz: 0, lx: 0, ly: 0, lz: 0 };
   const extras = (): boolean => quality < 2; // the quality ladder drops these at level 2
   let backdrop: THREE.VideoTexture | null = null;
+  let real = false; // realistic mode: a 'real' level's clip is showing (look.ts REAL_MODE)
+  /** True if the clip playing is a level whose backdrop.ts style is 'real' (matched by file). */
+  const isRealClip = (tex: THREE.VideoTexture): boolean => {
+    const src = (tex.image as HTMLVideoElement).currentSrc || (tex.image as HTMLVideoElement).src;
+    return LEVEL_BACKDROPS.some(
+      (b) => b.style === 'real' && b.video !== undefined && src.endsWith(b.video),
+    );
+  };
   // With a clip the runner runs inside it: the clip fills the screen, its street lined up with
   // the track, and the grid floor, horizon glow and side scenery step aside (they stay built:
   // no clip, a failed clip or low graphics show them exactly as before).
@@ -616,6 +645,11 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
         if (Math.abs(v.playbackRate - rate) > 0.02) v.playbackRate = rate;
       }
       archPosts.visible = archPlinths.visible = archBars.visible = !inClip;
+      // Realistic mode: on while a 'real' level's clip shows (no clip, no realistic mode).
+      real = backdrop !== null && isRealClip(backdrop);
+      trackStrip.visible = dashes.visible = !real;
+      for (const e of neonEdges) e.visible = !real;
+      for (const p of paint) p.visible = real;
 
       /* City and finale gates. */
       for (let i = 0; i < T.ARCH_COUNT; i++) {
@@ -824,7 +858,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       }
 
       /* Particles drift past at the zone's rate. Dropped at quality 2, halved at 1. */
-      particles.visible = extras();
+      particles.visible = extras() && !real;
       if (particles.visible) {
         particleTravel += dt * speed * blendNum((l) => l.particleRate);
         const n = quality >= 1 ? Math.floor(pCount / 2) : pCount;
@@ -849,7 +883,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       // Milestone shockwave from the runner's feet.
       shockT += dt;
       const sk = shockT / T.SHOCKWAVE_SEC;
-      shock.visible = sk < 1;
+      shock.visible = sk < 1 && !real;
       if (shock.visible) {
         shock.position.set(playerX, 0.06, 0);
         shock.scale.setScalar(reduceMotion ? T.SHOCKWAVE_SCALE * 0.5 : 1 + sk * T.SHOCKWAVE_SCALE);
@@ -859,7 +893,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       // Speed lines from the second tier (streak 10).
       const lineTarget = reduceMotion || fever < 2 ? 0 : fever === 2 ? 0.55 : 0.9;
       lineMat.opacity += (lineTarget - lineMat.opacity) * (1 - Math.exp(-3 * dt));
-      speedLines.visible = lineMat.opacity > 0.01;
+      speedLines.visible = lineMat.opacity > 0.01 && !real;
       if (speedLines.visible) {
         const travel = distance * T.SPEED_LINE_RATE;
         for (let i = 0; i < lineInfo.length; i++) {
@@ -883,7 +917,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
 
       // With bloom the sheet blends in linear light, before the sRGB conversion, so the same
       // perceived darkening needs a stronger sheet: 1 - (1 - d)^2.2.
-      const bloomOn = composer !== null && quality < 2;
+      const bloomOn = composer !== null && quality < 2 && !real;
       const dimTarget = !dim ? 0 : bloomOn ? 1 - (1 - T.PAUSE_DIM) ** 2.2 : T.PAUSE_DIM;
       dimMat.opacity += (dimTarget - dimMat.opacity) * (1 - Math.exp(-8 * realDt));
       dimSheet.visible = dimMat.opacity > 0.01;
@@ -939,7 +973,9 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       backdrop = video;
       scene.background = video ?? bgColor;
       // Applied in linear light, before the sRGB output: the same 2.2 as the pause dimmer.
-      scene.backgroundIntensity = video ? L.VIDEO_BACKDROP.brightness ** 2.2 : 1;
+      // Realistic mode shows the clip nearly as filmed.
+      const b = video && isRealClip(video) ? L.REAL_MODE.brightness : L.VIDEO_BACKDROP.brightness;
+      scene.backgroundIntensity = video ? b ** 2.2 : 1;
     },
     precompile() {
       // renderer.compile walks the whole scene, hidden objects included (three r187), so the
@@ -961,7 +997,8 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       // A ResizeObserver misses a pixel-ratio change with the same CSS size (window dragged
       // from the laptop screen to a projector), so check it here: one comparison per frame.
       if ((window.devicePixelRatio || 1) !== lastDpr) resize();
-      if (composer && quality < 2) composer.render();
+      // Realistic mode: no bloom (straight to the screen, precompiled for quality 2 anyway).
+      if (composer && quality < 2 && !real) composer.render();
       else renderer.render(scene, camera);
     },
     dispose() {

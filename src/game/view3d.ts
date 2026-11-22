@@ -5,7 +5,7 @@ import { comboLabel, GRADE_LABEL, type Grade } from './feedback';
 import { OUTCOME_LABEL, raceLabel, racePulse, type GhostOutcome, type GhostPose } from './ghost';
 import { countdownAt, flyProgress, resumeCountAt } from './intro';
 import { requirementMet, type Verdict } from './judge';
-import { backdropFor } from './backdrop';
+import { backdropFor, isReal } from './backdrop';
 import { colorKeyFor, createObstacles, variantFor, type ObstacleView } from './obstacles';
 import { createPlayer } from './player';
 import type { Quality } from './quality';
@@ -174,7 +174,14 @@ export function create3DView(
   const boundaries = (level.stages ?? []).slice(1).map((s) => ({
     d: track.distanceAt(s.startSec),
     veil: backdropFor(s.index).look.horizon,
+    real: isReal(s.index), // into a realistic level: a white fade, no neon ring (look.ts REAL_MODE)
   }));
+  const realFade = createScreenFlash(
+    stage.camera,
+    0xffffff,
+    reduceMotion ? LK.PORTAL.reducedFlash : LK.REAL_MODE.fadePeak,
+    LK.REAL_MODE.fadeSec,
+  );
   const portal = createPortal();
   stage.scene.add(portal.group);
   let passed = 0; // boundaries the runner has passed through
@@ -354,8 +361,11 @@ export function create3DView(
       // The portal: the one just passed while it fades behind the runner, else the next one.
       while (passed < boundaries.length && distance >= boundaries[passed]!.d) {
         passed++;
-        portalFlash.flash();
-        stage.milestone();
+        if (boundaries[passed - 1]!.real && quality < 2) realFade.flash();
+        else {
+          portalFlash.flash();
+          stage.milestone();
+        }
       }
       const behind = boundaries[passed - 1];
       const shown = behind && distance - behind.d < T.FINISH_FADE_END ? behind : boundaries[passed];
@@ -364,9 +374,11 @@ export function create3DView(
         const k = (T.FINISH_FADE_END - z) / (T.FINISH_FADE_END - T.FINISH_FADE_START);
         const portalFade = Math.min(1, Math.max(0, k));
         portal.set(z, shown.veil, portalFade);
-        portal.group.visible = -z < T.VIEW_DISTANCE && portalFade > 0.01;
+        portal.group.visible =
+          -z < T.VIEW_DISTANCE && portalFade > 0.01 && !(shown.real && quality < 2);
       } else portal.group.visible = false;
       portalFlash.update(realDt);
+      realFade.update(realDt);
       stage.setBackdrop(
         videoBackdrop.update(
           level.stages?.[passed]?.index ?? 1,
