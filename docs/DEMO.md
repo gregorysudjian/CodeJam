@@ -1,6 +1,6 @@
 # Demo and pitch plan
 
-**For the final build: `main` 28725de (PR #121), Sunday 9 AM.** All six levels run inside the Montreal clips, with the neon robot as the runner. The clock times were written on the rehearsal build and have not been re-timed with the camera on the final one (see "Check before the pitch" below).
+**For the final build: `main` b27c6a6 (PRs #121 to #126), Sunday 10 AM.** The menus are the dark neon arcade look, all six levels run inside the Montreal clips, and the runner is the neon robot. The clock times were written on the rehearsal build and have not been re-timed with the camera on the final one (see "Check before the pitch" below).
 
 The demo is one full round: **six levels of 30 s, 3 minutes of play**, through three Montreal streets. The pitch is spoken over the round, so the judges see the game the whole time. With sign-up before it and results after it, the run lasts about 4 minutes 15 seconds. Popular Vote has its own 2-minute cut (see Popular Vote below).
 
