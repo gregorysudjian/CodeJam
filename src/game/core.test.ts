@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 import type { GameEvent, InputState, Level, Spawn, Wave } from '@/contracts';
 import { createCore, feverTier, holdFeedback, movesSeen, type Item } from './core';
 import type { Verdict } from './judge';
-import { CUE_LEAD_SEC, MAX_DT_SEC, RESUME_COUNTDOWN_SEC, RESUME_MAX_DT_SEC } from './tuning';
+import {
+  CUE_LEAD_SEC,
+  LIFE_GRACE_SEC,
+  LIVES,
+  MAX_DT_SEC,
+  OUT_OF_LIVES_SEC,
+  RESUME_COUNTDOWN_SEC,
+  RESUME_MAX_DT_SEC,
+} from './tuning';
 
 const idle: InputState = {
   tracking: true,
@@ -129,11 +137,11 @@ describe('judging through the core', () => {
     expect(count('hit')).toBe(0);
   });
 
-  it('no moves: every non-orb is a hit, missed orbs are silent', () => {
-    const { count, hooks } = run(mixed);
-    expect(count('hit')).toBe(5);
+  it('no moves: hits until the lives run out, then the round ends', () => {
+    const { count, events } = run(mixed);
+    expect(count('hit')).toBe(LIVES); // block, hurdle, crate: each a life
     expect(count('collected')).toBe(0);
-    expect(hooks.verdicts.filter(([, v]) => v === 'missed')).toHaveLength(2);
+    expect(events.at(-1)).toMatchObject({ type: 'finished', reason: 'outOfLives' });
   });
 
   it('events carry the spawn and the frame time', () => {
@@ -211,6 +219,71 @@ describe('pause and resume', () => {
     core.resume();
     core.step(1 / 60, { ...idle, tracking: false }, 1);
     expect(got).toEqual(['paused:trackingLost', 'resuming', 'paused:trackingLost']);
+  });
+});
+
+describe('lives', () => {
+  const lifeEvents = (events: GameEvent[]) =>
+    events.flatMap((e) => (e.type === 'lifeLost' ? [e.livesLeft] : []));
+
+  it('each hit on a block, hurdle, beam or crate costs a life, after its hit event', () => {
+    const lv = level([w(4, block), w(7, hurdle)], 12);
+    const { events, core } = run(lv);
+    expect(lifeEvents(events)).toEqual([LIVES - 1, LIVES - 2]);
+    const i = events.findIndex((e) => e.type === 'lifeLost');
+    expect(events[i - 1]!.type).toBe('hit');
+    expect(core.lives()).toBe(LIVES - 2);
+    expect(events.at(-1)).toMatchObject({ type: 'finished', reason: 'complete' });
+  });
+
+  it('a missed orb costs nothing', () => {
+    const { events, core } = run(level([w(4, orb), w(6, orbLeft)], 10));
+    expect(lifeEvents(events)).toEqual([]);
+    expect(core.lives()).toBe(LIVES);
+  });
+
+  it('no second life goes within LIFE_GRACE_SEC: two hits close together are one mistake', () => {
+    // A block, then a hurdle 1.2 s later: two hits, one life. One later still costs one.
+    const lv = level([w(4, block), w(5.2, hurdle), w(4 + LIFE_GRACE_SEC + 1, hurdle)], 12);
+    const { events, count, core } = run(lv);
+    expect(count('hit')).toBe(3);
+    expect(lifeEvents(events)).toEqual([LIVES - 1, LIVES - 2]);
+    expect(core.graceLeft()).toBe(0);
+  });
+
+  it('the last life: judging and time stop, OUT_OF_LIVES_SEC later finished(outOfLives)', () => {
+    const lv = level([w(4, block), w(7, hurdle), w(10, crate), w(13, block), w(15, hurdle)], 20);
+    const { events, core } = run(lv);
+    expect(lifeEvents(events)).toEqual([2, 1, 0]);
+    expect(events.filter((e) => e.type === 'hit')).toHaveLength(3); // the block at 13 never came
+    const lastLife = events.find((e) => e.type === 'lifeLost' && e.livesLeft === 0)!;
+    const done = events.at(-1)!;
+    expect(done).toMatchObject({ type: 'finished', reason: 'outOfLives' });
+    expect(done.at).toBe(lastLife.at); // game time stopped where the last life went
+    expect(core.elapsed()).toBeLessThan(11);
+    expect(core.outOfLives()).toBe(true);
+  });
+
+  it('during the ending a pause does nothing and the finish still comes', () => {
+    const lv = level([w(4, block), w(7, hurdle), w(10, crate)], 20);
+    const core = createCore(lv);
+    const got: string[] = [];
+    core.onEvent((e) => got.push(e.type));
+    core.start();
+    let i = 0;
+    while (!core.outOfLives() && i < 60 * 20) core.step(1 / 60, idle, i++);
+    core.pause();
+    for (let k = 0; k < (OUT_OF_LIVES_SEC + 0.1) * 60; k++)
+      core.step(1 / 60, { ...idle, tracking: false }, i++);
+    expect(got.filter((t) => t === 'paused')).toEqual([]);
+    expect(got.at(-1)).toBe('finished');
+  });
+
+  it('a perfect round keeps every life and finishes complete', () => {
+    const lv = level([w(4, block), w(6, hurdle), w(8, crate)], 12);
+    const { events, core } = run(lv, perfect(lv));
+    expect(core.lives()).toBe(LIVES);
+    expect(events.at(-1)).toMatchObject({ type: 'finished', reason: 'complete' });
   });
 });
 

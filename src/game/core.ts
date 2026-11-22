@@ -23,6 +23,8 @@ export interface CoreHooks {
    * For a held object this is when the hold started, not when it ended.
    */
   verdict?(item: Item, v: Verdict, offset: number | null): void;
+  /** A hit cost a life (after its verdict); 0 left starts the out-of-lives ending. */
+  lifeLost?(livesLeft: number): void;
 }
 
 export type PauseReason = 'user' | 'trackingLost' | 'otherPerson';
@@ -34,6 +36,15 @@ export interface Core {
   streak(): number;
   started(): boolean;
   finished(): boolean;
+  /** Lives left (T.LIVES at the start). */
+  lives(): number;
+  /** Game seconds of grace left after a lost life (no second life can go), else 0. */
+  graceLeft(): number;
+  /**
+   * True from the moment the last life goes: judging and game time stop, and 'finished'
+   * (reason 'outOfLives') follows OUT_OF_LIVES_SEC of real time later.
+   */
+  outOfLives(): boolean;
   /** Why the round is held; still set during the 3-2-1 before it resumes (resumingIn). */
   pauseReason(): PauseReason | null;
   /** Seconds left of the countdown before a resume (game time frozen), or null. */
@@ -92,6 +103,12 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
     emit({ type: 'resuming', inSec: T.RESUME_COUNTDOWN_SEC });
   };
   let elapsed = 0;
+  // Lives: a hit on a block, hurdle, beam or crate costs one (a missed orb never does). After a
+  // lost life, LIFE_GRACE_SEC of game time in which no other can go: one held beam, or a block
+  // and its orb, is one mistake. The last one starts the ending (outFor: real seconds since).
+  let lives: number = T.LIVES;
+  let graceUntil = -Infinity;
+  let outFor: number | null = null;
   let nextCue = 0;
   let firstUndecided = 0; // items before this index are all decided
   let streak = 0;
@@ -131,7 +148,19 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
       hooks.verdict?.(item, v, offset);
       if (v === 'cleared') emit({ type: 'cleared', spawn, t: nowMs });
       else if (v === 'collected') emit({ type: 'collected', spawn, t: nowMs });
-      else if (v === 'hit') emit({ type: 'hit', spawn, t: nowMs });
+      else if (v === 'hit') {
+        emit({ type: 'hit', spawn, t: nowMs });
+        if (spawn.kind !== 'orb' && lives > 0 && elapsed >= graceUntil) {
+          lives--;
+          graceUntil = elapsed + T.LIFE_GRACE_SEC;
+          hooks.lifeLost?.(lives);
+          emit({ type: 'lifeLost', livesLeft: lives });
+          if (lives === 0) {
+            outFor = 0; // the ending: nothing more is judged
+            return;
+          }
+        }
+      }
       // a missed orb fires no event (contract)
     }
   }
@@ -142,13 +171,16 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
     streak: () => streak,
     started: () => started,
     finished: () => finished,
+    lives: () => lives,
+    graceLeft: () => Math.max(0, graceUntil - elapsed),
+    outOfLives: () => outFor !== null,
     pauseReason: () => pauseReason,
     resumingIn: () => countdown,
     start() {
       started = true;
     },
     pause() {
-      if (!started || finished) return;
+      if (!started || finished || outFor !== null) return; // the ending runs on
       // A pause during the countdown stops it: the player paused again.
       if (pauseReason && countdown === null) return;
       holdAgain('user');
@@ -159,6 +191,15 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
     },
     step(realDtSec, state, nowMs) {
       if (!started || finished) return;
+      if (outFor !== null) {
+        // Out of lives: game time stays where the last life went; 'finished' follows.
+        outFor += Math.min(Math.max(0, realDtSec), T.RESUME_MAX_DT_SEC);
+        if (outFor >= T.OUT_OF_LIVES_SEC) {
+          finished = true;
+          emit({ type: 'finished', reason: 'outOfLives' });
+        }
+        return;
+      }
       // Someone else in the play area, or the player gone: pose sets tracking false for both.
       const lost: PauseReason | null = state.otherPerson
         ? 'otherPerson'
@@ -193,9 +234,9 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
         emit({ type: 'cue', wave, inSec: Math.max(0, arrivesAt(wave) - elapsed) });
       }
       judgeAll(state, nowMs);
-      if (elapsed >= durationSec) {
+      if (outFor === null && elapsed >= durationSec) {
         finished = true;
-        emit({ type: 'finished' });
+        emit({ type: 'finished', reason: 'complete' });
       }
     },
     onEvent(cb) {

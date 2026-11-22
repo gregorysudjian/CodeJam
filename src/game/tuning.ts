@@ -12,6 +12,13 @@ export const CUE_LEAD_SEC = 2.0; // 'cue' fires this long before a wave arrives
 // RESUME_MAX_DT_SEC (a stall, a hidden tab) counts as that long.
 export const RESUME_COUNTDOWN_SEC = 3;
 export const RESUME_MAX_DT_SEC = 0.25;
+// Lives: each hit on a block, hurdle, beam or crate costs one ('lifeLost'); a missed orb doesn't.
+// After a lost life, this much game time in which no other can go (one held beam, or a block and
+// its orb, is one mistake). With none left the runner stumbles, OUT OF LIVES shows, and
+// 'finished' (reason 'outOfLives') follows OUT_OF_LIVES_SEC of real time later.
+export const LIVES = 3;
+export const LIFE_GRACE_SEC = 1.5;
+export const OUT_OF_LIVES_SEC = 1.5;
 /**
  * Latency compensation: each object is drawn this far ahead of the judging clock, by the move
  * that clears it, so it visually reaches the runner this much before its judging time t. A
