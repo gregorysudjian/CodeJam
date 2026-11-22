@@ -98,7 +98,7 @@ export function CalibrationScreen({
   ];
 
   return (
-    <Screen backdrop="plain">
+    <Screen backdrop="plain" className="calibration-screen">
       <header className="flex flex-wrap items-end justify-between gap-6">
         <div className="flex flex-col gap-3">
           <Eyebrow>{mode === 'floor' ? 'Floor' : 'Treadmill'}</Eyebrow>
@@ -106,9 +106,11 @@ export function CalibrationScreen({
         </div>
       </header>
 
-      <div className="grid items-start gap-8 min-[1440px]:grid-cols-[minmax(0,1fr)_340px]">
+      {/* The player reads this from the mark and can't scroll: the stage is sized from the screen
+          height (theme.css .calibration-stage) and the checklist sits beside it from 1024 px. */}
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_280px] min-[1440px]:grid-cols-[minmax(0,1fr)_340px]">
         {/* Stage */}
-        <div className="relative mx-auto aspect-video w-full max-w-[1200px] overflow-hidden rounded-[28px] border border-white/10 bg-bg-raised">
+        <div className="calibration-stage relative mx-auto aspect-video w-full overflow-hidden rounded-[28px] border border-white/10 bg-bg-raised">
           {videoSlot ? (
             <div className="absolute inset-0 [&>*]:size-full [&>*]:object-cover">{videoSlot}</div>
           ) : (
@@ -267,7 +269,7 @@ export function CalibrationScreen({
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -12 }}
                 transition={t(0.28)}
-                className="font-display-italic text-on-video line-clamp-2 pr-[0.06em] text-center text-display-sm text-balance text-text lg:text-display-md"
+                className="font-display-italic text-on-video line-clamp-2 pr-[0.06em] text-center text-display-sm text-balance text-text tight:text-title"
               >
                 {status.message}
               </motion.p>
@@ -278,7 +280,7 @@ export function CalibrationScreen({
         </div>
 
         {/* Rail */}
-        <div className="grid gap-6 md:max-[1439px]:grid-cols-2">
+        <div className="grid gap-6 md:max-lg:grid-cols-2">
           <GlassPanel padding="md" className="flex flex-col gap-2">
             <Eyebrow accent="muted" className="mb-2">
               Checklist
@@ -337,7 +339,8 @@ export function CalibrationScreen({
               })}
             </ol>
           </GlassPanel>
-          <GlassPanel padding="md" glow="cyan" className="flex flex-col gap-3">
+          {/* tight: the message on the stage already says this. */}
+          <GlassPanel padding="md" glow="cyan" className="flex flex-col gap-3 tight:hidden">
             <Eyebrow accent="cyan">{mode === 'floor' ? 'Floor setup' : 'Treadmill setup'}</Eyebrow>
             <p className="text-body text-text">
               {mode === 'floor'

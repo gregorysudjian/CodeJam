@@ -9,6 +9,8 @@ import {
   localDay,
   shiftDay,
   weekStart,
+  thisWeek,
+  weekDays,
 } from "@/ui/screens/dashboardStats";
 
 const at = (day: number, hour = 12) => new Date(2026, 10, day, hour).getTime();
@@ -31,6 +33,27 @@ function session(day: number, activeSec = 90): SavedSession {
     activeSec,
   };
 }
+describe("this week (Monday to Sunday, like the streak dots)", () => {
+  // Saturday 21 Nov 2026: the week started Monday 16; Sunday 15 is last week.
+  const now = at(21, 23);
+  const sessions = [session(15, 90), session(16, 45), session(21, 45), session(22, 60)];
+  it("keeps Monday to now and drops last Sunday and the future", () => {
+    expect(thisWeek(sessions, now).map((s) => s.id)).toEqual(["s-16", "s-21"]);
+  });
+  it("lists Monday to Sunday with the same days as the dots, later days empty", () => {
+    const days = weekDays(sessions, now);
+    expect(days.map((d) => d.label)).toEqual(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]);
+    expect(days[0]).toMatchObject({ date: localDay(at(16)), activeMin: 0.75, played: true });
+    expect(days[5]).toMatchObject({ date: localDay(at(21)), activeMin: 0.75, played: true });
+    expect(days[6]).toMatchObject({ date: localDay(at(22)), activeMin: 0, played: false });
+  });
+  it("agrees with the weekly minutes and reps it is shown beside", () => {
+    const week = thisWeek(sessions, now);
+    const chartMin = weekDays(sessions, now).reduce((sum, d) => sum + d.activeMin, 0);
+    expect(Math.round(chartMin)).toBe(weeklyActiveMinutes(sessions, now));
+    expect(totals(week).reps).toBe(2 * 21);
+  });
+});
 describe("dashboard local-calendar statistics", () => {
   it("starts a new week on Monday after Sunday", () => {
     const sessions = [session(16, 60), session(22, 120), session(23, 180)];

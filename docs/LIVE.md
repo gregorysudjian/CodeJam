@@ -47,6 +47,84 @@ Left on purpose: the anonymous `auth.users` rows behind those profiles (no name,
 any board) and the kiosk's `Leaderboard` profiles (no rounds; count them with
 `select count(*) from public.profiles where display_name = 'Leaderboard';`).
 
+## Rollback plan for 0004 (and 0005): only if it blocks legitimate saves
+
+Not run. Each block undoes one part of `0004_session_limits.sql`, so only what is actually
+blocking goes. All were tested on a local Postgres (PGlite) with 0001 to 0004: the refused request
+works afterwards, a normal round still saves, profile updates still work, and the leaderboard is
+still readable and still a plain view (no `security_invoker`).
+
+**How to tell.** A real round that doesn't reach the board. In the player's browser console:
+`The server refused a session; it is dropped.` with the constraint name; or `smoke.mjs` failing on
+"save a 45 s round"; or, in the SQL editor, no new rows while people play:
+`select count(*) from public.sessions where created_at > now() - interval '15 minutes';`
+
+| Symptom (Postgres error) | Cause | Undo |
+| --- | --- | --- |
+| `23514 … sessions_score_ceiling` on an honest round | the cap (300 × duration) is too low after a scoring change | **A** |
+| `23514 … sessions_reps_small` or `sessions_missed_small` | `reps`/`missed` changed shape (not an object, or over 1 KB) | **B** |
+| `42501 permission denied for table profiles` on a profile save | the app updates a column outside the 5 granted ones | **C** |
+| a round's date looks wrong | the clamp trigger (it never refuses a save) | **D** |
+
+```sql
+-- A: the score ceiling
+alter table public.sessions drop constraint if exists sessions_score_ceiling;
+
+-- B: the size limits on reps and missed
+alter table public.sessions drop constraint if exists sessions_reps_small,
+  drop constraint if exists sessions_missed_small;
+
+-- C: profile updates on every column again (as in 0001)
+grant update on public.profiles to authenticated;
+
+-- D: the created_at clamp
+drop trigger if exists sessions_clamp_created_at on public.sessions;
+drop function if exists public.sessions_clamp_created_at();
+```
+
+All of 0004 at once (the revoked UPDATE and DELETE on sessions are not restored: no RLS policy
+allowed them anyway, so nothing legitimate used them):
+
+```sql
+begin;
+alter table public.sessions drop constraint if exists sessions_score_ceiling,
+  drop constraint if exists sessions_reps_small,
+  drop constraint if exists sessions_missed_small;
+drop trigger if exists sessions_clamp_created_at on public.sessions;
+drop function if exists public.sessions_clamp_created_at();
+grant update on public.profiles to authenticated;
+commit;
+```
+
+**0005** (only if it gets applied): it can't block a save; it only lets visitors who aren't signed
+in read the board. To close the board to them again: `revoke select on public.leaderboard from anon;`
+
+## Privacy: what we store and who sees it (for the judges)
+
+Checked against `supabase/migrations/0001` to `0004`, `api/coach.ts` and the code (`src/pose` makes
+no network call at all; only `src/data` talks to the network).
+
+- **The video never leaves the laptop.** Pose tracking (MediaPipe) runs in the browser; the model is
+  downloaded from our own site. No frame and no body landmark is sent anywhere.
+- **What we store per player** (Supabase, Postgres): an anonymous account (no email, no password,
+  no phone), and a profile with the **name they type**, goal, fitness level, weekly goal, and
+  **weight only if they choose to enter it**. Per round: workout, mode, length, score, accuracy,
+  streak, moves counted, misses per move, estimated calories, date. For the coach's rate limit, the
+  time of the last coach call.
+- **Who can read it.** Row-level security on every table: a player can read and write only their
+  own profile and rounds, and can't change or delete a round once saved. The **leaderboard** is the
+  only shared view: name, workout, mode, round length, score and date, each player's best only:
+  no weight, no calories, no moves.
+- **On the laptop**: the same profile and rounds are cached in the browser's local storage, so it
+  works offline.
+- **The AI coach** (off tonight: no key is set): when on, the server sends the profile's name, goal,
+  level and weekly goal plus the last 10 rounds to Claude for a recap. Never the weight, never video.
+- **Being forgotten.** "New guest" signs the player out on this laptop and erases their local copy.
+  The rows on the server stay, anonymous (no contact details), until we delete them: test players
+  are deleted Sunday, and any player can ask us to delete theirs (deleting the profile deletes its
+  rounds). There is no self-service delete button.
+- Supabase keeps its own auth logs (request IPs) for 24 hours on our plan.
+
 ## Expo evening readiness (Saturday 8 PM)
 
 ### Is the live build current?

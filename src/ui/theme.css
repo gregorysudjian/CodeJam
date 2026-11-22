@@ -174,6 +174,8 @@
    (about 1470×830). tight: 125–150 % display scaling or browser zoom (1093×614, 1024×576). */
 @custom-variant short (@media (max-height: 900px));
 @custom-variant tight (@media (max-height: 640px));
+/* cramped: 150 % scaling (911×512, 853×480). */
+@custom-variant cramped (@media (max-height: 520px));
 
 /* ───── Utilities ───── */
 
@@ -612,8 +614,31 @@
   min-height: 100dvh;
   justify-content: center;
 }
+/* Short screens: the hero and its QR fit in one screen (QA Q12). */
+@media (max-height: 900px) {
+  .landing-screen main {
+    padding-top: 20px;
+    padding-bottom: 20px;
+    gap: 20px;
+  }
+}
 .dashboard-empty {
   min-height: calc(100dvh - 96px);
+}
+/* Calibration: a camera player at the mark can't scroll, so the 16:9 stage is only as wide as
+   the screen height allows; the subtracted height is the title, footer, gaps and padding. */
+.calibration-stage {
+  max-width: min(1200px, calc((100dvh - 340px) * 16 / 9));
+}
+@media (max-height: 900px) {
+  .calibration-screen main {
+    gap: 20px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+  .calibration-stage {
+    max-width: min(1200px, calc((100dvh - 260px) * 16 / 9));
+  }
 }
 .screen-shell.has-footer > main {
   padding-bottom: calc(var(--screen-footer-height, 136px) + 24px);
@@ -762,11 +787,75 @@
     max-width: 190px;
   }
 }
-@media (max-width: 1279px) {
+@media (max-width: 767px) {
   .leaderboard-kiosk aside {
     border-left: 0;
     border-top: 1px solid var(--na-glass-border);
     padding: 24px 0 0;
+  }
+}
+/* 125–150 % display scaling or browser zoom (QA Q20): podium and kiosk QR above the fold.
+   The doubled class matches the :not(.leaderboard-kiosk) rules above. */
+@media (max-height: 640px) {
+  .leaderboard-screen main {
+    gap: 12px;
+    padding-top: 12px;
+  }
+  .leaderboard-title {
+    font-size: 32px;
+  }
+  .leaderboard-screen .eyebrow {
+    margin-bottom: 4px;
+  }
+  .leaderboard-filters {
+    gap: 8px;
+  }
+  .leaderboard-filters [role='radio'] {
+    height: 40px;
+    min-width: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 16px;
+  }
+  .leaderboard-screen.leaderboard-screen .podium-grid > * {
+    min-height: 0;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    gap: 4px;
+  }
+  .leaderboard-screen.leaderboard-screen .podium-rank {
+    font-size: 64px;
+  }
+  .leaderboard-screen .podium-score,
+  .leaderboard-kiosk .podium-score {
+    font-size: 32px;
+  }
+  .leaderboard-kiosk .podium-name {
+    font-size: 28px;
+  }
+  .leaderboard-kiosk .kiosk-crown-banner {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .leaderboard-kiosk .kiosk-crown-banner p {
+    font-size: 32px;
+  }
+  .leaderboard-kiosk aside {
+    justify-content: flex-start;
+    padding-top: 0;
+    gap: 8px;
+  }
+  .leaderboard-kiosk aside > svg {
+    display: none;
+  }
+  .leaderboard-kiosk .qr-stage {
+    max-width: 170px;
+  }
+}
+@media (max-height: 520px) {
+  .podium-grid .eyebrow,
+  .podium-grid .podium-place > span:last-child {
+    display: none;
   }
 }
 @media (max-width: 600px) {
@@ -952,6 +1041,29 @@
   }
 }
 
+/* 125–150 % display scaling or browser zoom (QA Q19): the 1366×768 and 1280×720 screens become
+   1093×614 … 853×480 CSS px. Cards, title and settings shrink so START and Camera/Keyboard stay
+   in view. Same specificity as the rules above, so they must come after them. */
+@media (max-height: 640px) {
+  .workout-screen main {
+    padding-top: 12px;
+    gap: 12px;
+  }
+  .workout-screen h1 {
+    font-size: 40px;
+  }
+  .workout-screen [role='radiogroup'][aria-label='Workout'] > [role='radio'] {
+    padding: 12px 16px;
+    border-radius: 20px;
+  }
+  .workout-screen [role='radiogroup'][aria-label='Workout'] > [role='radio'] svg {
+    max-height: 56px;
+  }
+  .workout-screen [role='radiogroup'] + div {
+    padding-top: 8px;
+  }
+}
+
 /* Narrower than 1440 px: let the select screen's settings segments shrink so mode, duration,
    low impact and Camera/Keyboard stay on one row (QA Q1). */
 @media (max-width: 1439px) {
@@ -959,5 +1071,18 @@
     min-width: 84px;
     padding-left: 14px;
     padding-right: 14px;
+  }
+}
+/* …and at 125–150 % (Q19) shrink them further, so the row still fits in 850–1100 CSS px. */
+@media (max-height: 640px) {
+  .workout-settings [role='radio'] {
+    height: 44px;
+    min-width: 0;
+    padding-left: 12px;
+    padding-right: 12px;
+    font-size: 18px;
+  }
+  .workout-settings label > span {
+    font-size: 18px;
   }
 }
