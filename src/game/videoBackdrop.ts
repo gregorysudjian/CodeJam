@@ -16,7 +16,7 @@ import * as T from './tuning';
  * Speed (backdropRate): on a 'real' level the clip plays at the rate that makes its road move under
  * the runner at the game's speed (tuning.ts REAL_CAMERA.roadSpeed), so obstacles don't slide on
  * it. `?dev=calib` shows the numbers and a marker painted on the road at the game's speed, and
- * [ and ] change the level's road speed live (\ resets it).
+ * [ and ] change the shown clip's road speed live (\ resets it).
  */
 
 /**
@@ -35,11 +35,16 @@ export function clipRate(speed: number, roadSpeed?: number): number {
 
 const calibOn =
   typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'calib';
-const calibRoad = new Map<number, number>(); // ?dev=calib: road speeds changed live, by level
-const calibNow = { level: 0, real: false, speed: 0, rate: 1, at: 0 };
+const calibRoad = new Map<string, number>(); // ?dev=calib: road speeds changed live, by clip
+const calibNow = { clip: '', real: false, speed: 0, rate: 1, at: 0 };
 
-function roadSpeedFor(level: number): number | undefined {
-  return calibRoad.get(level) ?? T.REAL_CAMERA.roadSpeed[level];
+/** A clip's key in REAL_CAMERA.roadSpeed: its file name ('/media/x.mp4' → 'x.mp4'). */
+export function clipName(src: string): string {
+  return src.slice(src.lastIndexOf('/') + 1);
+}
+
+function roadSpeedFor(clip: string): number | undefined {
+  return calibRoad.get(clip) ?? T.REAL_CAMERA.roadSpeed[clip];
 }
 
 /**
@@ -47,10 +52,10 @@ function roadSpeedFor(level: number): number | undefined {
  * createVideoBackdrop) at game speed `speed`.
  */
 export function backdropRate(tex: THREE.Texture, speed: number): number {
-  const level = tex.userData.level as number | undefined;
+  const clip = (tex.userData.clip as string | undefined) ?? '';
   const real = tex.userData.real === true;
-  const rate = clipRate(speed, real && level !== undefined ? roadSpeedFor(level) : undefined);
-  if (calibOn) Object.assign(calibNow, { level, real, speed, rate, at: performance.now() });
+  const rate = clipRate(speed, real ? roadSpeedFor(clip) : undefined);
+  if (calibOn) Object.assign(calibNow, { clip, real, speed, rate, at: performance.now() });
   return rate;
 }
 export interface ClipState {
@@ -139,13 +144,13 @@ function createCalibOverlay(isPlaying: () => boolean): () => void {
   const g = cv.getContext('2d');
   const step = T.REAL_CAMERA.calibStep;
   const onKey = (e: KeyboardEvent): void => {
-    const lv = calibNow.level;
-    if (!lv) return;
-    const cur = roadSpeedFor(lv) ?? calibNow.speed;
+    const clip = calibNow.clip;
+    if (!clip) return;
+    const cur = roadSpeedFor(clip) ?? calibNow.speed;
     const round = (x: number): number => Math.round(Math.max(step, x) * 100) / 100;
-    if (e.code === 'BracketLeft') calibRoad.set(lv, round(cur - step));
-    else if (e.code === 'BracketRight') calibRoad.set(lv, round(cur + step));
-    else if (e.code === 'Backslash') calibRoad.delete(lv);
+    if (e.code === 'BracketLeft') calibRoad.set(clip, round(cur - step));
+    else if (e.code === 'BracketRight') calibRoad.set(clip, round(cur + step));
+    else if (e.code === 'Backslash') calibRoad.delete(clip);
   };
   window.addEventListener('keydown', onKey);
   // The chase camera (no sway): forward and up, in the y-z plane.
@@ -197,20 +202,18 @@ function createCalibOverlay(isPlaying: () => boolean): () => void {
         g.stroke();
       }
     }
-    const lv = calibNow.level;
-    const rs = lv ? roadSpeedFor(lv) : undefined;
-    const levels = Object.keys(T.REAL_CAMERA.roadSpeed)
-      .map(Number)
+    const clip = calibNow.clip;
+    const rs = clip ? roadSpeedFor(clip) : undefined;
+    const clips = Object.keys(T.REAL_CAMERA.roadSpeed)
       .concat([...calibRoad.keys()])
-      .filter((x, i, all) => all.indexOf(x) === i)
-      .sort((a, b) => a - b);
+      .filter((x, i, all) => all.indexOf(x) === i);
     box.textContent = live
-      ? `CALIB level ${lv} ${calibNow.real ? 'real' : 'neon'}\n` +
+      ? `CALIB ${clip} ${calibNow.real ? 'real' : 'neon'}\n` +
         `game ${calibNow.speed.toFixed(1)} u/s  road ${rs?.toFixed(2) ?? '-'} u/s\n` +
         `rate ${calibNow.rate.toFixed(2)}` +
         (rs ? `  (wants ${(calibNow.speed / rs).toFixed(2)})\n` : '\n') +
         `[ / ] road -/+${step}   \\ reset\n` +
-        `roadSpeed: { ${levels.map((l) => `${l}: ${roadSpeedFor(l)}`).join(', ')} }`
+        `roadSpeed: { ${clips.map((c) => `'${c}': ${roadSpeedFor(c)}`).join(', ')} }`
       : 'CALIB: no clip showing';
     raf = requestAnimationFrame(frame);
   };
@@ -235,7 +238,7 @@ export function createVideoBackdrop(): VideoBackdrop {
     if (!clip) {
       clip = openClip(src);
       clip.texture.userData.horizon = backdropFor(level).horizon; // scene.ts lines it up
-      clip.texture.userData.level = level; // backdropRate
+      clip.texture.userData.clip = clipName(src); // backdropRate
       clip.texture.userData.real = backdropFor(level).style === 'real';
       clips.set(src, clip);
     }

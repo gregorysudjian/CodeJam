@@ -355,11 +355,16 @@ export const MUSIC_FADE_SEC = 0.25; // pause, resume and finish fades
    reads these. */
 export const REAL_CAMERA = {
   // How fast each real clip's road moves under the runner at 1x, in world units per second (the
-  // game's speed unit), by level. The clip plays at gameSpeed / roadSpeed, clamped to
+  // game's speed unit), by clip file name (backdrop.ts `video`), so a clip reused on several
+  // levels keeps its value on each. The clip plays at gameSpeed / roadSpeed, clamped to
   // [rateMin, rateMax], so the road keeps pace with the obstacles. Measured by block matching the
   // clip's road (or kerb) over 4-frame steps, carried to the runner's row on screen through the
   // chase camera at about 65 degrees of field of view; check or adjust live with `?dev=calib`.
-  roadSpeed: { 2: 5.0, 3: 5.7, 5: 2.6 } as Readonly<Partial<Record<number, number>>>,
+  roadSpeed: {
+    'level-2-london.mp4': 5.0, // Old Montreal, Rue Saint-Paul (cobbles)
+    'level-3-paris.mp4': 5.7, // Jacques Cartier Bridge deck
+    'level-5-barcelona.mp4': 2.6, // Old Port at blue hour
+  } as Readonly<Partial<Record<string, number>>>,
   rateMin: 0.5,
   rateMax: 1.5,
   // Intro and outro on a real level: no orbit (a flat clip can't turn with the camera), a straight

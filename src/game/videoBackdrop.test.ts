@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { VIDEO_BACKDROP } from './look';
 import * as T from './tuning';
-import { clipRate, clipToShow } from './videoBackdrop';
+import { clipName, clipRate, clipToShow } from './videoBackdrop';
 
 describe('clipRate: how fast the clip plays', () => {
   it("on a real level, moves the clip's road at the game's speed", () => {
@@ -22,11 +22,15 @@ describe('clipRate: how fast the clip plays', () => {
     expect(clipRate(0)).toBeCloseTo(VIDEO_BACKDROP.rateMin);
   });
 
-  it('has a road speed for every real level that has a clip', async () => {
+  it("has a road speed for every real level's clip, by file name (a renamed clip fails here)", async () => {
     const { LEVEL_BACKDROPS } = await import('./backdrop');
-    LEVEL_BACKDROPS.forEach((b, i) => {
-      if (b.style === 'real' && b.video) expect(T.REAL_CAMERA.roadSpeed[i + 1]).toBeGreaterThan(0);
-    });
+    for (const b of LEVEL_BACKDROPS)
+      if (b.style === 'real' && b.video)
+        expect(T.REAL_CAMERA.roadSpeed[clipName(b.video)], b.video).toBeGreaterThan(0);
+  });
+
+  it('keys clips by file name', () => {
+    expect(clipName('/media/level-3-paris.mp4')).toBe('level-3-paris.mp4');
   });
 });
 
