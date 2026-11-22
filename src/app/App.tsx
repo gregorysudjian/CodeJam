@@ -130,6 +130,9 @@ function MainApp() {
   const [signingIn, setSigningIn] = useState(false);
   const [cameraError, setCameraError] = useState<CameraErrorInfo | null>(null);
   const [tutorialDone, setTutorialDone] = useState(false);
+  // The profile screen is either a new guest's setup (no nav bar) or an existing player editing
+  // it from the dashboard or the bar's chip (nav bar on).
+  const [editingProfile, setEditingProfile] = useState(false);
   const online = useOnline();
 
   const [summary, setSummary] = useState<SessionSummary | null>(null);
@@ -342,6 +345,7 @@ function MainApp() {
       } else if (target === 'leaderboard') {
         if (current !== 'leaderboard') openLeaderboard();
       } else if (current !== 'profile' && profile) {
+        setEditingProfile(true);
         setScreen('profile');
       }
     },
@@ -405,6 +409,7 @@ function MainApp() {
   const playAsGuest = async () => {
     await resetPreviousPlayer();
     setProfile(await signIn());
+    setEditingProfile(false); // first-time setup: no nav bar
     setScreen('profile');
   };
   const continueAsReturning = async () => {
@@ -574,6 +579,7 @@ function MainApp() {
           topScores={topScores}
           qrSlot={qr}
           publicUrl={publicUrl}
+          checkUsername={(n) => store.isUsernameTaken(n)}
         />
       )}
       {screen === 'profile' && (
@@ -581,6 +587,8 @@ function MainApp() {
           initial={profile ?? undefined}
           onSubmit={(p) => void submitProfile(p)}
           onBack={() => setScreen('landing')}
+          nav={editingProfile ? navFor('profile') : undefined}
+          checkUsername={(n) => store.isUsernameTaken(n)}
         />
       )}
       {screen === 'select' && (
@@ -663,7 +671,10 @@ function MainApp() {
             onPlay={() => setScreen('select')}
             onPlayCoachPick={startSession}
             onLeaderboard={openLeaderboard}
-            onEditProfile={() => setScreen('profile')}
+            onEditProfile={() => {
+              setEditingProfile(true);
+              setScreen('profile');
+            }}
             nav={navFor('progress')}
           />
         </Suspense>
