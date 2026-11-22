@@ -424,7 +424,7 @@ export function createSupabaseStore(
       const name = cleanDisplayName(raw);
       if (!name) return null;
       try {
-        if (!(await userId())) return null;
+        // Also before sign-in (migration 0008): the landing's sign-up form asks first.
         const { data, error } = await withTimeout(sb.rpc('username_taken', { p_name: name }));
         return error ? null : data === true;
       } catch {
