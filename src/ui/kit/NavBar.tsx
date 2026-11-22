@@ -22,7 +22,7 @@ const ITEMS: readonly { target: Exclude<NavTarget, "profile">; label: string; ic
 ];
 
 /** The top bar of the menu screens: logo, PLAY · PROGRESS · LEADERBOARD, the player chip.
- *  Montreal street-sign look: a solid card, the current item underlined in maple red. */
+ *  Neon look: a solid dark card, the current item underlined in lime. */
 export function NavBar({ current, onNavigate, player, appName = "Neon Arena", className }: NavBarProps) {
   return (
     <nav

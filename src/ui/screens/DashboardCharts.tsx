@@ -16,7 +16,7 @@ import { Eyebrow, GlassPanel, MoveChip, MOVE_ORDER, MOVE_LABELS } from '@/ui/kit
 import type { ActivityDay } from '@/ui/screens/dashboardStats';
 import { localDay } from '@/ui/screens/dashboardStats';
 
-// Montreal streets: slate ink for the week, maple red for today, metro blue for the goal pace.
+// Neon arena: light bars for the week, lime for today, cyan for the goal pace.
 // Every mark is at least 3:1 on the card (--na-bg-raised); text is the 5.3:1 dim ink or darker.
 const tick = { fill: 'var(--na-text-dim)', fontFamily: 'var(--font-display)', fontSize: 16 };
 const GRID = 'var(--na-glass-border)';
