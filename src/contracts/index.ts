@@ -201,6 +201,16 @@ export interface LeaderboardEntry {
   at: number;
 }
 
+// Friends (migration 0007). Usernames (Profile.displayName) are unique, ignoring case. Adding a
+// friend is one-way: you see their best scores on your friends board; they see yours once they
+// add you back. Only names and scores are shared, as on the public board.
+export interface FriendBoardEntry extends LeaderboardEntry {
+  isMe: boolean; // the current player's own row (always included when they have a round)
+}
+export type AddFriendResult =
+  | { ok: true; displayName: string } // the friend's name as stored (its own capitalisation)
+  | { ok: false; reason: 'notFound' | 'self' | 'already' | 'limit' | 'offline' };
+
 export interface CoachAdvice {
   recap: string; // two sentences about the session just played
   tip: string; // one concrete thing to try next time
@@ -224,6 +234,19 @@ export interface DataStore {
     limit?: number,
   ): Promise<LeaderboardEntry[]>;
   getCoachAdvice(session: SavedSession): Promise<CoachAdvice>; // never rejects; falls back to rules
+  // Friends. None of these reject. The local store has no friends: null / [] / 'offline'.
+  // A save or sign-in with a taken username never fails: the store appends "-NNNN" and the
+  // returned Profile has the name actually stored. Check with isUsernameTaken first to tell the
+  // player.
+  isUsernameTaken(name: string): Promise<boolean | null>; // null: unknown (offline, local store)
+  addFriend(username: string): Promise<AddFriendResult>;
+  listFriends(): Promise<string[]>; // friends' usernames, A to Z
+  getFriendsBoard(
+    workout: WorkoutId,
+    mode: PlayMode,
+    durationSec: number,
+    limit?: number,
+  ): Promise<FriendBoardEntry[]>; // best round of you and each friend, highest first
   signOut(): Promise<void>; // forgets the current guest; the next signInGuest creates a new user
 }
 
