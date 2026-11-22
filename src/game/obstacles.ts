@@ -3,7 +3,7 @@ import type { MoveType, ObstacleKind, Spawn } from '@/contracts';
 import { GLYPH, paintGlyph, type Glyph } from './glyph';
 import * as LK from './look';
 import type { Verdict } from './judge';
-import { backdropFor } from './backdrop';
+import { isReal } from './backdrop';
 import { createContactShadows } from './props';
 import { neon } from './scene';
 import * as T from './tuning';
@@ -101,7 +101,7 @@ export interface Obstacles {
 
 /** A level whose backdrop style is 'real' (backdrop.ts, package C) gets realistic obstacles. */
 function isRealLevel(level: number | undefined): boolean {
-  return level !== undefined && (backdropFor(level) as { style?: string }).style === 'real';
+  return level !== undefined && isReal(level);
 }
 
 /**
