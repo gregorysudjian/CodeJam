@@ -12,6 +12,7 @@ import type {
 } from '@/contracts';
 import { ruleBasedAdvice } from './coach';
 import { browserStorage, guestName, readJson, writeJson, type KeyValue } from './local';
+import { cleanNamePatch, nameOrGuest } from './names';
 import {
   isCoachAdvice,
   leaderboardFromRow,
@@ -176,7 +177,7 @@ export function createSupabaseStore(
       const { data, error } = await withTimeout(
         sb
           .from('profiles')
-          .insert({ id: uid, display_name: displayName?.trim().slice(0, 40) || guestName() })
+          .insert({ id: uid, display_name: nameOrGuest(displayName) })
           .select('*')
           .single<ProfileRow>(),
       );
@@ -213,7 +214,8 @@ export function createSupabaseStore(
       }
     },
 
-    async saveProfile(patch) {
+    async saveProfile(rawPatch) {
+      const patch = cleanNamePatch(rawPatch);
       const uid = await userId();
       const base: Profile = cachedProfile() ?? {
         id: uid ?? 'offline',

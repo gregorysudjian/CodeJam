@@ -16,6 +16,11 @@ export const COACH_WEEK_MS = 7 * 24 * 3600 * 1000;
 export const COACH_DURATIONS = [45, 90, 180] as const;
 export const COACH_DEFAULT_DURATION = 90;
 
+/** Display names (names.ts): the profile screen's limit; the database allows 40. */
+export const NAME_MAX_LENGTH = 20;
+/** Combining marks kept on one letter (enough for Hindi, Thai, Vietnamese; stops "Zalgo"). */
+export const NAME_MAX_COMBINING_MARKS = 3;
+
 /** Local storage. */
 export const LOCAL_MAX_SESSIONS = 200;
 export const DEFAULT_WEEKLY_GOAL_MIN = 60;

@@ -10,6 +10,7 @@ import type {
   SavedSession,
   WorkoutId,
 } from '@/contracts';
+import { nameOrGuest, shownName } from './names';
 
 export interface ProfileRow {
   id: string;
@@ -69,7 +70,7 @@ export function profileFromRow(r: ProfileRow): Profile {
   const weight = r.weight_kg === null ? undefined : num(r.weight_kg);
   return {
     id: r.id,
-    displayName: r.display_name,
+    displayName: shownName(r.display_name),
     goal: r.goal,
     level: r.level,
     ...(weight === undefined ? {} : { weightKg: weight }),
@@ -80,7 +81,7 @@ export function profileFromRow(r: ProfileRow): Profile {
 /** Only the fields that were patched, so an update never overwrites what it did not mean to. */
 export function profilePatchToRow(patch: Partial<Omit<Profile, 'id'>>): Partial<ProfileRow> {
   const row: Partial<ProfileRow> = {};
-  if (patch.displayName !== undefined) row.display_name = patch.displayName.trim().slice(0, 40);
+  if (patch.displayName !== undefined) row.display_name = nameOrGuest(patch.displayName);
   if (patch.goal !== undefined) row.goal = patch.goal;
   if (patch.level !== undefined) row.level = patch.level;
   if ('weightKg' in patch) row.weight_kg = patch.weightKg ?? null;
@@ -142,7 +143,9 @@ export function sessionFromRow(r: SessionRow): SavedSession {
 
 export function leaderboardFromRow(r: LeaderboardRow): LeaderboardEntry {
   return {
-    displayName: r.display_name,
+    // Cleaned on the way out too: the board is on a projector, and a name may have been written
+    // before cleaning existed, or straight to the REST API (docs/LIVE.md, names).
+    displayName: shownName(r.display_name),
     score: r.score,
     workout: r.workout,
     mode: r.mode,
