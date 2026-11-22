@@ -15,8 +15,8 @@ export const TRACKING_LOST_HINT_MS = 3000;
 /** Kiosk leaderboard (?kiosk=1) for the demo table: refresh interval and number of rows. */
 export const KIOSK_REFRESH_MS = 15000;
 export const LEADERBOARD_SIZE = 20;
-/** The board shown first (landing top 3, kiosk, leaderboard): judges play the 45 s demo round. */
-export const BOARD_DEFAULT_DURATION_SEC = 45;
+/** The board shown first (landing top 3, kiosk, leaderboard). */
+export const BOARD_DEFAULT_DURATION_SEC = 180; // every round is all 6 levels
 /** Where QR codes point when the app runs on localhost (the demo Mac): a phone can't open localhost (QA Q18). */
 export const PUBLIC_SITE_URL = 'https://codejam-jet.vercel.app';
 
