@@ -2,7 +2,7 @@
 //   node supabase/tests/live-headers.mjs [siteUrl]
 // PASS when hashed /assets are immutable for a year, the pose model and WASM are cached a day
 // with stale-while-revalidate, and the page itself is never cached (so a deploy shows at once).
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const SITE = (process.argv[2] ?? 'https://codejam-jet.vercel.app').replace(/\/$/, '');
@@ -28,13 +28,14 @@ const checks = [
   ],
 ];
 // Backdrops and obstacle images (hx-media): checked once a file exists in public/media/ here.
+// An explicit walk: readdirSync's `recursive` option is ignored by older Node versions, which
+// would make this check skip itself without a word.
 const mediaDir = fileURLToPath(new URL('../../public/media/', import.meta.url));
-const firstMedia = existsSync(mediaDir)
-  ? readdirSync(mediaDir, { recursive: true })
-      .map((f) => String(f).replace(/\\/g, '/'))
-      .filter((f) => statSync(mediaDir + f).isFile())
-      .sort()[0]
-  : undefined;
+const walk = (rel) =>
+  readdirSync(mediaDir + rel, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walk(`${rel}${e.name}/`) : [`${rel}${e.name}`],
+  );
+const firstMedia = existsSync(mediaDir) ? walk('').sort()[0] : undefined;
 if (firstMedia)
   checks.push([
     '/media/' + firstMedia.split('/').map(encodeURIComponent).join('/'),
