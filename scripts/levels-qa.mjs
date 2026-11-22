@@ -93,22 +93,26 @@ const HOOK = `(() => {
 })()`;
 
 async function toSelect(page, base) {
-  await page.goto(`${base}?demo=1&store=local&music=off`);
+  const url = `${base}?demo=1&store=local&music=off`;
+  await page.goto(url);
   // A cold dev server compiles on the first visit: allow it time.
   await page.waitFor(
     `/PLAY AS GUEST|CONTINUE AS|PICK A WORKOUT/.test(document.body.innerText)`,
     90000,
   );
-  const t = await page.text();
-  if (/CONTINUE AS/.test(t)) await page.click('continue as');
-  else if (!/PICK A WORKOUT/.test(t)) {
-    await page.click('play as guest');
-    await page.waitFor(`!!document.querySelector('input')`);
-    await page.eval(`(() => { const i = document.querySelector('input');
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'QA-levels');
-      i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
-    await page.click('continue');
-  }
+  // Every case starts as a new player. With a player saved by the case before, the landing first
+  // shows PLAY AS GUEST and then, once the saved player loads, CONTINUE AS ... on the same button:
+  // reading one and clicking the other failed when run in one go. The Chrome profile is a
+  // throwaway one (cdp.mjs), so forget everything this origin stored and load the page again.
+  await page.eval('localStorage.clear(), sessionStorage.clear(), true');
+  await page.goto(url);
+  await page.waitFor(`/PLAY AS GUEST/.test(document.body.innerText)`, 30000);
+  await page.click('play as guest');
+  await page.waitFor(`!!document.querySelector('input')`);
+  await page.eval(`(() => { const i = document.querySelector('input');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'QA-levels');
+    i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await page.click('continue');
   await page.waitFor(`/PICK A WORKOUT/.test(document.body.innerText)`, 20000);
   await sleep(1500); // the app may switch to the camera once it finds one; let that settle
   await page.click('keyboard');
