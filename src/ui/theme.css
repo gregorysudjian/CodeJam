@@ -383,8 +383,9 @@
   backdrop-filter: blur(20px);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
 }
+/* 88 %: the guide figure pulses down to 55 % opacity and still needs 3:1 over a white sky. */
 @utility hud-overlay {
-  background: color-mix(in srgb, var(--na-bg) 80%, transparent);
+  background: color-mix(in srgb, var(--na-bg) 88%, transparent);
   backdrop-filter: blur(18px);
 }
 /* A dark ring around HUD words over the 3D scene. Under protanopia the danger red turns a dim
@@ -464,6 +465,10 @@
     drop-shadow(0 0 18px color-mix(in srgb, currentColor 33%, transparent));
 }
 /* In the round the figure sits on the cue's dark pill: a tight edge, no 18 px halo on video. */
+/* ESC key cap on the clock plate: muted grey on the 5 % cap was 4.3:1 on bright-sky levels. */
+.hud-clock kbd {
+  color: var(--na-text);
+}
 .hud-root .move-figure {
   filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 50%, transparent));
 }
@@ -687,6 +692,42 @@
 }
 .profile-screen h1 {
   font-size: 64px;
+}
+/* Short screens (1366x768 laptops leave ~650 px under Chrome's bar; the nav bar adds ~80 px when a
+   player edits): tighten the column so LEVEL and MORE OPTIONS clear the sticky footer. */
+@media (max-height: 820px) {
+  .profile-screen main {
+    gap: 20px;
+    padding-top: 20px;
+  }
+  .profile-screen h1 {
+    font-size: 48px;
+  }
+  .profile-screen form,
+  .profile-screen form > div {
+    gap: 16px;
+  }
+  .profile-screen form > div > div {
+    gap: 10px;
+  }
+  .profile-screen .profile-goal {
+    min-height: 0;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+}
+/* Very short (the nav bar on a 768 px laptop): icon beside the goal name, ~60 px shorter cards. */
+@media (max-height: 740px) {
+  .profile-screen .profile-goal {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    padding-right: 48px;
+  }
+  .profile-screen .profile-goal > :first-child {
+    flex-shrink: 0;
+  }
 }
 /* The nav bar (existing player editing) spans the same width as on the other menu screens
    (Screen's 1440 px column minus its padding), not the 816 px form column, so it neither

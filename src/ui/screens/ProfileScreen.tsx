@@ -122,7 +122,7 @@ function GoalPicker({ value, onChange }: { value: Goal; onChange: (g: Goal) => v
               }
             }}
             className={cn(
-              'glass focus-ring relative flex min-h-36 cursor-pointer flex-col items-start justify-between gap-4 rounded-[24px] p-4 text-left transition-[border-color,box-shadow,transform] duration-200 ease-arena active:scale-[0.98]',
+              'profile-goal glass focus-ring relative flex min-h-36 cursor-pointer flex-col items-start justify-between gap-4 rounded-[24px] p-4 text-left transition-[border-color,box-shadow,transform] duration-200 ease-arena active:scale-[0.98]',
               selected ? 'glow-edge-lime' : 'hover:border-text/30',
             )}
           >
