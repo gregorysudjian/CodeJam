@@ -280,17 +280,25 @@ or the named file.
     After calibration `session.ts` never picks the largest or newest body:
     - **Follow:** the body nearest the player's last pose (mean distance of nose, shoulders, hips),
       within `FOLLOW_MAX_SPEED_W` = 10 W/s of it (at least 0.4 W, at most 1.2 W, in the last frame's
-      own width), shoulder width within ×0.6–1.67 of the last frame. From the recorded clips: jumps
-      peak at 8–10 W/s between frames, moves cover at most 1.6 W in 100 ms, width changes at most
-      ×1.3 in 100 ms.
+      own width), shoulder width within ×0.7–1.43 of the last frame (`FOLLOW_SIZE_TOLERANCE`). From
+      the recorded clips: jumps peak at 8–10 W/s between frames, moves cover at most 1.6 W in 100 ms,
+      width changes at most ×1.30 in 100 ms and ×1.38 in 400 ms.
     - **Found again** after `FOLLOW_GAP_MS` = 400 ms: a body standing still (0.3 W) for 400 ms within
-      1 calibrated W of the mark, with the player's W and torso within 25%, or within 40% when it is
-      alone in the play area (players come back a step closer or further: ×1.5 / ×0.7).
+      1 W of where the player vanished or of the mark, with the player's W and torso within 25%, or
+      within 40% when it is alone in the play area (players come back a step closer or further:
+      ×1.5 / ×0.7). The one nearest where the player vanished wins.
     - **`otherPerson`** (and `tracking: false`): another body with both shoulders seen, at least 0.6×
       the player's width (smaller = the crowd far behind), shoulder centre within 1.5 calibrated W of
       the mark (outside = at the side or the edge of the image). On after 300 ms, off after 500 ms.
       A second pose under 0.5 W from the player is the same body twice. With the player away, a
-      body that may be them coming back is not flagged. No moves and no X fire while it is on.
+      body that may be them coming back is not flagged. While the player is missing but not yet
+      lost, the flag keeps its state (no 3-2-1 for a few frames). No moves and no X fire while it is on.
+    - **Camera session (Sat ~10:30 PM, demo Mac):** a newcomer walked in close to the camera in front
+      of the player (only the newcomer reported for 1.4 s), then stood on the mark at ×1.2–1.3. The
+      first version took the newcomer at once: it ranked by the mark and followed at ×1.56. Fixed by
+      ranking by where the player vanished and `FOLLOW_SIZE_TOLERANCE`; the replay of that session
+      now keeps the player, names the newcomer `otherPerson`, and gives the same moves as live in
+      every one-person step. Model time with a body in view: 7.2 ms (1 pose) vs 11.2 ms (2 poses).
     - The play area uses the calibrated W and centre, so a player who steps closer does not widen it.
     Evidence: `other.test.ts` (beside at 0.65–1.2×, far behind, edge, duplicate, a passer-by crossing,
     a stranger on the mark while away, coming back closer/further, every clip at 30/15/10 FPS never

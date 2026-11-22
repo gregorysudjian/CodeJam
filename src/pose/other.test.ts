@@ -137,6 +137,50 @@ describe('someone else in the play area', () => {
   });
 });
 
+// From the camera session (Sat night): the player stood in a side lane; a newcomer walked in close
+// to the camera, in front of them (only the newcomer reported for about 1.4 s), then stood on the
+// mark at x1.2-1.3 the player's size while the player stayed where they were.
+describe('someone walks in front of the player, then stands on the mark', () => {
+  test('the player is found again where they stood; the newcomer is someone else, never followed', () => {
+    const { s, t: t0 } = calibrated();
+    let t1 = t0;
+    for (let i = 1; i <= 16; i++, t1 += FRAME_MS) s.frame([body(-0.1 * i)], t1); // to a side lane
+    const player = body(-1.6);
+    const a = hold(s, t1, 600, [player]);
+    expect(a.log.at(-1)).toMatchObject({ tracking: true, isPlayer: true });
+    // The newcomer, close to the camera (x1.9), crosses in front: the player is not reported.
+    const log: Log[] = [];
+    let t = a.t;
+    for (let i = 0; i < 42; i++, t += FRAME_MS) {
+      const walker = body(-2.8 + i * 0.07, 1.95 - i * 0.004); // x1.95 to x1.8, as on camera
+      s.frame([walker], t);
+      log.push({
+        t: t - a.t,
+        other: !!s.getState().otherPerson,
+        tracking: s.getState().tracking,
+        isPlayer: false,
+      });
+      expect(s.player).not.toBe(walker);
+    }
+    // Paused from the moment the player is lost, never back on for a few frames (no 3-2-1 for
+    // nothing), and someone else is named once the newcomer is in the play area.
+    const lost = log.findIndex((l) => !l.tracking);
+    expect(lost).toBeGreaterThan(0);
+    expect(log.slice(lost).every((l) => !l.tracking)).toBe(true);
+    const on = log.findIndex((l) => l.other);
+    expect(on).toBeGreaterThanOrEqual(lost);
+    expect(log.slice(on).every((l) => l.other)).toBe(true);
+    // The newcomer stands on the mark at x1.25; the player is seen again where they were.
+    const newcomer = body(0.1, 1.25);
+    const b = hold(s, t, 2000, [newcomer, player]);
+    expect(s.player).toBe(player);
+    expect(b.log.every((l) => l.other && !l.tracking)).toBe(true);
+    // The newcomer leaves: the player plays on.
+    const c = hold(s, b.t, 1000, [player]);
+    expect(c.log.at(-1)).toMatchObject({ other: false, tracking: true, isPlayer: true });
+  });
+});
+
 describe('the player away, someone on the mark', () => {
   test.each([1.8, 2.2])('a %s× stranger on the mark is someone else, never the player', (scale) => {
     const { s, t } = calibrated();

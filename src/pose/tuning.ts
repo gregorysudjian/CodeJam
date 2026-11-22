@@ -22,12 +22,6 @@ export const MIN_TRACKING_CONFIDENCE = 0.5;
 export const MAX_POSES = 2;
 /** pickBody (calibration only): score = shoulder width minus this × distance from the last position. */
 export const PICK_DISTANCE_WEIGHT = 0.5;
-/**
- * After calibration, a body whose shoulder width is off by more than this fraction from the
- * player's in the last frame is someone else (e.g. a person behind the player). Recorded clips
- * change by at most ×1.3 in 100 ms (arms up, turning, a sidestep).
- */
-export const PICK_SIZE_TOLERANCE = 0.4;
 
 /*
  * Following the player after calibration, and someone else in the frame (session.ts). Distances
@@ -46,6 +40,12 @@ export const FOLLOW_MIN_STEP_W = 0.4;
  * is missing must not be taken for them. Recorded moves cover at most 1.6 W in 100 ms.
  */
 export const FOLLOW_MAX_STEP_W = 1.2;
+/**
+ * ... and its shoulder width within this fraction of the last frame's (x0.7-1.43). Recorded clips
+ * change by at most x1.30 in 100 ms and x1.38 in 400 ms; on camera, a newcomer walking in front
+ * of the player read x1.56 and was followed at the old x0.6-1.67.
+ */
+export const FOLLOW_SIZE_TOLERANCE = 0.3;
 /** Following holds across a gap this long; after it the player must be found again (below). */
 export const FOLLOW_GAP_MS = 400;
 /**
@@ -59,7 +59,7 @@ export const REFIND_SIZE_TOLERANCE = 0.25;
  * only the first. A body outside it on the mark is someone else.
  */
 export const REFIND_ALONE_SIZE_TOLERANCE = 0.4;
-/** Near the mark: shoulder centre within this many W of the calibrated centre. */
+/** Where to look: within this many W of where the player vanished, or of the calibrated centre. */
 export const REFIND_AREA_W = 1;
 /** Still: the shoulder centre stays within this many W ... */
 export const REFIND_STILL_W = 0.3;

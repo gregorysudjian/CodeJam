@@ -25,13 +25,13 @@ import {
   FOLLOW_GAP_MS,
   FOLLOW_MAX_SPEED_W,
   FOLLOW_MAX_STEP_W,
+  FOLLOW_SIZE_TOLERANCE,
   FOLLOW_MIN_STEP_W,
   OTHER_AREA_W,
   OTHER_MIN_GAP_W,
   OTHER_MIN_SIZE,
   OTHER_OFF_MS,
   OTHER_ON_MS,
-  PICK_SIZE_TOLERANCE,
   RECENT_EVENTS,
   REFIND_ALONE_SIZE_TOLERANCE,
   REFIND_AREA_W,
@@ -175,7 +175,7 @@ export function createSession(): Session {
   /**
    * The calibrated player among the bodies, or null. Never the largest or the newest body: the
    * one nearest the player's last pose; after a gap, only a body that may be the player
-   * (mayBePlayer) standing still near the mark.
+   * (mayBePlayer) standing still where they vanished or near the mark.
    */
   function follow(poses: Point[][], t: number, d: Detector): Point[] | null {
     const W = d.readout.W;
@@ -191,7 +191,7 @@ export function createSession(): Session {
       for (const pose of usable) {
         // Size against the last frame, not the calibration: a player who stands closer than at
         // calibration is still followed, someone much bigger or smaller never is.
-        if (!within(widthOf(pose) / widthOf(prev), PICK_SIZE_TOLERANCE)) continue;
+        if (!within(widthOf(pose) / widthOf(prev), FOLLOW_SIZE_TOLERANCE)) continue;
         const dist = poseDistance(pose, prev, aspect);
         if (dist <= bestDist) {
           best = pose;
@@ -200,14 +200,23 @@ export function createSession(): Session {
       }
       return best;
     }
+    // Found again where the player vanished or on the mark. The one nearest where they vanished
+    // wins: a newcomer on the mark never beats the player standing where they were last seen
+    // (on camera: someone walking in front of the player hides them, then stands on the mark).
+    const lastC = last ? shoulderCentre(last) : null;
+    const lastW = last ? widthOf(last) : W;
     let best: Point[] | null = null;
-    let bestDist = REFIND_AREA_W;
+    let bestDist = Infinity;
     for (const pose of usable) {
       if (!mayBePlayer(pose, usable, d)) continue;
-      const dist = offMark(pose);
-      if (dist <= bestDist) {
+      const c = shoulderCentre(pose);
+      const fromLast = lastC
+        ? Math.hypot(c.x - lastC.x, (c.y - lastC.y) / aspect) / lastW
+        : Infinity;
+      if (fromLast > REFIND_AREA_W && offMark(pose) > REFIND_AREA_W) continue;
+      if (fromLast < bestDist || !best) {
         best = pose;
-        bestDist = dist;
+        bestDist = fromLast;
       }
     }
     if (!best) {
@@ -226,6 +235,9 @@ export function createSession(): Session {
 
   /** Someone else in the play area: on after OTHER_ON_MS, off after OTHER_OFF_MS. */
   function updateOther(poses: Point[][], t: number, d: Detector) {
+    // The player missing but not yet lost (someone walking in front of them): keep the flag as it
+    // is, or it would drop for a few frames and the game would start its 3-2-1 for nothing.
+    if (!player && d.state.tracking) return;
     const W = d.readout.W;
     const pc = player ? shoulderCentre(player) : null;
     const found = poses.some((pose) => {
