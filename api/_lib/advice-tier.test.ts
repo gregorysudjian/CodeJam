@@ -1,5 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { nextTier, parseAdvice, planNumbers } from './advice';
+import { buildPlanLine, nextTier, parseAdvice, planNumbers } from './advice';
+
+describe("buildPlanLine: today's plan, built in code", () => {
+  const nums = { rounds: 3, kcal: 60, minutes: 9, weeklyShare: 15 };
+  it('starts with the next session, never legs on the treadmill, weights only for arms/shoulders on strength', () => {
+    const line = buildPlanLine(
+      { workout: 'shoulders', mode: 'treadmill', difficulty: 0.5 },
+      'buildStrength',
+      nums,
+    );
+    expect(line).toBe(
+      "Today's plan: Shoulders + water bottles, 1 min rest, Arms + water bottles, 1 min rest, Full body at Regular. 9 active minutes, about 60 kcal (15% of your weekly goal).",
+    );
+    expect(line).not.toMatch(/Legs/);
+  });
+  it('no weights for other goals; no kcal or share when unknown', () => {
+    const line = buildPlanLine({ workout: 'legs', mode: 'floor', difficulty: 0 }, 'cardio', {
+      rounds: 2,
+      kcal: 0,
+      minutes: 6,
+      weeklyShare: null,
+    });
+    expect(line).toBe("Today's plan: Legs, 1 min rest, Full body at Beginner. 6 active minutes.");
+  });
+});
 
 describe("planNumbers: today's plan, decided by the game", () => {
   it('rounds by level, calories from the per-round average, share of the weekly goal', () => {

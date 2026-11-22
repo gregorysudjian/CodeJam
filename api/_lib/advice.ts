@@ -58,6 +58,50 @@ export function planNumbers(
   return { rounds, kcal: Math.round(perRound * rounds), minutes, weeklyShare };
 }
 
+const PLAN_WORKOUT_NAMES: Record<WorkoutId, string> = {
+  legs: 'Legs',
+  arms: 'Arms',
+  shoulders: 'Shoulders',
+  fullBody: 'Full body',
+};
+/** Rounds after the first, by goal (the first is the coach's "next" session). */
+const PLAN_ORDER: Record<string, WorkoutId[]> = {
+  buildStrength: ['shoulders', 'arms', 'fullBody', 'legs'],
+  cardio: ['fullBody', 'legs', 'arms', 'shoulders'],
+  getMoving: ['fullBody', 'arms', 'shoulders', 'legs'],
+};
+
+/**
+ * Today's plan line, built in code so it is always right: round 1 = the coach's next session,
+ * then workouts suited to the goal (each once, never legs on the treadmill), 1 min rest between
+ * rounds, the game's numbers, and a light-weight hint (a water bottle in each hand) only for
+ * arms/shoulders on a strength goal: never with jumps or squats.
+ */
+export function buildPlanLine(
+  next: { workout: WorkoutId; mode: PlayMode; difficulty: number },
+  goal: string | undefined,
+  nums: { rounds: number; kcal: number; minutes: number; weeklyShare: number | null },
+): string {
+  const order = PLAN_ORDER[goal ?? ''] ?? PLAN_ORDER.getMoving!;
+  const rounds: WorkoutId[] = [next.workout];
+  for (const w of order) {
+    if (rounds.length >= nums.rounds) break;
+    if (next.mode === 'treadmill' && w === 'legs') continue;
+    if (!rounds.includes(w)) rounds.push(w);
+  }
+  const parts = rounds.map((w) =>
+    goal === 'buildStrength' && (w === 'arms' || w === 'shoulders')
+      ? `${PLAN_WORKOUT_NAMES[w]} + water bottles`
+      : PLAN_WORKOUT_NAMES[w],
+  );
+  const numbers =
+    `${nums.minutes} active minutes` +
+    (nums.kcal > 0 ? `, about ${nums.kcal} kcal` : '') +
+    (nums.weeklyShare !== null ? ` (${nums.weeklyShare}% of your weekly goal)` : '');
+  const tier = TIER_NAMES[next.difficulty] ?? 'Regular';
+  return `Today's plan: ${parts.join(', 1 min rest, ')} at ${tier}. ${numbers}.`;
+}
+
 /** The tier nearest to `d` (halves round up); anything that is not a number → regular. */
 export function snapTier(d: unknown): number {
   const x = typeof d === 'number' && Number.isFinite(d) ? d : 0.5;
