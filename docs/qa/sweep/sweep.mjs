@@ -23,7 +23,7 @@ const SIZES = process.env.SIZES
       [1920, 1080, 1],
       [1280, 720, 1],
     ];
-timebox(10 * 60 * 1000, 'sweep'); // the demo round is 180 s (6 levels)
+timebox(25 * 60 * 1000, 'sweep'); // the demo round is 180 s (6 levels), plus four idle rounds for the nav bar
 
 async function sweep([w, h, dsf], port) {
   const dir = join(OUT, `${w}x${h}@${dsf}`);
@@ -146,6 +146,72 @@ async function sweep([w, h, dsf], port) {
     await b.go(url, 2500);
     check('landing offers Continue as Sweep', /CONTINUE AS SWEEP/i.test(await b.text()));
     await step('14-landing-returning', { settle: 1500, aa: true });
+
+    // Nav bar (select and results): each item goes where it says, and the flow still reaches a
+    // round and results afterwards. Results need a round each: an idle one, lost in about 30 s.
+    await b.click('^\\s*continue as\\b');
+    check('Continue as Sweep opens select', await b.waitFor(/PICK A WORKOUT/i, 5000));
+    if (await b.eval(`Boolean(document.querySelector('nav[aria-label="Main"]'))`)) {
+      const SCREENS = {
+        select: /PICK A WORKOUT/i,
+        dashboard: /YOUR WEEK/i,
+        leaderboard: /OPEN SPOT|BE THE FIRST/i,
+        profile: /WHO'S PLAYING/i,
+        results: /ROUND COMPLETE|LEVELS CLEARED|OUT OF LIVES/i,
+      };
+      const where = async () => {
+        const t = await b.text();
+        return Object.keys(SCREENS).find((k) => SCREENS[k].test(t)) ?? 'unknown';
+      };
+      const NAV = { play: ['^play$', 'select'], progress: ['^progress$', 'dashboard'], leaderboard: ['^leaderboard$', 'leaderboard'], chip: ['^profile:', 'profile'] };
+      const navClick = async (item) => {
+        const [re] = NAV[item];
+        await b.eval(`document.querySelector('nav[aria-label="Main"]')?.scrollIntoView()`);
+        const ok = await b.eval(`(() => {
+          const el = [...document.querySelectorAll('nav[aria-label="Main"] button')].find((e) => new RegExp(${JSON.stringify(re)}, 'i').test(e.getAttribute('aria-label') || ''));
+          if (!el) return false;
+          el.click();
+          return true;
+        })()`);
+        await sleep(1200);
+        return ok;
+      };
+      // Back to select from wherever the nav went (each screen's own primary/back key).
+      const toSelect = async () => {
+        for (let i = 0; i < 4; i++) {
+          const s = await where();
+          if (s === 'select') return true;
+          if (s === 'results') await navClick('play');
+          else await b.key(s === 'leaderboard' ? 'Escape' : 'Enter');
+          await sleep(1200);
+        }
+        return (await where()) === 'select';
+      };
+      const loseRound = async () => {
+        await b.click('^\\s*start\\b');
+        if (!(await b.waitFor(/TIME LEFT/i, 8000))) return false;
+        return b.waitFor(SCREENS.results, 120000);
+      };
+
+      await step('16-select-nav', { settle: 1000, aa: true });
+      for (const item of ['play', 'progress', 'leaderboard', 'chip']) {
+        check(`select nav: ${item} button exists`, await navClick(item));
+        const got = await where();
+        check(`select nav: ${item} -> ${NAV[item][1]}`, got === NAV[item][1], got);
+        check(`select nav: back to select after ${item}`, await toSelect());
+      }
+      for (const item of ['play', 'progress', 'leaderboard', 'chip']) {
+        check(`idle round reaches results (before results nav: ${item})`, await loseRound());
+        await sleep(2500);
+        if (item === 'play') await step('17-results-nav', { aa: true });
+        check(`results nav: ${item} button exists`, await navClick(item));
+        const got = await where();
+        check(`results nav: ${item} -> ${NAV[item][1]}`, got === NAV[item][1], got);
+        check(`results nav: back to select after ${item}`, await toSelect());
+      }
+    }
+
+    await b.go(url, 2500);
     if (signUp) {
       // The guest path still exists behind the card: New player -> Play as guest -> profile.
       await b.click('^\\s*new player\\b');
