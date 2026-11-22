@@ -112,16 +112,20 @@ function isRealLevel(level: number | undefined): boolean {
 function makeRealPalette(hex: number): Palette {
   const hidden = new THREE.LineBasicMaterial();
   hidden.visible = false;
+  // Muted toward white: the move icon above the object carries the colour, not the object.
+  const muted = (k: number) => new THREE.Color(hex).lerp(new THREE.Color(0xffffff), k);
   return {
     body: new THREE.MeshLambertMaterial({ color: T.REAL_PROPS.steel }),
     edge: hidden,
-    glow: new THREE.MeshLambertMaterial({ color: hex }),
+    glow: new THREE.MeshLambertMaterial({ color: muted(T.REAL_PROPS.paintMute) }),
+    // Road paint like the lane lines (look.ts REAL_MODE): faint, never a glowing slab.
     tele: new THREE.MeshBasicMaterial({
-      color: hex,
+      color: muted(T.REAL_PROPS.markMute),
       transparent: true,
       opacity: T.REAL_PROPS.paintOpacity,
       depthWrite: false,
       side: THREE.DoubleSide,
+      fog: false,
     }),
   };
 }
@@ -141,6 +145,8 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
   const realHitPalette = makeRealPalette(T.COLOR_HIT);
   const shadows = createContactShadows();
   let lowGraphics = false;
+  let realNow = false; // the newest object shown was real (bursts at the runner)
+  const white = new THREE.Color(0xffffff);
 
   /* Shared geometry. */
   const boxCache = new Map<string, { geo: THREE.BoxGeometry; edges: THREE.EdgesGeometry }>();
@@ -179,13 +185,35 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
-  /** Floor marker: unit plane on the ground, scaled by the caller. */
+  /** Floor marker: unit plane on the ground, scaled by the caller. Neon only: on a real level
+   *  the slab goes and a paintLine marks the spot instead. */
   const floorPlate = (): THREE.Mesh => {
     const m = tag(new THREE.Mesh(planeGeo, placeholder.tele), 'tele');
     m.rotation.x = -Math.PI / 2;
     m.position.y = 0.02;
+    m.userData.neonOnly = true;
     return m;
   };
+  /** Real levels: one thin line of road paint `w` wide across the road at z (tuning.ts
+   *  REAL_PROPS.lineWidth), in the muted move colour, like the lane lines. */
+  const paintLine = (w: number, z: number, x = 0): THREE.Mesh => {
+    const m = tag(new THREE.Mesh(planeGeo, placeholder.tele), 'tele');
+    m.rotation.x = -Math.PI / 2;
+    m.scale.set(w, T.REAL_PROPS.lineWidth, 1);
+    m.position.set(x, 0.02, z);
+    m.userData.realOnly = true;
+    m.visible = false;
+    return m;
+  };
+  // Real levels: the free lane's chevrons are faint white road paint, not cyan light.
+  const guideRealMat = new THREE.MeshBasicMaterial({
+    map: guideTex,
+    color: 0xffffff,
+    transparent: true,
+    opacity: T.REAL_PROPS.paintOpacity,
+    depthWrite: false,
+    fog: false,
+  });
   const laneX = (lane: number): number => lane * L;
 
   /* Icons: a sprite above each object showing the move (glyph.ts), readable from 2 m. */
@@ -271,18 +299,16 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       }),
     );
     jobs.push(
-      loadTex(`${S.dir}tex-${level}-orb.jpg`, (tex) =>
+      loadTex(`${S.dir}tex-${level}-orb.jpg`, (tex) => {
+        // A badge like the move icons, so the thin line-art emblem reads on any clip: a dark
+        // disc with a white rim, the emblem drawn thick and bright on it. No glow (bloom is off).
+        const badge = emblemBadge(tex.image as CanvasImageSource);
+        skinTextures.push(badge);
         emblems.set(
           level,
-          new THREE.SpriteMaterial({
-            map: tex,
-            // Cut out by its own brightness (the black background goes), drawn without glow.
-            alphaMap: tex,
-            transparent: true,
-            depthWrite: false,
-          }),
-        ),
-      ),
+          new THREE.SpriteMaterial({ map: badge, transparent: true, depthWrite: false }),
+        );
+      }),
     );
     return Promise.all(jobs).then(() => {
       for (const u of [...unskinned.values()]) if (u.level === level) u.again();
@@ -389,10 +415,16 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     root.visible = false;
     scene.add(root);
     let goesPast = false; // a hit or a missed orb: hidden once it is past the runner
-    // Realistic mode (isRealLevel): the contact shadows show only then.
+    // Realistic mode (isRealLevel): contact shadows and paint lines show only then, the neon
+    // floor slabs only otherwise; parts with a `realMaterial` swap to it.
     const realOnly: THREE.Object3D[] = [];
+    const neonOnly: THREE.Object3D[] = [];
+    const swaps: { mesh: THREE.Mesh; neon: THREE.Material; real: THREE.Material }[] = [];
     root.traverse((o) => {
       if (o.userData.realOnly) realOnly.push(o);
+      if (o.userData.neonOnly) neonOnly.push(o);
+      if (o instanceof THREE.Mesh && o.userData.realMaterial)
+        swaps.push({ mesh: o, neon: o.material as THREE.Material, real: o.userData.realMaterial });
     });
     let real = false;
     const view: ObstacleView = {
@@ -413,10 +445,13 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
           });
         else unskinned.delete(view);
         real = wantsReal && skinReady(kind, set);
+        realNow = real; // the bursts follow the newest object shown
         goesPast = false;
         const key = colorKeyFor(spawn.requires);
         applyPalette(root, (real ? realPalettes : palettes)[key]);
         for (const o of realOnly) o.visible = real;
+        for (const o of neonOnly) o.visible = !real;
+        for (const s of swaps) s.mesh.material = real ? s.real : s.neon;
         if (icon && glyph) icon.material = iconMaterial(glyph, key);
         if (icon) icon.visible = true;
         // The skin set goes to the builder only when real: it puts that skin on then.
@@ -529,6 +564,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     guide.position.y = 0.025;
     guide.scale.set(L * 0.8, T.TELEGRAPH_LENGTH * 1.4, 1);
     guide.position.z = -(T.TELEGRAPH_LENGTH * 1.4) / 2 + 1;
+    guide.userData.realMaterial = guideRealMat;
     const sprite = makeIcon();
     sprite.position.y = T.ICON_HEIGHT.block;
     root.add(guide, sprite);
@@ -594,7 +630,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     plate.position.z = 1.25;
     const sprite = makeIcon();
     sprite.position.y = T.ICON_HEIGHT.hurdle;
-    root.add(plate, sprite);
+    root.add(plate, sprite, paintLine(W, T.REAL_PROPS.lineAhead));
     const looks = [a!, b!, c!];
     return {
       root,
@@ -682,7 +718,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     }
     const sprite = makeIcon();
     sprite.position.y = T.ICON_HEIGHT.beam;
-    root.add(sprite);
+    root.add(sprite, paintLine(W + 0.6, T.REAL_PROPS.lineAhead));
     return {
       root,
       icon: sprite,
@@ -769,22 +805,68 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     plate.position.z = 1.25;
     // The stack's shadow (real levels: shown by makeView), gone with the stack once it smashes.
     const stackShadow = shadows.make(W, 0.8);
-    root.add(plate, stackShadow);
+    root.add(plate, stackShadow, paintLine(W, T.REAL_PROPS.lineAhead));
     const sprite = makeIcon();
     sprite.position.y = T.ICON_HEIGHT.crate;
     root.add(sprite);
 
     let smashT = -1;
+    // Real levels: the pieces are real crates breaking apart (tuning.ts REAL_PROPS.debris): they
+    // fly lower, fall under gravity, bounce on the road and lie there as the world moves on,
+    // then fade. Neon: the old burst that shrinks away (look.ts SMASH_SHRINK_SEC).
+    let realCrate = false;
+    const D = T.REAL_PROPS.debris;
+    const sim = new Map<THREE.Group, { v: THREE.Vector3; w: THREE.Vector3; half: number }>();
+    const size = new THREE.Vector3();
     const smash = (): void => {
-      if (smashT < 0) smashT = 0;
+      if (smashT < 0) {
+        smashT = 0;
+        if (realCrate)
+          for (const p of pieces) {
+            p.obj.updateMatrixWorld(true);
+            new THREE.Box3().setFromObject(p.obj).getSize(size);
+            sim.set(p.obj, {
+              v: new THREE.Vector3(p.vel.x * D.sideways, p.vel.y * D.lift, p.vel.z * D.forward),
+              w: p.spin.clone().multiplyScalar(D.spin),
+              half: Math.min(size.y, size.x) / 2,
+            });
+          }
+      }
       sprite.visible = false;
       stackShadow.visible = false;
+    };
+    const tickReal = (dt: number): void => {
+      const fade = Math.min(1, Math.max(0, (smashT - D.lieSec) / D.fadeSec));
+      for (const p of pieces) {
+        const s = sim.get(p.obj);
+        if (!s) continue;
+        const o = p.obj;
+        if (!reduceMotion) {
+          s.v.y -= D.gravity * dt;
+          o.position.addScaledVector(s.v, dt);
+          o.rotation.x += s.w.x * dt;
+          o.rotation.y += s.w.y * dt;
+          o.rotation.z += s.w.z * dt;
+          if (o.position.y < s.half) {
+            // On the road: bounce a little, slide to a stop, stop tumbling.
+            o.position.y = s.half;
+            s.v.y = Math.abs(s.v.y) > 1 ? -s.v.y * D.bounce : 0;
+            s.v.x *= D.friction;
+            s.v.z *= D.friction;
+            s.w.multiplyScalar(D.friction);
+          }
+        }
+        o.scale.setScalar(Math.max(0.01, 1 - fade));
+        o.visible = fade < 1;
+      }
     };
     return {
       root,
       icon: sprite,
       configure(spawn, length, variant, level) {
         smashT = -1;
+        sim.clear();
+        realCrate = level !== undefined; // the level comes only on a real level (makeView)
         sprite.visible = true;
         // A skin goes on the six crates (look 0), the look made of crate faces.
         const v = applySkin(root, 'crate', level) ? 0 : variant;
@@ -804,6 +886,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       tick(dt) {
         if (smashT < 0) return;
         smashT += dt;
+        if (realCrate) return tickReal(dt);
         const t = smashT;
         const fly = reduceMotion ? 0 : t; // reduced motion: no flight, no spin
         for (const p of pieces) {
@@ -859,18 +942,22 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       plate.scale.set(L * 0.7, L * 0.7, 1);
       // A small soft shadow under the floating orb (real levels), gone once it is collected.
       const shadow = shadows.make(0.6, 0.6, 0, 0.3);
-      g.add(float, pillar, plate, shadow);
+      g.add(float, pillar, plate, shadow, paintLine(L * 0.5, 0));
       root.add(g);
-      return { g, float, looks, spinners, halo, rings, emblem, shadow };
+      return { g, float, looks, spinners, halo, rings, emblem, shadow, pillar };
     });
     let collectT = -1;
     let attract: (() => THREE.Vector3) | null = null;
     const local = new THREE.Vector3();
+    // Real levels: the badge is caught, not dissolved: full size all the way to the hand, then a
+    // quick pop in the last REAL_PROPS.catchPop of the flight; its pole goes with it.
+    let realOrb = false;
     return {
       root,
       configure(spawn, _length, variant, level) {
         collectT = -1;
         attract = null;
+        realOrb = level !== undefined; // the level comes only on a real level (makeView)
         const emblem = level === undefined ? undefined : emblems.get(level);
         orbs.forEach((o, i) => {
           pickLook(o.looks, emblem ? -1 : variant);
@@ -879,13 +966,17 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
           o.g.visible = spawn.lanes.includes((i - 1) as -1 | 0 | 1);
           o.float.scale.setScalar(1);
           o.float.position.set(0, T.ORB_HEIGHT, 0);
+          o.pillar.visible = true;
         });
       },
       engage(attractor) {
         if (collectT >= 0) return;
         collectT = 0;
         attract = attractor ?? null;
-        for (const o of orbs) o.shadow.visible = false;
+        for (const o of orbs) {
+          o.shadow.visible = false;
+          if (realOrb) o.pillar.visible = false;
+        }
       },
       tick(dt, time) {
         if (collectT >= 0) collectT += dt;
@@ -906,7 +997,9 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
           } else {
             o.float.position.y += dt * 2;
           }
-          o.float.scale.setScalar(Math.max(0.001, 1 - k * k));
+          const pop = 1 - T.REAL_PROPS.catchPop;
+          const s = realOrb ? (k < pop ? 1 : 1 - (k - pop) / T.REAL_PROPS.catchPop) : 1 - k * k;
+          o.float.scale.setScalar(Math.max(0.001, s));
         }
       },
     };
@@ -933,6 +1026,7 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
 
   /* Bursts: rings that expand from the player's feet on a clear or collect. */
   const ringGeo = new THREE.RingGeometry(0.62, 0.78, 48);
+  // On a real level (the newest object shown was real) a burst is faint paint, not light.
   const bursts = Array.from({ length: T.BURST_POOL }, () => {
     const mat = new THREE.MeshBasicMaterial({
       transparent: true,
@@ -940,12 +1034,18 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       depthWrite: false,
       side: THREE.DoubleSide,
     });
+    const realMat = new THREE.MeshBasicMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      fog: false,
+    });
     const mesh = new THREE.Mesh(ringGeo, mat);
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.y = 0.05;
     mesh.visible = false;
     scene.add(mesh);
-    return { mesh, mat, t: Infinity };
+    return { mesh, mat, realMat, real: false, t: Infinity };
   });
   let nextBurst = 0;
 
@@ -965,7 +1065,11 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
       const b = bursts[nextBurst]!;
       nextBurst = (nextBurst + 1) % bursts.length;
       b.t = 0;
-      b.mat.color.copy(move === 'hit' ? hitBurstColor : burstColors[colorKeyFor(move)]);
+      const hex = move === 'hit' ? T.COLOR_HIT : T.MOVE_COLOR[colorKeyFor(move)];
+      b.real = !lowGraphics && realNow;
+      b.mesh.material = b.real ? b.realMat : b.mat;
+      if (b.real) b.realMat.color.setHex(hex).lerp(white, T.REAL_PROPS.markMute);
+      else b.mat.color.copy(move === 'hit' ? hitBurstColor : burstColors[colorKeyFor(move)]);
       b.mesh.position.x = x;
       b.mesh.visible = true;
     },
@@ -997,6 +1101,11 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
         m.dispose();
       }
       ringGeo.dispose();
+      for (const b of bursts) {
+        b.mat.dispose();
+        b.realMat.dispose();
+      }
+      guideRealMat.dispose();
       disposed = true;
       for (const m of [...skins.values(), ...emblems.values(), skinProbe.material]) m.dispose();
       for (const t of skinTextures) t.dispose();
@@ -1011,7 +1120,8 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
           continue;
         }
         b.mesh.scale.setScalar(reduceMotion ? 1.6 : 1 + k * 3.2);
-        b.mat.opacity = 1 - k;
+        if (b.real) b.realMat.opacity = (1 - k) * T.REAL_PROPS.paintOpacity * 1.5;
+        else b.mat.opacity = 1 - k;
       }
     },
   };
@@ -1045,6 +1155,42 @@ function drawGlyph(glyph: Glyph, hex: number): THREE.CanvasTexture {
     g.drawImage(base, Math.cos(a) * grow, Math.sin(a) * grow);
   }
   g.drawImage(base, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * The orb on a real level: the level's emblem (a thin neon line drawing on black) as a badge, the
+ * same family as the move icons. A dark disc with a white rim; the emblem added on top (black adds
+ * nothing), stamped in a small circle so its lines read thick from 2 m (tuning.ts REAL_PROPS).
+ */
+function emblemBadge(img: CanvasImageSource): THREE.CanvasTexture {
+  const B = T.REAL_PROPS.badge;
+  const size = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d')!;
+  const r = size / 2 - 6;
+  g.beginPath();
+  g.arc(size / 2, size / 2, r, 0, Math.PI * 2);
+  g.fillStyle = `rgba(7, 9, 13, ${B.disc})`;
+  g.fill();
+  g.lineWidth = B.rim;
+  g.strokeStyle = 'rgba(244, 247, 251, 0.95)';
+  g.stroke();
+  g.save();
+  g.beginPath();
+  g.arc(size / 2, size / 2, r - B.rim, 0, Math.PI * 2);
+  g.clip();
+  g.globalCompositeOperation = 'lighter';
+  const e = size * B.emblem;
+  const o = (size - e) / 2;
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    g.drawImage(img, o + Math.cos(a) * B.stroke, o + Math.sin(a) * B.stroke, e, e);
+  }
+  g.restore();
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;

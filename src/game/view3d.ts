@@ -426,6 +426,7 @@ export function create3DView(
       player.update(visDt, state, runSpeed, phase === 'finished' && !outOfLives);
 
       // Trail motes: drawn ahead like the object they lead to; the runner pops them in passing.
+      moteMesh.visible = quality >= 2 || !isReal(f.stage || 1); // neon only (package B, Jiscar 2)
       while (firstMote < motes.length && motes[firstMote]!.d < distance - 12) {
         moteMesh.setMatrixAt(firstMote, hidden);
         firstMote++;

@@ -3,7 +3,8 @@ import { clipOf } from './props';
 import * as T from './tuning';
 
 /** The road pattern follows the clip (tuning.ts REAL_CLIPS): cobblestones in the old town. */
-const patternFor = (level: number): 'asphalt' | 'cobble' =>
+type Pattern = 'asphalt' | 'cobble';
+const patternFor = (level: number): Pattern =>
   clipOf(level)?.road === 'cobble' ? 'cobble' : 'asphalt';
 
 /**
@@ -28,7 +29,8 @@ export function createRealRoad(scene: THREE.Scene): RealRoad {
   const R = T.REAL_ROAD;
   const length = R.near - R.far;
   const patterns = { asphalt: asphaltTexture(), cobble: cobbleTexture() };
-  for (const t of Object.values(patterns)) t.repeat.set(R.width / R.tile, length / R.tile);
+  for (const [k, t] of Object.entries(patterns))
+    t.repeat.set(R.width / R.tile[k as Pattern], length / R.tile[k as Pattern]);
   const alpha = fadeTexture(R.fade, R.sideFade); // does not scroll: its own transform
   const mat = new THREE.MeshBasicMaterial({
     map: patterns.asphalt,
@@ -115,7 +117,8 @@ export function createRealRoad(scene: THREE.Scene): RealRoad {
       }
       // The world moves toward +z; the same convention as the floor grid (scene.ts).
       travel += speed * dt;
-      mat.map!.offset.y = (((travel / R.tile) % 1) + 1) % 1;
+      const tile = R.tile[patternFor(level)];
+      mat.map!.offset.y = (((travel / tile) % 1) + 1) % 1;
     },
     setVisible(on) {
       forced = on ? null : false;
@@ -137,13 +140,31 @@ const rnd = (i: number): number => {
   return x - Math.floor(x);
 };
 
-function canvasTexture(c: HTMLCanvasElement, mean: number): THREE.CanvasTexture {
+/** A tileable road texture; `userData.mean` is its measured average brightness (0 to 1), so the
+ *  clip's sampled road colour divided by it gives the strip the clip's own colour. */
+function canvasTexture(c: HTMLCanvasElement): THREE.CanvasTexture {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 8;
-  t.userData.mean = mean;
+  const px = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+  let sum = 0;
+  for (let i = 0; i < px.length; i += 4) sum += px[i]!;
+  t.userData.mean = sum / (px.length / 4) / 255;
   return t;
+}
+
+/** Blurs a tile without seams: drawn 3 x 3 with the filter, the middle copy kept. */
+function blurTile(c: HTMLCanvasElement, px: number): void {
+  const s = c.width;
+  const big = document.createElement('canvas');
+  big.width = big.height = s * 3;
+  const bg = big.getContext('2d')!;
+  bg.filter = `blur(${px}px)`;
+  for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) bg.drawImage(c, x * s, y * s);
+  const g = c.getContext('2d')!;
+  g.clearRect(0, 0, s, s);
+  g.drawImage(big, s, s, s, s, 0, 0, s, s);
 }
 
 /** Fine asphalt grain: light grey with darker and lighter aggregate specks (tileable). */
@@ -159,7 +180,7 @@ function asphaltTexture(): THREE.CanvasTexture {
     img.data[i * 4 + 3] = 255;
   }
   g.putImageData(img, 0, 0);
-  return canvasTexture(c, 0.84);
+  return canvasTexture(c);
 }
 
 /** Cobblestones in staggered rows with dark joints (Old Montreal, level 2), tileable. */
@@ -168,27 +189,54 @@ function cobbleTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const g = c.getContext('2d')!;
-  // Soft joints and stones of uneven size and shade, so the strip blends into the clip's street.
-  g.fillStyle = 'rgb(150,150,150)'; // the joints
+  // Like the clip's street: worn stones of uneven size and shade, lit a little from above, in dark
+  // soft joints, slightly blurred (the clip is video, not a sharp texture).
+  g.fillStyle = 'rgb(108,108,108)'; // the joints
   g.fillRect(0, 0, size, size);
-  const rows = 9;
+  const rows = 10; // even: the staggered rows meet seamlessly at the tile edge
   const cols = 6;
   const h = size / rows;
   const w = size / cols;
   for (let r = 0; r < rows; r++)
     for (let k = -1; k <= cols; k++) {
-      const i = r * 31 + k + 7;
-      const x = k * w + (r % 2 ? w / 2 : 0) + (rnd(i + 3) - 0.5) * 6;
-      const sw = w * (0.8 + rnd(i + 4) * 0.12);
-      const sh = h * (0.74 + rnd(i + 5) * 0.12);
-      const shade = 208 + Math.floor((rnd(i) - 0.5) * 60);
-      g.fillStyle = `rgb(${shade},${shade},${shade})`;
+      const i = r * 31 + ((k + cols) % cols) + 7; // k = -1 and cols - 1 are the same stone
+      const x = k * w + (r % 2 ? w / 2 : 0) + (rnd(i + 3) - 0.5) * 8;
+      // Hand-laid, not a grid: uneven sizes and a slight tilt per stone.
+      const sw = w * (0.72 + rnd(i + 4) * 0.22);
+      const sh = h * (0.66 + rnd(i + 5) * 0.22);
+      const x0 = x + (w - sw) / 2;
+      const y0 = r * h + (h - sh) / 2;
+      const shade = 196 + Math.floor((rnd(i) - 0.5) * 70);
+      const grad = g.createRadialGradient(
+        x0 + sw * 0.4,
+        y0 + sh * 0.35,
+        0,
+        x0 + sw * 0.5,
+        y0 + sh * 0.5,
+        sw * 0.62,
+      );
+      grad.addColorStop(0, `rgb(${shade + 22},${shade + 22},${shade + 22})`);
+      grad.addColorStop(1, `rgb(${shade - 38},${shade - 38},${shade - 38})`);
+      g.fillStyle = grad;
+      g.save();
+      g.translate(x0 + sw / 2, y0 + sh / 2);
+      g.rotate((rnd(i + 6) - 0.5) * 0.14);
       g.beginPath();
-      g.roundRect(x + (w - sw) / 2, r * h + (h - sh) / 2, sw, sh, 9);
+      g.roundRect(-sw / 2, -sh / 2, sw, sh, Math.min(sw, sh) * (0.25 + rnd(i + 8) * 0.2));
       g.fill();
+      g.restore();
     }
+  // Fine grain over stones and joints alike, so no stone is a flat colour.
+  const img = g.getImageData(0, 0, size, size);
+  for (let p = 0; p < size * size; p++) {
+    const n = (rnd(p + 101) - 0.5) * 26;
+    for (let ch = 0; ch < 3; ch++)
+      img.data[p * 4 + ch] = Math.max(0, Math.min(255, img.data[p * 4 + ch]! + n));
+  }
+  g.putImageData(img, 0, 0);
+  blurTile(c, 1.4);
   // Stones from k = -1 to cols overlap both edges, so the pattern tiles across.
-  return canvasTexture(c, 0.78);
+  return canvasTexture(c);
 }
 
 /** Opaque near the runner (the texture's bottom), fading to 0 over the far share and the sides. */
