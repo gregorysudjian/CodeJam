@@ -87,6 +87,34 @@ export const PORTAL = {
   flashSec: 0.45,
 };
 export const LEVEL_LABEL_SEC = 1.8;
+// A level's city clip (backdrop.ts `video`, videoBackdrop.ts) is darkened to `brightness` as
+// seen on screen (scene.ts converts it to linear light, like the pause dimmer), so the neon
+// track, runner and obstacles stay the brightest things on screen and the clip stays under the
+// bloom threshold. Seen at 0.7, a bright daytime sky washed out GameHud's lime cue word ("JUMP").
+// With a clip the runner runs inside it (scene.ts): the clip fills the screen, zoomed in up to
+// `zoomMax` so its street's vanishing point (backdrop.ts `horizon`) sits on the track's
+// (`trackHorizon` until the chase camera measures it); the grid floor, horizon glow, gates and
+// side scenery are hidden, the track strip is a light tint (`trackOpacity`) on the clip's road,
+// a soft contact shadow grounds the runner, and the clip shifts `parallax` (texture widths per
+// world unit of camera sway) as the runner changes lane. It plays at `rateMin` on the slowest
+// level up to 1x on the fastest, never faster: a 30 s clip lasts its 30 s level.
+export const VIDEO_BACKDROP = {
+  brightness: 0.62,
+  zoomMax: 1.5,
+  trackHorizon: 0.38,
+  trackOpacity: 0.3,
+  parallax: 0.012,
+  rateMin: 0.8,
+  fogNear: 1e4,
+  fogFar: 2e4,
+  shadowOpacity: 0.55,
+  shadowSize: { x: 1.9, y: 1.3 },
+  // A dark gradient over the top of the screen, `topShade` at the top edge fading to nothing at
+  // `topShadeTo` (share of the height): GameHud's move cue sits on the clip's sky there, and
+  // purple REACH over Paris's grey sky was unreadable without it.
+  topShade: 0.7,
+  topShadeTo: 0.36,
+};
 
 /* ── Reduced motion (scene.ts) ── */
 // A milestone brightens the lane lines and horizon; with prefers-reduced-motion, this much of it.

@@ -359,7 +359,7 @@ export function LandingScreen({
             <HeroVideo src={HERO_VIDEO} />
             <div aria-hidden="true" className="landing-stage-scrim absolute inset-0" />
             <div className="relative flex flex-col gap-3 p-7 short:p-6">
-              <Eyebrow>Webcam fitness game · Montréal</Eyebrow>
+              <Eyebrow accent="muted">Webcam fitness game · Montréal</Eyebrow>
               <h1 className="font-display-italic text-display-md leading-[0.9] text-text sm:text-display-lg short:text-display-md">
                 Run Montréal <span className="text-lime">with your body</span>
               </h1>

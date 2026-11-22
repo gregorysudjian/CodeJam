@@ -689,12 +689,15 @@
   background: linear-gradient(
     90deg,
     color-mix(in srgb, var(--na-slate) 84%, transparent) 35%,
-    color-mix(in srgb, var(--na-slate) 62%, transparent)
+    color-mix(in srgb, var(--na-slate) 72%, transparent)
   );
 }
 .landing-stage .landing-photo {
   position: absolute;
   inset: 0;
+  /* The awning's white stripes sit behind "with your body" (reduced motion / no clip): dimmed so
+     the coral stays >= 3:1 (large text) even on the brightest stripe pixel. */
+  filter: brightness(0.85);
 }
 /* The prop-pack crops have their own dark studio background: fade their edges into the slate. */
 .landing-photo-fade {

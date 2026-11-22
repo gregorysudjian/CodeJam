@@ -23,6 +23,7 @@ import {
 import { createTrack } from './timeline';
 import { planTrail } from './trail';
 import * as T from './tuning';
+import { createVideoBackdrop } from './videoBackdrop';
 import { planZones } from './world';
 
 export type Phase = 'idle' | 'intro' | 'running' | 'paused' | 'finished';
@@ -188,6 +189,10 @@ export function create3DView(
   let levelShown = 0;
   let levelT = Infinity; // seconds since "LEVEL n" appeared (< 0: waits for the intro's GO)
   let outroT = 0; // seconds since the finish
+  // Each level's Montreal clip as the sky (videoBackdrop.ts), switched as the runner passes
+  // through a portal (under its white flash); none at quality 2 ("Low graphics").
+  const videoBackdrop = createVideoBackdrop();
+  let quality: Quality = 0;
 
   // Trail motes leading into the next free lane or orb (trail.ts): one instanced mesh.
   const motes = planTrail(items, track.distanceAt);
@@ -362,6 +367,13 @@ export function create3DView(
         portal.group.visible = -z < T.VIEW_DISTANCE && portalFade > 0.01;
       } else portal.group.visible = false;
       portalFlash.update(realDt);
+      stage.setBackdrop(
+        videoBackdrop.update(
+          level.stages?.[passed]?.index ?? 1,
+          phase === 'intro' || phase === 'running' || phase === 'finished', // still while paused
+          quality < 2,
+        ),
+      );
 
       // "LEVEL n" in the middle as each level starts (level 1 once the intro's GO has gone).
       if (f.stage > levelShown) {
@@ -589,9 +601,11 @@ export function create3DView(
       bannerT = 0; // the next frame pops it in from nothing
     },
     setQuality(q) {
+      quality = q;
       stage.setQuality(q);
     },
     dispose() {
+      videoBackdrop.dispose();
       obstacles.dispose();
       stage.dispose(); // also frees the labels and the trail motes, which live in its scene
     },
