@@ -636,6 +636,7 @@ function MainApp() {
             onPlayCoachPick={startSession}
             onLeaderboard={openLeaderboard}
             onEditProfile={() => setScreen('profile')}
+            nav={navFor('progress')}
           />
         </Suspense>
       )}
@@ -651,6 +652,7 @@ function MainApp() {
           qrSlot={qr}
           onBack={() => setScreen(profile ? 'dashboard' : 'landing')}
           onPlay={() => setScreen(profile ? 'select' : 'landing')}
+          nav={navFor('leaderboard')}
         />
       )}
 
