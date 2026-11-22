@@ -240,6 +240,7 @@ export function createVideoBackdrop(): VideoBackdrop {
       clip.texture.userData.horizon = backdropFor(level).horizon; // scene.ts lines it up
       clip.texture.userData.clip = clipName(src); // backdropRate
       clip.texture.userData.real = backdropFor(level).style === 'real';
+      clip.texture.userData.level = level; // scene.ts reads the level's style and light from it
       clips.set(src, clip);
     }
     return clip;
@@ -258,6 +259,11 @@ export function createVideoBackdrop(): VideoBackdrop {
         return null;
       }
       const want = clipFor(level);
+      // A clip can play on several levels: it carries the one it is playing for now.
+      if (want) {
+        want.texture.userData.level = level;
+        want.texture.userData.real = backdropFor(level).style === 'real';
+      }
       const next = clipFor(level + 1); // loads during this level
       const pick = clipToShow(want, shown);
       if (pick !== shown) shown?.video.pause();
