@@ -19,6 +19,22 @@ export const TIERS = [0, 0.5, 1];
 /** A round is every level in a row: 6 levels of 30 s. */
 export const ROUND_SEC = 180;
 
+/** The tier rule (as the rule-based coach): above this accuracy one tier up, below the next one down. */
+export const TIER_UP_ABOVE = 0.85;
+export const TIER_DOWN_BELOW = 0.6;
+export const TIER_NAMES: Record<number, string> = { 0: 'Beginner', 0.5: 'Regular', 1: 'Athlete' };
+
+/**
+ * The next session's tier, decided in code (the model only puts it into words): the latest
+ * round's tier, one up above TIER_UP_ABOVE accuracy, one down below TIER_DOWN_BELOW.
+ */
+export function nextTier(latest: Pick<SessionFacts, 'difficulty' | 'accuracy'>): number {
+  const i = TIERS.indexOf(snapTier(n(latest.difficulty)));
+  const acc = n(latest.accuracy) ?? 0.7;
+  const step = acc > TIER_UP_ABOVE ? 1 : acc < TIER_DOWN_BELOW ? -1 : 0;
+  return TIERS[Math.min(TIERS.length - 1, Math.max(0, i + step))]!;
+}
+
 /** The tier nearest to `d` (halves round up); anything that is not a number → regular. */
 export function snapTier(d: unknown): number {
   const x = typeof d === 'number' && Number.isFinite(d) ? d : 0.5;
@@ -54,14 +70,24 @@ export const SYSTEM_PROMPT = `You are the coach inside a webcam fitness game. Th
 
 Write a short recap of the round they just played, one concrete tip, and recommend their next session.
 
+Reading the data:
+- accuracy is a fraction from 0 to 1: always say it as a whole percentage (0.82 -> "82%").
+- Move names in the data are internal; say them in plain words: sidestep -> "sidesteps", jump -> "jumps", squat -> "squats", armsUp -> "arms-up smashes", reachLeft -> "left reaches", reachRight -> "right reaches". Workouts: legs, arms, shoulders, fullBody -> "full body". Modes: floor, treadmill.
+- difficulty is the tier: 0 Beginner, 0.5 Regular, 1 Athlete. Say the tier name, never the number.
+- missedByMove counts the misses per move; cleared counts obstacles passed; hit counts LIVES LOST (the player has 3: hit 0 = no life lost, hit 3 = the round ended out of lives).
+- The player's name may carry a test suffix like "QA-Sam-x1y2": call them by the plain first part ("Sam").
+
+The next tier is already decided by the game and given at the end of the message: set next.difficulty to exactly that value. In "reason", describe it in words compared with the latest round's tier ("one step easier", "same tier", "time for the next tier"); say "step up" only if the tier really goes up.
+
 Rules:
+- Talk like an encouraging human coach, not a report. Never mention fields, thresholds, rules, fractions or how you decide.
 - General fitness encouragement only. No medical, injury, diet or weight-loss advice, and never comment on the player's body.
-- Every number you mention must come from the data provided. Do not invent statistics.
-- Plain, friendly, upbeat language. Address the player by name. No emoji.
-- recap: at most two sentences about the round just played (the one marked "latest").
-- tip: one concrete, actionable sentence aimed at the move they missed most, or at keeping a clean round going.
-- next: pick the workout that balances their recent history. difficulty is a tier: 0 beginner, 0.5 regular, 1 athlete. Move one tier up after accuracy above 0.85, one tier down below 0.6, otherwise keep the tier of the latest round. durationSec is always 180. In treadmill mode never pick "legs".
-- reason: one sentence on why that next session.`;
+- Every number you mention must come from the data provided. Do not invent statistics. Use at most two numbers in the recap.
+- Plain, friendly, upbeat language. Use the player's name once. No emoji.
+- recap: at most two short sentences about the round just played (the one marked "latest"): one thing that went well, then the one thing to work on.
+- tip: one concrete, physical cue for the move they missed most (what to do with their body and when), or for keeping a clean round going if they missed nothing. If nothing was missed, don't mention misses at all.
+- next: pick the workout that balances their recent history, with the tier chosen above. durationSec is always 180. In treadmill mode never pick "legs".
+- reason: one short, motivating sentence on why that next session, in plain words (for example "you've earned the Athlete tier" or "let's give your shoulders a rest").`;
 
 /** JSON schema for structured output; the server validates the result again anyway. */
 export const COACH_SCHEMA = {

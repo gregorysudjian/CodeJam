@@ -14,8 +14,10 @@ import {
   COACH_TIMEOUT_MS,
   HISTORY_LIMIT,
   SYSTEM_PROMPT,
+  TIER_NAMES,
   bearerToken,
   buildUserPrompt,
+  nextTier,
   parseAdvice,
   readSessionId,
   type ProfileFacts,
@@ -88,6 +90,7 @@ export async function POST(request: Request): Promise<Response> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return json({ error: 'coach not configured' }, 503);
 
+  const tier = nextTier(latest);
   const client = new Anthropic({ apiKey, timeout: COACH_TIMEOUT_MS, maxRetries: 0 });
   try {
     // Claude Haiku 5.5 has no server-side refusal fallback: a decline (stop_reason "refusal")
@@ -101,7 +104,12 @@ export async function POST(request: Request): Promise<Response> {
         format: { type: 'json_schema', schema: COACH_SCHEMA },
       },
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: buildUserPrompt(profileRes.data, sessions, sessionId) }],
+      messages: [
+        {
+          role: 'user',
+          content: `${buildUserPrompt(profileRes.data, sessions, sessionId)}\n\nNext tier (decided by the game): ${TIER_NAMES[tier]} (difficulty ${tier})`,
+        },
+      ],
     });
     if (response.stop_reason !== 'end_turn') {
       return json({ error: `coach stopped: ${response.stop_reason}` }, 502);
@@ -109,7 +117,8 @@ export async function POST(request: Request): Promise<Response> {
     const text = response.content.find((b) => b.type === 'text');
     const advice = parseAdvice(text?.type === 'text' ? text.text : undefined, latest.mode);
     if (!advice) return json({ error: 'coach answer failed validation' }, 502);
-    return json(advice);
+    // The tier is the game's decision, whatever the model wrote.
+    return json({ ...advice, next: { ...advice.next, difficulty: tier } });
   } catch (err) {
     if (err instanceof Anthropic.APIConnectionTimeoutError)
       return json({ error: 'coach timed out' }, 504);
