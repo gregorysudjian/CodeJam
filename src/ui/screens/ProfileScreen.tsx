@@ -109,13 +109,13 @@ function GoalPicker({ value, onChange }: { value: Goal; onChange: (g: Goal) => v
             }}
             className={cn(
               'glass focus-ring relative flex min-h-36 cursor-pointer flex-col items-start justify-between gap-4 rounded-[24px] p-4 text-left transition-[border-color,box-shadow,transform] duration-200 ease-arena active:scale-[0.98]',
-              selected ? 'glow-edge-lime' : 'hover:border-white/20',
+              selected ? 'glow-edge-lime' : 'hover:border-text/30',
             )}
           >
             <span
               className={cn(
                 'grid size-10 place-items-center rounded-2xl',
-                selected ? 'bg-lime text-bg' : 'bg-white/[0.06] text-text-muted',
+                selected ? 'bg-lime text-bg' : 'bg-glass-strong text-text-muted',
               )}
             >
               <Icon aria-hidden="true" className="size-6" strokeWidth={2.25} />
@@ -239,7 +239,7 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
                 type="button"
                 aria-label="Random guest name"
                 onClick={() => setName(randomGuestName())}
-                className="focus-ring grid size-12 cursor-pointer place-items-center rounded-xl text-text-muted transition-colors hover:bg-white/[0.08] hover:text-lime"
+                className="focus-ring grid size-12 cursor-pointer place-items-center rounded-xl text-text-muted transition-colors hover:bg-text/[0.07] hover:text-lime"
               >
                 <Dices className="size-6" />
               </button>

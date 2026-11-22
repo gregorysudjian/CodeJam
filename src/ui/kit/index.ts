@@ -17,6 +17,7 @@ export * from "./useNow";
 export * from "./MoveFigure";
 export * from "./TextField";
 export * from "./BustOutline";
+export * from "./MontrealSkyline";
 
 export * from "./ScreenFooter";
 export * from "./CoachBanner";

@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { MoveType } from "@/contracts";
 import { cn } from "@/ui/lib/utils";
 import { FIGURE_POSES, STAND, type FigurePose, type Pt, type Skeleton } from "./figurePoses";
-import { EASE_ARENA, MOVE_COLORS, MOVE_LABELS } from "./tokens";
+import { EASE_ARENA, MOVE_ACCENTS, MOVE_LABELS } from "./tokens";
 
 export type { FigurePose } from "./figurePoses";
 
@@ -15,6 +15,8 @@ const figureLabel = (pose: FigurePose) =>
       : `Figure doing ${MOVE_LABELS[pose].toLowerCase()}`;
 
 const p = (pt: Pt) => `${pt[0]} ${pt[1]}`;
+/** A move's colour as a CSS variable (resolves to the HUD's own palette inside the HUD). */
+const moveVar = (move: MoveType) => `var(--na-${MOVE_ACCENTS[move]})`;
 const bodyPath = (s: Skeleton) =>
   `M ${p(s.neck)} L ${p(s.hip)} M ${p(s.lHand)} L ${p(s.lElbow)} L ${p(s.neck)} L ${p(s.rElbow)} L ${p(s.rHand)} M ${p(s.lFoot)} L ${p(s.lKnee)} L ${p(s.hip)} L ${p(s.rKnee)} L ${p(s.rFoot)}`;
 
@@ -29,11 +31,12 @@ export interface MoveFigureProps extends Omit<React.SVGProps<SVGSVGElement>, "re
   dashed?: boolean;
 }
 
-/** Neon stick-figure athlete showing a move, drawn as the player sees themselves (mirrored). */
+/** Stick-figure athlete showing a move, drawn as the player sees themselves (mirrored). */
 export const MoveFigure = React.forwardRef<SVGSVGElement, MoveFigureProps>(
   ({ pose, color, animate = false, size = 240, dashed = false, className, style, ...props }, ref) => {
     const reduce = useReducedMotion();
-    const c = color ?? (pose === "stand" || pose === "pause" ? "#F5F7FA" : MOVE_COLORS[pose]);
+    // CSS variables, so the figure follows the theme (the HUD and camera stage keep their palette).
+    const c = color ?? (pose === "stand" || pose === "pause" ? "var(--na-text)" : moveVar(pose));
     const target = FIGURE_POSES[pose];
     const loop = animate && !reduce && pose !== "stand";
     const d = loop ? [bodyPath(STAND), bodyPath(target), bodyPath(target), bodyPath(STAND)] : bodyPath(target);
@@ -51,8 +54,8 @@ export const MoveFigure = React.forwardRef<SVGSVGElement, MoveFigureProps>(
         height={size}
         role="img"
         aria-label={figureLabel(pose)}
-        className={cn("overflow-visible", className)}
-        style={{ filter: `drop-shadow(0 0 6px ${c}aa) drop-shadow(0 0 18px ${c}55)`, ...style }}
+        className={cn("move-figure overflow-visible", className)}
+        style={{ color: c, ...style }}
         {...props}
       >
         <line x1={4} y1={144} x2={96} y2={144} stroke={c} strokeOpacity={0.35} strokeWidth={2} strokeLinecap="round" />
@@ -108,7 +111,7 @@ export const MoveFigureCycle = React.forwardRef<HTMLDivElement, MoveFigureCycleP
               exit={reduce ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -14 }}
               transition={{ duration: reduce ? 0 : 0.32, ease: EASE_ARENA }}
               className="absolute inset-x-0 text-center font-display-italic pr-[0.06em] text-display-sm"
-              style={{ color: MOVE_COLORS[move], textShadow: `0 0 24px ${MOVE_COLORS[move]}66` }}
+              style={{ color: moveVar(move) }}
             >
               {MOVE_LABELS[move]}
             </motion.p>
@@ -119,7 +122,7 @@ export const MoveFigureCycle = React.forwardRef<HTMLDivElement, MoveFigureCycleP
             <span
               key={m}
               className="h-1.5 rounded-full transition-all duration-300"
-              style={{ width: n === i ? 28 : 8, background: n === i ? MOVE_COLORS[m] : "rgba(255,255,255,0.15)" }}
+              style={{ width: n === i ? 28 : 8, background: n === i ? moveVar(m) : "var(--na-glass-border)" }}
             />
           ))}
         </div>

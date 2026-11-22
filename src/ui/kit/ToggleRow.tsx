@@ -26,7 +26,7 @@ export const ToggleRow = React.forwardRef<HTMLDivElement, ToggleRowProps>(
         {...props}
       >
         <label htmlFor={id} className={cn("flex flex-1 flex-col gap-1", disabled ? "cursor-not-allowed" : "cursor-pointer")}>
-          <span className="font-display text-title font-bold uppercase italic leading-none">{label}</span>
+          <span className="font-display text-title font-bold uppercase leading-none">{label}</span>
           {description ? <span className="text-caption text-text-muted">{description}</span> : null}
         </label>
         <Switch
@@ -35,7 +35,7 @@ export const ToggleRow = React.forwardRef<HTMLDivElement, ToggleRowProps>(
           onCheckedChange={onCheckedChange}
           disabled={disabled}
           size="lg"
-          className="focus-ring data-[state=checked]:shadow-glow-lime data-[state=unchecked]:bg-white/15"
+          className="focus-ring data-[state=unchecked]:bg-text/25"
         />
       </div>
     );

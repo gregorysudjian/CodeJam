@@ -160,7 +160,7 @@ export function LandingScreen({
             {qrSlot && publicUrl && (
               <div className="flex items-center gap-4">
                 {/* Dark modules on a light tile: the polarity every phone camera scans. */}
-                <div className="grid size-28 shrink-0 place-items-center rounded-xl bg-text p-2 text-bg tight:size-20 [&>svg]:size-full">
+                <div className="grid size-28 shrink-0 place-items-center rounded-xl border border-glass-border bg-white p-2 text-text tight:size-20 [&>svg]:size-full">
                   {qrSlot}
                 </div>
                 <div className="min-w-0">

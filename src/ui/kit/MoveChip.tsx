@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { MoveType } from "@/contracts";
 import { cn } from "@/ui/lib/utils";
-import { MOVE_COLORS, MOVE_ICONS, MOVE_LABELS } from "./tokens";
+import { MOVE_ACCENTS, MOVE_ICONS, MOVE_LABELS } from "./tokens";
 
 export interface MoveChipProps extends React.HTMLAttributes<HTMLSpanElement> {
   move: MoveType;
@@ -16,7 +16,7 @@ export const MoveChip = React.forwardRef<HTMLSpanElement, MoveChipProps>(
     return (
       <span
         ref={ref}
-        style={{ ["--chip" as string]: MOVE_COLORS[move], ...style }}
+        style={{ ["--chip" as string]: `var(--na-${MOVE_ACCENTS[move]})`, ...style }}
         className={cn(
           "chip-tint inline-flex items-center rounded-full font-display-italic leading-none tracking-[0.03em]",
           size === "sm" ? "h-8 gap-1.5 px-3 text-[16px]" : "h-11 gap-2 px-4 text-[20px]",

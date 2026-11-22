@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/ui/lib/utils";
+import { MontrealSkyline } from "./MontrealSkyline";
 
 export type BackdropVariant = "arena" | "track" | "plain";
 
@@ -9,7 +10,8 @@ export interface BackdropProps extends React.HTMLAttributes<HTMLDivElement> {
   contained?: boolean;
 }
 
-/** Full-screen stadium background: base colour, drifting neon pools, grain and an optional track floor. */
+/** Full-screen page background: limestone, with a faint Montreal skyline along the bottom
+ *  ("arena") or a stronger one ("track", landing and leaderboard). "plain" is the colour only. */
 export const Backdrop = React.forwardRef<HTMLDivElement, BackdropProps>(
   ({ variant = "arena", contained = false, className, children, ...props }, ref) => (
     <div
@@ -23,21 +25,13 @@ export const Backdrop = React.forwardRef<HTMLDivElement, BackdropProps>(
       {...props}
     >
       {variant !== "plain" && (
-        <>
-          <div className="pool animate-drift-a -left-[10%] -top-[20%] h-[70%] w-[60%] bg-lime/[0.16]" />
-          <div className="pool animate-drift-b -right-[15%] top-[5%] h-[75%] w-[55%] bg-cyan/[0.16]" />
-          <div className="pool animate-drift-c bottom-[-30%] left-[25%] h-[60%] w-[50%] bg-magenta/[0.08]" />
-        </>
+        <MontrealSkyline
+          className={cn(
+            "absolute inset-x-0 bottom-0 h-[18vh] max-h-[200px] w-full text-text",
+            variant === "track" ? "opacity-[0.1]" : "opacity-[0.06]",
+          )}
+        />
       )}
-      {variant === "track" && (
-        <>
-          <div className="horizon-glow" />
-          <div className="track-floor animate-grid-scroll" />
-          <div className="absolute inset-x-0 top-0 h-[38%] bg-gradient-to-b from-bg via-bg/60 to-transparent" />
-        </>
-      )}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,var(--na-bg)_100%)]" />
-      <div className="grain absolute inset-0" />
       {children}
     </div>
   ),

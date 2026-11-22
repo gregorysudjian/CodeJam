@@ -1,4 +1,9 @@
-/* NEON ARENA — every design token, utility and keyframe for the product lives here. */
+/* MONTREAL STREETS: every design token, utility and keyframe for the product lives here.
+   Limestone cream pages, slate ink, solid cards with soft shadows, one maple-red accent.
+   Token NAMES are the old Neon Arena ones on purpose (every screen uses them): "lime" is now the
+   maple-red accent, "cyan" metro blue, "magenta" plum, "amber" ochre, "violet" Mont-Royal green.
+   Every text colour below is at least 4.5:1 on both --na-bg and --na-bg-raised.
+   The in-game HUD and the camera stage keep the old dark values (see .hud-root below). */
 @import '@fontsource/barlow-condensed/600.css';
 @import '@fontsource/barlow-condensed/700.css';
 @import '@fontsource/barlow-condensed/800.css';
@@ -6,26 +11,29 @@
 @import '@fontsource-variable/inter';
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   /* Raw palette */
-  --na-bg: #07090d;
-  --na-bg-raised: #0d1118;
-  --na-glass: rgba(255, 255, 255, 0.04);
-  --na-glass-strong: rgba(255, 255, 255, 0.07);
-  --na-glass-border: rgba(255, 255, 255, 0.08);
-  --na-text: #f5f7fa;
-  --na-text-muted: #8a94a6;
-  --na-text-dim: #5b6475;
-  --na-lime: #c6ff3d;
-  --na-cyan: #22d3ee;
-  --na-magenta: #ff3dcb;
-  --na-amber: #ffb020;
-  --na-violet: #8b5cf6;
-  --na-danger: #ff4d4f;
+  --na-bg: #f2ece1; /* limestone */
+  --na-bg-raised: #fffbf4; /* card */
+  --na-glass: #fffbf4; /* solid card surface (was translucent glass) */
+  --na-glass-strong: #e8e0d1; /* inset / chip surface */
+  --na-glass-border: rgba(64, 48, 32, 0.16);
+  --na-text: #1f2429; /* slate ink: 14:1 */
+  --na-text-muted: #46505a; /* 7:1 */
+  --na-text-dim: #58616b; /* 5.3:1 (4.8:1 on glass-strong) */
+  --na-lime: #b3261e; /* maple red: 5.6:1, cream on it 5.6:1 */
+  --na-cyan: #1f5f8b; /* metro blue */
+  --na-magenta: #8a2e5c; /* plum */
+  --na-amber: #8a5600; /* ochre */
+  --na-violet: #2d6a4f; /* Mont-Royal green */
+  --na-danger: #9b1c1c;
+  --na-brick: #8e3b2a; /* brick, for surfaces only */
+  --na-slate: #2b3138; /* dark slate surface (hero) */
+  --na-shadow: 0 1px 2px rgba(48, 36, 24, 0.08), 0 14px 32px -18px rgba(48, 36, 24, 0.35);
   --na-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --na-activity-bar: color-mix(in srgb, var(--na-lime) 55%, var(--na-bg));
+  --na-activity-bar: color-mix(in srgb, var(--na-lime) 45%, var(--na-bg));
 
-  /* shadcn mapping (dark only) */
+  /* shadcn mapping */
   --radius: 0.75rem;
   --background: var(--na-bg);
   --foreground: var(--na-text);
@@ -44,7 +52,7 @@
   --destructive: var(--na-danger);
   --destructive-foreground: var(--na-text);
   --border: var(--na-glass-border);
-  --input: rgba(255, 255, 255, 0.14);
+  --input: rgba(64, 48, 32, 0.24);
   --ring: var(--na-lime);
   --chart-1: var(--na-lime);
   --chart-2: var(--na-cyan);
@@ -147,21 +155,19 @@
 
   --radius-panel: 24px;
 
+  /* "glow" names kept: they are now a thin accent ring plus a soft drop shadow. */
   --shadow-glow-lime:
-    0 0 0 1px color-mix(in srgb, var(--na-lime) 40%, transparent),
-    0 0 24px color-mix(in srgb, var(--na-lime) 35%, transparent),
-    0 0 64px color-mix(in srgb, var(--na-lime) 20%, transparent);
+    0 0 0 2px color-mix(in srgb, var(--na-lime) 55%, transparent),
+    0 12px 28px -14px color-mix(in srgb, var(--na-lime) 55%, transparent);
   --shadow-glow-cyan:
-    0 0 0 1px color-mix(in srgb, var(--na-cyan) 40%, transparent),
-    0 0 24px color-mix(in srgb, var(--na-cyan) 35%, transparent),
-    0 0 64px color-mix(in srgb, var(--na-cyan) 20%, transparent);
+    0 0 0 2px color-mix(in srgb, var(--na-cyan) 55%, transparent),
+    0 12px 28px -14px color-mix(in srgb, var(--na-cyan) 55%, transparent);
   --shadow-glow-magenta:
-    0 0 0 1px color-mix(in srgb, var(--na-magenta) 40%, transparent),
-    0 0 24px color-mix(in srgb, var(--na-magenta) 35%, transparent),
-    0 0 64px color-mix(in srgb, var(--na-magenta) 20%, transparent);
+    0 0 0 2px color-mix(in srgb, var(--na-magenta) 55%, transparent),
+    0 12px 28px -14px color-mix(in srgb, var(--na-magenta) 55%, transparent);
   --shadow-glow-danger:
-    0 0 0 1px color-mix(in srgb, var(--na-danger) 40%, transparent),
-    0 0 24px color-mix(in srgb, var(--na-danger) 30%, transparent);
+    0 0 0 2px color-mix(in srgb, var(--na-danger) 55%, transparent),
+    0 12px 28px -14px color-mix(in srgb, var(--na-danger) 50%, transparent);
 
   --animate-drift-a: na-drift-a 38s ease-in-out infinite alternate;
   --animate-drift-b: na-drift-b 46s ease-in-out infinite alternate;
@@ -179,10 +185,12 @@
 
 /* ───── Utilities ───── */
 
+/* The name stays; on the menus it is upright, like Montreal street and metro signs. */
 @utility font-display-italic {
   font-family: var(--font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
+  letter-spacing: 0.01em;
   text-transform: uppercase;
 }
 
@@ -194,79 +202,62 @@
   text-transform: uppercase;
 }
 
+/* "glass" is now a solid card with a soft shadow (no blur). */
 @utility glass {
   background: var(--na-glass);
   border: 1px solid var(--na-glass-border);
-  backdrop-filter: blur(24px) saturate(140%);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.09),
-    0 24px 60px -24px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--na-shadow);
 }
 
 @utility glass-strong {
   background: var(--na-glass-strong);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(24px) saturate(140%);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--na-glass-border);
 }
 
 @utility glow-edge-lime {
-  border-color: color-mix(in srgb, var(--na-lime) 45%, transparent);
+  border-color: var(--na-lime);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
-    0 0 32px -4px color-mix(in srgb, var(--na-lime) 30%, transparent),
-    0 0 80px -10px color-mix(in srgb, var(--na-lime) 18%, transparent);
+    0 0 0 1px var(--na-lime),
+    var(--na-shadow);
 }
 @utility glow-edge-cyan {
-  border-color: color-mix(in srgb, var(--na-cyan) 45%, transparent);
+  border-color: var(--na-cyan);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
-    0 0 32px -4px color-mix(in srgb, var(--na-cyan) 30%, transparent),
-    0 0 80px -10px color-mix(in srgb, var(--na-cyan) 18%, transparent);
+    0 0 0 1px var(--na-cyan),
+    var(--na-shadow);
 }
 @utility glow-edge-magenta {
-  border-color: color-mix(in srgb, var(--na-magenta) 45%, transparent);
+  border-color: var(--na-magenta);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
-    0 0 32px -4px color-mix(in srgb, var(--na-magenta) 30%, transparent),
-    0 0 80px -10px color-mix(in srgb, var(--na-magenta) 18%, transparent);
+    0 0 0 1px var(--na-magenta),
+    var(--na-shadow);
 }
 
+/* No neon: the text-glow names stay for the screens that use them, without a glow. */
 @utility text-glow-lime {
-  text-shadow:
-    0 0 18px color-mix(in srgb, var(--na-lime) 55%, transparent),
-    0 0 48px color-mix(in srgb, var(--na-lime) 30%, transparent);
+  text-shadow: none;
 }
 @utility text-glow-cyan {
-  text-shadow:
-    0 0 18px color-mix(in srgb, var(--na-cyan) 55%, transparent),
-    0 0 48px color-mix(in srgb, var(--na-cyan) 30%, transparent);
+  text-shadow: none;
 }
 @utility text-glow-magenta {
-  text-shadow:
-    0 0 18px color-mix(in srgb, var(--na-magenta) 55%, transparent),
-    0 0 48px color-mix(in srgb, var(--na-magenta) 30%, transparent);
+  text-shadow: none;
 }
 
 /* Tinted chip driven by a --chip colour variable set by the component */
 @utility chip-tint {
   color: var(--chip);
-  background: color-mix(in srgb, var(--chip) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--chip) 55%, transparent);
-  box-shadow: 0 0 16px -4px color-mix(in srgb, var(--chip) 45%, transparent);
+  background: color-mix(in srgb, var(--chip) 10%, var(--na-bg-raised));
+  border: 1px solid color-mix(in srgb, var(--chip) 45%, transparent);
 }
 
+/* Grain and drifting neon pools are gone; the names stay so old markup is harmless. */
 @utility grain {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  opacity: 0.04;
-  mix-blend-mode: overlay;
+  display: none;
 }
 
 @utility pool {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(min(110px, 8vw));
-  will-change: transform;
+  display: none;
 }
 
 /* Perspective floor grid with lime lane lines */
@@ -334,27 +325,15 @@
   box-shadow: 0 0 40px 8px color-mix(in srgb, var(--na-lime) 20%, transparent);
 }
 
+/* The white sweep across buttons is gone (no neon); the name stays for GameButton's markup. */
 @utility sheen {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    110deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.55) 48%,
-    transparent 66%
-  );
-  transform: translateX(-120%);
-  transition: transform 650ms var(--na-ease);
+  display: none;
 }
 
 @utility focus-ring {
   &:focus-visible {
-    outline: 2px solid var(--na-lime);
-    outline-offset: 4px;
-    box-shadow:
-      0 0 0 6px color-mix(in srgb, var(--na-lime) 18%, transparent),
-      0 0 24px color-mix(in srgb, var(--na-lime) 35%, transparent);
+    outline: 3px solid var(--na-lime);
+    outline-offset: 3px;
   }
 }
 
@@ -446,6 +425,47 @@
 }
 .hud-root {
   container-type: inline-size;
+}
+/* The in-game HUD sits on the (still dark, neon) 3D scene and the camera stage on the video, so
+   both keep the old dark palette and glows. Custom properties resolve per element, so every
+   token utility inside them (text-lime, bg-bg, glass, shadow-glow-lime...) picks these up. */
+.hud-root,
+.calibration-stage {
+  color-scheme: dark;
+  --na-bg: #07090d;
+  --na-bg-raised: #0d1118;
+  --na-glass: rgba(255, 255, 255, 0.04);
+  --na-glass-strong: rgba(255, 255, 255, 0.07);
+  --na-glass-border: rgba(255, 255, 255, 0.08);
+  --na-text: #f5f7fa;
+  --na-text-muted: #8a94a6;
+  --na-text-dim: #5b6475;
+  --na-lime: #c6ff3d;
+  --na-cyan: #22d3ee;
+  --na-magenta: #ff3dcb;
+  --na-amber: #ffb020;
+  --na-violet: #8b5cf6;
+  --na-danger: #ff4d4f;
+  --na-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.09), 0 24px 60px -24px rgba(0, 0, 0, 0.7);
+  --na-activity-bar: color-mix(in srgb, var(--na-lime) 55%, var(--na-bg));
+}
+.hud-root .glass,
+.calibration-stage .glass {
+  backdrop-filter: blur(24px) saturate(140%);
+}
+.hud-root .move-figure,
+.calibration-stage .move-figure {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, currentColor 66%, transparent))
+    drop-shadow(0 0 18px color-mix(in srgb, currentColor 33%, transparent));
+}
+.hud-root .font-display-italic {
+  font-style: italic;
+  letter-spacing: 0;
+}
+.hud-root .text-glow-lime {
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--na-lime) 55%, transparent),
+    0 0 48px color-mix(in srgb, var(--na-lime) 30%, transparent);
 }
 .hud-reps {
   width: max-content;
@@ -1000,9 +1020,8 @@
   }
   50% {
     box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--na-lime) 60%, transparent),
-      0 0 36px color-mix(in srgb, var(--na-lime) 50%, transparent),
-      0 0 96px color-mix(in srgb, var(--na-lime) 28%, transparent);
+      0 0 0 6px color-mix(in srgb, var(--na-lime) 22%, transparent),
+      0 12px 28px -14px color-mix(in srgb, var(--na-lime) 55%, transparent);
   }
 }
 @keyframes na-grid-scroll {
@@ -1045,8 +1064,8 @@
     background: color-mix(in srgb, var(--na-lime) 35%, transparent);
   }
   :focus-visible {
-    outline: 2px solid var(--na-lime);
-    outline-offset: 4px;
+    outline: 3px solid var(--na-lime);
+    outline-offset: 3px;
   }
 }
 

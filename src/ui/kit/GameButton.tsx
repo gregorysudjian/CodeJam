@@ -10,10 +10,10 @@ export const gameButtonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-lime text-bg shadow-glow-lime hover:brightness-105',
+        primary: 'bg-lime text-bg shadow-glow-lime hover:brightness-110',
         secondary:
-          'bg-glass backdrop-blur-xl border border-cyan/50 text-text shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] hover:border-cyan hover:shadow-glow-cyan hover:text-cyan',
-        ghost: 'bg-transparent text-text-muted hover:bg-white/[0.06] hover:text-text',
+          'bg-glass border-2 border-text/25 text-text shadow-[var(--na-shadow)] hover:border-lime hover:text-lime',
+        ghost: 'bg-transparent text-text-muted hover:bg-text/[0.07] hover:text-text',
         danger:
           'bg-danger/15 text-danger border border-danger/60 hover:bg-danger hover:text-bg hover:shadow-glow-danger',
       },
@@ -39,7 +39,7 @@ export interface GameButtonProps
   keyHint?: string;
 }
 
-/** The hero call-to-action button: italic condensed type, glow, sheen sweep and press scale. */
+/** The hero call-to-action button: condensed type, soft shadow, sheen sweep and press scale. */
 export const GameButton = React.forwardRef<HTMLButtonElement, GameButtonProps>(
   (
     {
