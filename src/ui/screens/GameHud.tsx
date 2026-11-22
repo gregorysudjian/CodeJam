@@ -107,7 +107,7 @@ function RoundStatus({
   const reduce = useReducedMotion();
   const { left, total } = lives ? heartCount(lives) : { left: 0, total: 0 };
   return (
-    <div className="hud-status absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-5 rounded-full border border-glass-border bg-bg/85 px-5 py-1 backdrop-blur-md">
+    <div className="hud-status absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-5 rounded-full border border-glass-border bg-bg/85 px-5 py-1">
       {stage && (
         <motion.span
           key={stage.index}

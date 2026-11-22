@@ -375,18 +375,18 @@
 }
 
 /* ───── Keyframes ───── */
-/* Broadcast HUD: transparent geometry and semantic feedback accents. */
+/* Broadcast HUD: transparent geometry and semantic feedback accents. No backdrop-filter anywhere
+   in the round: a blur over the moving video re-renders every frame (perf on slower laptops). The
+   contrast figures were measured over the sharp brightest pixel, so they hold without it. */
 @utility hud-plate {
   background: color-mix(in srgb, var(--na-bg-raised) 86%, transparent);
   border: 1px solid var(--na-glass-border);
   border-top: 3px solid var(--na-lime);
-  backdrop-filter: blur(20px);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
 }
 /* 88 %: the guide figure pulses down to 55 % opacity and still needs 3:1 over a white sky. */
 @utility hud-overlay {
   background: color-mix(in srgb, var(--na-bg) 88%, transparent);
-  backdrop-filter: blur(18px);
 }
 /* A dark ring around HUD words over the 3D scene. Under protanopia the danger red turns a dim
    olive (2.2:1 on the sky); against this ring it keeps 4.4:1 on any background. */
@@ -456,7 +456,7 @@
   --na-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.09), 0 24px 60px -24px rgba(0, 0, 0, 0.7);
   --na-activity-bar: color-mix(in srgb, var(--na-lime) 55%, var(--na-bg));
 }
-.hud-root .glass,
+/* The camera stage (before the round) keeps its blur; the in-game HUD has none (see hud-plate). */
 .calibration-stage .glass {
   backdrop-filter: blur(24px) saturate(140%);
 }
@@ -483,7 +483,6 @@
   border-radius: 9999px;
   background: color-mix(in srgb, var(--na-bg) 86%, transparent);
   border: 1px solid var(--na-glass-border);
-  backdrop-filter: blur(12px);
   box-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.6);
 }
 .hud-root .font-display-italic {
