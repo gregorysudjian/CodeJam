@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  createUsernameChecker,
   MAX_NAME_LENGTH,
+  USERNAME_CHECK_DELAY_MS,
+  usernameToCheck,
   optionalNumbers,
   profileName,
   randomGuestName,
@@ -55,5 +58,80 @@ describe('sign-up fields', () => {
     expect(optionalNumbers({ age: '', weightKg: '', heightCm: '175.46' })).toEqual({
       heightCm: 175.5,
     });
+  });
+});
+
+describe('username check', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+  const settle = async (ms = USERNAME_CHECK_DELAY_MS) => {
+    await vi.advanceTimersByTimeAsync(ms);
+  };
+
+  it('asks about the name that would be saved, not an empty field or your own name', () => {
+    expect(usernameToCheck('  Sam ')).toBe('Sam');
+    expect(usernameToCheck('x'.repeat(30))).toHaveLength(MAX_NAME_LENGTH);
+    expect(usernameToCheck('   ')).toBe('');
+    expect(usernameToCheck('abdo', 'Abdo')).toBe('');
+    expect(usernameToCheck('Abdo2', 'Abdo')).toBe('Abdo2');
+  });
+
+  it('waits for a pause in typing and asks once, about the last name', async () => {
+    const check = vi.fn(async (_n: string) => true);
+    const onAnswer = vi.fn();
+    const c = createUsernameChecker(check, onAnswer);
+    c.update('S');
+    await settle(USERNAME_CHECK_DELAY_MS - 1);
+    c.update('Sa');
+    c.update('Sam');
+    await settle(USERNAME_CHECK_DELAY_MS - 1);
+    expect(check).not.toHaveBeenCalled();
+    await settle(1);
+    expect(check).toHaveBeenCalledTimes(1);
+    expect(check).toHaveBeenCalledWith('Sam');
+    expect(onAnswer).toHaveBeenCalledWith('Sam', true);
+  });
+
+  it('drops an answer that arrives after the name changed', async () => {
+    let resolveFirst: (v: boolean) => void = () => {};
+    const check = vi
+      .fn<(n: string) => Promise<boolean | null>>()
+      .mockImplementationOnce(() => new Promise((r) => (resolveFirst = r)))
+      .mockResolvedValueOnce(false);
+    const onAnswer = vi.fn();
+    const c = createUsernameChecker(check, onAnswer);
+    c.update('Sam');
+    await settle();
+    c.update('Samuel');
+    resolveFirst(true); // "Sam" is taken, but the player has moved on
+    await settle();
+    expect(onAnswer).toHaveBeenCalledTimes(1);
+    expect(onAnswer).toHaveBeenCalledWith('Samuel', false);
+  });
+
+  it('treats a failing check as unknown and never throws', async () => {
+    const onAnswer = vi.fn();
+    createUsernameChecker(() => Promise.reject(new Error('offline')), onAnswer).update('Sam');
+    await settle();
+    createUsernameChecker(() => {
+      throw new Error('boom');
+    }, onAnswer).update('Kim');
+    await settle();
+    expect(onAnswer.mock.calls).toEqual([
+      ['Sam', null],
+      ['Kim', null],
+    ]);
+  });
+
+  it('asks nothing for an empty name, and nothing after dispose', async () => {
+    const check = vi.fn(async () => true);
+    const onAnswer = vi.fn();
+    const c = createUsernameChecker(check, onAnswer);
+    c.update('');
+    c.update('Sam');
+    c.dispose();
+    await settle();
+    expect(check).not.toHaveBeenCalled();
+    expect(onAnswer).not.toHaveBeenCalled();
   });
 });

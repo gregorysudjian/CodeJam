@@ -28,7 +28,10 @@ import {
   optionalNumbers,
   profileName,
   randomGuestName,
+  useUsernameTaken,
+  USERNAME_TAKEN,
   validateRange,
+  type UsernameCheck,
 } from '@/ui/screens/profileRules';
 
 export type ProfileInput = Omit<Profile, 'id'>;
@@ -40,6 +43,10 @@ export interface ProfileScreenProps {
   /** The nav bar on top (current: 'profile'), only when an existing player edits their profile;
    *  absent (first-time setup): no bar, as before. */
   nav?: NavBarProps;
+  /** Is this username taken? (DataStore.isUsernameTaken). Asked after a pause in typing, never
+   *  for the player's own current name; true shows "Username taken" and disables CONTINUE;
+   *  false or null (unknown) show nothing. Absent: no check, as before. */
+  checkUsername?: UsernameCheck;
 }
 
 /** Skip's values. Its displayName is only a type filler: Skip and an empty field save the
@@ -146,7 +153,13 @@ function GoalPicker({ value, onChange }: { value: Goal; onChange: (g: Goal) => v
 }
 
 /** Player setup (edit profile): name, goal, level, weekly minutes and optional weight, age and height. */
-export function ProfileScreen({ initial, onSubmit, onBack, nav }: ProfileScreenProps) {
+export function ProfileScreen({
+  initial,
+  onSubmit,
+  onBack,
+  nav,
+  checkUsername,
+}: ProfileScreenProps) {
   const [name, setName] = React.useState(initial?.displayName ?? '');
   const [goal, setGoal] = React.useState<Goal>(initial?.goal ?? PROFILE_DEFAULTS.goal);
   const [level, setLevel] = React.useState<FitnessLevel>(initial?.level ?? PROFILE_DEFAULTS.level);
@@ -169,12 +182,14 @@ export function ProfileScreen({ initial, onSubmit, onBack, nav }: ProfileScreenP
   const ageError = validateRange('age', age);
   const heightError = validateRange('heightCm', height);
   const fieldError = Boolean(weightError || ageError || heightError);
+  const taken = useUsernameTaken(name, checkUsername, initial?.displayName);
   // An empty name or Skip saves this: the player's current name, else a guest name drawn once
   // for this visit (it is also the field's placeholder, so what you see is what you get).
   const [fallbackName] = React.useState(() => initial?.displayName?.trim() || randomGuestName());
   const skip = () => onSubmit({ ...PROFILE_DEFAULTS, displayName: fallbackName });
 
   const submit = () => {
+    if (taken) return;
     if (fieldError) {
       setMore(true);
       return;
@@ -188,7 +203,7 @@ export function ProfileScreen({ initial, onSubmit, onBack, nav }: ProfileScreenP
     });
   };
 
-  useHotkey('Enter', submit, !fieldError);
+  useHotkey('Enter', submit, !fieldError && !taken);
   useHotkey('Escape', onBack);
   useHotkey('s', skip);
 
@@ -216,7 +231,7 @@ export function ProfileScreen({ initial, onSubmit, onBack, nav }: ProfileScreenP
               size="lg"
               trailingIcon={ArrowRight}
               keyHint="ENTER"
-              disabled={fieldError}
+              disabled={fieldError || taken}
             >
               CONTINUE
             </GameButton>
@@ -254,6 +269,7 @@ export function ProfileScreen({ initial, onSubmit, onBack, nav }: ProfileScreenP
             autoComplete="nickname"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            error={taken ? USERNAME_TAKEN : undefined}
             hint=""
             trailing={
               <button

@@ -19,9 +19,12 @@ import {
   optionalNumbers,
   profileName,
   randomGuestName,
+  useUsernameTaken,
+  USERNAME_TAKEN,
   validateName,
   validateRange,
   type RangedField,
+  type UsernameCheck,
 } from '@/ui/screens/profileRules';
 
 export interface LandingScreenProps {
@@ -30,6 +33,10 @@ export interface LandingScreenProps {
   /** New player: the sign-up card's START. Without it the landing shows the old big
    *  "Play as guest" button instead of the card. */
   onSignUp?(p: ProfileInput): void;
+  /** Sign-up: is this username taken? (DataStore.isUsernameTaken). Asked after a pause in
+   *  typing; true shows "Username taken" and disables START; false or null (unknown) show
+   *  nothing. Absent: no check, as before. */
+  checkUsername?: UsernameCheck;
   returning?: { displayName: string; bestScore?: number } | null;
   onContinue?(): void;
   onLeaderboard?(): void;
@@ -107,11 +114,13 @@ function HeroVideo({ src }: { src: string }) {
 /** The sign-up card: username, optional age/weight/height, goal and level, one START. */
 function SignUpCard({
   onSignUp,
+  checkUsername,
   onPlayAsGuest,
   onCancel,
   busy,
 }: {
   onSignUp(p: ProfileInput): void;
+  checkUsername?: UsernameCheck;
   onPlayAsGuest(): void;
   /** Back to "Continue as …" (a returning player who chose New player). */
   onCancel?: () => void;
@@ -129,12 +138,13 @@ function SignUpCard({
   const [tried, setTried] = React.useState(false);
   const nameRef = React.useRef<HTMLInputElement>(null);
 
-  const nameError = tried ? validateName(name) : null;
+  const taken = useUsernameTaken(name, checkUsername);
+  const nameError = taken ? USERNAME_TAKEN : tried ? validateName(name) : null;
   const rangeErrors = NUMBER_FIELDS.map(({ field }) => validateRange(field, numbers[field]));
   const invalid = validateName(name) !== null || rangeErrors.some(Boolean);
 
   const submit = () => {
-    if (busy) return;
+    if (busy || taken) return;
     setTried(true);
     if (invalid) {
       if (validateName(name)) nameRef.current?.focus();
@@ -235,7 +245,7 @@ function SignUpCard({
           keyHint={busy ? undefined : 'ENTER'}
           leadingIcon={busy ? Loader2 : Play}
           className={cn('w-full', busy && SPIN)}
-          disabled={busy}
+          disabled={busy || taken}
           aria-busy={busy}
         >
           {busy ? 'Starting…' : 'Start'}
@@ -278,6 +288,7 @@ export function LandingScreen({
   appName,
   onPlayAsGuest,
   onSignUp,
+  checkUsername,
   returning,
   onContinue,
   onLeaderboard,
@@ -405,6 +416,7 @@ export function LandingScreen({
           {showSignUp && onSignUp ? (
             <SignUpCard
               onSignUp={onSignUp}
+              checkUsername={checkUsername}
               onPlayAsGuest={onPlayAsGuest}
               onCancel={isReturning ? () => setNewPlayer(false) : undefined}
               busy={busy}

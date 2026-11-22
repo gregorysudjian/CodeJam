@@ -670,6 +670,20 @@
 .profile-screen h1 {
   font-size: 64px;
 }
+/* The nav bar (existing player editing) spans the same width as on the other menu screens
+   (Screen's 1440 px column minus its padding), not the 816 px form column, so it neither
+   cramps nor jumps between screens; equal negative margins centre it over the column. */
+.profile-screen [data-navbar] {
+  --profile-nav-width: calc(min(100vw, 1440px) - 48px);
+  width: var(--profile-nav-width);
+  max-width: none;
+  margin-inline: calc((100% - var(--profile-nav-width)) / 2);
+}
+@media (min-width: 768px) {
+  .profile-screen [data-navbar] {
+    --profile-nav-width: calc(min(100vw, 1440px) - 96px);
+  }
+}
 .landing-screen main {
   padding-top: 32px;
   min-height: 100dvh;
@@ -720,6 +734,10 @@
   }
   .landing-signup input {
     font-size: 20px;
+  }
+  /* Room for one error line ("Username taken", "Pick a username") without a scroll. */
+  .landing-signup form {
+    gap: 12px;
   }
   .landing-signup label + div,
   .landing-signup .gap-3:has(> label) {
