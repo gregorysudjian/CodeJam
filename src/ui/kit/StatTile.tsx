@@ -26,7 +26,8 @@ export const StatTile = React.forwardRef<HTMLDivElement, StatTileProps>(
       <div className="flex items-baseline gap-2">
         <span
           className={cn(
-            "font-display-italic pr-[0.06em] tabular-nums",
+            // nowrap: "≈ 21" broke after the ≈ in a narrow tile (results at 1024×576).
+            "font-display-italic pr-[0.06em] tabular-nums whitespace-nowrap",
             ACCENT_TEXT[accent],
             size === "lg" ? "text-display-md" : "text-display-sm",
           )}

@@ -46,7 +46,7 @@ const GRADE_COLOR = {
   B: 'text-amber border-amber/50',
   C: 'text-text-muted border-glass-border',
 };
-const STAT_TILE = 'gap-2 p-5 short:p-3 tight:[&_.eyebrow]:tracking-normal';
+const STAT_TILE = 'gap-2 p-5 short:p-3 tight:gap-1 tight:[&_.eyebrow]:tracking-normal';
 export function ResultsScreen({
   summary,
   advice,
@@ -115,7 +115,7 @@ export function ResultsScreen({
                 )}
                 {headline.text}
               </h1>
-              <Eyebrow className="text-text-muted">
+              <Eyebrow className="text-text-muted tight:hidden">
                 {WORKOUT_LABELS[summary.config.workout]} · {MODE_LABELS[summary.config.mode]} ·{' '}
                 {TIER_LABELS[tierOf(summary.config.difficulty)]}
               </Eyebrow>
@@ -124,7 +124,7 @@ export function ResultsScreen({
               {formatTime(summary.activeSec)} ACTIVE
             </span>
           </div>
-          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 short:mt-3">
+          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 short:mt-3 tight:gap-y-2">
             <AnimatedNumber
               value={summary.score}
               className="results-score font-display-italic text-display-xl text-lime text-glow-lime short:text-display-lg tight:text-display-md"
@@ -145,7 +145,7 @@ export function ResultsScreen({
                   initial={reduce ? false : { opacity: 0, x: -35 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: reduce ? 0 : 0.45 }}
-                  className="flex items-center gap-2 bg-lime px-4 py-2 font-display-italic text-[22px] text-bg"
+                  className="flex items-center gap-2 bg-lime px-4 py-2 font-display-italic text-[22px] text-bg tight:py-1"
                 >
                   <Trophy className="size-5" />
                   NEW PERSONAL BEST
@@ -169,7 +169,7 @@ export function ResultsScreen({
                 ))}
             </div>
           </div>
-          <div className="results-stats mt-6 grid grid-cols-3 gap-3 short:mt-4">
+          <div className="results-stats mt-6 grid grid-cols-3 gap-3 short:mt-4 tight:mt-3">
             <StatTile
               label="BEST STREAK"
               value={summary.bestStreak}
@@ -195,8 +195,8 @@ export function ResultsScreen({
               className={STAT_TILE}
             />
           </div>
-          <section className="mt-6 short:mt-4" aria-label="Reps breakdown">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <section className="mt-6 short:mt-4 tight:mt-3" aria-label="Reps breakdown">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 tight:mb-2">
               <Eyebrow>YOUR MOVES</Eyebrow>
               {missed && (
                 <span className="text-caption text-danger">
@@ -205,7 +205,7 @@ export function ResultsScreen({
               )}
             </div>
             {/* At 125–150 % scaling (tight) the rows go two by two and drop the bars. */}
-            <div className="grid gap-1.5 tight:grid-cols-2 tight:gap-x-6">
+            <div className="grid gap-1.5 tight:grid-cols-2 tight:gap-x-6 tight:gap-y-1">
               {MOVE_ORDER.filter((m) => summary.reps[m] > 0 || summary.missed[m] > 0).map(
                 (move, i) => (
                   <div
@@ -240,7 +240,7 @@ export function ResultsScreen({
         <GlassPanel
           as="aside"
           glow="lime"
-          className="results-coach flex min-w-0 flex-col gap-5 p-6 short:gap-4 short:p-5"
+          className="results-coach flex min-w-0 flex-col gap-5 p-6 short:gap-4 short:p-5 tight:gap-3 tight:p-4"
         >
           <div className="flex items-center justify-between">
             <Eyebrow className="flex items-center gap-2 text-lime">
@@ -260,8 +260,8 @@ export function ResultsScreen({
           </div>
           {advice ? (
             <>
-              <p className="text-body leading-relaxed">{advice.recap}</p>
-              <div className="flex items-start gap-3 border-y border-glass-border py-4 short:py-3">
+              <p className="text-body leading-relaxed tight:leading-snug">{advice.recap}</p>
+              <div className="flex items-start gap-3 border-y border-glass-border py-4 short:py-3 tight:py-2">
                 <Lightbulb className="mt-1 size-6 shrink-0 text-lime" />
                 <p className="text-body text-text-muted">{advice.tip}</p>
               </div>
@@ -272,7 +272,7 @@ export function ResultsScreen({
                 )}
               >
                 <Eyebrow>NEXT UP</Eyebrow>
-                <div className="my-3 flex items-center gap-3 short:my-1">
+                <div className="my-3 flex items-center gap-3 short:my-1 tight:my-0.5">
                   <MoveFigure
                     pose={
                       advice.next.workout === 'legs'
@@ -284,36 +284,42 @@ export function ResultsScreen({
                             : 'jump'
                     }
                     size={72}
+                    className="tight:hidden"
                   />
                   <h2 className="min-w-0 font-display-italic text-title">
                     {WORKOUT_LABELS[advice.next.workout]} · {MODE_LABELS[advice.next.mode]} ·{' '}
                     {TIER_LABELS[tierOf(advice.next.difficulty)]}
                   </h2>
                 </div>
-                <p className="text-caption leading-relaxed text-text-muted">{advice.reason}</p>
+                <p className="text-caption leading-relaxed text-text-muted tight:leading-snug [@media(max-height:600px)]:hidden">
+                  {advice.reason}
+                </p>
               </div>
               <GameButton
                 size="lg"
                 variant="secondary"
                 trailingIcon={ArrowRight}
                 onClick={() => onStartNext(asRound(advice.next))}
-                className="w-full px-4 short:h-14"
+                className="w-full px-4 short:h-14 tight:h-12"
               >
                 PLAY THIS NEXT
               </GameButton>
             </>
           ) : (
-            <div role="status" className="flex min-h-[400px] flex-col gap-6">
+            <div
+              role="status"
+              className="flex min-h-[400px] flex-col gap-6 short:min-h-[310px] short:gap-4 tight:min-h-0 tight:gap-3"
+            >
               <p className="text-body text-text-muted">Your coach is reviewing the round…</p>
               <Skeleton className="coach-shimmer h-5 w-full" />
               <Skeleton className="coach-shimmer h-5 w-5/6" />
               <Skeleton className="coach-shimmer h-5 w-3/4" />
-              <div className="my-6 border-t border-glass-border" />
-              <Skeleton className="coach-shimmer h-24 w-full" />
-              <Skeleton className="coach-shimmer mt-auto h-[72px] w-full" />
+              <div className="my-6 border-t border-glass-border short:my-2" />
+              <Skeleton className="coach-shimmer h-24 w-full tight:h-10" />
+              <Skeleton className="coach-shimmer mt-auto h-[72px] w-full short:h-14 tight:h-12" />
             </div>
           )}
-          <p className="mt-auto text-caption text-text-muted">
+          <p className="mt-auto text-caption text-text-muted tight:leading-snug">
             General fitness encouragement, not medical advice.
           </p>
         </GlassPanel>
