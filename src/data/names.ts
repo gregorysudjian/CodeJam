@@ -80,6 +80,20 @@ export function nameOrGuest(raw: string | null | undefined): string {
   return cleanDisplayName(raw) ?? guestName();
 }
 
+/**
+ * Usernames are unique (migration 0007). When a name is taken, the store saves this instead:
+ * the name cut to fit, then "-NNNN" (still within NAME_MAX_LENGTH).
+ */
+export function withNameSuffix(name: string): string {
+  const n = 1000 + Math.floor(Math.random() * 9000);
+  return `${[...name].slice(0, NAME_MAX_LENGTH - 5).join('')}-${n}`;
+}
+
+/** Postgres refused a profile write because the username is taken (0007's unique index). */
+export function isNameTaken(error: { code?: string; message?: string } | null | undefined) {
+  return error?.code === '23505' && /display_name/.test(error.message ?? '');
+}
+
 /** For showing a name read back from the database or the cache. */
 export function shownName(stored: string | null | undefined): string {
   return cleanDisplayName(stored) ?? HIDDEN_NAME;

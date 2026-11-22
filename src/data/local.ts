@@ -122,6 +122,19 @@ export function createLocalStore(kv: KeyValue | null = browserStorage()): DataSt
     async getCoachAdvice() {
       return ruleBasedAdvice(profile(), sessions());
     },
+    // No server, so no other players: friends need the Supabase store (contract).
+    async isUsernameTaken() {
+      return null;
+    },
+    async addFriend() {
+      return { ok: false, reason: 'offline' } as const;
+    },
+    async listFriends() {
+      return [];
+    },
+    async getFriendsBoard() {
+      return [];
+    },
     async signOut() {
       try {
         kv?.removeItem(KEYS.profile);

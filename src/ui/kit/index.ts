@@ -21,4 +21,5 @@ export * from "./MontrealSkyline";
 
 export * from "./ScreenFooter";
 export * from "./CoachBanner";
+export * from "./NavBar";
 export * from "./round";
