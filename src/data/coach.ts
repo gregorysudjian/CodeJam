@@ -10,6 +10,7 @@ import type {
 import {
   ACCURACY_LOWER_BELOW,
   ACCURACY_RAISE_ABOVE,
+  COACH_LOW_IMPACT_AGE,
   COACH_ROUND_SEC,
   COACH_STRUGGLE_BELOW_LEVEL,
   COACH_TIERS,
@@ -49,6 +50,9 @@ const TIPS: Record<MoveType, string> = {
 };
 
 const ORDER: WorkoutId[] = ['fullBody', 'legs', 'arms', 'shoulders'];
+
+/** Added to `reason` when the next session is low impact. Never names the age. */
+const LOW_IMPACT_NOTE = 'Low impact: no jumps, same workout.';
 
 /** Legs is not offered in treadmill mode: running is the leg work. */
 function available(mode: SavedSession['config']['mode']): WorkoutId[] {
@@ -92,6 +96,14 @@ export function ruleBasedAdvice(
   const difficulty = COACH_TIERS[tier];
   // A round is always every level (CONTRACTS.md).
   const durationSec = COACH_ROUND_SEC;
+  // From COACH_LOW_IMPACT_AGE: low impact (no hurdles), the same workout and tier. Under it, or
+  // with no age, the advice is exactly as before (no lowImpact key, no extra sentence).
+  const lowImpact = typeof profile?.age === 'number' && profile.age >= COACH_LOW_IMPACT_AGE;
+  const next = lowImpact
+    ? { workout, mode, durationSec, difficulty, lowImpact: true }
+    : { workout, mode, durationSec, difficulty };
+  const withNote = (reason: string): string =>
+    lowImpact ? `${reason} ${LOW_IMPACT_NOTE}` : reason;
 
   // Tip on the move missed most in the latest round.
   let worst: MoveType | null = null;
@@ -105,8 +117,10 @@ export function ruleBasedAdvice(
     return {
       recap: `Welcome, ${name}! Play your first round and your coach will build on it.`,
       tip: 'Stand on your mark, face the screen, and start each move as soon as you see its cue.',
-      next: { workout, mode, durationSec, difficulty },
-      reason: `A first round on the ${TIER_NAMES[tier]} tier shows which moves to work on.`,
+      next,
+      reason: withNote(
+        `A first round on the ${TIER_NAMES[tier]} tier shows which moves to work on.`,
+      ),
       source: 'rules',
     };
   }
@@ -143,8 +157,10 @@ export function ruleBasedAdvice(
     tip: worst
       ? TIPS[worst]
       : 'Clean round! Each level is faster than the last: start every move on its cue.',
-    next: { workout, mode, durationSec, difficulty },
-    reason: `You have played ${WORKOUT_NAMES[workout]} the least this week, so we are ${trend}.`,
+    next,
+    reason: withNote(
+      `You have played ${WORKOUT_NAMES[workout]} the least this week, so we are ${trend}.`,
+    ),
     source: 'rules',
   };
 }
