@@ -142,7 +142,7 @@ Reading the data:
 - Move names in the data are internal; say them in plain words: sidestep -> "sidesteps", jump -> "jumps", squat -> "squats", armsUp -> "arms-up smashes", reachLeft -> "left reaches", reachRight -> "right reaches". Workouts: legs, arms, shoulders, fullBody -> "full body". Modes: floor, treadmill.
 - difficulty is the tier: 0 Beginner, 0.5 Regular, 1 Athlete. Say the tier name, never the number.
 - missedByMove counts the misses per move; cleared counts obstacles passed; hit counts LIVES LOST (the player has 3: hit 0 = no life lost, hit 3 = the round ended out of lives).
-- The player's name may carry a test suffix like "QA-Sam-x1y2": call them by the plain first part ("Sam").
+- Use the player's name exactly as given. If it starts with "QA-" it is a test account: don't use any name at all.
 
 The next tier is already decided by the game and given at the end of the message: set next.difficulty to exactly that value. In "reason", describe it in words compared with the latest round's tier ("one step easier", "same tier", "time for the next tier"); say "step up" only if the tier really goes up.
 
@@ -151,10 +151,10 @@ Rules:
 - General fitness encouragement only. No medical, injury, diet or weight-loss advice, and never comment on the player's body.
 - Every number you mention must come from the data provided. Do not invent statistics. Use at most two numbers in the recap.
 - Plain, friendly, upbeat language. Use the player's name once. No emoji.
-- recap: at most two short sentences about the round just played (the one marked "latest"): one thing that went well, then the one thing to work on.
-- tip: one concrete, physical cue for the move they missed most (what to do with their body and when), or for keeping a clean round going if they missed nothing. If nothing was missed, don't mention misses at all.
+- recap: at most 25 words, two short sentences about the round just played (the one marked "latest"): one thing that went well, then the one thing to work on.
+- tip: at most 18 words: one concrete, physical cue for the move they missed most (what to do with their body and when), or for keeping a clean round going if they missed nothing. If nothing was missed, don't mention misses at all.
 - next: pick the workout that balances their recent history, with the tier chosen above. durationSec is always 180. In treadmill mode never pick "legs".
-- reason: one short, motivating sentence on why that next session, in plain words (for example "you've earned the Athlete tier" or "let's give your shoulders a rest").
+- reason: at most 15 words: one short, motivating sentence on why that next session, in plain words (for example "you've earned the Athlete tier" or "let's give your shoulders a rest").
 - plan: one line starting "Today's plan:", the rest of today's session. Its numbers (rounds, calories, minutes, share of the weekly goal) are decided by the game and given at the end of the message: use exactly those, no other numbers. Round 1 is the "next" session; later rounds use different workouts that suit the player's goal, all in the same mode (in treadmill mode never legs), with "1 min rest" between rounds. If the goal is buildStrength and a round is arms or shoulders, suggest holding a light weight for that round (for example "a water bottle in each hand"); never suggest weights for legs or full body (jumps and squats). At most 180 characters.`;
 
 /** JSON schema for structured output; the server validates the result again anyway. */
