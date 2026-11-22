@@ -3,8 +3,10 @@
 // server wait in a local queue and are retried; the coach falls back to the rules.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type {
+  AddFriendResult,
   CoachAdvice,
   DataStore,
+  FriendBoardEntry,
   LeaderboardEntry,
   Profile,
   SavedSession,
@@ -12,14 +14,23 @@ import type {
 } from '@/contracts';
 import { ruleBasedAdvice } from './coach';
 import { browserStorage, guestName, readJson, writeJson, type KeyValue } from './local';
-import { cleanNamePatch, nameOrGuest } from './names';
 import {
+  cleanDisplayName,
+  cleanNamePatch,
+  isNameTaken,
+  nameOrGuest,
+  shownName,
+  withNameSuffix,
+} from './names';
+import {
+  friendBoardFromRow,
   isCoachAdvice,
   leaderboardFromRow,
   profileFromRow,
   profilePatchToRow,
   sessionFromRow,
   sessionToRow,
+  type FriendBoardRow,
   type LeaderboardRow,
   type ProfileRow,
   type SessionRow,
@@ -27,6 +38,8 @@ import {
 import {
   COACH_CLIENT_TIMEOUT_MS,
   DEFAULT_WEEKLY_GOAL_MIN,
+  FRIENDS_BOARD_LIMIT,
+  NAME_TAKEN_RETRIES,
   READ_CACHE_AFTER_MS,
   SAVE_WAIT_MS,
   SIGNOUT_FLUSH_TIMEOUT_MS,
@@ -127,6 +140,20 @@ export function createSupabaseStore(
   // saveSession must not report them as synced.
   const refused = new Set<string>();
 
+  /**
+   * A profile write with `name` as the username. While the server says it is taken (unique since
+   * migration 0007), it tries again with a "-NNNN" suffix, so a save never fails on a name.
+   */
+  async function withFreeName<R extends { error: { code?: string; message?: string } | null }>(
+    name: string,
+    write: (name: string) => PromiseLike<R>,
+  ): Promise<R> {
+    let r = await withTimeout(write(name));
+    for (let i = 0; i < NAME_TAKEN_RETRIES && isNameTaken(r.error); i++)
+      r = await withTimeout(write(withNameSuffix(name)));
+    return r;
+  }
+
   async function upsertSessions(rows: SessionRow[]) {
     const { error } = await withTimeout(
       sb.from('sessions').upsert(rows, { onConflict: 'id', ignoreDuplicates: true }),
@@ -140,11 +167,11 @@ export function createSupabaseStore(
    */
   async function recreateProfile(uid: string): Promise<boolean> {
     const p = cachedProfile();
-    const { error } = await withTimeout(
+    const { error } = await withFreeName(nameOrGuest(p?.displayName), (name) =>
       sb.from('profiles').upsert(
         {
           id: uid,
-          display_name: nameOrGuest(p?.displayName),
+          display_name: name,
           ...(p ? profilePatchToRow({ goal: p.goal, level: p.level }) : {}),
         },
         { onConflict: 'id', ignoreDuplicates: true },
@@ -231,10 +258,11 @@ export function createSupabaseStore(
     const cached = cachedProfile();
     let profile = isNew ? null : cached?.id === uid ? cached : await fetchProfile(uid);
     if (!profile) {
-      const { data, error } = await withTimeout(
+      const uidNow = uid;
+      const { data, error } = await withFreeName(nameOrGuest(displayName), (name) =>
         sb
           .from('profiles')
-          .insert({ id: uid, display_name: nameOrGuest(displayName) })
+          .insert({ id: uidNow, display_name: name })
           .select('*')
           .single<ProfileRow>(),
       );
@@ -299,14 +327,15 @@ export function createSupabaseStore(
       const fallback: Profile = { ...base, ...patch };
       if (!uid) return fallback;
       try {
-        const { data, error } = await withTimeout(
-          sb
-            .from('profiles')
-            .update(profilePatchToRow(patch))
-            .eq('id', uid)
-            .select('*')
-            .single<ProfileRow>(),
-        );
+        const row = profilePatchToRow(patch);
+        const update = (r: typeof row) =>
+          sb.from('profiles').update(r).eq('id', uid).select('*').single<ProfileRow>();
+        const { data, error } =
+          row.display_name === undefined
+            ? await withTimeout(update(row))
+            : await withFreeName(row.display_name, (name) =>
+                update({ ...row, display_name: name }),
+              );
         if (error) throw error;
         const p = profileFromRow(data);
         writeJson(kv, KEYS.profile, p);
@@ -337,6 +366,9 @@ export function createSupabaseStore(
     async listSessions(limit = 50) {
       const fromCache = () => mergeQueued(cachedSessions()).slice(0, limit);
       const fromServer = (async () => {
+        // No guest yet (a fresh landing): only a round's owner can read it, so asking would be a
+        // 401 in the console. The cache and the queue are all there is.
+        if (!(await userId())) return fromCache();
         await flush();
         try {
           const { data, error } = await withTimeout(
@@ -384,6 +416,67 @@ export function createSupabaseStore(
         return rows;
       } catch {
         return readJson<LeaderboardEntry[]>(kv, key, []);
+      }
+    },
+
+    // Friends (migration 0007): security-definer functions; none of these reject.
+    async isUsernameTaken(raw) {
+      const name = cleanDisplayName(raw);
+      if (!name) return null;
+      try {
+        // Also before sign-in (migration 0008): the landing's sign-up form asks first.
+        const { data, error } = await withTimeout(sb.rpc('username_taken', { p_name: name }));
+        return error ? null : data === true;
+      } catch {
+        return null;
+      }
+    },
+
+    async addFriend(raw): Promise<AddFriendResult> {
+      const name = cleanDisplayName(raw);
+      if (!name) return { ok: false, reason: 'notFound' };
+      try {
+        if (!(await userId())) return { ok: false, reason: 'offline' };
+        const { data, error } = await withTimeout(sb.rpc('add_friend', { p_name: name }));
+        const r = (data as { status: string; display_name: string | null }[] | null)?.[0];
+        if (error || !r) return { ok: false, reason: 'offline' };
+        if (r.status === 'ok') return { ok: true, displayName: shownName(r.display_name) };
+        const reasons = ['notFound', 'self', 'already', 'limit'] as const;
+        const reason = reasons.find((x) => x === r.status) ?? 'notFound';
+        return { ok: false, reason };
+      } catch {
+        return { ok: false, reason: 'offline' };
+      }
+    },
+
+    async listFriends() {
+      try {
+        if (!(await userId())) return [];
+        const { data, error } = await withTimeout(sb.rpc('list_friends'));
+        if (error || !Array.isArray(data)) return [];
+        return (data as { display_name: string }[]).map((r) => shownName(r.display_name));
+      } catch {
+        return [];
+      }
+    },
+
+    async getFriendsBoard(workout, mode, durationSec, limit = FRIENDS_BOARD_LIMIT) {
+      try {
+        if (!(await userId())) return [];
+        const { data, error } = await withTimeout(
+          sb.rpc('friends_board', {
+            p_workout: workout,
+            p_mode: mode,
+            p_duration: durationSec,
+            p_limit: limit,
+          }),
+        );
+        if (error || !Array.isArray(data)) return [];
+        return (data as FriendBoardRow[]).map((r): FriendBoardEntry =>
+          friendBoardFromRow(r, workout, mode, durationSec),
+        );
+      } catch {
+        return [];
       }
     },
 

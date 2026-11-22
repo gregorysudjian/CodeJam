@@ -46,6 +46,11 @@ export interface Stage {
   /** Quality ladder (quality.ts): 1 drops the pixel ratio to 1, 2 also drops bloom and extras. */
   setQuality(q: Quality): void;
   /**
+   * The level's clip behind everything (videoBackdrop.ts), replacing the plain sky and the far
+   * skyline; null: the built-in scenery, exactly as without video. Once per frame, before update.
+   */
+  setBackdrop(video: THREE.VideoTexture | null): void;
+  /**
    * Compiles every shader the round can need, now, also for objects still hidden (pooled
    * obstacles, speed lines, the finish arch, the end banner, the other zones' scenery). They
    * would otherwise compile mid-round, in the frame they first show. Two variants each: bloom
@@ -172,14 +177,15 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   scene.add(floor);
 
   // The track itself is a slightly lit strip over the grid.
+  const trackMat = new THREE.MeshBasicMaterial({
+    color: T.COLOR_TRACK,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+  });
   const trackStrip = new THREE.Mesh(
     new THREE.PlaneGeometry(3 * T.LANE_WIDTH, T.TRACK_LENGTH),
-    new THREE.MeshBasicMaterial({
-      color: T.COLOR_TRACK,
-      transparent: true,
-      opacity: 0.55,
-      depthWrite: false,
-    }),
+    trackMat,
   );
   trackStrip.rotation.x = -Math.PI / 2;
   trackStrip.position.set(0, 0.004, floor.position.z);
@@ -483,6 +489,80 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   let flash = 0; // milestone lane flash, 0 to 1
   const cam: CameraPose = { px: 0, py: 0, pz: 0, lx: 0, ly: 0, lz: 0 };
   const extras = (): boolean => quality < 2; // the quality ladder drops these at level 2
+  let backdrop: THREE.VideoTexture | null = null;
+  // With a clip the runner runs inside it: the clip fills the screen, its street lined up with
+  // the track, and the grid floor, horizon glow and side scenery step aside (they stay built:
+  // no clip, a failed clip or low graphics show them exactly as before).
+  const V = L.VIDEO_BACKDROP;
+  const contactShadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({
+      map: glowTex,
+      color: 0x000000,
+      transparent: true,
+      opacity: V.shadowOpacity,
+      depthWrite: false,
+      fog: false,
+    }),
+  );
+  contactShadow.rotation.x = -Math.PI / 2;
+  contactShadow.scale.set(V.shadowSize.x, V.shadowSize.y, 1);
+  contactShadow.visible = false;
+  scene.add(contactShadow);
+  // Shade over the top of the screen while a clip shows (V.topShade), on the camera like the
+  // pause sheet, sized to the view each frame.
+  const shadeCanvas = document.createElement('canvas');
+  shadeCanvas.width = 1;
+  shadeCanvas.height = 256;
+  const sg = shadeCanvas.getContext('2d')!;
+  const grad = sg.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, `rgba(0,0,0,${V.topShade})`);
+  grad.addColorStop(V.topShadeTo, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  sg.fillStyle = grad;
+  sg.fillRect(0, 0, 1, 256);
+  const shadeTex = new THREE.CanvasTexture(shadeCanvas);
+  const topShade = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({
+      map: shadeTex,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      fog: false,
+    }),
+  );
+  topShade.position.z = -0.25;
+  topShade.renderOrder = 990; // over the scene, under the pause sheet and the labels
+  topShade.visible = false;
+  camera.add(topShade);
+  const vanish = new THREE.Vector3();
+  let vanishY = V.trackHorizon; // the track's vanishing point, 0 top to 1 bottom of the screen
+  /**
+   * Fills the canvas with the clip ("cover") and lines its street up with the track: the clip's
+   * own vanishing point (backdrop.ts `horizon`, kept on texture.userData) goes where the track's
+   * is, zooming in as far as that needs, up to V.zoomMax. Shifts a little with the camera as the
+   * runner changes lane, so the street moves under them.
+   */
+  const fitBackdrop = (tex: THREE.VideoTexture): void => {
+    const v = tex.image as HTMLVideoElement;
+    if (!v.videoWidth || !v.videoHeight) return;
+    const clip = v.videoWidth / v.videoHeight;
+    const screen = camera.aspect;
+    const cx = screen < clip ? screen / clip : 1;
+    const cy = screen > clip ? clip / screen : 1;
+    const h = (tex.userData.horizon as number | undefined) ?? 0.5; // in the clip, 0 top
+    const s = vanishY;
+    const zoom = Math.min(V.zoomMax, Math.max(1, (cy * (1 - s)) / (1 - h), (cy * s) / h));
+    const rx = cx / zoom;
+    const ry = cy / zoom;
+    const clamp = (x: number, hi: number): number => Math.min(hi, Math.max(0, x));
+    tex.repeat.set(rx, ry);
+    tex.offset.set(
+      clamp((1 - rx) / 2 + camX * V.parallax, 1 - rx),
+      clamp(1 - h - (1 - s) * ry, 1 - ry),
+    );
+  };
 
   return {
     scene,
@@ -518,6 +598,24 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       blend((l) => l.arch, tmp);
       archMat.color.copy(tmp).multiplyScalar(T.NEON_BOOST * 0.4);
       blend((l) => l.particle, pMat.color);
+      const inClip = backdrop !== null;
+      floor.visible = horizon.visible = !inClip;
+      trackMat.opacity = inClip ? V.trackOpacity : 0.55;
+      if (inClip) {
+        fog.near = V.fogNear; // the clip is the distance: no fade to the zone colour
+        fog.far = V.fogFar;
+      }
+      contactShadow.visible = inClip;
+      contactShadow.position.set(playerX, 0.02, 0);
+      if (backdrop) {
+        // The street runs at the track's pace: slower levels play the clip slower (never faster
+        // than 1x, so a 30 s clip lasts its 30 s level without looping).
+        const k = Math.min(1, Math.max(0, (speed - T.SPEED_MIN) / (T.SPEED_MAX - T.SPEED_MIN)));
+        const rate = V.rateMin + (1 - V.rateMin) * k;
+        const v = backdrop.image as HTMLVideoElement;
+        if (Math.abs(v.playbackRate - rate) > 0.02) v.playbackRate = rate;
+      }
+      archPosts.visible = archPlinths.visible = archBars.visible = !inClip;
 
       /* City and finale gates. */
       for (let i = 0; i < T.ARCH_COUNT; i++) {
@@ -543,7 +641,8 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
 
       /* City and finale towers, rising out of the ground at a border. */
       const parallax = distance * T.TOWER_PARALLAX;
-      const towersOn = extras() && (zoneInView(CITY, distance) || zoneInView(FINALE, distance));
+      const towersOn =
+        !inClip && extras() && (zoneInView(CITY, distance) || zoneInView(FINALE, distance));
       towers.visible = capsA.visible = capsB.visible = towersOn;
       for (let i = 0; i < towerCount && towersOn; i++) {
         const t = towerInfo[i]!;
@@ -570,14 +669,14 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       }
 
       /* Bridge. */
-      const bridgeOn = zoneInView(BRIDGE, distance);
+      const bridgeOn = !inClip && zoneInView(BRIDGE, distance);
       pylons.visible =
         pylonStrips.visible =
         cables.visible =
         posts.visible =
         rails.visible =
           bridgeOn;
-      const skyOn = bridgeOn && extras();
+      const skyOn = bridgeOn && extras() && backdrop === null; // a clip is the far background
       skyline.visible = glints.visible = skyOn;
       if (bridgeOn) {
         for (let i = 0; i < pylonCount / 2; i++) {
@@ -673,7 +772,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       }
 
       /* Tunnel. */
-      const tunnelOn = zoneInView(TUNNEL, distance);
+      const tunnelOn = !inClip && zoneInView(TUNNEL, distance);
       tunnelWalls.visible = ringPosts.visible = ringBars.visible = tunnelOn;
       tunnelStrips.visible = tunnelOn && extras();
       if (tunnelOn) {
@@ -810,6 +909,17 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       } else {
         camera.position.set(T.CAMERA_POS.x + camX + sx, T.CAMERA_POS.y + sy, T.CAMERA_POS.z);
         camera.lookAt(look.x + camX * 0.5, look.y, look.z);
+        // The track's vanishing point on screen, for lining up the clip (chase camera only:
+        // the intro and outro orbit the runner, and the clip holds its last fit meanwhile).
+        camera.updateMatrixWorld();
+        vanish.set(camera.position.x, 0, camera.position.z - 1e4).project(camera);
+        if (Number.isFinite(vanish.y)) vanishY = (1 - vanish.y) / 2;
+      }
+      if (backdrop) fitBackdrop(backdrop);
+      topShade.visible = backdrop !== null;
+      if (topShade.visible) {
+        const h = 2 * -topShade.position.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+        topShade.scale.set(h * camera.aspect * 1.02, h * 1.02, 1);
       }
     },
     shake() {
@@ -824,6 +934,12 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       if (q === quality) return;
       quality = q;
       resize();
+    },
+    setBackdrop(video) {
+      backdrop = video;
+      scene.background = video ?? bgColor;
+      // Applied in linear light, before the sRGB output: the same 2.2 as the pause dimmer.
+      scene.backgroundIntensity = video ? L.VIDEO_BACKDROP.brightness ** 2.2 : 1;
     },
     precompile() {
       // renderer.compile walks the whole scene, hidden objects included (three r187), so the

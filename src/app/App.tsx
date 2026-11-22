@@ -4,6 +4,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { QRCodeSVG } from 'qrcode.react';
 import type {
   CoachAdvice,
+  FriendBoardEntry,
   Game,
   InputSource,
   LeaderboardEntry,
@@ -19,7 +20,7 @@ import { createStore } from '@/data';
 import { createKeyboardInput } from '@/input';
 // Screens are imported from their own files, not the src/ui/screens barrel, so the lazily
 // loaded dashboard (and Recharts) can split into its own chunk.
-import { TIER_DIFFICULTY } from '@/ui/kit';
+import { TIER_DIFFICULTY, type NavBarProps, type NavTarget } from '@/ui/kit';
 import { LandingScreen } from '@/ui/screens/LandingScreen';
 import { LeaderboardScreen } from '@/ui/screens/LeaderboardScreen';
 import { ProfileScreen } from '@/ui/screens/ProfileScreen';
@@ -58,6 +59,7 @@ type Screen =
   | 'leaderboard';
 
 const APP_NAME = 'Neon Arena';
+const NO_FRIENDS = { entries: [], names: [] };
 const NOTICE_MS = 4000;
 
 // Heavy parts load only when needed (audit #8): the game (Three.js) when a round starts, the
@@ -128,6 +130,9 @@ function MainApp() {
   const [signingIn, setSigningIn] = useState(false);
   const [cameraError, setCameraError] = useState<CameraErrorInfo | null>(null);
   const [tutorialDone, setTutorialDone] = useState(false);
+  // The profile screen is either a new guest's setup (no nav bar) or an existing player editing
+  // it from the dashboard or the bar's chip (nav bar on).
+  const [editingProfile, setEditingProfile] = useState(false);
   const online = useOnline();
 
   const [summary, setSummary] = useState<SessionSummary | null>(null);
@@ -291,15 +296,67 @@ function MainApp() {
     setSessions(await store.listSessions(50));
   }, []);
 
-  const loadBoard = useCallback(async (workout: WorkoutId, mode: PlayMode, durationSec: number) => {
-    setBoard((b) => ({ ...b, workout, mode, durationSec, loading: true }));
-    const entries = await store.getLeaderboard(workout, mode, durationSec, LEADERBOARD_SIZE);
-    setBoard({ workout, mode, durationSec, entries, loading: false });
+  // Friends (migration 0007): the board of you and the players you added, for the leaderboard's
+  // FRIENDS view, on the same workout and mode as the public board. The local store has none.
+  const [friendsBoard, setFriendsBoard] = useState<{
+    entries: FriendBoardEntry[];
+    names: string[];
+  }>(NO_FRIENDS);
+  // Only the latest request may set the board: on slow wifi the answer for the filter the player
+  // just left could arrive after the new one and show the wrong board (two-browser QA, Sun 3 AM).
+  const boardRequest = useRef(0);
+  const friendsRequest = useRef(0);
+  const loadFriends = useCallback(async (workout: WorkoutId, mode: PlayMode) => {
+    const id = ++friendsRequest.current;
+    const [entries, names] = await Promise.all([
+      store.getFriendsBoard(workout, mode, BOARD_DEFAULT_DURATION_SEC, LEADERBOARD_SIZE),
+      store.listFriends(),
+    ]);
+    if (id === friendsRequest.current) setFriendsBoard({ entries, names });
   }, []);
+  const loadBoard = useCallback(
+    async (workout: WorkoutId, mode: PlayMode, durationSec: number) => {
+      const id = ++boardRequest.current;
+      setBoard((b) => ({ ...b, workout, mode, durationSec, loading: true }));
+      if (profile) void loadFriends(workout, mode);
+      const entries = await store.getLeaderboard(workout, mode, durationSec, LEADERBOARD_SIZE);
+      if (id === boardRequest.current)
+        setBoard({ workout, mode, durationSec, entries, loading: false });
+    },
+    [profile, loadFriends],
+  );
   const openLeaderboard = useCallback(() => {
     setScreen('leaderboard');
     void loadBoard(board.workout, board.mode, board.durationSec);
   }, [board.workout, board.mode, board.durationSec, loadBoard]);
+
+  // ── Nav bar (src/ui/kit/NavBar): on select, dashboard, leaderboard, results, and the profile
+  // when an existing player edits it; off on the landing, first-time setup, calibrate, tutorial
+  // and play. PLAY and PROGRESS need a player (else the landing); the current item does nothing.
+  const navigate = useCallback(
+    (target: NavTarget) => {
+      const current = screenRef.current;
+      if (target === 'play') {
+        if (current !== 'select') setScreen(profile ? 'select' : 'landing');
+      } else if (target === 'progress') {
+        if (current === 'dashboard') return;
+        if (profile) void openDashboard();
+        else setScreen('landing');
+      } else if (target === 'leaderboard') {
+        if (current !== 'leaderboard') openLeaderboard();
+      } else if (current !== 'profile' && profile) {
+        setEditingProfile(true);
+        setScreen('profile');
+      }
+    },
+    [profile, openDashboard, openLeaderboard],
+  );
+  const navFor = (current: NavTarget | null): NavBarProps => ({
+    current,
+    onNavigate: navigate,
+    player: profile ? { displayName: profile.displayName } : null,
+    appName: APP_NAME,
+  });
 
   // ── Guest sign-in and profile ──
   // "Play as guest" for a first visit, "New guest" when a player is saved: either way a NEW
@@ -322,7 +379,7 @@ function MainApp() {
       setSigningIn(false);
     }
   };
-  const playAsGuest = async () => {
+  const resetPreviousPlayer = async () => {
     if (returning || profile) {
       await store.signOut();
       setReturning(null);
@@ -332,8 +389,27 @@ function MainApp() {
       setSummary(null);
       setAdvice(null);
       setConfig(null);
+      friendsRequest.current++; // a reply still on its way is the previous player's
+      setFriendsBoard(NO_FRIENDS);
     }
+  };
+  const savePlayerProfile = async (p: ProfileInput) => {
+    await signIn(p.displayName || undefined);
+    const patch: Partial<ProfileInput> = { ...p };
+    if (!p.displayName?.trim()) delete patch.displayName;
+    return store.saveProfile(patch);
+  };
+  const signUp = async (p: ProfileInput) => {
+    await resetPreviousPlayer();
+    const saved = await savePlayerProfile(p);
+    setProfile(saved);
+    if (isDemo) setConfig({ ...DEMO_CONFIG, difficulty: TIER_DIFFICULTY[saved.level] });
+    setScreen('select');
+  };
+  const playAsGuest = async () => {
+    await resetPreviousPlayer();
     setProfile(await signIn());
+    setEditingProfile(false); // first-time setup: no nav bar
     setScreen('profile');
   };
   const continueAsReturning = async () => {
@@ -341,10 +417,7 @@ function MainApp() {
     setScreen('select');
   };
   const submitProfile = async (p: ProfileInput) => {
-    await signIn(p.displayName || undefined);
-    const patch: Partial<ProfileInput> = { ...p };
-    if (!p.displayName?.trim()) delete patch.displayName;
-    setProfile(await store.saveProfile(patch));
+    setProfile(await savePlayerProfile(p));
     setScreen('select');
   };
 
@@ -497,6 +570,7 @@ function MainApp() {
       {screen === 'landing' && (
         <LandingScreen
           appName={APP_NAME}
+          onSignUp={(p) => void withSignIn(() => signUp(p))}
           onPlayAsGuest={() => void withSignIn(playAsGuest)}
           returning={returning}
           onContinue={() => void withSignIn(continueAsReturning)}
@@ -505,6 +579,7 @@ function MainApp() {
           topScores={topScores}
           qrSlot={qr}
           publicUrl={publicUrl}
+          checkUsername={(n) => store.isUsernameTaken(n)}
         />
       )}
       {screen === 'profile' && (
@@ -512,6 +587,8 @@ function MainApp() {
           initial={profile ?? undefined}
           onSubmit={(p) => void submitProfile(p)}
           onBack={() => setScreen('landing')}
+          nav={editingProfile ? navFor('profile') : undefined}
+          checkUsername={(n) => store.isUsernameTaken(n)}
         />
       )}
       {screen === 'select' && (
@@ -530,6 +607,7 @@ function MainApp() {
           settingsSlot={<InputSwitch value={inputKind} onChange={chooseInput} />}
           onStart={startSession}
           onBack={() => setScreen(sessions.length ? 'dashboard' : 'landing')}
+          nav={navFor('play')}
         />
       )}
       {screen === 'calibrate' && pose && config && (
@@ -581,6 +659,7 @@ function MainApp() {
             setScreen('leaderboard');
             void loadBoard(summary.config.workout, summary.config.mode, summary.config.durationSec);
           }}
+          nav={navFor(null)}
         />
       )}
       {screen === 'dashboard' && profile && (
@@ -592,7 +671,11 @@ function MainApp() {
             onPlay={() => setScreen('select')}
             onPlayCoachPick={startSession}
             onLeaderboard={openLeaderboard}
-            onEditProfile={() => setScreen('profile')}
+            onEditProfile={() => {
+              setEditingProfile(true);
+              setScreen('profile');
+            }}
+            nav={navFor('progress')}
           />
         </Suspense>
       )}
@@ -608,6 +691,19 @@ function MainApp() {
           qrSlot={qr}
           onBack={() => setScreen(profile ? 'dashboard' : 'landing')}
           onPlay={() => setScreen(profile ? 'select' : 'landing')}
+          nav={navFor('leaderboard')}
+          friends={
+            profile
+              ? {
+                  ...friendsBoard,
+                  onAdd: async (username) => {
+                    const result = await store.addFriend(username);
+                    void loadFriends(board.workout, board.mode); // the new friend's rows
+                    return result;
+                  },
+                }
+              : undefined
+          }
         />
       )}
 

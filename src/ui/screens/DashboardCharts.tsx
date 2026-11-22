@@ -4,6 +4,7 @@ import {
   Bar,
   CartesianGrid,
   Cell,
+  LabelList,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -15,7 +16,11 @@ import { Eyebrow, GlassPanel, MoveChip, MOVE_ORDER, MOVE_LABELS } from '@/ui/kit
 import type { ActivityDay } from '@/ui/screens/dashboardStats';
 import { localDay } from '@/ui/screens/dashboardStats';
 
+// Montreal streets: slate ink for the week, maple red for today, metro blue for the goal pace.
+// Every mark is at least 3:1 on the card (--na-bg-raised); text is the 5.3:1 dim ink or darker.
 const tick = { fill: 'var(--na-text-dim)', fontFamily: 'var(--font-display)', fontSize: 16 };
+const GRID = 'var(--na-glass-border)';
+const CURSOR = { fill: 'var(--na-glass-strong)', fillOpacity: 0.6 };
 const MOVE_TOKEN: Record<MoveType, string> = {
   sidestep: 'var(--na-cyan)',
   jump: 'var(--na-lime)',
@@ -26,9 +31,9 @@ const MOVE_TOKEN: Record<MoveType, string> = {
 };
 function ChartTip({ title, value, unit }: { title: string; value: number; unit: string }) {
   return (
-    <GlassPanel padding="sm" className="chart-tooltip">
+    <GlassPanel padding="sm" className="chart-tooltip rounded-xl">
       <p className="eyebrow text-text-muted">{title}</p>
-      <p className="mt-2 font-display-italic text-title text-lime">
+      <p className="mt-1 font-display-italic text-title text-text">
         {Math.round(value * 10) / 10} <span className="text-caption text-text-muted">{unit}</span>
       </p>
     </GlassPanel>
@@ -67,30 +72,33 @@ export function DashboardCharts({
   const reduce = useReducedMotion();
   const repRows = MOVE_ORDER.map((move) => ({ move, reps: reps[move] }));
   return (
-    <div className="grid min-w-0 gap-8 xl:grid-cols-[1.2fr_1fr]">
-      <section className="min-w-0" aria-label="Active minutes chart">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div className="grid min-w-0 gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <GlassPanel as="section" className="min-w-0 p-5 md:p-6" aria-label="Active minutes chart">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <Eyebrow>ACTIVE MINUTES · THIS WEEK</Eyebrow>
-          <span className="text-caption text-text-muted">
-            Goal pace {Math.round((weeklyGoalMin / 7) * 10) / 10} min / day
+          <span className="flex items-center gap-4 text-caption text-text-muted">
+            <span className="flex items-center gap-2">
+              <span aria-hidden="true" className="size-3 rounded-sm bg-lime" />
+              Today
+            </span>
+            <span className="flex items-center gap-2">
+              <span aria-hidden="true" className="w-5 border-t-2 border-dashed border-cyan" />
+              Goal pace {Math.round((weeklyGoalMin / 7) * 10) / 10} min / day
+            </span>
           </span>
         </div>
         <div
-          className="arena-chart h-[260px] w-full"
+          className="arena-chart h-[240px] short:h-[210px] w-full"
           role="img"
           aria-label={days.map((d) => `${d.label}: ${d.activeMin} minutes`).join(', ')}
         >
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <BarChart
               data={days}
-              margin={{ top: 15, right: 10, bottom: 0, left: -20 }}
+              margin={{ top: 15, right: 6, bottom: 0, left: -20 }}
               accessibilityLayer
             >
-              <CartesianGrid
-                vertical={false}
-                stroke="var(--na-glass-border)"
-                strokeDasharray="3 6"
-              />
+              <CartesianGrid vertical={false} stroke={GRID} />
               <XAxis
                 dataKey="label"
                 tick={tick}
@@ -108,11 +116,11 @@ export function DashboardCharts({
               <ReferenceLine
                 y={weeklyGoalMin / 7}
                 stroke="var(--na-cyan)"
-                strokeOpacity={0.6}
-                strokeDasharray="6 6"
+                strokeWidth={2}
+                strokeDasharray="6 5"
               />
               <Tooltip
-                cursor={{ fill: 'var(--na-glass)' }}
+                cursor={CURSOR}
                 content={({ active, payload, label }) =>
                   active && payload?.[0] ? (
                     <ChartTip title={String(label)} value={Number(payload[0].value)} unit="MIN" />
@@ -129,19 +137,18 @@ export function DashboardCharts({
                 {days.map((day) => (
                   <Cell
                     key={day.date}
-                    fill={day.date === localDay(now) ? 'var(--na-lime)' : 'var(--na-activity-bar)'}
-                    className={day.date === localDay(now) ? 'chart-today-bar' : ''}
+                    fill={day.date === localDay(now) ? 'var(--na-lime)' : 'var(--na-text-muted)'}
                   />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </section>
-      <section className="min-w-0" aria-label="Reps by move chart">
-        <Eyebrow className="mb-5">REPS BY MOVE · THIS WEEK</Eyebrow>
+      </GlassPanel>
+      <GlassPanel as="section" className="min-w-0 p-5 md:p-6" aria-label="Reps by move chart">
+        <Eyebrow className="mb-4">REPS BY MOVE · THIS WEEK</Eyebrow>
         <div
-          className="arena-chart h-[260px] w-full"
+          className="arena-chart h-[240px] w-full"
           role="img"
           aria-label={repRows.map((r) => `${MOVE_LABELS[r.move]}: ${r.reps} reps`).join(', ')}
         >
@@ -149,14 +156,10 @@ export function DashboardCharts({
             <BarChart
               data={repRows}
               layout="vertical"
-              margin={{ top: 0, right: 22, bottom: 0, left: 0 }}
+              margin={{ top: 0, right: 44, bottom: 0, left: 0 }}
               accessibilityLayer
             >
-              <CartesianGrid
-                horizontal={false}
-                stroke="var(--na-glass-border)"
-                strokeDasharray="3 6"
-              />
+              <CartesianGrid horizontal={false} stroke={GRID} />
               <XAxis
                 type="number"
                 tick={tick}
@@ -168,12 +171,13 @@ export function DashboardCharts({
                 dataKey="move"
                 type="category"
                 width={144}
+                interval={0}
                 tick={<MoveTick />}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
-                cursor={{ fill: 'var(--na-glass)' }}
+                cursor={CURSOR}
                 content={({ active, payload }) => {
                   const row = payload?.[0];
                   const move = MOVE_ORDER.find((m) => m === row?.payload?.move);
@@ -185,18 +189,27 @@ export function DashboardCharts({
               <Bar
                 dataKey="reps"
                 radius={[0, 6, 6, 0]}
-                barSize={16}
+                barSize={18}
                 isAnimationActive={!reduce}
                 animationDuration={650}
               >
                 {repRows.map((row) => (
                   <Cell key={row.move} fill={MOVE_TOKEN[row.move]} />
                 ))}
+                <LabelList
+                  dataKey="reps"
+                  position="right"
+                  offset={8}
+                  fill="var(--na-text)"
+                  fontFamily="var(--font-display)"
+                  fontWeight={700}
+                  fontSize={18}
+                />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </section>
+      </GlassPanel>
     </div>
   );
 }
