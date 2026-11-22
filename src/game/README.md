@@ -184,6 +184,14 @@ In the real app (main + `p1-workout` + `p2-game`, keyboard): a rehearsal round s
 
 **Ghost status:** done: (a)–(g), three review loops, and the live race. Measured on the demo level with the ghost and race on: judging unchanged (16/7/0, TIE against a perfect ghost), draw calls avg 91 → 103, JavaScript median 0.2 → 0.3 ms per frame. Not tested: a real webcam, a real GPU.
 
+## Levels (`level.stages`)
+
+A round is six levels of 30 s (`src/workout`). Speed is flat within a level and eases to the next level's over `LEVEL_SPEED_EASE_SEC` (1 s) from the boundary (`timeline.ts` `levelIntensityAt`; objects and floor still move together). No object comes within 2 s of a boundary: there the runner passes through a **portal**, a white neon ring with a veil in the next level's horizon colour, with a white flash, the milestone shockwave, a chime, and "LEVEL n".
+
+**Backdrops:** `backdrop.ts` is the one place that says which backdrop each level has: 1 city, 2 tunnel, 3 bridge, 4 city at dawn, 5 bridge at night, 6 finale (scenery from `scene.ts`, palette from `look.ts` `ZONE_LOOK`). `world.ts` plans one track segment per level from it, and scenery runs on across levels that share it. For Higgsfield's Montreal cinematics, set a level's `video` there; nothing reads it yet.
+
+**Lives:** see `lifeLost` and `finished` below. **Resume:** see `resuming`.
+
 ## Events
 
 | Event | When |
@@ -194,6 +202,7 @@ In the real app (main + `p1-workout` + `p2-game`, keyboard): a rehearsal round s
 | `paused` | `reason: 'user'` from `pause()`; `'trackingLost'` as soon as `getState().tracking` is false; `'otherPerson'` while `getState().otherPerson` is true. Also when either happens during the countdown below. |
 | `resuming` | `inSec: 3` (`RESUME_COUNTDOWN_SEC`): every resume counts 3-2-1 first, in the canvas, with game time frozen. From `resume()`, or when tracking returns or the other person leaves (a user pause never auto-resumes). `pause()` during it pauses again. |
 | `resumed` | When the countdown ends. Never sent if it was interrupted. |
+| `stage` | Entering a level (`level.stages`): level 1 on the first frame of the round, then as game time reaches each level's `startSec`, before that frame's cues. The canvas shows "LEVEL n" big in the middle (level 1 once the intro's GO has gone). |
 | `lifeLost` | Right after a `hit` on a block, hurdle, beam or crate that cost a life (`LIVES` = 3; a missed orb never costs one). For `LIFE_GRACE_SEC` (1.5 s of game time) after it no other life can go, so a held beam or a block-and-orb is one mistake. The canvas flashes red and the runner flickers through the grace. At `livesLeft: 0` judging and game time stop, the runner stops short and OUT OF LIVES shows. |
 | `finished` | Once: `reason: 'complete'` when game time reaches `durationSec` (events from the same frame come first), or `'outOfLives'` `OUT_OF_LIVES_SEC` (1.5 s, real time) after the last life went. An out-of-lives run plays no fanfare and is never stored as a ghost. |
 
