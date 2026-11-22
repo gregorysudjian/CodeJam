@@ -46,6 +46,11 @@ export interface Stage {
   /** Quality ladder (quality.ts): 1 drops the pixel ratio to 1, 2 also drops bloom and extras. */
   setQuality(q: Quality): void;
   /**
+   * The level's clip behind everything (videoBackdrop.ts), replacing the plain sky and the far
+   * skyline; null: the built-in scenery, exactly as without video. Once per frame, before update.
+   */
+  setBackdrop(video: THREE.VideoTexture | null): void;
+  /**
    * Compiles every shader the round can need, now, also for objects still hidden (pooled
    * obstacles, speed lines, the finish arch, the end banner, the other zones' scenery). They
    * would otherwise compile mid-round, in the frame they first show. Two variants each: bloom
@@ -483,6 +488,18 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   let flash = 0; // milestone lane flash, 0 to 1
   const cam: CameraPose = { px: 0, py: 0, pz: 0, lx: 0, ly: 0, lz: 0 };
   const extras = (): boolean => quality < 2; // the quality ladder drops these at level 2
+  let backdrop: THREE.VideoTexture | null = null;
+  /** Crops the clip to fill the canvas without stretching (look.ts VIDEO_BACKDROP.focusY). */
+  const fitBackdrop = (tex: THREE.VideoTexture): void => {
+    const v = tex.image as HTMLVideoElement;
+    if (!v.videoWidth || !v.videoHeight) return;
+    const clip = v.videoWidth / v.videoHeight;
+    const screen = camera.aspect;
+    const rx = screen < clip ? screen / clip : 1;
+    const ry = screen > clip ? clip / screen : 1;
+    tex.repeat.set(rx, ry);
+    tex.offset.set((1 - rx) / 2, (1 - ry) * L.VIDEO_BACKDROP.focusY);
+  };
 
   return {
     scene,
@@ -577,7 +594,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
         posts.visible =
         rails.visible =
           bridgeOn;
-      const skyOn = bridgeOn && extras();
+      const skyOn = bridgeOn && extras() && backdrop === null; // a clip is the far background
       skyline.visible = glints.visible = skyOn;
       if (bridgeOn) {
         for (let i = 0; i < pylonCount / 2; i++) {
@@ -824,6 +841,13 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       if (q === quality) return;
       quality = q;
       resize();
+    },
+    setBackdrop(video) {
+      backdrop = video;
+      scene.background = video ?? bgColor;
+      // Applied in linear light, before the sRGB output: the same 2.2 as the pause dimmer.
+      scene.backgroundIntensity = video ? L.VIDEO_BACKDROP.brightness ** 2.2 : 1;
+      if (video) fitBackdrop(video);
     },
     precompile() {
       // renderer.compile walks the whole scene, hidden objects included (three r187), so the

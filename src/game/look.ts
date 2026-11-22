@@ -87,6 +87,17 @@ export const PORTAL = {
   flashSec: 0.45,
 };
 export const LEVEL_LABEL_SEC = 1.8;
+// A level's Montreal clip (backdrop.ts `video`, videoBackdrop.ts) as the sky, cover-fitted to
+// the canvas and darkened to `brightness` as seen on screen (scene.ts converts it to linear
+// light, like the pause dimmer), so the neon track, runner and obstacles stay the brightest
+// things on screen and the clip stays under the bloom threshold. Seen at 0.7, a bright daytime
+// sky washed out GameHud's lime cue word ("JUMP") above the track.
+// `focusY`: which part of the clip's height stays in view when the canvas is wider than the
+// clip, 0 bottom to 1 top (the floor covers the bottom of the screen anyway).
+export const VIDEO_BACKDROP = {
+  brightness: 0.45,
+  focusY: 0.5,
+};
 
 /* ── Reduced motion (scene.ts) ── */
 // A milestone brightens the lane lines and horizon; with prefers-reduced-motion, this much of it.

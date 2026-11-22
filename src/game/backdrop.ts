@@ -7,9 +7,10 @@ import type { ZoneLook } from './tuning';
  * the palette (sky, fog, floor, particles: look.ts ZONE_LOOK). Levels 4 and 5 reuse a scenery
  * at another time of day.
  *
- * Higgsfield will deliver a 30 s Montreal cinematic per level. To show one, give the level a
- * `video` here (a file in public/); this is the only file that has to change to choose it.
- * Nothing reads `video` yet.
+ * A level's `video` (a path under public/, e.g. '/media/level-1-old-port.mp4') is its 30 s
+ * Montreal cinematic from Higgsfield, played darkened as the sky behind the track
+ * (videoBackdrop.ts); this is the only file that has to change to choose it. Without one, or
+ * if it fails to load, or with "Low graphics", the level shows its built-in scenery.
  */
 export type Scenery = 'city' | 'tunnel' | 'bridge' | 'finale';
 
