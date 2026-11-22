@@ -124,11 +124,11 @@ export const VIDEO_BACKDROP = {
 // the straight intro/outro camera are package C steps b and c: videoBackdrop.ts, intro.ts.)
 // Every real level looks the same way (Greg: consistent): ONE chase camera (`camera.height`; FOV and
 // distance are the neon chase camera's, tuning.ts CAMERA_FOV and CAMERA_POS.z), each clip fitted to
-// it (backdrop.ts); ONE sun direction and shadow (`sun`: `dir` toward the light, +z toward the
-// camera; `shadow` the catcher's opacity), so every runner and object is lit and grounded alike.
-// Per clip only a small colour tint (`tint`: sun and sky colours, by level). `camEase`: how fast
-// the camera moves between the neon and real heights, per second (exponential, about 1 s). The
-// shadow map is `shadowMap` px over a box `shadowBox` world units around the runner.
+// it (backdrop.ts); ONE sun direction (`sun`: `dir` toward the light, +z toward the camera), so
+// every runner and object is lit alike (no shadow maps: contact shadows ground them). Per clip
+// only a small colour tint (`tint`: sun and sky colours, by level). `camEase`: how fast the camera
+// moves between the neon and real heights, per second (exponential, about 1 s). `pixelRatio`: the
+// most a real level renders at (the clip fills the screen; a Retina 2x cost frame time, g2-perf).
 export interface RealTint {
   sunColor: number;
   sky: number;
@@ -149,9 +149,8 @@ export const REAL_MODE = {
   // shown `sec` (neon: LEVEL_LABEL_SEC). Jiscar 1's sweep: centred at 42 % it lay across the track.
   levelBanner: { top: 226, share: 0.07, min: 44, max: 76, sec: 1.4 }, // solid until 85 %
   camEase: 3,
-  sun: { dir: { x: 0.2, y: 1, z: 0.5 }, intensity: 1.4, skyIntensity: 1.2, shadow: 0.35 },
-  shadowMap: 1024,
-  shadowBox: 4,
+  sun: { dir: { x: 0.2, y: 1, z: 0.5 }, intensity: 1.4, skyIntensity: 1.2 },
+  pixelRatio: 1,
   // By level, matching backdrop.ts's clip order; anything else gets TINT_OLD_TOWN.
   tint: {
     1: TINT_OLD_TOWN,

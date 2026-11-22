@@ -164,27 +164,9 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
   sun.position.set(3, 9, 7);
   scene.add(sun, sun.target);
-  // Realistic mode (step d): the sun casts shadows onto an invisible road plane (a shadow
-  // catcher), so a runner whose meshes have castShadow = true casts a real shadow on the clip's
-  // road. On from the start, so no material recompiles when a real level begins; with nothing
-  // casting (every neon level), the shadow pass draws nothing and the catcher is hidden.
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is gone in three r187 (it warns)
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(L.REAL_MODE.shadowMap, L.REAL_MODE.shadowMap);
-  const sc = sun.shadow.camera;
-  sc.left = sc.bottom = -L.REAL_MODE.shadowBox;
-  sc.right = sc.top = L.REAL_MODE.shadowBox;
-  sc.near = 1;
-  sc.far = 60;
-  sun.shadow.bias = -0.0005;
-  const catcherMat = new THREE.ShadowMaterial({ opacity: 0.35 });
-  const catcher = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), catcherMat);
-  catcher.rotation.x = -Math.PI / 2;
-  catcher.position.y = 0.003;
-  catcher.receiveShadow = true;
-  catcher.visible = false;
-  scene.add(catcher);
+  // No shadow maps: the neon robot casts none (the human runner is off), and a shadow pass cost
+  // every frame. Every runner and object keeps its own soft contact shadow on the road.
+  renderer.shadowMap.enabled = false;
   const realRoad = createRealRoad(scene);
   const NEON_LIGHT = { sun: sun.color.getHex(), sunI: sun.intensity, sky: hemi.color.getHex() };
   const NEON_SKY_I = hemi.intensity;
@@ -495,12 +477,14 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   let quality: Quality = 0;
   let baseFov = T.CAMERA_FOV;
   let lastDpr = window.devicePixelRatio || 1;
+  let realRes = false; // a real level is showing: pixel ratio capped (REAL_MODE.pixelRatio)
   const resize = (): void => {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     if (w === 0 || h === 0) return;
     lastDpr = window.devicePixelRatio || 1;
-    const pr = quality >= 1 ? 1 : Math.min(lastDpr, T.MAX_PIXEL_RATIO);
+    const cap = realRes ? Math.min(T.MAX_PIXEL_RATIO, L.REAL_MODE.pixelRatio) : T.MAX_PIXEL_RATIO;
+    const pr = quality >= 1 ? 1 : Math.min(lastDpr, cap);
     renderer.setPixelRatio(pr);
     renderer.setSize(w, h, false);
     composer?.setPixelRatio(pr);
@@ -758,13 +742,16 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       // Realistic mode: on while a 'real' level's clip shows (no clip, no realistic mode).
       const realLevel = backdrop === null ? 0 : realLevelOf(backdrop);
       real = realLevel > 0;
+      if (real !== realRes) {
+        realRes = real; // real levels render at REAL_MODE.pixelRatio (resized once per change)
+        resize();
+      }
       realRoad.update(dt, speed, realLevel);
       // The chase camera's height: ONE for every real level (REAL_MODE.camera; ?dev=align can
       // override it live), each clip fitted to it; eased so a neon/real change never jumps.
       const wantH = real ? (align?.camHeight ?? L.REAL_MODE.camera.height) : T.CAMERA_POS.y;
       camH += (wantH - camH) * (1 - Math.exp(-L.REAL_MODE.camEase * realDt));
-      // Step d: one sun and shadow on every real level, tinted per clip (REAL_MODE.sun, tint).
-      catcher.visible = real;
+      // One sun on every real level, tinted per clip (REAL_MODE.sun, tint).
       if (real) {
         const S = L.REAL_MODE.sun;
         const tint = L.REAL_MODE.tint[realLevel] ?? L.REAL_MODE.defaultTint;
@@ -774,8 +761,6 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
         sun.position.set(playerX + S.dir.x * 20, S.dir.y * 20, S.dir.z * 20);
         hemi.color.setHex(tint.sky);
         hemi.intensity = S.skyIntensity;
-        catcherMat.opacity = S.shadow;
-        catcher.position.x = playerX;
       } else {
         sun.color.setHex(NEON_LIGHT.sun);
         sun.intensity = NEON_LIGHT.sunI;
