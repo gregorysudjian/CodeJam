@@ -12,14 +12,17 @@ import type { MoveType, PlayMode, WorkoutId } from "@/contracts";
 /** Accent colour keys used across the kit. */
 export type AccentKey = "lime" | "cyan" | "magenta" | "amber" | "violet" | "danger";
 
-/** Raw hex values for each accent (for SVG / canvas / charts). */
+/** Raw hex values for each accent (for SVG / canvas / charts), the Montreal palette on limestone
+ *  (theme.css). The keys keep their old names: lime = maple red, cyan = metro blue,
+ *  magenta = plum, amber = ochre, violet = Mont-Royal green. Over video or the 3D scene prefer
+ *  `var(--na-<key>)`: inside .hud-root and .calibration-stage it resolves to the old bright palette. */
 export const ACCENT_HEX: Record<AccentKey, string> = {
-  lime: "#C6FF3D",
-  cyan: "#22D3EE",
-  magenta: "#FF3DCB",
-  amber: "#FFB020",
-  violet: "#8B5CF6",
-  danger: "#FF4D4F",
+  lime: "#B3261E",
+  cyan: "#1F5F8B",
+  magenta: "#8A2E5C",
+  amber: "#8A5600",
+  violet: "#2D6A4F",
+  danger: "#9B1C1C",
 };
 
 /** Text-colour class per accent. */

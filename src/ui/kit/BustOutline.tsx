@@ -8,7 +8,7 @@ export interface BustOutlineProps extends Omit<React.SVGProps<SVGSVGElement>, "r
 
 /** Head-and-shoulders guide outline (treadmill framing). Sizes to its container via className. */
 export const BustOutline = React.forwardRef<SVGSVGElement, BustOutlineProps>(
-  ({ color = "#F5F7FA", dashed = true, className, style, ...props }, ref) => (
+  ({ color = "var(--na-text)", dashed = true, className, style, ...props }, ref) => (
     <svg
       ref={ref}
       viewBox="0 0 200 160"

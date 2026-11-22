@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "@/ui/lib/utils";
-import { ACCENT_HEX, type AccentKey } from "./tokens";
+import { type AccentKey } from "./tokens";
 
 export interface ProgressRingProps extends React.HTMLAttributes<HTMLDivElement> {
   /** 0..1 */
@@ -18,7 +18,8 @@ export const ProgressRing = React.forwardRef<HTMLDivElement, ProgressRingProps>(
     const v = Math.min(1, Math.max(0, value));
     const r = (size - thickness) / 2;
     const c = 2 * Math.PI * r;
-    const color = ACCENT_HEX[accent];
+    // A CSS variable, so the arc follows the theme (the HUD keeps its own palette).
+    const color = `var(--na-${accent})`;
     return (
       <div
         ref={ref}
@@ -32,7 +33,7 @@ export const ProgressRing = React.forwardRef<HTMLDivElement, ProgressRingProps>(
         {...props}
       >
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90 overflow-visible">
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="white" strokeOpacity={trackOpacity} strokeWidth={thickness} />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--na-text)" strokeOpacity={trackOpacity} strokeWidth={thickness} />
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -44,8 +45,7 @@ export const ProgressRing = React.forwardRef<HTMLDivElement, ProgressRingProps>(
             strokeDasharray={c}
             strokeDashoffset={c * (1 - v)}
             opacity={v === 0 ? 0 : 1}
-            style={{ filter: `drop-shadow(0 0 8px ${color}99)` }}
-            className="transition-[stroke-dashoffset] duration-[450ms] ease-arena"
+                        className="transition-[stroke-dashoffset] duration-[450ms] ease-arena"
           />
         </svg>
         <div className="absolute inset-0 grid place-items-center text-center">{children}</div>
