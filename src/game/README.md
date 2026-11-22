@@ -243,6 +243,18 @@ Judging, events and the contract are unchanged; only where objects are drawn mov
 
 Objects the player did not have to move for are skipped (already standing in the free lane). From the second round on (no page reload in between, "play again" is fine), a second table combines every round of this page load with the same input. Rounds where K was pressed are left out. The demo level has only 2 to 5 of each move, so copy the combined table's `suggestedLeadSec` into `VISUAL_LEAD_SEC.pose` after two or three rounds. The same reports are in `window.__gameTiming` (last round) and `window.__gameTimingAll` (combined). `latency.test.ts` checks the leads against the lags measured on A's clips, or against `SESSION_LAG_SEC` for moves measured in a camera session. The console prints that line next to the leads line, so step 2 is one paste into each file. Scripted check: a no-lag player who moves 0.3 s early reads -0.27 s, 100 % in the window, and gets leads 0.17 s lower, as expected.
 
+**Camera session on the demo Mac (Sun ~5 AM): leads kept as they are.** Six `?debug=timing` rounds with Patrick at 1.5 m, 2 poses, 120 fps: three on the demo level, then three on random Full Body levels (new seed each round, so nothing to memorize). Every move was first seen *before* its object reached the runner, so the probe's `lagSec` came out negative (impossible for a lag) and its suggested leads were 0:
+
+| Move (random levels, combined) | Seen | Median first seen | In window | Grade it gets |
+| --- | --- | --- | --- | --- |
+| jump | 25 | −0.27 s | 64 % | GOOD / PERFECT |
+| squat | 15 | −0.68 s | 0 % (held into it: cleared) | GOOD |
+| armsUp | 6 | −0.76 s | 0 % (held into it) | GOOD |
+| reachRight | 5 | −0.55 s | 40 % | GOOD |
+| sidestep, reachLeft | 1 each | −0.05 s, −0.88 s | – | – |
+
+A player who sees objects coming moves early, and with the current leads early moves still clear (they are held into the window) and grade GOOD, never LATE. Leads of 0 would buy nothing for this player and make a judge who reacts on sight late on every move. So `VISUAL_LEAD_SEC.pose` stays on the clip lags and `SESSION_LAG_SEC` stays empty (no valid session lag). Not measurable this way: a reacting player's real lag; it needs someone who has never played. Seen in the hit tables, for the next pass: held crates "let go" 0.3–1.0 s before the hold ended (5 times over two rounds), and many orbs "not seen" (up to 9 in a round); whether Patrick reached for those orbs decides if they go to A.
+
 ## Placement (`timeline.ts`, pure, tested)
 
 Speed comes from wave `intensity` (interpolated between waves). Each object sits at `D(wave.t) − D(elapsed)` ahead of the runner, where `D` is the distance travelled. That equals `speed × (wave.t − elapsed)` when speed is constant, and keeps objects and floor moving together when it changes.
