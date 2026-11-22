@@ -1,128 +1,51 @@
 # Devpost submission: Neon Arena
 
-Copy each section into the matching Devpost field. Everything here is checked against the code; the few things we could not verify are marked.
+The form checklist and the screenshots. The text for "About the project" is in [DEVPOST.md](DEVPOST.md). Both match `main` 28725de (PR #121): one round of 6 levels × 30 s inside the Montreal clips, 3 lives, the neon robot runner, sign-up with a unique username, and the friends leaderboard.
 
 ## Form checklist
 
 | Devpost field | What to paste or do | Status |
 | --- | --- | --- |
 | Project name | **Neon Arena** | ready |
-| Elevator pitch (short; 108 characters) | the Tagline below | ready |
-| About the project | the seven sections below, Inspiration to What's next, in order (Markdown works) | ready |
+| Elevator pitch | the Tagline below (87 characters) | ready |
+| About the project | the sections of [DEVPOST.md](DEVPOST.md), Inspiration to What's next, in order (Markdown works) | ready |
 | Built with | the comma list under "Built with" | ready |
-| Try it out (links) | `https://codejam-jet.vercel.app` and the GitHub repo | **Greg:** the repo is private (an anonymous request gets 404). Make it public before judging, or leave the GitHub link out |
-| Image gallery | the 13 JPGs in `docs/submission/` (table under "Screenshots"); 01, 05, 09 and 10 if only a few | ready; ours are 16:9: check the crop in Devpost's thumbnail preview |
-| Video demo | a YouTube or Vimeo link | **Greg:** record the take in [VIDEO.md](VIDEO.md) Sunday 8 AM, upload (unlisted is fine), paste the link |
+| Try it out (links) | `https://codejam-jet.vercel.app` and the GitHub repo | **Greg:** the repo is private until you make it public; do that before judging, or leave the GitHub link out |
+| Image gallery | the JPGs in `docs/submission/` (table under "Screenshots"); 01, 05, 07 and 10 if only a few | ready; they are 16:9, so check the crop in Devpost's thumbnail preview |
+| Video demo | a YouTube or Vimeo link | **Greg:** record and upload (unlisted is fine), then paste the link. [VIDEO.md](VIDEO.md) has a shot list, but it was written for the earlier 45-second build |
 | Team members | Abdo, Patrick, Greg | **Greg:** invite both from the project page; each accepts from their own Devpost account |
 | Hackathon questions, prize tracks | whatever the CodeJam 16 form asks | **Greg** |
 | Submit | before the Devpost deadline (check it on the hackathon page; the code freeze is Sunday 12:00) | **Greg** |
 
 ## Tagline
 
-A workout you play with your whole body, using only your laptop's webcam. The video never leaves the laptop.
-
-## Inspiration
-
-Home workouts are free and need no equipment, and most people still stop doing them because they are boring. Motion games fix the boredom but need a console, a camera bar or a ring. We wanted the motion-game feeling with only what everyone already has: a laptop and its webcam, in a browser tab.
-
-## What it does
-
-You pick what to train (Legs, Arms, Shoulders or Full body) and a 3-lane neon runner is generated for that workout. Standing about 1.5 m from the laptop, you play it with your body:
-
-| Move | In the game |
-| --- | --- |
-| Sidestep | Change lane to dodge a block |
-| Jump | Clear a hurdle |
-| Squat, and hold it | Duck under a beam |
-| Both arms up | Smash a crate |
-| One arm up | Grab an orb |
-
-- **Calibration** takes 1.5 s of standing still with head to knees in view. Before your first round, "Try each move" walks through every move the round will use. Each round opens with a camera fly-in and 3-2-1.
-- **Feel:** the track runs through a neon city, a tunnel and a bridge to a synthesised beat that speeds up from 118 to 138 BPM and adds layers as your streak grows. Every clear is graded PERFECT, GOOD or LATE.
-- **Hands-free:** cross your forearms in an X for 1 s to pause or resume; raise both arms on the results screen to play again.
-- **Low impact** removes hurdles. **Treadmill mode** uses only crates and orbs (upper body), calibrated on the shoulders at 1 to 1.5 m, for people who run.
-- **Ghost runner:** when you replay a level, a silver "YOUR BEST" runner replays your best run beside you, a chip shows whether you are ahead, and the finish says who won.
-- **After each round:** score, grade, accuracy, best streak, reps per move, calories (labelled as an estimate), and a coach card with a recap, one tip for the move you missed most, and a recommended next session you can start with one click.
-- **Progress:** a dashboard with active minutes this week against your goal, a day streak and reps by move, and a leaderboard per workout, mode and round length. `?kiosk=1` turns a second screen into a live leaderboard with a QR code to play.
-- **No account needed:** you play as an anonymous guest and can pick a display name.
-- **No camera?** Every move has a keyboard key, and `K` switches between camera and keyboard mid-round without restarting it.
-
-## How we built it
-
-Three people, four modules, one shared TypeScript contract file (`src/contracts/index.ts`) frozen at kickoff. Modules never import each other; only the app wires them together. Every outside dependency has a stand-in behind the same interface (keyboard for the camera, browser storage for Supabase, a rule-based coach for Claude), so each person could build and test alone from hour one.
-
-- **Pose tracking (on device).** MediaPipe Pose Landmarker (lite model, GPU) runs in the browser on every webcam frame; the model and WASM are served from our own site, not a CDN. Calibration records hip position, shoulder width (W) and torso length (T), and every threshold is a fraction of those: a squat is the hips 0.3 T below standing height, a lane change is the hips 0.55 W off centre, a jump is the hips rising 0.15 T at more than 1 T per second. Baselines drift only while the player stands still, so stepping closer or further re-adapts. Each decision and its evidence is written down in `src/pose/DECISIONS.md` (38 entries).
-- **The game.** Plain Three.js with its own loop outside React (React only re-renders the HUD 10 times a second). Each object is judged over a window, from 0.35 s before it arrives to 0.15 s after.
-- **Latency compensation.** We measured how late our detector sees each move on recorded clips: jump 57 to 78 ms, sidestep 209 to 271 ms, arms 235 to 306 ms, squat 281 to 286 ms, plus about 0.1 s for the camera and model. With the camera, each obstacle is drawn early by its move's lead (0.1 s for jumps, 0.25 s for sidesteps, 0.3 s for squats and arms), so reacting on sight lands inside the judging window. Judging itself is unchanged. A test fails if anyone lowers a lead below what the clips need.
-- **Levels.** A seeded generator (same seed, same level) shapes each round into warm-up, build, peak and cool-down, and enforces fairness rules: the first object at 4 s or later, at least 1.1 s between waves, 1.5 s between a beam and a hurdle, and a block always leaves a free lane at most one lane from the last one. They are tested on every workout × mode × difficulty × length × 40 seeds.
-- **Ghost runner.** The game records five states (lane, airborne, ducking, each arm) at 20 Hz of game time, about 1 KB per 45 s level, in browser storage. A 64-bit fingerprint of the level makes sure a ghost only replays on the identical level. The live "vs ghost" score comes from judging the recording with a shadow copy of the game rules. Camera and keyboard ghosts are kept apart, because a keyboard run has no lag and would be unbeatable.
-- **Graphics that adapt.** The game steps down its own quality (pixel ratio, then bloom) when it runs under 45 FPS, and falls back to a Canvas 2D view if WebGL cannot start.
-- **Backend.** Supabase anonymous sign-in and Postgres. Row-level security on every table: a player can read and insert only their own sessions, with no update or delete. A `leaderboard` view exposes only each player's best per workout, mode and round length (name, score, date); one board per length, because a 180 s round scores about 6× a 45 s one. Check constraints keep stored values in sane ranges.
-- **Offline.** If the network drops, the round is still played and saved. Sessions wait in a local queue and sync later, reads time out quickly and fall back to cache, and the coach falls back to the rules. `?store=local` runs with no backend at all.
-- **Coach endpoint.** A Vercel serverless function checks the player's token, reads their history through a Supabase client that carries that token (so row-level security applies on the server too and no service key is needed), and allows at most one call per player every 10 s with an atomic Postgres function. It asks Claude for JSON matching a schema, with a 7 s timeout and no retries, and validates the answer before returning it. **For the demo no Claude key is configured**, so the coach card shows the rule-based coach (it says RULES). It recommends the workout you played least this week, raises difficulty by 0.1 above 85% accuracy and lowers it below 60%, and aims the tip at your most-missed move.
-- **Quality.** 823 automated tests (Vitest). A mutation sweep set each of the 23 detection thresholds to an extreme value, and every one breaks at least one test.
-
-## Challenges we ran into
-
-- **A crouch before a jump looks like a quick squat.** In our clips a pre-jump crouch (0.46 s, 0.55 T deep) and a real quick squat (0.51 s, 0.64 T) can't be told apart by depth or time. Only what follows separates them, so a short squat is counted when the player stands back up, unless a jump follows within 0.35 s.
-- **Webcam lag made the game feel unfair.** A player who squatted exactly when a beam arrived was seen about 0.39 s late, outside the window. We measured the lag per move and moved the drawing, not the rules (above).
-- **Pose froze for good on every first round.** The tutorial screen takes the video off the page; Chrome then pauses the video and stops frame callbacks, and nothing restarted them. The pose engine now resumes the video and runs a watchdog when frames stop arriving.
-- **Offline reads hung for seconds.** The database client retried failed reads three times (1 + 2 + 4 s), so every offline read waited for our timeout. We turned its retries off; the store has its own offline path, and offline reads now answer in about 20 ms.
-- **"New guest" could hang on bad wifi.** Signing out still called the server with no timeout while holding the auth lock. Anonymous guests lose nothing by skipping it, so sign-out now clears the stored session locally.
-- **Two sign-ins at once created two users** (React's double effect in development, or a double click), and the loser fell back to local storage. Concurrent calls now share one sign-in.
-
-## Accomplishments that we're proud of
-
-- Body control that adapts to the player's size and distance, tested on two people's recorded clips and 11 synthetic variants of each (taller, shorter, closer, further, jitter, tilt, dropped frames).
-- Latency compensation based on measured lag, not guesses.
-- Every outside dependency has a fallback: no camera means the keyboard, no network means the local queue, no AI key means the rule-based coach.
-- Privacy by design: the video and body landmarks never leave the laptop; the server stores only round numbers and a short profile.
-
-## What we learned
-
-- Agreeing on one contract file at kickoff let three people and their AI assistants work in parallel with almost no merge conflicts.
-- Measuring beats tuning by feel: recorded clips turned arguments about thresholds into tests.
-- Every outside dependency needs a stand-in from the start. Ours let us play full rounds before the camera code landed, and keep the demo local when we hit Vercel's daily deploy limit.
-- AI coding assistants wrote much of the code against interfaces we designed. The architecture, the tuning in front of the camera and the playtesting were ours.
-
-## What's next
-
-- Switch on the Claude coach (the endpoint is built and rate-limited; it needs a key).
-- Verify scores on the server by replaying the seeded level against the event log; today a determined player could fake a score.
-- Form feedback, such as squat depth.
-- Several people in frame (the picker is built and tested, but off for frame rate), then two-player mode.
-- More exercises, friend challenges, and a phone as the camera for TVs.
+Run Montréal with your body: a webcam workout game. Your video never leaves the laptop.
 
 ## Built with
 
-TypeScript, React, Vite, Three.js, MediaPipe (`@mediapipe/tasks-vision`, Pose Landmarker), Tailwind CSS, shadcn/ui, Radix UI, Motion, Recharts, Supabase (Auth, Postgres, row-level security), Vercel serverless functions, Claude API (`@anthropic-ai/sdk`), Vitest, Web Audio API.
+TypeScript, React, Vite, Three.js, MediaPipe (`@mediapipe/tasks-vision`, Pose Landmarker), Tailwind CSS, shadcn/ui, Radix UI, Motion, Recharts, Supabase (Auth, Postgres, row-level security), Vercel serverless functions, Claude API (`@anthropic-ai/sdk`), Vitest, Web Audio API, Higgsfield (the generated Montreal clips).
 
-## Demo video
-
-The shot list, voice-over, 10-second clip and a ready keyboard fallback are in [VIDEO.md](VIDEO.md).
+The Claude API is in the list because the coach endpoint is built on it. No key is configured on the live site, so the coach card players see is the rule-based coach (its badge says RULES). Say so if asked.
 
 ## Screenshots
 
-Real captures at 1920×1080 from `main` (bb17780 to 231dc4a; which screen on which commit is listed under the table), in [docs/submission/](submission/), ready to upload. All are from `http://localhost:5173/?demo=1&store=local` (the 45 s demo level) played **with the keyboard** by a script, so no camera preview appears; the ghost is an earlier, weaker run of the same level.
+Captured at 1280×720 on `main` 28725de by the scripted Chrome sweep (`docs/qa/sweep/`), in [docs/submission/](submission/), ready to upload. All are from `http://localhost:5173/?demo=1&store=local`: the fixed demo round, played **with the keyboard** by a script, on the local store. So no camera preview appears, and the boards hold only the script's own player.
 
 | File | Screen | Shows |
 | --- | --- | --- |
-| [01-landing](submission/01-landing.jpg) | Landing, first visit | "Your body is the controller", Play as guest, the privacy line |
-| [02-select](submission/02-select.jpg) | Workout select | Four workouts, floor/treadmill, 45/90/180 s, Low impact, Camera/Keyboard |
-| [03-tutorial](submission/03-tutorial.jpg) | "Try each move" | First of six moves (keyboard hint) |
-| [04-zone-city](submission/04-zone-city.jpg) | Play, city | Crate wall, ARMS UP cue, "EVEN VS GHOST" |
-| [05-zone-tunnel](submission/05-zone-tunnel.jpg) | Play, tunnel | Silver ghost runner ("YOUR BEST") beside the player, PERFECT, "+4 VS GHOST" chip bottom right |
-| [06-zone-bridge](submission/06-zone-bridge.jpg) | Play, bridge | Cable bridge, ghost in another lane, 13 combo, "+7 VS GHOST" |
-| [07-zone-finale](submission/07-zone-finale.jpg) | Play, finale | Dusk sky, PERFECT, 21 combo, "+8 VS GHOST" |
-| [08-perfect](submission/08-perfect.jpg) | Play, tunnel | PERFECT and +200 right after a clear |
-| [09-milestone](submission/09-milestone.jpg) | Play, finale | "20 COMBO!" banner at bottom centre (clear of the REACH cue since #46), PERFECT, +150 ORB |
-| [10-results](submission/10-results.jpg) | Results | 4,750 at 100%, grade S, reps per move, coach card (RULES) with NEXT UP |
-| [11-dashboard](submission/11-dashboard.jpg) | Dashboard | Weekly ring, day streak, 7-day chart, reps by move, coach's pick |
-| [12-leaderboard](submission/12-leaderboard.jpg) | Leaderboard | Full body · floor · 45 s podium; filters for workout, mode and round length |
-| [13-kiosk](submission/13-kiosk.jpg) | `?kiosk=1` | The 45 s board: "Beat 4,750 to take the crown", QR code |
+| [01-landing](submission/01-landing.jpg) | Landing, first visit | "Run Montréal with your body", the sign-up card with the username field |
+| [02-select](submission/02-select.jpg) | Workout select | The four workouts, floor or treadmill, tier, Low impact, Camera or Keyboard, "6 LEVELS · 3 LIVES" |
+| [03-tutorial](submission/03-tutorial.jpg) | "Try each move" | The first move of the walk-through (keyboard hint) |
+| [04-level-1](submission/04-level-1.jpg) | Play, level 1 | Old Montreal (Rue Saint-Paul), the neon robot, hearts, the move cue |
+| [05-level-3](submission/05-level-3.jpg) | Play, level 3 | The Old Port at blue hour |
+| [06-level-6](submission/06-level-6.jpg) | Play, level 6 | The Old Port again, the fastest level |
+| [07-results](submission/07-results.jpg) | Results | ALL 6 LEVELS CLEARED, score, reps per move, the coach card (RULES) |
+| [08-dashboard](submission/08-dashboard.jpg) | Dashboard | The week, day streak, recent rounds |
+| [09-leaderboard](submission/09-leaderboard.jpg) | Leaderboard, EVERYONE | The board for Full body · floor |
+| [10-friends](submission/10-friends.jpg) | Leaderboard, FRIENDS | The FRIENDS tab on the local store, which has no friends: it says so |
+| [11-kiosk](submission/11-kiosk.jpg) | `?kiosk=1` | The leaderboard-only screen with the QR code |
 
-**Retake before submitting if you can:**
-- One shot with the **camera**, showing the preview and skeleton in the corner, and `?dev=pose` (landmarks and threshold lines). This machine has no camera.
-- The leaderboard and kiosk on the **live site** after the team's real rounds: the local store holds one player, so the podium shows a single name.
+**Retake before submitting if you can** (none of these can be scripted here):
 
-Select, results and dashboard were retaken on `main` bb17780 after the UI fixes in #41; the game frames (04–09) on 231dc4a after the silver ghost and bottom banners in #46; leaderboard and kiosk (12, 13) on ba46d74 after the per-length boards in #45.
+- One shot with the **camera**, showing the preview and skeleton in the corner. The capture machine has no camera.
+- The leaderboard, FRIENDS and kiosk on the **live site** with the team's real rounds and a real friend added. The local store holds one player and no friends.

@@ -2,9 +2,15 @@
 
 **Run Montréal with your body.** A workout you play in Chrome with your laptop's webcam: no controller, no install, no equipment. Built at CodeJam 16 (McGill).
 
-You stand about 1.5 m from the laptop and your body steers a runner along a 3-lane street: sidestep to change lane, jump hurdles, squat under beams, raise both arms to smash crates, raise one arm to grab orbs. You pick what to train (legs, arms, shoulders or full body) and the level is generated for that workout. A round is 6 levels of 30 seconds, each one faster than the last, played inside AI-generated video clips of real Montreal streets (made with Higgsfield, the road lined up with the 3D track): the cobblestones of Old Montreal, the deck of the Jacques Cartier Bridge and the Old Port at blue hour. You have 3 lives. Pose tracking runs in the browser, so **your video never leaves your laptop**. Every round is saved to your profile, and a dashboard, a public and a friends leaderboard and a coach show you how you're doing and what to play next.
+You stand about 1.5 m from the laptop and your body steers a neon robot runner along a 3-lane street: sidestep to change lane, jump hurdles, squat under beams, raise both arms to smash crates, raise one arm to grab orbs. You pick what to train (legs, arms, shoulders or full body) and the level is generated for that workout. A round is 6 levels of 30 seconds, each one faster than the last, played inside AI-generated video clips of real Montreal streets (made with Higgsfield, the road lined up with the 3D track): the cobblestones of Old Montreal, the deck of the Jacques Cartier Bridge and the Old Port at blue hour. You have 3 lives. Pose tracking runs in the browser, so **your video never leaves your laptop**. Every round is saved to your profile, and a dashboard, a public and a friends leaderboard and a coach show you how you're doing and what to play next.
 
 **Live:** https://codejam-jet.vercel.app (Chrome on a laptop; deployed from `main`)
+
+| Sign up and play | Level 3, the Old Port | Results and the coach |
+| --- | --- | --- |
+| ![Landing page with the sign-up card](docs/submission/01-landing.jpg) | ![Level 3 in play](docs/submission/05-level-3.jpg) | ![Results screen with the coach card](docs/submission/07-results.jpg) |
+
+More screenshots: [docs/submission/](docs/submission/).
 
 ## How to play
 
@@ -45,7 +51,7 @@ Treadmill mode is for people already running on one: it uses upper-body moves on
 - **Hands-free:** X-arms pause and resume, arms up to replay. A second person stepping into the play area pauses the round.
 - **Accounts and progress:** sign-up with a unique username, or play as a guest; a dashboard with your week, day streak and recent rounds.
 - **Leaderboards:** a public board of each player's best per workout and mode, and a **Friends** view: add a friend by username to see their best next to yours.
-- **Coach:** after every round, a recap, a tip for the move you missed most and a recommended next session (workout and tier).
+- **Coach:** after every round, a recap, a tip for the move you missed most and a recommended next session (workout and tier). If you entered an age of 60 or more, it recommends low impact (no jumps).
 - **Ghost runner:** replay the same level and a see-through runner replays your best run beside you (stored in this browser only).
 - **Kiosk mode** (`?kiosk=1`): a leaderboard-only screen for a demo table, with a QR code to the live site, refreshing every 15 s.
 - **Works offline:** rounds played without a connection wait in a local queue and sync later; with no backend at all, everything runs on the local store.
@@ -125,7 +131,9 @@ AI coding assistants helped write code against interfaces the team designed. The
 | --- | --- |
 | [docs/DEMO.md](docs/DEMO.md) | Pitch script, demo fallbacks, judge Q&A |
 | [docs/DEVPOST.md](docs/DEVPOST.md) | Devpost story |
+| [docs/SUBMISSION.md](docs/SUBMISSION.md) | Devpost form checklist and the screenshots |
 | [docs/CONTRACTS.md](docs/CONTRACTS.md) | Shared interfaces, database schema, endpoint, collision and level rules, detection thresholds |
 | [docs/LIVE.md](docs/LIVE.md) | Live site, backend security checks, privacy |
-| [docs/PLAN.md](docs/PLAN.md) | The original build plan |
+| [docs/PLAN.md](docs/PLAN.md) | The original build plan (Saturday 2 AM; the game changed since) |
+| [docs/archive/](docs/archive/) | Working notes from the weekend, kept as written |
 | [AGENTS.md](AGENTS.md) | Rules every AI coding tool on the team follows |
