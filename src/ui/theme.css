@@ -585,7 +585,9 @@
   min-height: 320px;
 }
 
-.workout-screen [role='radiogroup'] + div {
+/* The settings row after the cards. Scoped to the Workout group: unscoped, it also padded every
+   control that follows a segmented control (Duration and Low impact were 6 px taller). */
+.workout-screen [role='radiogroup'][aria-label='Workout'] + div {
   padding-top: 12px;
 }
 .leaderboard-screen:not(.leaderboard-kiosk) .podium-place {
@@ -1059,7 +1061,7 @@
   .workout-screen [role='radiogroup'][aria-label='Workout'] > [role='radio'] svg {
     max-height: 56px;
   }
-  .workout-screen [role='radiogroup'] + div {
+  .workout-screen [role='radiogroup'][aria-label='Workout'] + div {
     padding-top: 8px;
   }
 }
@@ -1082,7 +1084,7 @@
     padding-right: 12px;
     font-size: 18px;
   }
-  .workout-settings label > span {
+  .workout-settings label > span:first-child {
     font-size: 18px;
   }
 }
