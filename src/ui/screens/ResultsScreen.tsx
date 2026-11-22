@@ -312,7 +312,7 @@ export function ResultsScreen({
                 </p>
                 {/* AI coach only (optional): the rest of today's session. Hidden where reason is. */}
                 {advice.plan && (
-                  <p className="line-clamp-2 text-caption leading-relaxed text-text tight:hidden">
+                  <p className="line-clamp-3 text-caption leading-relaxed text-text tight:hidden">
                     {advice.plan}
                   </p>
                 )}

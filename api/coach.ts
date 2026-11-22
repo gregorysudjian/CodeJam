@@ -17,6 +17,7 @@ import {
   TIER_NAMES,
   bearerToken,
   buildUserPrompt,
+  buildPlanLine,
   nextTier,
   parseAdvice,
   planNumbers,
@@ -123,8 +124,9 @@ export async function POST(request: Request): Promise<Response> {
     const text = response.content.find((b) => b.type === 'text');
     const advice = parseAdvice(text?.type === 'text' ? text.text : undefined, latest.mode);
     if (!advice) return json({ error: 'coach answer failed validation' }, 502);
-    // The tier is the game's decision, whatever the model wrote.
-    return json({ ...advice, next: { ...advice.next, difficulty: tier } });
+    // The tier and today's plan are the game's decisions, whatever the model wrote.
+    const next = { ...advice.next, difficulty: tier };
+    return json({ ...advice, next, plan: buildPlanLine(next, profileRes.data?.goal, plan) });
   } catch (err) {
     if (err instanceof Anthropic.APIConnectionTimeoutError)
       return json({ error: 'coach timed out' }, 504);
