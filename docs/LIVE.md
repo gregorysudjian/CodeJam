@@ -153,9 +153,16 @@ rounds go to Shoulders treadmill, the least-watched board.
 | Anonymous users created | 1 per page load (plus a `Leaderboard` profile), none while it stays open |
 | Supabase traffic | 39 KB in 10 min (about 0.25 MB an hour) |
 
-Not yet covered: the access token expires after an hour, and a kiosk open all evening relies on
-supabase-js refreshing it. A 70-minute run is going (result in the next update). With #58's 0005,
-the kiosk would not need a guest at all.
+**70 minutes** (6:59 to 8:09 PM, past the 1-hour token expiry): 280 board refreshes, **0 failed**,
+**1 token refresh** (automatic, no gap), 0 console or page errors, still 1 anonymous user, 339 KB
+(about 0.3 MB an hour). The kiosk survives an evening. With #58's 0005, it would not need a guest
+at all.
+
+**Found: the kiosk's "posted" times freeze at page load.** At 8:09 PM it showed a 7:03 PM score
+as "JUST NOW" and a 6:11 PM one as "48 MIN AGO" (its age at load). `LeaderboardScreen.tsx:131`
+sets `const [now] = useState(() => Date.now())` once, and the kiosk never remounts. For Jiscar 1
+(`src/ui`): take `now` when the entries change (`useMemo(() => Date.now(), [entries])`) or tick it
+every minute.
 
 ### Supabase free plan: limits for an expo evening
 
@@ -221,3 +228,18 @@ if time allows; judges see names only on the board.
   requests: real and judge-visible. Migration 0004 closes it, but it isn't applied yet.
   Theoretical: the 300 KB rows and TRUNCATE (not reachable through REST). Next: the live site
   end to end, then devices.
+- **Saturday 8:10 PM.**
+  - **What a visitor or judge would actually have hit:** a reversed (right-to-left override) name
+    on the projector (fixed, #74); "No rounds yet" for 10 s on the dashboard and a 5 s coach card
+    on dead wifi, and 10 s of "Play as guest" for a returning player (fixed, #76: 1.35 s, 3 s,
+    1 s on live); the phone path ending on an empty board (#58, waiting on Greg); test players in
+    3 of the top 5 on the projector board (cleanup); the kiosk's frozen "posted" times (Jiscar 1).
+    I also caused one: #76 would have stranded the demo laptop's rounds after the cleanup; #80
+    fixes it and must merge first.
+  - **What turned out theoretical:** a slur in a name (no one tried; the blocklist is cheap
+    insurance); the kiosk's token expiry (it refreshes fine); Supabase free-plan limits; the sign-in
+    rate limit (1000/h, confirmed by Greg's Claude); refused or dead Supabase on the first visit
+    (every step under 1.3 s).
+  - **Next hour, differently:** before merging a speed-up, ask what the cache could be wrong about
+    (#76 trusted a cached profile the cleanup would delete). Test against the state Sunday will
+    have, not tonight's. Drop: more device and limit checks; they came back empty.
