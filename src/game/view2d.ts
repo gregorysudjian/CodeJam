@@ -1,7 +1,7 @@
 import type { Level, Spawn } from '@/contracts';
 import type { Item } from './core';
 import { comboLabel, GRADE_LABEL, type Grade } from './feedback';
-import { countdownAt } from './intro';
+import { countdownAt, resumeCountAt } from './intro';
 import { OUTCOME_LABEL, raceLabel, racePulse, type GhostOutcome, type GhostPose } from './ghost';
 import { GLYPH, paintGlyph } from './glyph';
 import type { Verdict } from './judge';
@@ -48,7 +48,7 @@ export function create2DView(
   };
 
   return {
-    frame({ elapsed, visDt, realDt, state, phase, streak, intro, ghost, race }) {
+    frame({ elapsed, visDt, realDt, state, phase, streak, intro, resumeIn, ghost, race }) {
       if (!ctx) return;
       const dpr = Math.min(window.devicePixelRatio || 1, T.MAX_PIXEL_RATIO);
       const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
@@ -142,7 +142,7 @@ export function create2DView(
       if (ghost) drawRunner(ghostMotion, ghost, true);
       drawRunner(playerMotion, state, false);
 
-      if (phase === 'paused') {
+      if (phase === 'paused' && resumeIn === null) {
         ctx.fillStyle = `rgba(0, 0, 0, ${T.PAUSE_DIM})`;
         ctx.fillRect(0, 0, w, h);
       }
@@ -190,7 +190,7 @@ export function create2DView(
         ctx.fillStyle = css(color);
         ctx.fillText(s, x, y);
       };
-      const count = countdownAt(intro);
+      const count = resumeCountAt(resumeIn) ?? countdownAt(intro);
       if (count) label(count, count === 'GO' ? T.COLOR_LIME : 0xf4f7fb, w / 2, h * 0.45, h * 0.16);
       const runner = project(playerMotion.x, 0, 0);
       gradeT += realDt;

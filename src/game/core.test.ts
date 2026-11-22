@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { GameEvent, InputState, Level, Spawn, Wave } from '@/contracts';
 import { createCore, feverTier, holdFeedback, movesSeen, type Item } from './core';
 import type { Verdict } from './judge';
-import { CUE_LEAD_SEC, MAX_DT_SEC } from './tuning';
+import { CUE_LEAD_SEC, MAX_DT_SEC, RESUME_COUNTDOWN_SEC, RESUME_MAX_DT_SEC } from './tuning';
 
 const idle: InputState = {
   tracking: true,
@@ -173,10 +173,10 @@ describe('pause and resume', () => {
     for (let i = 0; i < 600; i++) core.step(1 / 60, idle, i);
     expect(core.elapsed()).toBe(t);
     core.resume();
-    core.resume(); // ignored, not paused
-    core.step(1 / 60, idle, 0);
+    core.resume(); // ignored: the countdown already runs
+    for (let i = 0; i < RESUME_COUNTDOWN_SEC * 60 + 2; i++) core.step(1 / 60, idle, i);
     expect(core.elapsed()).toBeGreaterThan(t);
-    expect(got).toEqual(['paused', 'resumed']);
+    expect(got).toEqual(['paused', 'resuming', 'resumed']);
   });
 
   it('losing tracking pauses and finding it again resumes', () => {
@@ -210,7 +210,125 @@ describe('pause and resume', () => {
     core.step(1 / 60, { ...idle, tracking: false }, 0);
     core.resume();
     core.step(1 / 60, { ...idle, tracking: false }, 1);
-    expect(got).toEqual(['paused:trackingLost', 'resumed', 'paused:trackingLost']);
+    expect(got).toEqual(['paused:trackingLost', 'resuming', 'paused:trackingLost']);
+  });
+});
+
+describe('the 3-2-1 before every resume', () => {
+  const DT = 1 / 60;
+  function setUp() {
+    const core = createCore(level([w(4, hurdle)], 20));
+    const got: string[] = [];
+    core.onEvent((e) =>
+      got.push(
+        e.type === 'paused'
+          ? `paused:${e.reason}`
+          : e.type === 'resuming'
+            ? `resuming:${e.inSec}`
+            : e.type,
+      ),
+    );
+    core.start();
+    const step = (sec: number, state: InputState = idle): void => {
+      for (let k = 0; k < Math.round(sec / DT); k++) core.step(DT, state, k);
+    };
+    step(1);
+    return { core, got, step };
+  }
+
+  it('a user resume counts down RESUME_COUNTDOWN_SEC with game time frozen, then resumes', () => {
+    const { core, got, step } = setUp();
+    core.pause();
+    const t = core.elapsed();
+    core.resume();
+    expect(core.resumingIn()).toBe(RESUME_COUNTDOWN_SEC);
+    step(RESUME_COUNTDOWN_SEC - 0.1);
+    expect(core.elapsed()).toBe(t);
+    expect(core.pauseReason()).toBe('user'); // still held: the app and views see a pause
+    expect(core.resumingIn()).toBeCloseTo(0.1, 1);
+    expect(got).toEqual(['paused:user', `resuming:${RESUME_COUNTDOWN_SEC}`]);
+    step(0.2);
+    expect(got).toEqual(['paused:user', `resuming:${RESUME_COUNTDOWN_SEC}`, 'resumed']);
+    expect(core.pauseReason()).toBeNull();
+    expect(core.resumingIn()).toBeNull();
+    step(1);
+    expect(core.elapsed()).toBeGreaterThan(t + 0.9);
+  });
+
+  it('tracking back counts down too; lost again during it pauses again, never resumed', () => {
+    const { core, got, step } = setUp();
+    step(0.5, { ...idle, tracking: false });
+    step(1); // back: the countdown starts
+    expect(core.resumingIn()).not.toBeNull();
+    step(0.5, { ...idle, tracking: false }); // gone again before it ends
+    expect(core.resumingIn()).toBeNull();
+    expect(core.pauseReason()).toBe('trackingLost');
+    expect(got).toEqual([
+      'paused:trackingLost',
+      `resuming:${RESUME_COUNTDOWN_SEC}`,
+      'paused:trackingLost',
+    ]);
+    step(RESUME_COUNTDOWN_SEC + 0.1); // back for good: a fresh full countdown
+    expect(got.slice(3)).toEqual([`resuming:${RESUME_COUNTDOWN_SEC}`, 'resumed']);
+  });
+
+  it('a user pause during the countdown stops it, and only a new resume counts again', () => {
+    const { core, got, step } = setUp();
+    core.pause();
+    core.resume();
+    step(1);
+    core.pause();
+    expect(core.resumingIn()).toBeNull();
+    expect(core.pauseReason()).toBe('user');
+    step(RESUME_COUNTDOWN_SEC * 2);
+    expect(got).toEqual(['paused:user', `resuming:${RESUME_COUNTDOWN_SEC}`, 'paused:user']);
+    core.resume();
+    step(RESUME_COUNTDOWN_SEC + 0.1);
+    expect(got.at(-1)).toBe('resumed');
+  });
+
+  it('someone else in the play area pauses with reason otherPerson; gone again, it counts down', () => {
+    const { core, got, step } = setUp();
+    const other: InputState = { ...idle, tracking: false, otherPerson: true };
+    step(1, other);
+    expect(core.pauseReason()).toBe('otherPerson');
+    step(0.5, { ...idle, tracking: false }); // they left, the player not back yet
+    expect(core.pauseReason()).toBe('trackingLost');
+    step(RESUME_COUNTDOWN_SEC + 0.1);
+    expect(got).toEqual([
+      'paused:otherPerson',
+      'paused:trackingLost',
+      `resuming:${RESUME_COUNTDOWN_SEC}`,
+      'resumed',
+    ]);
+  });
+
+  it('the other person stepping in during the countdown stops it', () => {
+    const { got, step } = setUp();
+    step(0.5, { ...idle, tracking: false });
+    step(1);
+    step(0.5, { ...idle, tracking: false, otherPerson: true });
+    expect(got.at(-1)).toBe('paused:otherPerson');
+    expect(got).not.toContain('resumed');
+  });
+
+  it('a user pause keeps its reason while tracking comes and goes, and needs a resume', () => {
+    const { core, got, step } = setUp();
+    core.pause();
+    step(0.5, { ...idle, tracking: false });
+    step(RESUME_COUNTDOWN_SEC + 1);
+    expect(core.pauseReason()).toBe('user');
+    expect(got).toEqual(['paused:user']);
+  });
+
+  it('a stalled frame during the countdown counts as RESUME_MAX_DT_SEC, not its length', () => {
+    const { core, step } = setUp();
+    core.pause();
+    core.resume();
+    core.step(10, idle, 0); // a hidden tab
+    expect(core.resumingIn()).toBeCloseTo(RESUME_COUNTDOWN_SEC - RESUME_MAX_DT_SEC);
+    step(RESUME_COUNTDOWN_SEC);
+    expect(core.resumingIn()).toBeNull();
   });
 });
 
@@ -235,7 +353,7 @@ describe('listeners', () => {
       console.error = original;
     }
     expect(a).toEqual(['paused']);
-    expect(b).toEqual(['paused', 'resumed']);
+    expect(b).toEqual(['paused', 'resuming']); // tracking back: the 3-2-1 starts
   });
 });
 
@@ -373,6 +491,8 @@ describe('holds across pauses, input switches, tracking loss and the end of the 
     d.step(3, idle); // standing during the pause changes nothing
     expect(d.core.elapsed()).toBe(frozen);
     d.core.resume();
+    d.step(RESUME_COUNTDOWN_SEC, idle); // the 3-2-1: still frozen
+    expect(d.core.elapsed()).toBe(frozen);
     d.step(2, down);
     expect(d.verdicts).toEqual(['cleared']);
   });
@@ -383,6 +503,7 @@ describe('holds across pauses, input switches, tracking loss and the end of the 
     d.step(0.8, down);
     d.core.pause();
     d.core.resume();
+    d.step(RESUME_COUNTDOWN_SEC, idle);
     d.step(0.2, idle);
     expect(d.verdicts).toEqual([]); // still inside the 0.3 s grace
     d.step(0.3, idle);
@@ -397,10 +518,13 @@ describe('holds across pauses, input switches, tracking loss and the end of the 
     d.step(2, { ...idle, tracking: false });
     expect(d.core.elapsed()).toBe(at);
     expect(d.core.pauseReason()).toBe('trackingLost');
+    d.step(RESUME_COUNTDOWN_SEC, down); // tracking back: the 3-2-1, still frozen
+    expect(d.core.elapsed()).toBe(at);
     d.step(2, down);
     expect(d.verdicts).toEqual(['cleared']);
     expect(d.events.filter((e) => e !== 'cue')).toEqual([
       'paused:trackingLost',
+      'resuming',
       'resumed',
       'cleared',
     ]);
@@ -429,7 +553,8 @@ describe('holds across pauses, input switches, tracking loss and the end of the 
     d.core.pause(); // e.g. Esc or a hidden tab
     d.step(1, idle); // arms down during the pause: not judged
     d.core.resume();
-    d.step(0.1, idle); // lowering the X, then arms back up within the grace
+    d.step(RESUME_COUNTDOWN_SEC, idle); // the 3-2-1, arms down
+    d.step(0.1, idle); // then arms back up within the grace
     d.step(2, arms);
     expect(d.verdicts).toEqual(['cleared']);
   });

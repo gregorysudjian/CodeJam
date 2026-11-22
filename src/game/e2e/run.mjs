@@ -140,8 +140,9 @@ async function playOne(page, base, s) {
     await sleep(800);
     if (!(await paused())) fails.push('not paused after 9 Esc');
     await page.key('Escape');
-    await sleep(800);
-    if (await paused()) fails.push('still paused after the 10th Esc');
+    // Every resume counts 3-2-1 first (RESUME_COUNTDOWN_SEC, game time frozen).
+    await sleep(800 + (await page.eval("import('/src/game/tuning.ts').then((T) => T.RESUME_COUNTDOWN_SEC)")) * 1000);
+    if (await paused()) fails.push('still paused after the 10th Esc and the countdown');
   }
   if (s.kAt) {
     await at(s.kAt);
@@ -169,7 +170,8 @@ async function playOne(page, base, s) {
   screen = await page.text();
   const saved = (await sessions(page)) - before;
   const out = await page.eval(`({ fps: window.__gameFps ?? null, misses: window.__gameMisses ?? [], outside: window.__e2eOutside ?? [] })`);
-  const score = screen.match(/· \d+ S ([\d,]+)/)?.[1];
+  // Results read "… · 45 S 0:45 ACTIVE 4,750 S …" (the score follows the active time).
+  const score = screen.match(/ACTIVE ([\d,]+)/)?.[1];
   const acc = screen.match(/ACCURACY (\d+)%/)?.[1];
 
   if (s.endAt) {

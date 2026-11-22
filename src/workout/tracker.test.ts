@@ -154,6 +154,8 @@ describe('calories (an estimate)', () => {
     advance(30);
     tracker.handleGameEvent({ type: 'paused', reason: 'trackingLost' });
     advance(100); // paused: not counted
+    tracker.handleGameEvent({ type: 'resuming', inSec: 3 });
+    advance(3); // the 3-2-1 before the resume: still not counted
     tracker.handleGameEvent({ type: 'resumed' });
     advance(30);
     expect(tracker.getLive().kcal).toBeCloseTo(kcalFor(config, 70, 60));

@@ -20,3 +20,4 @@ export * from "./BustOutline";
 
 export * from "./ScreenFooter";
 export * from "./CoachBanner";
+export * from "./round";

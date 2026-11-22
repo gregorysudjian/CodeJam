@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countdownAt, flyProgress, introCamera, type CameraPose } from './intro';
+import { countdownAt, flyProgress, introCamera, resumeCountAt, type CameraPose } from './intro';
 import * as T from './tuning';
 
 const pose = (): CameraPose => ({ px: 0, py: 0, pz: 0, lx: 0, ly: 0, lz: 0 });
@@ -47,5 +47,16 @@ describe('intro', () => {
       const p = introCamera(k, pose());
       expect(Math.hypot(p.px, p.pz)).toBeGreaterThan(2);
     }
+  });
+});
+
+describe('the countdown before a resume', () => {
+  it('shows 3, 2, 1 like the intro, nothing outside it', () => {
+    expect(resumeCountAt(null)).toBeNull();
+    expect(resumeCountAt(T.RESUME_COUNTDOWN_SEC)).toBe(String(T.RESUME_COUNTDOWN_SEC));
+    expect(resumeCountAt(2.5)).toBe('3');
+    expect(resumeCountAt(1.5)).toBe('2');
+    expect(resumeCountAt(0.01)).toBe('1');
+    expect(resumeCountAt(0)).toBeNull();
   });
 });

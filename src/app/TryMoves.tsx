@@ -3,7 +3,7 @@
 // player does it, whichever comes first, so it doubles as a quick check that input works.
 // The last step shows how to pause: the X gesture (camera) or Esc (keyboard).
 import { useEffect, useState } from 'react';
-import { Play, X } from 'lucide-react';
+import { Play } from 'lucide-react';
 import type { InputSource, MoveType, PoseInputSource } from '@/contracts';
 import {
   ACCENT_HEX,
@@ -89,11 +89,7 @@ export function TryMoves({
         <p className="text-title uppercase tracking-[0.2em] text-text-muted">
           Try each move · {step + 1} / {steps.length}
         </p>
-        {isPause ? (
-          <X aria-hidden className="size-[260px]" style={{ color }} strokeWidth={2.5} />
-        ) : (
-          <MoveFigure pose={move} color={color} animate size={260} />
-        )}
+        <MoveFigure pose={move} color={color} animate size={260} />
         <h2 className="font-display-italic text-display-md" style={{ color }}>
           {isPause ? 'PAUSE' : MOVE_LABELS[move]}
           {done.includes(move) ? ' ✓' : ''}

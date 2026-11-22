@@ -3,7 +3,7 @@ import type { InputState, Level } from '@/contracts';
 import { feverTier, holdFeedback, type HoldFeedback, type Item } from './core';
 import { comboLabel, GRADE_LABEL, type Grade } from './feedback';
 import { OUTCOME_LABEL, raceLabel, racePulse, type GhostOutcome, type GhostPose } from './ghost';
-import { countdownAt, flyProgress } from './intro';
+import { countdownAt, flyProgress, resumeCountAt } from './intro';
 import { requirementMet, type Verdict } from './judge';
 import { colorKeyFor, createObstacles, variantFor, type ObstacleView } from './obstacles';
 import { createPlayer } from './player';
@@ -36,6 +36,8 @@ export interface FrameInfo {
   streak: number;
   /** Seconds since the intro began, continuing into the round (for GO); -1: no intro. */
   intro: number;
+  /** Seconds left of the 3-2-1 before a resume (core.resumingIn), or null. */
+  resumeIn: number | null;
   /** The ghost runner's pose at this moment, or null when there is no ghost to race. */
   ghost: GhostPose | null;
   /** The player's live lead over the ghost (cleared + collected), or null: no chip. */
@@ -228,7 +230,7 @@ export function create3DView(
   };
 
   return {
-    frame({ elapsed, visDt, realDt, state, phase, streak, intro, ghost, race }) {
+    frame({ elapsed, visDt, realDt, state, phase, streak, intro, resumeIn, ghost, race }) {
       lastState = state;
       clock += visDt;
       if (phase === 'finished') {
@@ -368,8 +370,10 @@ export function create3DView(
         ghostRunner !== null && ghost !== null && Math.abs(ghostRunner.x - player.x) > 1;
       if (ghostRunner) ghostTag.sprite.position.x = ghostRunner.x;
 
-      // Intro: the countdown number over the runner (3, 2, 1, GO).
-      const count = countdownAt(intro);
+      // The countdown number over the runner: the intro's 3, 2, 1, GO, or the 3-2-1 before a
+      // resume (the same label and pop; bigger, since the chase camera is further away).
+      const resumeCount = resumeCountAt(resumeIn);
+      const count = resumeCount ?? countdownAt(intro);
       if (count !== countShown) {
         countShown = count;
         if (count) {
@@ -381,9 +385,11 @@ export function create3DView(
       if (count) {
         countT += realDt;
         const k = reduceMotion ? 1 : Math.min(1, countT / 0.18);
-        const s = T.COUNT_WIDTH * (1.6 - 0.6 * (1 - (1 - k) ** 3));
+        const big = resumeCount ? LK.RESUME_COUNT.scale : 1;
+        const s = T.COUNT_WIDTH * big * (1.6 - 0.6 * (1 - (1 - k) ** 3));
         countLabel.sprite.scale.set(s, s * LABEL_ASPECT, 1);
         countLabel.sprite.position.x = player.x;
+        countLabel.sprite.position.y = resumeCount ? LK.RESUME_COUNT.y : T.COUNT_POS.y;
         countLabel.sprite.material.opacity =
           count === 'GO' ? Math.max(0, 1 - countT / T.INTRO_GO_SEC) : 1;
       }
@@ -447,7 +453,7 @@ export function create3DView(
         realDt,
         speed: phase === 'finished' ? coastSpeed : track.speedAt(elapsed),
         fever: phase === 'finished' ? 0 : feverTier(streak),
-        dim: phase === 'paused',
+        dim: phase === 'paused' && resumeIn === null, // the countdown shows the scene undimmed
         intro: reduceMotion || intro < 0 ? 1 : flyProgress(intro),
         outro: outroK * outroK * outroK * (outroK * (outroK * 6 - 15) + 10), // smootherstep
       });

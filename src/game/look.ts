@@ -56,6 +56,11 @@ export const OUTRO_LOOK = { y: 2.6, z: -0.5 };
 // glare that hid the runner as it crossed the line.
 export const FINISH_GLOW = 0.4;
 
+/* ── The 3-2-1 before a resume (view3d.ts) ── */
+// The intro's label, from the chase camera: this much bigger (the intro's camera starts close
+// to the runner), and at this height, between the runner's head and GameHud's cue band.
+export const RESUME_COUNT = { scale: 2.4, y: 2.9 };
+
 /* ── Reduced motion (scene.ts) ── */
 // A milestone brightens the lane lines and horizon; with prefers-reduced-motion, this much of it.
 export const REDUCED_FLASH = 0.4;

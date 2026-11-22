@@ -173,8 +173,9 @@ In the real app (main + `p1-workout` + `p2-game`, keyboard): a rehearsal round s
 | `cue` | Once per wave, when it is `CUE_LEAD_SEC` (2 s) away. `inSec` is the time left. |
 | `cleared` / `hit` | Once per spawn, from the judge (below). |
 | `collected` | Orb collected. A missed orb fires nothing, as the contract says. |
-| `paused` | `reason: 'user'` from `pause()`, or `'trackingLost'` as soon as `getState().tracking` is false. |
-| `resumed` | From `resume()`, or automatically when tracking returns after a `trackingLost` pause (a user pause never auto-resumes). |
+| `paused` | `reason: 'user'` from `pause()`; `'trackingLost'` as soon as `getState().tracking` is false; `'otherPerson'` while `getState().otherPerson` is true. Also when either happens during the countdown below. |
+| `resuming` | `inSec: 3` (`RESUME_COUNTDOWN_SEC`): every resume counts 3-2-1 first, in the canvas, with game time frozen. From `resume()`, or when tracking returns or the other person leaves (a user pause never auto-resumes). `pause()` during it pauses again. |
+| `resumed` | When the countdown ends. Never sent if it was interrupted. |
 | `finished` | Once, when game time reaches `durationSec`. Events from the same frame come first. |
 
 Event `t` is `performance.now()`. Game time is the sum of frame deltas, each clamped to 50 ms, and stops while paused. A background tab or a stall acts like a short pause instead of skipping objects.
