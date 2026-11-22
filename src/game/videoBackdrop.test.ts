@@ -1,5 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { clipToShow } from './videoBackdrop';
+import { VIDEO_BACKDROP } from './look';
+import * as T from './tuning';
+import { clipRate, clipToShow } from './videoBackdrop';
+
+describe('clipRate: how fast the clip plays', () => {
+  it("on a real level, moves the clip's road at the game's speed", () => {
+    expect(clipRate(10, 8)).toBeCloseTo(1.25);
+    expect(clipRate(8, 8)).toBeCloseTo(1);
+  });
+
+  it('stays within the real-mode limits', () => {
+    expect(clipRate(40, 5)).toBe(T.REAL_CAMERA.rateMax);
+    expect(clipRate(1, 5)).toBe(T.REAL_CAMERA.rateMin);
+    expect(clipRate(0, 5)).toBe(T.REAL_CAMERA.rateMin);
+  });
+
+  it("keeps today's rule without a road speed (neon levels): rateMin to 1x", () => {
+    expect(clipRate(T.SPEED_MIN)).toBeCloseTo(VIDEO_BACKDROP.rateMin);
+    expect(clipRate(T.SPEED_MAX)).toBeCloseTo(1);
+    expect(clipRate(T.SPEED_MAX + 10)).toBeCloseTo(1);
+    expect(clipRate(0)).toBeCloseTo(VIDEO_BACKDROP.rateMin);
+  });
+
+  it('has a road speed for every real level that has a clip', async () => {
+    const { LEVEL_BACKDROPS } = await import('./backdrop');
+    LEVEL_BACKDROPS.forEach((b, i) => {
+      if (b.style === 'real' && b.video) expect(T.REAL_CAMERA.roadSpeed[i + 1]).toBeGreaterThan(0);
+    });
+  });
+});
 
 const clip = (ready: boolean, failed = false) => ({ ready, failed });
 

@@ -350,3 +350,20 @@ export const MUSIC_LOOKAHEAD_SEC = 0.15; // notes are scheduled this far ahead o
 export const MUSIC_FILTER_HZ = [1400, 2600, 5000, 9000] as const; // master low-pass by streak tier
 export const MUSIC_DUCK_SEC = 0.35; // a hit muffles the music this long
 export const MUSIC_FADE_SEC = 0.25; // pause, resume and finish fades
+
+/* Realistic mode camera (backdrop.ts style 'real'; videoBackdrop.ts, intro.ts). Gameplay never
+   reads these. */
+export const REAL_CAMERA = {
+  // How fast each real clip's road moves under the runner at 1x, in world units per second (the
+  // game's speed unit), by level. The clip plays at gameSpeed / roadSpeed, clamped to
+  // [rateMin, rateMax], so the road keeps pace with the obstacles. Measured by block matching the
+  // clip's road (or kerb) over 4-frame steps, carried to the runner's row on screen through the
+  // chase camera at about 65 degrees of field of view; check or adjust live with `?dev=calib`.
+  roadSpeed: { 2: 5.0, 3: 5.7, 5: 2.6 } as Readonly<Partial<Record<number, number>>>,
+  rateMin: 0.5,
+  rateMax: 1.5,
+  // Intro and outro on a real level: no orbit (a flat clip can't turn with the camera), a straight
+  // dolly along the chase camera's line of sight, from this many world units further back.
+  dolly: 6,
+  calibStep: 0.1, // `?dev=calib`: road speed change per [ or ] press
+} as const;
