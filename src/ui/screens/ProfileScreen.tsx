@@ -22,7 +22,12 @@ import {
   useHotkey,
 } from '@/ui/kit';
 import { cn } from '@/ui/lib/utils';
-import { profileName, randomGuestName } from '@/ui/screens/profileRules';
+import {
+  optionalNumbers,
+  profileName,
+  randomGuestName,
+  validateRange,
+} from '@/ui/screens/profileRules';
 
 export type ProfileInput = Omit<Profile, 'id'>;
 
@@ -67,10 +72,7 @@ const WEEKLY = [
 type WeeklyValue = (typeof WEEKLY)[number]['value'];
 
 export function validateWeight(raw: string): string | null {
-  if (raw.trim() === '') return null;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 30 || n > 250) return 'Enter a weight between 30 and 250 kg.';
-  return null;
+  return validateRange('weightKg', raw);
 }
 
 function GoalPicker({ value, onChange }: { value: Goal; onChange: (g: Goal) => void }) {
@@ -138,7 +140,7 @@ function GoalPicker({ value, onChange }: { value: Goal; onChange: (g: Goal) => v
   );
 }
 
-/** Player setup: name, goal, level, weekly minutes and optional weight. */
+/** Player setup (edit profile): name, goal, level, weekly minutes and optional weight, age and height. */
 export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps) {
   const [name, setName] = React.useState(initial?.displayName ?? '');
   const [goal, setGoal] = React.useState<Goal>(initial?.goal ?? PROFILE_DEFAULTS.goal);
@@ -150,26 +152,38 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
   const [weight, setWeight] = React.useState(
     initial?.weightKg != null ? String(initial.weightKg) : '',
   );
-  const [more, setMore] = React.useState(false);
+  const [age, setAge] = React.useState(initial?.age != null ? String(initial.age) : '');
+  const [height, setHeight] = React.useState(
+    initial?.heightCm != null ? String(initial.heightCm) : '',
+  );
+  // Open when the player already saved one of the optional numbers, so they see them.
+  const [more, setMore] = React.useState(
+    initial?.weightKg != null || initial?.age != null || initial?.heightCm != null,
+  );
   const weightError = validateWeight(weight);
+  const ageError = validateRange('age', age);
+  const heightError = validateRange('heightCm', height);
+  const fieldError = Boolean(weightError || ageError || heightError);
   // An empty name or Skip saves this: the player's current name, else a guest name drawn once
   // for this visit (it is also the field's placeholder, so what you see is what you get).
   const [fallbackName] = React.useState(() => initial?.displayName?.trim() || randomGuestName());
   const skip = () => onSubmit({ ...PROFILE_DEFAULTS, displayName: fallbackName });
 
   const submit = () => {
-    if (weightError) return;
-    const out: ProfileInput = {
+    if (fieldError) {
+      setMore(true);
+      return;
+    }
+    onSubmit({
       displayName: profileName(name, fallbackName),
       goal,
       level,
       weeklyGoalMin: Number(weekly),
-    };
-    if (weight.trim() !== '') out.weightKg = Number(weight);
-    onSubmit(out);
+      ...optionalNumbers({ age, weightKg: weight, heightCm: height }),
+    });
   };
 
-  useHotkey('Enter', submit, !weightError);
+  useHotkey('Enter', submit, !fieldError);
   useHotkey('Escape', onBack);
   useHotkey('s', skip);
 
@@ -197,7 +211,7 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
               size="lg"
               trailingIcon={ArrowRight}
               keyHint="ENTER"
-              disabled={Boolean(weightError)}
+              disabled={fieldError}
             >
               CONTINUE
             </GameButton>
@@ -290,21 +304,47 @@ export function ProfileScreen({ initial, onSubmit, onBack }: ProfileScreenProps)
                 />
                 <p className="text-caption text-text-muted">Your weekly active-minute target.</p>
               </div>
-              <TextField
-                label="Weight (optional)"
-                type="number"
-                inputMode="decimal"
-                min={30}
-                max={250}
-                placeholder="70"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                error={weightError}
-                hint="For calorie estimates."
-                trailing={
-                  <span className="px-4 font-display-italic text-title text-text-muted">kg</span>
-                }
-              />
+              <div className="grid gap-4 sm:grid-cols-3">
+                <TextField
+                  label="Weight (optional)"
+                  type="number"
+                  inputMode="decimal"
+                  min={30}
+                  max={250}
+                  placeholder="70"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  error={weightError}
+                  hint="For calorie estimates."
+                  trailing={<span className="pr-3 text-caption text-text-muted">kg</span>}
+                />
+                <TextField
+                  label="Age (optional)"
+                  type="number"
+                  inputMode="numeric"
+                  min={10}
+                  max={100}
+                  placeholder="25"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  error={ageError}
+                  hint="For your coach only."
+                  trailing={<span className="pr-3 text-caption text-text-muted">yrs</span>}
+                />
+                <TextField
+                  label="Height (optional)"
+                  type="number"
+                  inputMode="numeric"
+                  min={100}
+                  max={250}
+                  placeholder="170"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  error={heightError}
+                  hint="For your coach only."
+                  trailing={<span className="pr-3 text-caption text-text-muted">cm</span>}
+                />
+              </div>
             </div>
           )}
         </div>
