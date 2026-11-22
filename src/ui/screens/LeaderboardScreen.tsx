@@ -9,6 +9,7 @@ import {
   Eyebrow,
   GameButton,
   GlassPanel,
+  NavBar,
   Screen,
   ScreenFooter,
   SegmentedControl,
@@ -17,6 +18,7 @@ import {
   ROUND_SEC,
   useHotkey,
   useNow,
+  type NavBarProps,
 } from '@/ui/kit';
 import { cn } from '@/ui/lib/utils';
 import { relativeTime } from '@/ui/screens/dashboardStats';
@@ -36,11 +38,11 @@ export interface LeaderboardScreenProps {
   qrSlot?: ReactNode;
   onBack(): void;
   onPlay?(): void;
+  /** The nav bar on top (current: 'leaderboard'); absent: no bar, as before. Never on the kiosk. */
+  nav?: NavBarProps;
 }
 /** Kiosk rows stop after this rank: two columns of four, with no scrolling on a projector. */
 const KIOSK_LAST_RANK = 11;
-/** Room for a fixed NavBar: it sets --app-nav-height on :root; until then this is 0. */
-const NAV_ROOM = { paddingTop: 'var(--app-nav-height, 0px)' };
 const PODIUM = [
   { rank: 2, tone: 'text-cyan', height: 'min-h-[300px]' },
   { rank: 1, tone: 'text-lime', height: 'min-h-[350px]' },
@@ -136,6 +138,7 @@ export function LeaderboardScreen({
   qrSlot,
   onBack,
   onPlay,
+  nav,
 }: LeaderboardScreenProps) {
   const reduce = useReducedMotion();
   // Ticks, so the kiosk's "POSTED" times don't freeze at "JUST NOW" (it stays open for an hour).
@@ -182,7 +185,6 @@ export function LeaderboardScreen({
         // Full screen on the projector: use the width a 1920 px screen has.
         kiosk && 'leaderboard-kiosk [&>main]:max-w-[1760px]',
       )}
-      style={kiosk ? undefined : NAV_ROOM}
       footer={
         // Always outside kiosk mode: an empty board must keep Back and the filters (QA Q3).
         !kiosk ? (
@@ -209,6 +211,7 @@ export function LeaderboardScreen({
         ) : null
       }
     >
+      {nav && !kiosk && <NavBar {...nav} />}
       {(!kiosk || loading || entries.length > 0) && (
         <header
           className={cn(
@@ -337,7 +340,7 @@ export function LeaderboardScreen({
                     </div>
                     <div
                       ref={listRef}
-                      className="max-h-[210px] overflow-y-auto overscroll-contain [scroll-padding:8px] [scrollbar-color:var(--na-text-dim)_transparent] [scrollbar-width:thin] [@media(min-height:1000px)]:max-h-[330px]"
+                      className="max-h-[210px] overflow-y-auto overscroll-contain [scroll-padding:8px] [scrollbar-color:var(--na-text-dim)_transparent] [scrollbar-width:thin] [@media(min-height:1000px)]:max-h-[250px]"
                       role="list"
                     >
                       {rows.map((entry, i) => {

@@ -19,6 +19,7 @@ import {
   CoachBanner,
   ScreenFooter,
   MoveFigure,
+  NavBar,
   ProgressRing,
   Screen,
   ROUND_SEC,
@@ -28,6 +29,7 @@ import {
   MODE_LABELS,
   ACCENT_TEXT,
   useHotkey,
+  type NavBarProps,
 } from '@/ui/kit';
 import { cn } from '@/ui/lib/utils';
 import { DashboardCharts } from '@/ui/screens/DashboardCharts';
@@ -56,6 +58,8 @@ export interface DashboardScreenProps {
   onPlayCoachPick?(config: SessionConfig): void;
   onLeaderboard(): void;
   onEditProfile?(): void;
+  /** The nav bar on top (current: 'progress'); absent: no bar, as before. */
+  nav?: NavBarProps;
 }
 const GOALS = {
   getMoving: { label: 'GET MOVING', icon: Footprints },
@@ -68,8 +72,6 @@ const GRADE_TONE = {
   B: 'text-amber border-amber/50 bg-amber/10',
   C: 'text-text-muted border-glass-border bg-glass-strong',
 };
-/** Room for a fixed NavBar: it sets --app-nav-height on :root; until then this is 0. */
-const NAV_ROOM = { paddingTop: 'var(--app-nav-height, 0px)' };
 export function DashboardScreen({
   profile,
   sessions,
@@ -79,6 +81,7 @@ export function DashboardScreen({
   onPlayCoachPick,
   onLeaderboard,
   onEditProfile,
+  nav,
 }: DashboardScreenProps) {
   const [initialNow] = useState(() => Date.now());
   const now = suppliedNow ?? initialNow;
@@ -106,7 +109,6 @@ export function DashboardScreen({
     <Screen
       backdrop="arena"
       className="dashboard-screen polish-screen"
-      style={NAV_ROOM}
       footer={
         sessions.length > 0 ? (
           <ScreenFooter
@@ -124,6 +126,7 @@ export function DashboardScreen({
         ) : null
       }
     >
+      {nav && <NavBar {...nav} />}
       {sessions.length > 0 && (
         <SectionTitle
           as="h1"
@@ -157,7 +160,16 @@ export function DashboardScreen({
         />
       )}
       {sessions.length === 0 ? (
-        <div className="dashboard-empty flex items-center justify-center">
+        <div
+          className={cn(
+            'flex items-center justify-center',
+            // .dashboard-empty is one screen tall; under the nav bar, one screen minus the bar
+            // (56 / 48 / 44 px) and the 32 px gap.
+            nav
+              ? 'min-h-[calc(100dvh-184px)] short:min-h-[calc(100dvh-176px)] tight:min-h-[calc(100dvh-172px)]'
+              : 'dashboard-empty',
+          )}
+        >
           <GlassPanel
             padding="none"
             className="flex w-full max-w-[560px] flex-col items-center gap-5 p-8 text-center tight:gap-2 tight:p-4 md:p-10 md:tight:p-4"
@@ -165,7 +177,8 @@ export function DashboardScreen({
             <h1 className="font-display-italic text-title text-text-muted">
               WELCOME, <span className="text-lime">{profile.displayName}</span>
             </h1>
-            <MoveFigure pose="jump" size={140} />
+            {/* Under the nav bar on short screens the figure gives way, so PLAY NOW stays in view. */}
+            <MoveFigure pose="jump" size={140} className={nav ? 'short:hidden' : undefined} />
             <h2 className="font-display-italic text-display-sm">NO ROUNDS YET</h2>
             <p className="text-body text-text-muted">
               Your first round takes {ROUND_SEC / 60} minutes.
