@@ -36,6 +36,28 @@ export function nextTier(latest: Pick<SessionFacts, 'difficulty' | 'accuracy'>):
   return TIERS[Math.min(TIERS.length - 1, Math.max(0, i + step))]!;
 }
 
+/** Today's plan: rounds by fitness level, each round 3 minutes (ROUND_SEC). */
+export const PLAN_ROUNDS: Record<string, number> = { beginner: 2, regular: 3, athlete: 3 };
+
+/**
+ * The numbers of today's plan, decided in code (the model only writes the line): calories from
+ * the game's own per-round estimates (they already use the player's weight on the device; the
+ * weight itself never reaches the model), minutes, and the share of the weekly goal.
+ */
+export function planNumbers(
+  level: string | undefined,
+  weeklyGoalMin: number | undefined,
+  sessions: Pick<SessionFacts, 'kcal'>[],
+): { rounds: number; kcal: number; minutes: number; weeklyShare: number | null } {
+  const rounds = PLAN_ROUNDS[level ?? ''] ?? 2;
+  const kcals = sessions.map((s) => n(s.kcal)).filter((k): k is number => k !== null && k > 0);
+  const perRound = kcals.length ? kcals.reduce((a, b) => a + b, 0) / kcals.length : 0;
+  const minutes = (rounds * ROUND_SEC) / 60;
+  const weeklyShare =
+    weeklyGoalMin && weeklyGoalMin > 0 ? Math.round((minutes / weeklyGoalMin) * 100) : null;
+  return { rounds, kcal: Math.round(perRound * rounds), minutes, weeklyShare };
+}
+
 /** The tier nearest to `d` (halves round up); anything that is not a number → regular. */
 export function snapTier(d: unknown): number {
   const x = typeof d === 'number' && Number.isFinite(d) ? d : 0.5;
@@ -89,7 +111,7 @@ Rules:
 - tip: one concrete, physical cue for the move they missed most (what to do with their body and when), or for keeping a clean round going if they missed nothing. If nothing was missed, don't mention misses at all.
 - next: pick the workout that balances their recent history, with the tier chosen above. durationSec is always 180. In treadmill mode never pick "legs".
 - reason: one short, motivating sentence on why that next session, in plain words (for example "you've earned the Athlete tier" or "let's give your shoulders a rest").
-- plan: one line starting "Today's plan:", a short session for the rest of today matched to their goal and fitness level: 2 or 3 rounds (each round is 3 minutes; name the workout and tier, the first one being the "next" session), "1 min rest" between rounds, then the estimated calories and active minutes. Estimate calories from the estimatedKcal of their recent rounds (their average per round times the number of rounds, rounded), and minutes as 3 per round; if weeklyGoalMinutes is given, say what share of it today's plan covers. No other numbers. At most 180 characters.`;
+- plan: one line starting "Today's plan:", the rest of today's session. Its numbers (rounds, calories, minutes, share of the weekly goal) are decided by the game and given at the end of the message: use exactly those, no other numbers. Round 1 is the "next" session; later rounds use different workouts that suit the player's goal, all in the same mode (in treadmill mode never legs), with "1 min rest" between rounds. If the goal is buildStrength and a round is arms or shoulders, suggest holding a light weight for that round (for example "a water bottle in each hand"); never suggest weights for legs or full body (jumps and squats). At most 180 characters.`;
 
 /** JSON schema for structured output; the server validates the result again anyway. */
 export const COACH_SCHEMA = {
