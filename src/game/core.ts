@@ -38,6 +38,8 @@ export interface Core {
   finished(): boolean;
   /** Lives left (T.LIVES at the start). */
   lives(): number;
+  /** The level the round is in (Stage.index, from 'stage' events), 0 before the first. */
+  stageIndex(): number;
   /** Game seconds of grace left after a lost life (no second life can go), else 0. */
   graceLeft(): number;
   /**
@@ -109,6 +111,9 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
   let lives: number = T.LIVES;
   let graceUntil = -Infinity;
   let outFor: number | null = null;
+  // Levels (level.stages): 'stage' as game time enters each one, level 1 on the first frame.
+  const stages = level.stages ?? [];
+  let nextStage = 0;
   let nextCue = 0;
   let firstUndecided = 0; // items before this index are all decided
   let streak = 0;
@@ -172,6 +177,7 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
     started: () => started,
     finished: () => finished,
     lives: () => lives,
+    stageIndex: () => (nextStage > 0 ? stages[nextStage - 1]!.index : 0),
     graceLeft: () => Math.max(0, graceUntil - elapsed),
     outOfLives: () => outFor !== null,
     pauseReason: () => pauseReason,
@@ -228,6 +234,9 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
       if (pauseReason) return;
 
       elapsed = Math.min(durationSec, elapsed + Math.min(Math.max(0, realDtSec), T.MAX_DT_SEC));
+      while (nextStage < stages.length && elapsed >= stages[nextStage]!.startSec) {
+        emit({ type: 'stage', stage: stages[nextStage++]! });
+      }
       while (nextCue < waves.length && arrivesAt(waves[nextCue]!) - elapsed <= T.CUE_LEAD_SEC) {
         const wave = waves[nextCue++]!;
         hooks.cue?.(wave);

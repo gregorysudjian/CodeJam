@@ -29,7 +29,7 @@ const CDP_PORT = 9334;
 const autopilot = readFileSync(join(here, 'autopilot.js'), 'utf8');
 
 const SCENARIOS = [
-  { name: 'demo level', demo: true, play: 'perfect', score: '4,750' },
+  { name: 'demo level', demo: true, play: 'perfect', score: '24,800' },
   { name: 'demo level, low impact', demo: true, low: true, play: 'perfect' },
   { name: 'END ROUND at 0:01', demo: true, play: 'perfect', endAt: -1 },
   { name: 'Legs, low impact', workout: 'legs', low: true, play: 'perfect' },
@@ -105,7 +105,8 @@ async function playOne(page, base, s) {
   await toSelectScreen(page);
   if (s.workout) await page.click(s.workout);
   await page.click(s.treadmill ? 'treadmill' : 'floor');
-  await page.click('45 s');
+  // Every round is the six levels (180 s); the length chips may be gone from the select screen.
+  await page.click('45 s').catch(() => {});
   await page.click('keyboard');
   await setLowImpact(page, !!s.low);
   await sleep(300);
@@ -127,10 +128,11 @@ async function playOne(page, base, s) {
     const c = level.config;
     if (c.lowImpact !== !!s.low) fails.push(`played lowImpact ${c.lowImpact} (picked ${!!s.low})`);
     if (c.mode !== (s.treadmill ? 'treadmill' : 'floor')) fails.push(`played mode ${c.mode}`);
-    if (c.durationSec !== 45) fails.push(`played ${c.durationSec} s (picked 45 s)`);
+    if (c.durationSec !== 180) fails.push(`played ${c.durationSec} s (every round is the six levels, 180 s)`);
+    if (c.durationSec === 180 && level.stages?.length !== 6) fails.push(`${level.stages?.length ?? 0} stages (want 6)`);
     if (s.workout && c.workout.toLowerCase() !== s.workout.replace(' ', '')) fails.push(`played ${c.workout}`);
   }
-  const dur = level?.config.durationSec ?? 45;
+  const dur = level?.config.durationSec ?? 180;
   const at = (e) => page.waitFor(`(window.__e2eTime ?? 0) >= ${e}`, (e + 30) * 1000);
   const paused = async () => /RESUME/.test(await page.text()) && !(await page.eval('document.body.dataset.game'));
 
@@ -232,10 +234,10 @@ try {
     const t0 = Date.now();
     let r;
     try {
-      // A round is at most 45 s of play plus set-up and checks: give up on it after 4 minutes.
+      // A round is at most 180 s of play plus set-up and checks: give up on it after 7 minutes.
       r = await Promise.race([
         playOne(page, server.base, s),
-        sleep(240000).then(() => Promise.reject(new Error('round took over 4 minutes'))),
+        sleep(420000).then(() => Promise.reject(new Error('round took over 7 minutes'))),
       ]);
     } catch (err) {
       const where = await page.eval(`(document.body.dataset.game ?? 'not running') + ' | ' + document.body.innerText.replace(/\\s+/g, ' ').slice(0, 160)`).catch(() => '?');

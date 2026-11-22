@@ -1,3 +1,6 @@
+import type { Stage } from '@/contracts';
+import { backdropFor } from './backdrop';
+import { ZONE_LOOK } from './look';
 import * as T from './tuning';
 
 /**
@@ -9,16 +12,51 @@ import * as T from './tuning';
 export const ZONES = ['city', 'tunnel', 'bridge', 'finale'] as const;
 export type Zone = (typeof ZONES)[number];
 
+/**
+ * The track as segments, one after another: where each starts (world distance; the first at
+ * -Infinity), which scenery it shows (an index into ZONES) and its palette.
+ */
 export interface ZonePlan {
-  /** World distance at which each zone of ZONES starts; the city starts at -Infinity. */
   readonly starts: readonly number[];
+  readonly scenery: readonly number[];
+  readonly looks: readonly T.ZoneLook[];
 }
 
-export function planZones(durationSec: number, distanceAt: (t: number) => number): ZonePlan {
+/**
+ * With `stages` (a round of levels): one segment per level, its backdrop from backdrop.ts.
+ * Without: city, tunnel, bridge, then the finale for the last FINALE_SEC.
+ */
+export function planZones(
+  durationSec: number,
+  distanceAt: (t: number) => number,
+  stages: readonly Stage[] = [],
+): ZonePlan {
+  if (stages.length > 1) {
+    const backdrops = stages.map((s) => backdropFor(s.index));
+    return {
+      starts: [-Infinity, ...stages.slice(1).map((s) => distanceAt(s.startSec))],
+      scenery: backdrops.map((b) => ZONES.indexOf(b.scenery)),
+      looks: backdrops.map((b) => b.look),
+    };
+  }
   const tunnelT = T.ZONE_TUNNEL_AT * durationSec;
   const bridgeT = T.ZONE_BRIDGE_AT * durationSec;
   const finaleT = Math.max(bridgeT, durationSec - T.FINALE_SEC);
-  return { starts: [-Infinity, distanceAt(tunnelT), distanceAt(bridgeT), distanceAt(finaleT)] };
+  return {
+    starts: [-Infinity, distanceAt(tunnelT), distanceAt(bridgeT), distanceAt(finaleT)],
+    scenery: [0, 1, 2, 3],
+    looks: ZONES.map((z) => ZONE_LOOK[z]),
+  };
+}
+
+/** True if any segment with scenery `kind` overlaps the world stretch [from, to). */
+export function sceneryInView(plan: ZonePlan, kind: number, from: number, to: number): boolean {
+  for (let i = 0; i < plan.starts.length; i++) {
+    if (plan.scenery[i] !== kind) continue;
+    const end = plan.starts[i + 1] ?? Infinity;
+    if (plan.starts[i]! < to && end > from) return true;
+  }
+  return false;
 }
 
 /** Index into ZONES of the zone at world distance `d`. */
@@ -34,13 +72,20 @@ const smooth = (k: number): number => {
 };
 
 /**
- * How present zone `i`'s scenery is at distance `d`, 0 to 1: it grows over ZONE_RISE after the
- * zone starts and shrinks over ZONE_RISE before it ends, so towers rise out of the ground at a
- * border instead of popping in.
+ * How present scenery `kind` (an index into ZONES) is at distance `d`, 0 to 1: it grows over
+ * ZONE_RISE after its stretch starts and shrinks over ZONE_RISE before it ends, so towers rise
+ * out of the ground at a border instead of popping in. Back-to-back segments with the same
+ * scenery (two levels in the city) are one stretch: nothing sinks and rises again between them.
  */
-export function zonePresence(plan: ZonePlan, i: number, d: number): number {
-  const start = plan.starts[i] ?? Infinity;
-  const end = plan.starts[i + 1] ?? Infinity;
+export function zonePresence(plan: ZonePlan, kind: number, d: number): number {
+  const i = zoneIndexAt(plan, d);
+  if (plan.scenery[i] !== kind) return 0;
+  let a = i;
+  while (a > 0 && plan.scenery[a - 1] === kind) a--;
+  let b = i + 1;
+  while (b < plan.starts.length && plan.scenery[b] === kind) b++;
+  const start = plan.starts[a]!;
+  const end = plan.starts[b] ?? Infinity;
   if (d < start || d >= end) return 0;
   return Math.min(smooth((d - start) / T.ZONE_RISE), smooth((end - d) / T.ZONE_RISE));
 }

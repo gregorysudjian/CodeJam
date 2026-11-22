@@ -30,7 +30,7 @@ export function create2DView(
   leads: T.Leads,
 ): GameView {
   const ctx = canvas.getContext('2d');
-  const track = createTrack(level.waves, level.config.durationSec);
+  const track = createTrack(level.waves, level.config.durationSec, level.stages);
   const verdicts = new Map<Item, Verdict>();
   const playerMotion = newMotion();
   const ghostMotion = newMotion();
@@ -41,6 +41,8 @@ export function create2DView(
   let gradeShown: Grade | null = null;
   let gradeT = Infinity;
   let lifeFlashT = Infinity; // seconds since a life was lost (red flash)
+  let levelShown = 0;
+  let levelT = Infinity; // seconds since "LEVEL n" appeared (< 0: waits for the intro's GO)
   const box: PixelBox = { cx: 0, cy: 0, h: 0 }; // reused by the screen-space plates
 
   const colorOf = (item: Item): string => {
@@ -227,6 +229,13 @@ export function create2DView(
           h * 0.035,
         );
 
+      if (f.stage > levelShown) {
+        levelShown = f.stage;
+        levelT = f.stage === 1 ? -T.INTRO_GO_SEC : 0;
+      }
+      levelT += realDt;
+      if (phase !== 'finished' && levelT >= 0 && levelT < LK.LEVEL_LABEL_SEC)
+        plate(endBannerBox(cssW, cssH, 1, box), `LEVEL ${levelShown}`, T.COLOR_LIME);
       if (f.outOfLives) plate(endBannerBox(cssW, cssH, 1, box), 'OUT OF LIVES', T.COLOR_HIT);
       else if (outcome) {
         // In the middle under GameHud's plates, as in 3D (it sat on the score plate).

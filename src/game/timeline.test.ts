@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Wave } from '@/contracts';
-import { createLeadBlend, createTrack, intensityAt, speedFor } from './timeline';
-import { LEAD_BLEND_PER_SEC, SPEED_MAX, SPEED_MIN, VISUAL_LEAD_SEC } from './tuning';
+import { createLeadBlend, createTrack, intensityAt, levelIntensityAt, speedFor } from './timeline';
+import {
+  LEAD_BLEND_PER_SEC,
+  LEVEL_SPEED_EASE_SEC,
+  SPEED_MAX,
+  SPEED_MIN,
+  VISUAL_LEAD_SEC,
+} from './tuning';
 
 const wave = (t: number, intensity: number): Wave => ({ t, intensity, spawns: [] });
 
@@ -81,5 +87,36 @@ describe('lead blend (mid-round input switch)', () => {
     expect(blend.get()).toEqual(pose);
     blend.step(pose, 1);
     expect(blend.get()).toEqual(pose);
+  });
+});
+
+describe('speed per level (level.stages)', () => {
+  const stages = [0, 30, 60].map((s, i) => ({ index: i + 1, startSec: s, endSec: s + 30 }));
+  // Each level's waves share one intensity (the generator); a wave near a boundary is absent.
+  const ws = [wave(5, 0.1), wave(20, 0.1), wave(35, 0.3), wave(50, 0.3), wave(65, 0.5)];
+
+  it('is flat within a level, whatever the waves around it', () => {
+    for (const t of [0, 10, 25, 29.9]) expect(levelIntensityAt(ws, stages, t)).toBe(0.1);
+    for (const t of [31 + LEVEL_SPEED_EASE_SEC, 45, 59.9])
+      expect(levelIntensityAt(ws, stages, t)).toBe(0.3);
+  });
+
+  it('eases to the next level over LEVEL_SPEED_EASE_SEC from the boundary, never overshooting', () => {
+    let prev = levelIntensityAt(ws, stages, 30);
+    expect(prev).toBe(0.1);
+    for (let t = 30; t <= 30 + LEVEL_SPEED_EASE_SEC; t += 0.05) {
+      const x = levelIntensityAt(ws, stages, t);
+      expect(x).toBeGreaterThanOrEqual(prev - 1e-12);
+      expect(x).toBeLessThanOrEqual(0.3 + 1e-12);
+      prev = x;
+    }
+    expect(levelIntensityAt(ws, stages, 30 + LEVEL_SPEED_EASE_SEC)).toBe(0.3);
+  });
+
+  it('the track uses it: objects and floor still agree (distance is the integral of speed)', () => {
+    const track = createTrack(ws, 90, stages);
+    expect(track.speedAt(45)).toBe(speedFor(0.3));
+    const d = track.distanceAt(40) - track.distanceAt(38);
+    expect(d).toBeCloseTo(2 * speedFor(0.3), 1);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Lane, Level, ObstacleKind, PlayMode, SessionConfig, WorkoutId } from '@/contracts';
-import { effortAt, generateLevel, mixFor, completeConfig } from './level';
+import { generateLevel, levelAt, levelIntensity, mixFor, completeConfig } from './level';
 import * as T from './tuning';
 
 const WORKOUT_IDS: WorkoutId[] = ['legs', 'arms', 'shoulders', 'fullBody'];
@@ -8,7 +8,8 @@ const MODES: PlayMode[] = ['floor', 'treadmill'];
 const DIFFICULTIES = [0, 0.5, 1];
 /** The coach (src/data/coach.ts) recommends any difficulty in steps of 0.1: these are swept too. */
 const COACH_STEPS = [0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9];
-const DURATIONS = [45, 90, 180];
+// Every round is the six levels (180 s), whatever length was picked: the sweep plays that one.
+const DURATIONS = [T.ROUND_SEC];
 const SEEDS = Array.from({ length: 40 }, (_, i) => i * 7919 + 1);
 const EPS = 1e-9;
 // The contract's numbers, written out so a retune in tuning.ts cannot quietly break them.
@@ -218,7 +219,6 @@ describe('fairness rules (CONTRACTS.md "Level rules"), every workout × mode × 
               if (s.holdSec < T.HOLD_MIN_SEC || s.holdSec > T.HOLD_MAX_SEC.atD1)
                 at(w, `hold ${s.holdSec}`);
               if (w.t < T.WARMUP_END * level.config.durationSec) at(w, 'hold in the warm-up');
-              if (w.t >= T.PEAK_END * level.config.durationSec) at(w, 'hold in the cool-down');
             }
           }
         }
@@ -254,7 +254,7 @@ describe('config', () => {
     expect(c).toEqual({
       workout: 'legs',
       mode: 'floor',
-      durationSec: 90,
+      durationSec: 180, // every round is the six levels, whatever length was picked
       difficulty: 0.8,
       lowImpact: true,
       seed: 42,
@@ -377,15 +377,60 @@ describe('workout character', () => {
   });
 });
 
-describe('round curve and difficulty', () => {
-  it('effort rises from warm-up to peak and falls in the cool-down', () => {
-    expect(effortAt(0)).toBeLessThan(effortAt(T.WARMUP_END));
-    expect(effortAt(T.WARMUP_END)).toBeLessThan(effortAt(T.BUILD_END));
-    expect(effortAt(T.PEAK_END)).toBe(1);
-    expect(effortAt(1)).toBeLessThan(effortAt(T.PEAK_END));
+describe('levels and tiers', () => {
+  const LEVEL_RULES = 'six levels of 30 s, 180 s in all, whatever round length was picked';
+  it(LEVEL_RULES, () => {
+    for (const durationSec of [45, 90, 180, 600]) {
+      const lv = generateLevel({ workout: 'arms', mode: 'floor', durationSec, seed: 3 });
+      expect(lv.config.durationSec).toBe(180);
+      expect(lv.stages).toEqual(
+        Array.from({ length: 6 }, (_, i) => ({
+          index: i + 1,
+          startSec: i * 30,
+          endSec: i * 30 + 30,
+        })),
+      );
+    }
   });
 
-  it('waves are denser and faster at the peak than in the warm-up', () => {
+  it('the portal: no wave, hold included, within 2 s of a level boundary (every level swept)', () => {
+    const problems: string[] = [];
+    for (const level of allLevels())
+      for (const w of level.waves)
+        for (const s of level.stages!.slice(1)) {
+          const b = s.startSec;
+          if (
+            w.t + holdOf(w) > b - T.PORTAL_BREATHER_SEC + EPS &&
+            w.t < b + T.PORTAL_BREATHER_SEC - EPS
+          )
+            problems.push(`${label(level)} @${w.t}: within the portal at ${b}`);
+        }
+    expect(problems).toEqual([]);
+  });
+
+  it('speed is flat within a level and higher in every level (every level swept)', () => {
+    const problems: string[] = [];
+    for (const level of allLevels()) {
+      const d = level.config.difficulty!;
+      for (const w of level.waves)
+        if (w.intensity !== levelIntensity(levelAt(w.t), d))
+          problems.push(`${label(level)} @${w.t}: intensity ${w.intensity}`);
+    }
+    expect(problems).toEqual([]);
+    for (const d of [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1])
+      for (let i = 2; i <= T.LEVELS; i++)
+        expect(levelIntensity(i, d)).toBeGreaterThan(levelIntensity(i - 1, d));
+  });
+
+  it('beginner level 1 is the old slowest, regular a little faster, athlete level 6 the old top', () => {
+    expect(levelIntensity(1, 0)).toBe(0.1);
+    expect(levelIntensity(1, 0.5)).toBeGreaterThan(levelIntensity(1, 0));
+    expect(levelIntensity(1, 0.5) - levelIntensity(1, 0)).toBeLessThanOrEqual(0.1);
+    expect(levelIntensity(6, 1)).toBe(1);
+    for (const d of [0, 0.25, 0.5, 0.75, 1]) expect(levelIntensity(6, d)).toBeLessThanOrEqual(1);
+  });
+
+  it('level 1 opens gently: no holds, no combos, wider gaps than later levels', () => {
     for (const seed of SEEDS.slice(0, 10)) {
       const { waves } = generateLevel({
         workout: 'fullBody',
@@ -393,23 +438,22 @@ describe('round curve and difficulty', () => {
         durationSec: 180,
         seed,
       });
-      const inPhase = (a: number, b: number) =>
-        waves.filter((w) => w.t >= a * 180 && w.t < b * 180);
-      const warm = inPhase(0, T.WARMUP_END);
-      const peak = inPhase(T.BUILD_END, T.PEAK_END);
-      expect(peak.length / (T.PEAK_END - T.BUILD_END)).toBeGreaterThan(warm.length / T.WARMUP_END);
-      expect(Math.min(...peak.map((w) => w.intensity))).toBeGreaterThan(
-        Math.max(...warm.map((w) => w.intensity)),
+      const l1 = waves.filter((w) => w.t < T.LEVEL_SEC);
+      expect(l1.some((w) => w.spawns.length > 1 || holdOf(w) > 0)).toBe(false);
+      const perSec = (ws: typeof waves, sec: number) => ws.length / sec;
+      const later = waves.filter((w) => w.t >= 2 * T.LEVEL_SEC && w.t < 3 * T.LEVEL_SEC);
+      expect(perSec(l1, T.LEVEL_SEC - T.FIRST_WAVE_SEC)).toBeLessThanOrEqual(
+        perSec(later, T.LEVEL_SEC - 2 * T.PORTAL_BREATHER_SEC) + EPS,
       );
     }
   });
 
-  it('higher difficulty means more waves', () => {
+  it('a higher tier means more waves (the tier sets density only)', () => {
     const count = (difficulty: number) =>
       SEEDS.reduce(
         (n, seed) =>
           n +
-          generateLevel({ workout: 'fullBody', mode: 'floor', durationSec: 90, difficulty, seed })
+          generateLevel({ workout: 'fullBody', mode: 'floor', durationSec: 180, difficulty, seed })
             .waves.length,
         0,
       );
@@ -417,7 +461,6 @@ describe('round curve and difficulty', () => {
     expect(count(0.5)).toBeGreaterThan(count(0));
   });
 });
-
 describe('coach compatibility: every difficulty step the coach can recommend', () => {
   // The coach recommends workout, mode, 45/90/180 s and difficulty 0 to 1 in steps of 0.1
   // (never Legs on the treadmill). Fairness is in the sweep above; here: each step is no easier
@@ -479,13 +522,13 @@ describe('coach compatibility: every difficulty step the coach can recommend', (
 describe('demo level', () => {
   const demo = generateLevel(T.DEMO_CONFIG);
 
-  it('is the same every time and lasts 45 s', () => {
+  it('is the same every time and is the six levels (180 s)', () => {
     expect(generateLevel(T.DEMO_CONFIG)).toEqual(demo);
     expect(demo.config).toEqual(completeConfig(T.DEMO_CONFIG));
     expect(demo.config).toMatchObject({
       workout: 'fullBody',
       mode: 'floor',
-      durationSec: 45,
+      durationSec: 180,
       seed: T.DEMO_SEED,
     });
   });

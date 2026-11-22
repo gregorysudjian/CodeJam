@@ -7,7 +7,15 @@ import { introCamera, type CameraPose } from './intro';
 import * as L from './look';
 import type { Quality } from './quality';
 import * as T from './tuning';
-import { ZONES, zoneIndexAt, zoneMix, zonePresence, type ZoneMix, type ZonePlan } from './world';
+import {
+  sceneryInView,
+  ZONES,
+  zoneIndexAt,
+  zoneMix,
+  zonePresence,
+  type ZoneMix,
+  type ZonePlan,
+} from './world';
 
 /** A neon colour pushed above 1.0 so only neon parts pass the bloom threshold. */
 export function neon(hex: number, boost = T.NEON_BOOST): THREE.Color {
@@ -218,11 +226,8 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   const BRIDGE = zoneIndex('bridge');
   const FINALE = zoneIndex('finale');
   /** True if zone i reaches anywhere into the recycled stretch at this distance. */
-  const zoneInView = (i: number, distance: number): boolean => {
-    const start = plan.starts[i] ?? Infinity;
-    const end = plan.starts[i + 1] ?? Infinity;
-    return start < worldAt(distance, zFar) && end > worldAt(distance, zNear);
-  };
+  const zoneInView = (i: number, distance: number): boolean =>
+    sceneryInView(plan, i, worldAt(distance, zNear), worldAt(distance, zFar));
 
   /* City and finale: neon gates the runner passes through. */
   const archSpan = T.ARCH_COUNT * T.ARCH_SPACING;
@@ -459,7 +464,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   resize();
 
   /* Zone colours, blended at the camera. */
-  const looks = ZONES.map((z) => L.ZONE_LOOK[z]);
+  const looks = plan.looks; // per segment (world.ts; per level from backdrop.ts)
   const colA = new THREE.Color();
   const colB = new THREE.Color();
   const mixed: ZoneMix = { a: 0, b: 0, k: 0 };
@@ -678,10 +683,11 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
         for (let i = 0; i < tunnelCount; i++) {
           const z = recycledZ(i, seg, distance);
           const d = worldAt(distance, z);
-          const inside = zoneIndexAt(plan, d) === TUNNEL;
+          const inside = plan.scenery[zoneIndexAt(plan, d)] === TUNNEL;
           // Segment from z to z - seg, so the mouth starts exactly at the border.
           const zc = z - seg / 2;
-          const show = inside && zoneIndexAt(plan, worldAt(distance, z - seg)) === TUNNEL;
+          const show =
+            inside && plan.scenery[zoneIndexAt(plan, worldAt(distance, z - seg))] === TUNNEL;
           for (let s = 0; s < 3; s++) {
             if (!show) {
               tunnelWalls.setMatrixAt(i * 3 + s, hidden);

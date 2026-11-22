@@ -1,13 +1,24 @@
-import type { Lane, Level, MoveType, ObstacleKind, SessionConfig, Spawn, Wave } from '@/contracts';
+import type {
+  Lane,
+  Level,
+  MoveType,
+  ObstacleKind,
+  SessionConfig,
+  Spawn,
+  Stage,
+  Wave,
+} from '@/contracts';
 import * as T from './tuning';
 
 /**
  * Level generator. Pure and seeded: the same complete config always gives the same level.
  *
- * Shape of a round: effort follows T.CURVE (warm-up, build, peak, cool-down). Effort and
- * difficulty set the gap between waves; effort also sets intensity, which the game maps
- * to speed. The kind of each wave is drawn from the workout's mix, then the fairness rules
- * in CONTRACTS.md are enforced by construction (and checked in level.test.ts).
+ * Shape of a round: T.LEVELS levels of T.LEVEL_SEC in a row (level.stages). The tier
+ * (difficulty) sets the gap between waves; the level sets the intensity, which the game maps to
+ * speed, flat within a level and higher in every level. No wave comes within
+ * T.PORTAL_BREATHER_SEC of a level boundary (the portal), and level 1 is the warm-up: longer
+ * gaps, no holds, no combos. The kind of each wave is drawn from the workout's mix, then the
+ * fairness rules in CONTRACTS.md are enforced by construction (and checked in level.test.ts).
  */
 
 export function mulberry32(seed: number): () => number {
@@ -26,20 +37,28 @@ const lerp = (a: number, b: number, k: number): number => a + (b - a) * k;
 const round2 = (x: number): number => Math.round(x * 100) / 100;
 const LANES: readonly Lane[] = [-1, 0, 1];
 
-/** Effort (0 to 1) at fraction `u` of the round, linear between the T.CURVE points. */
-export function effortAt(u: number): number {
-  const pts = T.CURVE;
-  if (u <= pts[0]![0]) return pts[0]![1];
-  for (let i = 1; i < pts.length; i++) {
-    const [u1, e1] = pts[i]!;
-    if (u <= u1) {
-      const [u0, e0] = pts[i - 1]!;
-      return lerp(e0, e1, (u - u0) / (u1 - u0));
-    }
-  }
-  return pts[pts.length - 1]![1];
+/** Wave intensity of level index (1-based) at tier d: flat within a level, rising per level. */
+export function levelIntensity(index: number, d: number): number {
+  const b = T.TIER_SPEED_BASE;
+  const base =
+    d <= 0.5 ? lerp(b.beginner, b.regular, d / 0.5) : lerp(b.regular, b.athlete, (d - 0.5) / 0.5);
+  return round2(clamp01(base + (index - 1) * T.LEVEL_SPEED_STEP));
 }
 
+/** The level (1-based) round time 	 falls in. */
+export function levelAt(t: number): number {
+  return Math.min(T.LEVELS, Math.max(1, Math.floor(t / T.LEVEL_SEC) + 1));
+}
+
+/** The round's levels, back to back (CONTRACTS.md Stage). */
+export function stagesFor(durationSec: number): Stage[] {
+  const n = Math.max(1, Math.ceil(durationSec / T.LEVEL_SEC));
+  return Array.from({ length: n }, (_, i) => ({
+    index: i + 1,
+    startSec: i * T.LEVEL_SEC,
+    endSec: Math.min(durationSec, (i + 1) * T.LEVEL_SEC),
+  }));
+}
 /** Fills difficulty, lowImpact and seed (CONTRACTS.md). */
 export function completeConfig(config: SessionConfig): Required<SessionConfig> {
   const seed =
@@ -52,7 +71,7 @@ export function completeConfig(config: SessionConfig): Required<SessionConfig> {
   return {
     workout: config.workout,
     mode: config.mode,
-    durationSec: config.durationSec,
+    durationSec: T.ROUND_SEC, // every level in a row, whatever was picked
     difficulty: clamp01(config.difficulty ?? T.DEFAULT_DIFFICULTY),
     lowImpact: config.lowImpact ?? false,
     seed,
@@ -100,11 +119,10 @@ export function generateLevel(config: SessionConfig): Level {
     return mix[mix.length - 1]![0];
   };
 
-  const gapEasy = lerp(T.GAP_EASY.atD0, T.GAP_EASY.atD1, d);
-  const gapHard = lerp(T.GAP_HARD.atD0, T.GAP_HARD.atD1, d);
+  const gap = lerp(T.TIER_GAP.atD0, T.TIER_GAP.atD1, d); // the tier sets the density
   const holdMax = lerp(T.HOLD_MAX_SEC.atD0, T.HOLD_MAX_SEC.atD1, d);
   const comboChance = lerp(T.COMBO_CHANCE.atD0, T.COMBO_CHANCE.atD1, d);
-  const intensityScale = lerp(T.INTENSITY_AT_EASIEST, 1, d);
+  const stages = stagesFor(dur);
 
   const waves: Wave[] = [];
   let prevEnd = -Infinity; // previous wave's t plus its hold
@@ -120,13 +138,20 @@ export function generateLevel(config: SessionConfig): Level {
   const reachableLanes = (): Lane[] =>
     LANES.filter((l) => maybe.every((p) => Math.abs(l - p) <= 1));
 
-  // Holds belong to the build and the peak: none in the warm-up, and none in the cool-down,
-  // which eases off and ends the round on something a first-time player clears. The same random
-  // numbers are drawn either way, so a level without a cool-down hold is exactly as it was.
-  const holdFor = (kind: 'beam' | 'crate', warmup: boolean, t: number): number => {
+  // No holds in level 1, the warm-up.
+  const holdFor = (kind: 'beam' | 'crate', warmup: boolean): number => {
     if (warmup || rand() >= T.HOLD_CHANCE[workout][kind]) return 0;
-    const sec = Math.round(lerp(T.HOLD_MIN_SEC, holdMax, rand()) * 10) / 10;
-    return t >= T.PEAK_END * dur ? 0 : sec;
+    return Math.round(lerp(T.HOLD_MIN_SEC, holdMax, rand()) * 10) / 10;
+  };
+  /** Moved past a portal if the wave (with its hold) would come within the breather of one. */
+  const clearOfPortals = (t: number, hold: number): number => {
+    for (const s of stages) {
+      if (s.index === 1) continue;
+      const b = s.startSec;
+      if (t + hold > b - T.PORTAL_BREATHER_SEC && t < b + T.PORTAL_BREATHER_SEC)
+        t = b + T.PORTAL_BREATHER_SEC;
+    }
+    return t;
   };
 
   const orbSpawn = (lane: Lane): Spawn => ({
@@ -145,11 +170,11 @@ export function generateLevel(config: SessionConfig): Level {
 
   for (;;) {
     const first = waves.length === 0;
-    const effortBefore = first ? 0 : effortAt(prevEnd / dur);
+    const inLevel1 = !first && prevEnd < T.LEVEL_SEC;
     let t = first
       ? T.FIRST_WAVE_SEC
-      : prevEnd + lerp(gapEasy, gapHard, effortBefore) + rand() * T.GAP_JITTER_SEC;
-    const warmup = t < T.WARMUP_END * dur;
+      : prevEnd + gap + (inLevel1 ? T.LEVEL1_EXTRA_GAP_SEC : 0) + rand() * T.GAP_JITTER_SEC;
+    const warmup = t < T.LEVEL_SEC; // level 1
 
     // Kind: from the mix, re-rolled once if it would be the third in a row.
     let kind = drawKind();
@@ -158,11 +183,10 @@ export function generateLevel(config: SessionConfig): Level {
     // Spacing rules.
     if (!first) {
       t = Math.max(t, prevEnd + (prevHadHold ? T.MIN_GAP_AFTER_HOLD_SEC : T.MIN_GAP_SEC));
-      if (t < T.WARMUP_END * dur) t = Math.max(t, prevEnd + T.MIN_GAP_WARMUP_SEC);
+      if (t < T.LEVEL_SEC) t = Math.max(t, prevEnd + T.MIN_GAP_WARMUP_SEC);
     }
     if (kind === 'hurdle') t = Math.max(t, lastBeamEnd + T.MIN_GAP_BEAM_TO_HURDLE_SEC);
     if (kind === 'beam') t = Math.max(t, lastBeamEnd + T.MIN_GAP_SQUAT_TO_SQUAT_SEC);
-    t = round2(t);
 
     // Spawns.
     const spawns: Spawn[] = [];
@@ -188,16 +212,18 @@ export function generateLevel(config: SessionConfig): Level {
       }
       spawns.push(orbSpawn(lane));
     } else {
-      if (kind === 'beam' || kind === 'crate') hold = holdFor(kind, warmup, t);
+      if (kind === 'beam' || kind === 'crate') hold = holdFor(kind, warmup);
       const spawn: Spawn = { kind, lanes: [...LANES], requires: REQUIRES[kind] };
       if (hold > 0) spawn.holdSec = hold;
       spawns.push(spawn);
     }
+    // The portal: nothing arrives within the breather of a level boundary.
+    t = round2(clearOfPortals(t, hold));
 
     // Every object is judged before the round ends.
     if (t + hold + T.END_MARGIN_SEC > dur) break;
 
-    waves.push({ t, intensity: round2(clamp01(effortAt(t / dur) * intensityScale)), spawns });
+    waves.push({ t, intensity: levelIntensity(levelAt(t), d), spawns });
     prevEnd = t + hold;
     prevHadHold = hold > 0;
     if (kind === 'beam') lastBeamEnd = prevEnd;
@@ -205,5 +231,5 @@ export function generateLevel(config: SessionConfig): Level {
     if (recent.length > 2) recent.shift();
   }
 
-  return { config: full, waves };
+  return { config: full, waves, stages };
 }

@@ -19,21 +19,25 @@ export const MIX: Record<WorkoutId, Record<ObstacleKind, number>> = {
  */
 export const LOW_IMPACT_SHARE: Partial<Record<ObstacleKind, number>> = { block: 0.5, orb: 0.5 };
 
-/* ── Round curve: warm-up, build, peak, cool-down ── */
-export const WARMUP_END = 0.2; // fraction of the round
-export const BUILD_END = 0.5;
-export const PEAK_END = 0.85;
-/** Effort (0 to 1) over the round, as [fraction of round, effort] points. */
-export const CURVE: readonly (readonly [number, number])[] = [
-  [0, 0.15],
-  [WARMUP_END, 0.35],
-  [BUILD_END, 0.8],
-  [0.7, 1],
-  [PEAK_END, 1],
-  [1, 0.3],
-];
-/** Intensity (speed) at difficulty 0 is the curve times this; at difficulty 1, the curve itself. */
-export const INTENSITY_AT_EASIEST = 0.7;
+/* ── Levels: a round is LEVELS levels of LEVEL_SEC, played in a row (CONTRACTS.md Stage) ── */
+export const LEVELS = 6;
+export const LEVEL_SEC = 30;
+export const ROUND_SEC = LEVELS * LEVEL_SEC; // every round's durationSec, whatever was picked
+/**
+ * The tier (config.difficulty: 0 beginner, 0.5 regular, 1 athlete, lerped in between) sets how
+ * many obstacles: the gap between waves. The level sets the speed: wave intensity is
+ * TIER_SPEED_BASE + (level - 1) × LEVEL_SPEED_STEP, flat within a level. Beginner level 1 is the
+ * old slowest (0.1), regular level 1 a little faster, athlete level 6 exactly the old top (1).
+ */
+export const TIER_SPEED_BASE = { beginner: 0.1, regular: 0.16, athlete: 0.3 };
+export const LEVEL_SPEED_STEP = 0.14;
+/** Gap between waves (end of one, with its hold, to the next t), by tier, before jitter. */
+export const TIER_GAP = { atD0: 2.3, atD1: 1.35 };
+/** Level 1 opens gently: a longer gap, no holds and no combos (it is the warm-up). */
+export const LEVEL1_EXTRA_GAP_SEC = 0.5;
+export const WARMUP_END = 1 / LEVELS; // fraction of the round: level 1
+/** The portal between two levels: no wave (with its hold) within this long of a boundary. */
+export const PORTAL_BREATHER_SEC = 2;
 
 /* ── Spacing (CONTRACTS.md "Level rules") ── */
 export const FIRST_WAVE_SEC = 4; // never earlier
@@ -45,10 +49,6 @@ export const MIN_GAP_BEAM_TO_HURDLE_SEC = 1.5; // stand up before jumping
 // levels have none closer than 1.9 s, so they are unchanged (demo.test.ts pins them).
 export const MIN_GAP_SQUAT_TO_SQUAT_SEC = 1.8;
 export const MIN_GAP_AFTER_HOLD_SEC = 1.3; // a breather after a held beam or crate
-// Gap at effort 0 and at effort 1, each at difficulty 0 and 1. Gaps are measured from the
-// end of the previous wave (its t plus any hold) to the next wave's t.
-export const GAP_EASY = { atD0: 2.6, atD1: 2.0 };
-export const GAP_HARD = { atD0: 1.7, atD1: MIN_GAP_SEC };
 export const GAP_JITTER_SEC = 0.3;
 export const END_MARGIN_SEC = 1.0; // every object is judged before the round ends
 
@@ -67,16 +67,17 @@ export const ALTERNATE_REACH_CHANCE = 0.8; // treadmill orbs switch arm, for fas
 /* ── The demo round (docs/DEMO.md): the same level every time, so the Player can practise it ── */
 /**
  * With ?demo=1 in the URL, generateLevel (index.ts) plays DEMO_CONFIG for every round; the
- * app's low-impact toggle still applies (same seed, no hurdles). Seed 41492 was searched against both test files: every move at least
- * twice (low-impact too), three easy waves at each end, no hurdle right after a beam
- * (demo.test.ts), and all five objects in the first five waves with a held squat and a
+ * app's low-impact toggle still applies (same seed, no hurdles). Like every round it is the six
+ * levels (180 s). Seed 11475 was searched against both test files: every move at least twice
+ * (low impact too), three easy waves with no hold at each end, no hurdle right after a beam in
+ * level 1 (demo.test.ts), and all five objects in the first five waves with a held squat and a
  * block-and-orb combo (level.test.ts). If the generator changes, search again.
  */
-export const DEMO_SEED = 41492;
+export const DEMO_SEED = 11475;
 export const DEMO_CONFIG: SessionConfig = {
   workout: 'fullBody',
   mode: 'floor',
-  durationSec: 45,
+  durationSec: ROUND_SEC,
   difficulty: 0.5,
   seed: DEMO_SEED,
 };

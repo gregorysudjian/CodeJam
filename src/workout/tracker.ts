@@ -48,6 +48,7 @@ export function createSessionTracker(
   let cleared = 0;
   let hit = 0;
   let outOfLives = false; // the round ended on the last life ('finished', reason 'outOfLives')
+  let levelReached = 1; // the highest Stage.index entered ('stage' events; 1 if none came)
   // Live calories count time between the first event and now, minus pauses.
   let runningSince: number | null = null;
   let activeMs = 0;
@@ -94,6 +95,9 @@ export function createSessionTracker(
             runningSince = null;
           }
           break;
+        case 'stage':
+          levelReached = Math.max(levelReached, e.stage.index);
+          break;
         case 'resumed':
         case 'cue':
           break;
@@ -113,6 +117,7 @@ export function createSessionTracker(
         accuracy: cleared + hit === 0 ? 0 : cleared / (cleared + hit),
         missed: { ...missed },
         activeSec,
+        levelReached,
         outOfLives,
       };
     },

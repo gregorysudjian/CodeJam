@@ -69,6 +69,25 @@ export const LIFE_FLASH = { peak: 0.35, reducedPeak: 0.2, sec: 0.5 };
 export const GRACE_BLINK_HZ = 2.5;
 export const OUT_STOP = 3;
 
+/* ── Levels (view3d.ts, backdrop.ts for which backdrop each level has) ── */
+// The portal at each level boundary: a ring the runner passes through (radius: the track's half
+// width plus `margin`; its centre `lift` × radius up, so it stands on the floor), white neon (no
+// move colour), with a faint veil in the next level's horizon colour. Crossing it: a white
+// flash (`flash`, softer with reduced motion), the milestone shockwave, and "LEVEL n" big in
+// the middle for LEVEL_LABEL_SEC (level 1 after the intro's GO).
+export const PORTAL = {
+  color: 0xf4f7fb,
+  glow: 0.55, // 0.9 bloomed into a white glare around the whole track
+  tube: 0.16,
+  margin: 1.3,
+  lift: 0.72,
+  veil: 0.16,
+  flash: 0.3,
+  reducedFlash: 0.15,
+  flashSec: 0.45,
+};
+export const LEVEL_LABEL_SEC = 1.8;
+
 /* ── Reduced motion (scene.ts) ── */
 // A milestone brightens the lane lines and horizon; with prefers-reduced-motion, this much of it.
 export const REDUCED_FLASH = 0.4;
@@ -152,7 +171,39 @@ export const BLOOM_SCALE = 0.5;
  * the scenery around it. City towers far off to the sides keep their neon caps; the lime lanes
  * and city gates are the brand. Hues come from the sky glow and particles.
  */
-export const ZONE_LOOK: Record<'city' | 'tunnel' | 'bridge' | 'finale', ZoneLook> = {
+export const ZONE_LOOK: Record<
+  'city' | 'tunnel' | 'bridge' | 'finale' | 'cityDawn' | 'bridgeNight',
+  ZoneLook
+> = {
+  // Level 4 (backdrop.ts): the city at dawn, a soft rose-and-gold sky and pale floor. The
+  // magenta stays in the sky glow, far from the crates on the track.
+  cityDawn: {
+    bg: 0x1d1222, // a little lighter and warmer than the night levels: still dark under the track
+    fogNear: 34,
+    fogFar: 115,
+    horizon: 0xffb38a,
+    horizonGain: 0.55,
+    floor: 0xffe4d6,
+    accentA: 0xffd6a0, // far tower caps, warm
+    accentB: 0xb9c7ff,
+    arch: 0xffe9d6,
+    particle: 0xffe0c2,
+    particleRate: 0.9,
+  },
+  // Level 5: the bridge at night, deep indigo with a cold moonlit horizon and starry particles.
+  bridgeNight: {
+    bg: 0x02040c,
+    fogNear: 30,
+    fogFar: 120,
+    horizon: 0x8aa8ff,
+    horizonGain: 0.26,
+    floor: 0x3e5a8c,
+    accentA: 0x9fb4cc,
+    accentB: 0xdfeeff,
+    arch: 0xdfeeff,
+    particle: 0xf2f6ff,
+    particleRate: 0.6,
+  },
   city: {
     bg: 0x07090d,
     fogNear: 30,

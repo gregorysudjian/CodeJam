@@ -22,28 +22,29 @@ function perfect(level: Level): SessionSummary {
 describe('the demo round the docs quote', () => {
   const level = generateLevel({ ...DEMO_CONFIG });
 
-  it('is Full body, floor, 45 s, seed 41492', () => {
+  it('is Full body, floor, the six levels (180 s), seed 11475', () => {
     expect(level.config).toMatchObject({
       workout: 'fullBody',
       mode: 'floor',
-      durationSec: 45,
-      seed: 41492,
+      durationSec: 180,
+      seed: 11475,
     });
   });
 
-  it('scores 4,750 at 100% when played perfectly ("Beat 4,750 to take the crown")', () => {
+  // Was 4,750 for the 45 s demo (seed 41492): docs/DEMO.md and SUBMISSION.md quote that number.
+  it('scores 24,800 at 100% when played perfectly', () => {
     const s = perfect(level);
-    expect(s.score).toBe(4750);
+    expect(s.score).toBe(24800);
     expect(s.accuracy).toBe(1);
     expect(s.hit).toBe(0);
   });
 
-  it('is about 7 kcal for a 70 kg player (DEMO.md: MET 8 × 3.5 × 70 ÷ 200 × 0.75 min)', () => {
-    expect(perfect(level).kcal).toBeCloseTo(7.35, 1);
+  it('is about 29 kcal for a 70 kg player (MET 8 × 3.5 × 70 ÷ 200 × 3 min; was 7 for 45 s)', () => {
+    expect(perfect(level).kcal).toBeCloseTo(29.4, 1);
   });
 });
 
-describe('one board per round length (DEMO.md "Doesn\'t a longer round always win?")', () => {
+describe('one board for every round (DEMO.md "Doesn\'t a longer round always win?")', () => {
   const mean = (config: SessionConfig, seeds: number) => {
     let sum = 0;
     for (let seed = 1; seed <= seeds; seed++)
@@ -51,11 +52,9 @@ describe('one board per round length (DEMO.md "Doesn\'t a longer round always wi
     return sum / seeds;
   };
 
-  it('a perfect 180 s Full body floor round scores about 6× a perfect 45 s one', () => {
+  it('every round is the six levels now, so any length picked plays and scores the same', () => {
     const base = { workout: 'fullBody', mode: 'floor', difficulty: 0.5 } as const;
-    const ratio = mean({ ...base, durationSec: 180 }, 20) / mean({ ...base, durationSec: 45 }, 20);
-    expect(ratio).toBeGreaterThan(5);
-    expect(ratio).toBeLessThan(7);
+    expect(mean({ ...base, durationSec: 45 }, 5)).toBe(mean({ ...base, durationSec: 180 }, 5));
   });
 });
 
