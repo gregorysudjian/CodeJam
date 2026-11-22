@@ -4,7 +4,8 @@
 //
 //   node scripts/levels-qa.mjs                          # starts a dev server on port 5175
 //   node scripts/levels-qa.mjs --url http://localhost:5173/
-//   node scripts/levels-qa.mjs --only pause             # lives | clean | pause
+//   node scripts/levels-qa.mjs --only pause             # lives | clean | pause | matrix
+//   node scripts/levels-qa.mjs --only matrix            # every tier x mode, fps per level (~20 min)
 //   node scripts/levels-qa.mjs --headless
 //
 // Checks:
@@ -92,8 +93,8 @@ const HOOK = `(() => {
   }
 })()`;
 
-async function toSelect(page, base) {
-  const url = `${base}?demo=1&store=local&music=off`;
+async function toSelect(page, base, query = '?demo=1&store=local&music=off') {
+  const url = `${base}${query}`;
   await page.goto(url);
   // A cold dev server compiles on the first visit: allow it time.
   await page.waitFor(
@@ -335,13 +336,85 @@ async function pause(page, base) {
   };
 }
 
-const CASES = { pause, lives, clean };
+// Every tier × mode with perfect play (Full body: the workout offered in both modes), without
+// ?demo=1 (it would force the demo level). Opt in: --only matrix (6 rounds, about 20 minutes).
+const TIERS = [
+  ['beginner', 0],
+  ['regular', 0.5],
+  ['athlete', 1],
+];
+// Frames per level: every animation frame records the game time, so frames are grouped by the
+// level being played (30 s each) and frozen time (intro, pauses) is left out.
+const FRAME_SAMPLER = `(() => {
+  window.__qaFrames = [];
+  const loop = () => {
+    const g = window.__qaGame;
+    if (g) window.__qaFrames.push([performance.now(), g.getElapsedSec()]);
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+})()`;
+function fpsByLevel(frames) {
+  const out = [];
+  for (let lv = 1; lv <= LEVELS; lv++) {
+    const lo = (lv - 1) * (ROUND_SEC / LEVELS);
+    const hi = lv * (ROUND_SEC / LEVELS);
+    let n = 0;
+    let wall = 0;
+    for (let i = 1; i < frames.length; i++) {
+      const [t, sec] = frames[i];
+      const [t0, sec0] = frames[i - 1];
+      if (sec > sec0 && sec0 >= lo && sec < hi) (n++, (wall += t - t0));
+    }
+    out.push(wall > 0 ? Math.round((n * 1000) / wall) : null);
+  }
+  return out;
+}
+async function matrix(page, base) {
+  const fails = [];
+  const notes = [];
+  for (const mode of ['floor', 'treadmill'])
+    for (const [tier, difficulty] of TIERS) {
+      const label = `${tier}/${mode}`;
+      await toSelect(page, base, '?store=local&music=off');
+      await page.click('full body');
+      await page.click(mode);
+      await page.click(tier);
+      await sleep(300);
+      await startRound(page, 'perfect');
+      await page.eval(FRAME_SAMPLER);
+      await waitFinished(page, ROUND_SEC + 60);
+      const ev = await events(page);
+      const stages = ev.filter((e) => e.type === 'stage').map((e) => e.index);
+      const seen = stages[0] === 1 ? stages : [1, ...stages];
+      const lost = ev.filter((e) => e.type === 'lifeLost');
+      const fin = ev.find((e) => e.type === 'finished');
+      const s = await lastSaved(page);
+      const fps = fpsByLevel(await page.eval('window.__qaFrames ?? []'));
+      const f = [];
+      if (seen.join(',') !== '1,2,3,4,5,6') f.push(`stages ${JSON.stringify(stages)}`);
+      if (lost.length)
+        f.push(`${lost.length} lifeLost (at ${lost.map((e) => e.sec.toFixed(1)).join(', ')} s)`);
+      if (fin?.reason !== 'complete') f.push(`finished ${fin?.reason ?? 'never'}`);
+      if (s?.config?.difficulty !== difficulty)
+        f.push(`saved difficulty ${s?.config?.difficulty} (want ${difficulty})`);
+      if (s?.config?.mode !== mode) f.push(`saved mode ${s?.config?.mode}`);
+      if (s?.levelReached !== LEVELS) f.push(`saved levelReached ${s?.levelReached}`);
+      for (const x of f) fails.push(`${label}: ${x}`);
+      notes.push(
+        `${label} ${f.length ? 'FAIL' : 'ok'} ${s?.score ?? '?'} pts, fps by level ${JSON.stringify(fps)}`,
+      );
+    }
+  return { fails, notes };
+}
+
+const CASES = { pause, lives, clean, matrix };
 const { base, stop } = await devServer();
 const page = await launchChrome({ port: CDP_PORT, headless: args.includes('--headless') });
 let failed = 0;
 try {
   for (const [name, run] of Object.entries(CASES)) {
-    if (only && only !== name) continue;
+    if (only ? only !== name : name === 'matrix') continue; // the matrix only on request
     const t = Date.now();
     let r;
     try {
