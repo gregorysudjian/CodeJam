@@ -4,7 +4,7 @@ import { GLYPH, paintGlyph, type Glyph } from './glyph';
 import * as LK from './look';
 import type { Verdict } from './judge';
 import { isReal } from './backdrop';
-import { createContactShadows } from './props';
+import { createContactShadows, skinSetFor } from './props';
 import { neon } from './scene';
 import * as T from './tuning';
 
@@ -289,7 +289,15 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
     });
   };
   void (async () => {
-    for (let level = 1; level <= S.levels && !disposed; level++) await loadLevel(level);
+    // Only the sets the real levels use (by clip), in the order they are reached.
+    const sets = [
+      ...new Set(
+        Array.from({ length: S.levels }, (_, i) => i + 1)
+          .filter(isReal)
+          .map(skinSetFor),
+      ),
+    ];
+    for (const set of sets) if (!disposed) await loadLevel(set);
   })();
   /** Puts level `level`'s skin on the parts tagged `skin`; false if it is not loaded. */
   const applySkin = (root: THREE.Object3D, kind: SkinKind, level: number | undefined): boolean => {
@@ -394,23 +402,25 @@ export function createObstacles(scene: THREE.Scene): Obstacles {
         // Realistic on a 'real' level once this kind's skin has loaded; until then, if it fails,
         // on a 'neon' level and with Low graphics: today's neon object, unchanged.
         const wantsReal = !lowGraphics && isRealLevel(level);
-        // Shown before its level's skin arrived (the first objects appear on the round's first
-        // frame): shown again with it once it loads, while still undecided (see loadLevel).
-        if (wantsReal && !skinReady(kind, level!))
+        // The skins follow the level's clip (props.ts skinSetFor), not its number.
+        const set = wantsReal ? skinSetFor(level!) : 0;
+        // Shown before its skin arrived (the first objects appear on the round's first frame):
+        // shown again with it once it loads, while still undecided (see loadLevel).
+        if (wantsReal && !skinReady(kind, set))
           unskinned.set(view, {
-            level: level!,
+            level: set,
             again: () => view.show(spawn, length, variant, level),
           });
         else unskinned.delete(view);
-        real = wantsReal && skinReady(kind, level!);
+        real = wantsReal && skinReady(kind, set);
         goesPast = false;
         const key = colorKeyFor(spawn.requires);
         applyPalette(root, (real ? realPalettes : palettes)[key]);
         for (const o of realOnly) o.visible = real;
         if (icon && glyph) icon.material = iconMaterial(glyph, key);
         if (icon) icon.visible = true;
-        // The level goes to the builder only when real: it puts the level's skin on then.
-        parts.configure(spawn, length, variant % VARIANTS, real ? level : undefined);
+        // The skin set goes to the builder only when real: it puts that skin on then.
+        parts.configure(spawn, length, variant % VARIANTS, real ? set : undefined);
         root.visible = true;
       },
       engage(attractor) {

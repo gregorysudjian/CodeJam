@@ -1,5 +1,10 @@
 import * as THREE from 'three';
+import { clipOf } from './props';
 import * as T from './tuning';
+
+/** The road pattern follows the clip (tuning.ts REAL_CLIPS): cobblestones in the old town. */
+const patternFor = (level: number): 'asphalt' | 'cobble' =>
+  clipOf(level)?.road === 'cobble' ? 'cobble' : 'asphalt';
 
 /**
  * The road under the track on 'real' levels (tuning.ts REAL_ROAD). The clips' road moves slower
@@ -96,7 +101,7 @@ export function createRealRoad(scene: THREE.Scene): RealRoad {
         shownLevel = level;
         sinceLevel = 0;
         samples = 0;
-        const kind = R.cobble.includes(level) ? 'cobble' : 'asphalt';
+        const kind = patternFor(level);
         if (mat.map !== patterns[kind]) {
           mat.map = patterns[kind];
           mat.needsUpdate = true;
@@ -106,7 +111,7 @@ export function createRealRoad(scene: THREE.Scene): RealRoad {
       sinceLevel += dt;
       const due = R.resampleSec[samples];
       if (due !== undefined && sinceLevel >= due) {
-        if (sample(R.cobble.includes(level) ? 'cobble' : 'asphalt')) samples++;
+        if (sample(patternFor(level))) samples++;
       }
       // The world moves toward +z; the same convention as the floor grid (scene.ts).
       travel += speed * dt;

@@ -382,10 +382,24 @@ export const REAL_ROAD = {
   fade: 0.5, // the far share of the length that fades to nothing
   sideFade: 0.18, // each side's share of the width that fades out
   tile: 3, // world units per texture repeat (along and across)
-  /** Which pattern per level; anything else is asphalt. */
-  cobble: [2] as readonly number[],
   /** The video patch sampled for the road colour: share of the frame (bottom centre). */
   sample: { x0: 0.38, x1: 0.62, y0: 0.86, y1: 0.98 },
   resampleSec: [0.4, 1.5] as readonly number[], // after a level starts (the clip has switched)
   y: 0.002, // under the shadow catcher (0.003), the lane paint (0.006) and the contact shadows
 } as const;
+
+/* ── Realistic clips (props.ts clipOf): the look follows the CLIP, not the level ── */
+// The real levels reuse the three Montreal clips (any order, backdrop.ts). Each clip is matched
+// by its file name (a level's `video`; any `match` substring) and sets the road strip's pattern
+// and the obstacle skin set (public/media/obstacles/tex-{skin}-{kind}.jpg, made for that clip).
+// A clip that matches nothing: asphalt, and the level's own skin set.
+export const REAL_CLIPS = [
+  { id: 'oldtown', match: ['oldtown', 'old-town', 'level-2-london'], road: 'cobble', skin: 2 },
+  { id: 'bridge', match: ['bridge', 'level-3-paris'], road: 'asphalt', skin: 3 },
+  {
+    id: 'bluehour',
+    match: ['bluehour', 'blue-hour', 'level-5-barcelona'],
+    road: 'asphalt',
+    skin: 5,
+  },
+] as const;
