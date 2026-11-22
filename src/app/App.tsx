@@ -299,19 +299,26 @@ function MainApp() {
     entries: FriendBoardEntry[];
     names: string[];
   }>(NO_FRIENDS);
+  // Only the latest request may set the board: on slow wifi the answer for the filter the player
+  // just left could arrive after the new one and show the wrong board (two-browser QA, Sun 3 AM).
+  const boardRequest = useRef(0);
+  const friendsRequest = useRef(0);
   const loadFriends = useCallback(async (workout: WorkoutId, mode: PlayMode) => {
+    const id = ++friendsRequest.current;
     const [entries, names] = await Promise.all([
       store.getFriendsBoard(workout, mode, BOARD_DEFAULT_DURATION_SEC, LEADERBOARD_SIZE),
       store.listFriends(),
     ]);
-    setFriendsBoard({ entries, names });
+    if (id === friendsRequest.current) setFriendsBoard({ entries, names });
   }, []);
   const loadBoard = useCallback(
     async (workout: WorkoutId, mode: PlayMode, durationSec: number) => {
+      const id = ++boardRequest.current;
       setBoard((b) => ({ ...b, workout, mode, durationSec, loading: true }));
       if (profile) void loadFriends(workout, mode);
       const entries = await store.getLeaderboard(workout, mode, durationSec, LEADERBOARD_SIZE);
-      setBoard({ workout, mode, durationSec, entries, loading: false });
+      if (id === boardRequest.current)
+        setBoard({ workout, mode, durationSec, entries, loading: false });
     },
     [profile, loadFriends],
   );
@@ -378,6 +385,7 @@ function MainApp() {
       setSummary(null);
       setAdvice(null);
       setConfig(null);
+      friendsRequest.current++; // a reply still on its way is the previous player's
       setFriendsBoard(NO_FRIENDS);
     }
   };
