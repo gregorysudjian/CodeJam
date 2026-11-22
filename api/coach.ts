@@ -90,12 +90,12 @@ export async function POST(request: Request): Promise<Response> {
 
   const client = new Anthropic({ apiKey, timeout: COACH_TIMEOUT_MS, maxRetries: 0 });
   try {
-    const response = await client.beta.messages.create({
+    // Claude Haiku 5.5 has no server-side refusal fallback: a decline (stop_reason "refusal")
+    // returns 502 below and the client uses the rule-based coach.
+    const response = await client.messages.create({
       model: COACH_MODEL,
       max_tokens: COACH_MAX_TOKENS,
-      // On a safety decline, the API re-runs the request on a fallback model in the same call.
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
+      thinking: { type: 'disabled' }, // allowed at effort high or below on Haiku 5.5
       output_config: {
         effort: 'low', // a short, simple answer; keeps the reply well inside the 7 s budget
         format: { type: 'json_schema', schema: COACH_SCHEMA },

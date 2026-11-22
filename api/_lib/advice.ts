@@ -2,8 +2,9 @@
 // The `_lib` folder is not deployed as a function by Vercel.
 import type { CoachAdvice, PlayMode, WorkoutId } from '../../src/contracts/index.js';
 
-export const COACH_MODEL = 'claude-opus-5-5';
-export const COACH_MAX_TOKENS = 2000; // thinking is always on for this model and counts here
+// A short JSON recap needs no deep reasoning: the fast, low-cost model, thinking off.
+export const COACH_MODEL = 'claude-haiku-5-5';
+export const COACH_MAX_TOKENS = 2000;
 export const COACH_TIMEOUT_MS = 7000; // the client gives up at 8 s and uses the rule-based coach
 export const RECAP_MAX = 300;
 export const TIP_MAX = 180;
