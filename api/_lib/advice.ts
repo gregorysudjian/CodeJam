@@ -13,7 +13,16 @@ export const HISTORY_LIMIT = 10;
 export const COACH_MIN_INTERVAL_SEC = 10;
 
 const WORKOUTS: WorkoutId[] = ['legs', 'arms', 'shoulders', 'fullBody'];
-const DURATIONS = [45, 90, 180];
+/** Difficulty is a tier (CONTRACTS.md): 0 beginner, 0.5 regular, 1 athlete. */
+export const TIERS = [0, 0.5, 1];
+/** A round is every level in a row: 6 levels of 30 s. */
+export const ROUND_SEC = 180;
+
+/** The tier nearest to `d` (halves round up); anything that is not a number → regular. */
+export function snapTier(d: unknown): number {
+  const x = typeof d === 'number' && Number.isFinite(d) ? d : 0.5;
+  return TIERS.reduce((best, t) => (Math.abs(t - x) <= Math.abs(best - x) ? t : best));
+}
 
 /** Row shapes the endpoint reads (snake_case, as stored). */
 export interface ProfileFacts {
@@ -40,7 +49,7 @@ export interface SessionFacts {
   created_at: string;
 }
 
-export const SYSTEM_PROMPT = `You are the coach inside a webcam fitness game. The player sidesteps, jumps, squats and raises their arms to clear obstacles in a short timed round.
+export const SYSTEM_PROMPT = `You are the coach inside a webcam fitness game. The player sidesteps, jumps, squats and raises their arms to clear obstacles. A round is 6 levels of 30 seconds, each faster than the last, and the player has 3 lives.
 
 Write a short recap of the round they just played, one concrete tip, and recommend their next session.
 
@@ -50,7 +59,7 @@ Rules:
 - Plain, friendly, upbeat language. Address the player by name. No emoji.
 - recap: at most two sentences about the round just played (the one marked "latest").
 - tip: one concrete, actionable sentence aimed at the move they missed most, or at keeping a clean round going.
-- next: pick the workout that balances their recent history. Raise difficulty by about 0.1 after accuracy above 0.85, lower it by about 0.1 below 0.6, otherwise keep it. In treadmill mode never pick "legs".
+- next: pick the workout that balances their recent history. difficulty is a tier: 0 beginner, 0.5 regular, 1 athlete. Move one tier up after accuracy above 0.85, one tier down below 0.6, otherwise keep the tier of the latest round. durationSec is always 180. In treadmill mode never pick "legs".
 - reason: one sentence on why that next session.`;
 
 /** JSON schema for structured output; the server validates the result again anyway. */
@@ -63,8 +72,8 @@ export const COACH_SCHEMA = {
       type: 'object',
       properties: {
         workout: { type: 'string', enum: WORKOUTS },
-        durationSec: { type: 'integer', enum: DURATIONS },
-        difficulty: { type: 'number' },
+        durationSec: { type: 'integer', enum: [ROUND_SEC] },
+        difficulty: { type: 'number', enum: TIERS },
       },
       required: ['workout', 'durationSec', 'difficulty'],
       additionalProperties: false,
@@ -99,7 +108,7 @@ export function buildUserPrompt(
     mode: s.mode,
     durationSec: s.duration_sec,
     activeMinutes: Math.round((n(s.active_sec) ?? 0) / 6) / 10,
-    difficulty: n(s.difficulty) ?? 0.5,
+    difficulty: snapTier(n(s.difficulty)),
     score: s.score,
     accuracy: Math.round((n(s.accuracy) ?? 0) * 100) / 100,
     bestStreak: s.best_streak,
@@ -144,14 +153,14 @@ export function parseAdvice(text: string | undefined, mode: PlayMode): CoachAdvi
   if (!workout) return null;
   if (mode === 'treadmill' && workout === 'legs') workout = 'fullBody';
 
-  const durationSec = DURATIONS.includes(next.durationSec as number)
-    ? (next.durationSec as number)
-    : 90;
-  const d =
-    typeof next.difficulty === 'number' && Number.isFinite(next.difficulty) ? next.difficulty : 0.5;
-  const difficulty = Math.round(Math.min(1, Math.max(0, d)) * 10) / 10;
-
-  return { recap, tip, next: { workout, mode, durationSec, difficulty }, reason, source: 'ai' };
+  // A round is always every level; the difficulty is always one of the three tiers.
+  return {
+    recap,
+    tip,
+    next: { workout, mode, durationSec: ROUND_SEC, difficulty: snapTier(next.difficulty) },
+    reason,
+    source: 'ai',
+  };
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

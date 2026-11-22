@@ -28,6 +28,13 @@ const KEYS: Record<MoveType, string> = {
   reachRight: 'hold E',
 };
 
+/** The move check's last step: how to pause a round (camera: the X gesture; keyboard: Esc). */
+export function pauseHint(kind: InputSource['kind']): string {
+  return kind === 'keyboard'
+    ? 'Cross your arms in an X to pause: Esc'
+    : 'Cross your arms in an X to pause';
+}
+
 /** What to tell the player for a move, for the input they are using. */
 export function moveHint(move: MoveType, kind: InputSource['kind']): string {
   return kind === 'keyboard' ? `${BODY[move]}: ${KEYS[move]}` : BODY[move];
