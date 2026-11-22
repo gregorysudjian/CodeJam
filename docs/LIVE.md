@@ -1,6 +1,8 @@
 # Live site, backend and visitors' devices (Jiscar 2, branch `j2-live`)
 
-Findings log. Every hole has its reproduction (tokens shown as placeholders) and its fix or status.
+**A dated findings log, mostly from Saturday evening**, when rounds were 45, 90 or 180 s and usernames were not yet unique. Since then: a round is always 6 levels × 30 s, usernames are unique and the friends functions exist (`0007`, `0008`), and "New guest" is now "New player". Migrations on `main` are `0001` to `0004` and `0006` to `0008`; `0005` (the board readable before sign-in) is on hold in PR #58 and has not been applied. The "Privacy" section is current.
+
+Every hole has its reproduction (tokens shown as placeholders) and its fix or status.
 Re-run the checks with `supabase/tests/rls-harness.mjs` (local Postgres, no network) and
 `supabase/tests/live-probes.mjs` (the live project, creates `QA-` guests).
 
