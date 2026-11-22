@@ -84,12 +84,20 @@ export function TryMoves({
         </div>
       }
     >
-      <div className="flex flex-col items-center gap-6 py-6 text-center">
+      {/* At 125-150 % zoom (tight, cramped) the figure and gaps shrink so the move name and its
+          hint stay above the footer; the text keeps its size. */}
+      <div className="flex flex-col items-center gap-6 py-6 text-center tight:gap-4 cramped:gap-2 cramped:py-2">
         {/* Sized to read from the floor mark, about 1.5 m away (QA A2). */}
         <p className="text-title uppercase tracking-[0.2em] text-text-muted">
           Try each move · {step + 1} / {steps.length}
         </p>
-        <MoveFigure pose={move} color={color} animate size={260} />
+        <MoveFigure
+          pose={move}
+          color={color}
+          animate
+          size={260}
+          className="tight:h-[190px] tight:w-auto cramped:h-[130px]"
+        />
         <h2 className="font-display-italic text-display-md" style={{ color }}>
           {isPause ? 'PAUSE' : MOVE_LABELS[move]}
           {done.includes(move) ? ' ✓' : ''}

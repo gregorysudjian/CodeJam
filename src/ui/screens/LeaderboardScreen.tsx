@@ -137,7 +137,8 @@ function Podium({
             )}
           >
             <span
-              className={cn('podium-rank font-display-italic text-display-xl opacity-25', tone)}
+              // Faded, but >= 3:1 (large text) on the page (opacity-25 was 1.4:1).
+              className={cn('podium-rank font-display-italic text-display-xl opacity-80', tone)}
             >
               {rank}
             </span>
