@@ -48,6 +48,27 @@ describe('intro', () => {
       expect(Math.hypot(p.px, p.pz)).toBeGreaterThan(2);
     }
   });
+
+  it('on a real level dollies straight in from behind, never turning, and lands on the chase camera', () => {
+    const dir = (c: CameraPose) => {
+      const v = [c.lx - c.px, c.ly - c.py, c.lz - c.pz];
+      const n = Math.hypot(...v);
+      return v.map((x) => x / n);
+    };
+    const end = introCamera(1, pose(), true);
+    const chase = introCamera(1, pose());
+    for (const key of ['px', 'py', 'pz', 'lx', 'ly', 'lz'] as const)
+      expect(end[key]).toBeCloseTo(chase[key]);
+    const start = introCamera(0, pose(), true);
+    expect(start.pz).toBeGreaterThan(T.CAMERA_POS.z); // further behind the runner
+    for (let k = 0; k <= 1; k += 0.1) {
+      const c = introCamera(k, pose(), true);
+      dir(c).forEach((x, i) => expect(x).toBeCloseTo(dir(end)[i]!));
+      expect(c.px).toBeCloseTo(T.CAMERA_POS.x);
+    }
+    const back = Math.hypot(start.px - end.px, start.py - end.py, start.pz - end.pz);
+    expect(back).toBeCloseTo(T.REAL_CAMERA.dolly);
+  });
 });
 
 describe('the countdown before a resume', () => {
