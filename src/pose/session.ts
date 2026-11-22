@@ -7,10 +7,13 @@ import {
   type Calibration,
   createDetector,
   type Detector,
+  L_HIP,
   L_SHOULDER,
   mid,
+  NOSE,
   pickBody,
   type Point,
+  R_HIP,
   R_SHOULDER,
   toPlayerX,
 } from './detect';
@@ -18,8 +21,22 @@ import { createGestureDetector } from './gesture';
 import {
   CALIBRATION_STATUS_STEP,
   DEFAULT_ASPECT,
+  DETECTION,
+  FOLLOW_GAP_MS,
+  FOLLOW_MAX_SPEED_W,
+  FOLLOW_MAX_STEP_W,
+  FOLLOW_MIN_STEP_W,
+  OTHER_AREA_W,
+  OTHER_MIN_GAP_W,
+  OTHER_MIN_SIZE,
+  OTHER_OFF_MS,
+  OTHER_ON_MS,
   PICK_SIZE_TOLERANCE,
   RECENT_EVENTS,
+  REFIND_AREA_W,
+  REFIND_SIZE_TOLERANCE,
+  REFIND_STILL_MS,
+  REFIND_STILL_W,
 } from './tuning';
 
 export const NEUTRAL_STATE: InputState = Object.freeze({
@@ -68,15 +85,42 @@ export interface Session {
   readonly detector: Detector | null;
   readonly bodies: number;
   readonly recent: MoveEvent[];
+  /** Someone other than the calibrated player is in the play area (tracking is false then). */
+  readonly otherPerson: boolean;
 }
 
-/** True when a body's shoulder width is within PICK_SIZE_TOLERANCE of the player's. */
-export function isPlayerSized(pose: Point[], playerW: number): boolean {
-  const ls = pose[L_SHOULDER];
-  const rs = pose[R_SHOULDER];
-  if (!ls || !rs || playerW <= 0) return false;
-  const ratio = Math.abs(ls.x - rs.x) / playerW;
-  return ratio > 1 - PICK_SIZE_TOLERANCE && ratio < 1 / (1 - PICK_SIZE_TOLERANCE);
+const within = (ratio: number, tolerance: number) =>
+  ratio > 1 - tolerance && ratio < 1 / (1 - tolerance);
+const hasShoulders = (pose: Point[]) => !!pose[L_SHOULDER] && !!pose[R_SHOULDER];
+const shoulderCentre = (pose: Point[]) => mid(pose[L_SHOULDER], pose[R_SHOULDER]);
+const widthOf = (pose: Point[]) => Math.abs(pose[L_SHOULDER].x - pose[R_SHOULDER].x);
+const FOLLOW_POINTS = [NOSE, L_SHOULDER, R_SHOULDER, L_HIP, R_HIP];
+
+/** Mean distance between two poses' nose, shoulders and hips, in frame widths. */
+function poseDistance(a: Point[], b: Point[], aspect: number): number {
+  let sum = 0;
+  let n = 0;
+  for (const i of FOLLOW_POINTS) {
+    const p = a[i];
+    const q = b[i];
+    if (!p || !q) continue;
+    sum += Math.hypot(p.x - q.x, (p.y - q.y) / aspect);
+    n++;
+  }
+  return n ? sum / n : Infinity;
+}
+
+/**
+ * The player's size, close enough to take them back after they were away: shoulder width and,
+ * on the floor, torso length, against the detector's current baselines (they follow the player).
+ */
+function isPlayerSize(pose: Point[], d: Detector): boolean {
+  if (!hasShoulders(pose) || !within(widthOf(pose) / d.readout.W, REFIND_SIZE_TOLERANCE))
+    return false;
+  if (d.mode !== 'floor') return true;
+  if (!pose[L_HIP] || !pose[R_HIP]) return false;
+  const torso = Math.abs(mid(pose[L_HIP], pose[R_HIP]).y - shoulderCentre(pose).y);
+  return within(torso / d.readout.T, REFIND_SIZE_TOLERANCE);
 }
 
 export function createSession(): Session {
@@ -92,6 +136,98 @@ export function createSession(): Session {
   const listeners = new Set<(e: MoveEvent) => void>();
   let gesture = createGestureDetector();
   const gestureListeners = new Set<(g: Gesture) => void>();
+
+  // Following the player after calibration (follow), and someone else in the play area.
+  let last: Point[] | null = null; // the player's last pose
+  let lastSeenAt = -Infinity;
+  let refind: { x: number; y: number; since: number } | null = null;
+  let otherPerson = false;
+  let otherSince = -1;
+  let otherLastAt = -Infinity;
+
+  /**
+   * How far a body's shoulder centre is from the mark, in the calibrated shoulder width: the play
+   * area stays where it was calibrated, even when the player steps closer and looks bigger.
+   */
+  const offMark = (pose: Point[]) =>
+    calibration
+      ? Math.abs(toPlayerX(shoulderCentre(pose).x) - calibration.centreX) / calibration.W
+      : Infinity;
+
+  /**
+   * The calibrated player among the bodies, or null. Never the largest or the newest body: the
+   * one nearest the player's last pose; after a gap, only a body of the player's size standing
+   * still near the mark.
+   */
+  function follow(poses: Point[][], t: number, d: Detector): Point[] | null {
+    const W = d.readout.W;
+    const usable = poses.filter(hasShoulders);
+    if (last && t - lastSeenAt <= FOLLOW_GAP_MS) {
+      const prev = last;
+      const step = (FOLLOW_MAX_SPEED_W * (t - lastSeenAt)) / 1000;
+      const reach = W * Math.min(FOLLOW_MAX_STEP_W, Math.max(FOLLOW_MIN_STEP_W, step));
+      let best: Point[] | null = null;
+      let bestDist = reach;
+      for (const pose of usable) {
+        // Size against the last frame, not the calibration: a player who stands closer than at
+        // calibration is still followed, someone much bigger or smaller never is.
+        if (!within(widthOf(pose) / widthOf(prev), PICK_SIZE_TOLERANCE)) continue;
+        const dist = poseDistance(pose, prev, aspect);
+        if (dist <= bestDist) {
+          best = pose;
+          bestDist = dist;
+        }
+      }
+      return best;
+    }
+    let best: Point[] | null = null;
+    let bestDist = REFIND_AREA_W;
+    for (const pose of usable) {
+      if (!isPlayerSize(pose, d)) continue;
+      const dist = offMark(pose);
+      if (dist <= bestDist) {
+        best = pose;
+        bestDist = dist;
+      }
+    }
+    if (!best) {
+      refind = null;
+      return null;
+    }
+    const c = shoulderCentre(best);
+    if (!refind || Math.hypot(c.x - refind.x, (c.y - refind.y) / aspect) > REFIND_STILL_W * W) {
+      refind = { x: c.x, y: c.y, since: t };
+      return null;
+    }
+    if (t - refind.since < REFIND_STILL_MS) return null;
+    refind = null;
+    return best;
+  }
+
+  /** Someone else in the play area, near the player's size: on after OTHER_ON_MS, off after OTHER_OFF_MS. */
+  function updateOther(poses: Point[][], t: number, d: Detector) {
+    const W = d.readout.W;
+    const seen = (q: Point) => (q.visibility ?? 1) >= DETECTION.TRACKING_MIN_VISIBILITY;
+    const pc = player ? shoulderCentre(player) : null;
+    const found = poses.some((pose) => {
+      if (pose === player || !hasShoulders(pose)) return false;
+      if (!seen(pose[L_SHOULDER]) || !seen(pose[R_SHOULDER])) return false;
+      if (widthOf(pose) < OTHER_MIN_SIZE * W) return false; // far behind
+      const c = shoulderCentre(pose);
+      if (offMark(pose) > OTHER_AREA_W) return false; // aside
+      if (pc) return Math.hypot(c.x - pc.x, (c.y - pc.y) / aspect) >= OTHER_MIN_GAP_W * W;
+      // With the player away, a body of their size may be them coming back (follow decides).
+      return !isPlayerSize(pose, d);
+    });
+    if (found) {
+      if (otherSince < 0) otherSince = t;
+      otherLastAt = t;
+      if (t - otherSince >= OTHER_ON_MS) otherPerson = true;
+    } else if (t - otherLastAt >= OTHER_OFF_MS) {
+      otherSince = -1;
+      otherPerson = false;
+    }
+  }
 
   function sendStatus(p: Pending, s: CalibrationStatus) {
     const prev = p.lastSent;
@@ -144,12 +280,20 @@ export function createSession(): Session {
   function frame(poses: Point[][], t: number, videoAspect?: number) {
     if (videoAspect && Number.isFinite(videoAspect)) aspect = videoAspect;
     bodies = poses.length;
-    // Once calibrated, someone much bigger or smaller than the player is not the player: drop them
-    // first, then pick the largest, nearest of the rest.
     const d = detector;
-    const candidates = d ? poses.filter((pose) => isPlayerSized(pose, d.readout.W)) : poses;
-    const i = candidates.length > 1 ? pickBody(candidates, lastCentre) : candidates.length - 1;
-    player = i >= 0 ? candidates[i] : null;
+    if (d) {
+      // Calibrated: follow that player and flag anyone else in the play area.
+      player = follow(poses, t, d);
+      if (player) {
+        last = player;
+        lastSeenAt = t;
+      }
+      updateOther(poses, t, d);
+    } else {
+      // Calibrating: the largest body nearest where the player was (or the frame centre).
+      const i = poses.length > 1 ? pickBody(poses, lastCentre) : poses.length - 1;
+      player = i >= 0 ? poses[i] : null;
+    }
     if (player && player[L_SHOULDER] && player[R_SHOULDER]) {
       const s = mid(player[L_SHOULDER], player[R_SHOULDER]);
       lastCentre = { x: toPlayerX(s.x), y: s.y };
@@ -167,12 +311,24 @@ export function createSession(): Session {
         calibration = result;
         detector = createDetector(result, p.mode);
         pending = null;
+        last = player;
+        lastSeenAt = t;
+        refind = null;
+        otherPerson = false;
+        otherSince = -1;
         p.resolve();
       }
       return;
     }
     if (!detector) return;
-    for (const e of detector.update(player, t)) {
+    const events = detector.update(player, t);
+    // While someone else is in the play area the game is paused: their moves or the player's
+    // reach nobody, and the X cannot fire.
+    if (otherPerson) {
+      gesture.update(player, t, detector.state, detector.readout);
+      return;
+    }
+    for (const e of events) {
       recent.push(e);
       if (recent.length > RECENT_EVENTS) recent.shift();
       // A failing listener (e.g. a game bug) must not stop the others or detection.
@@ -201,7 +357,12 @@ export function createSession(): Session {
     frame,
     calibrate: (m, onStatus) => calibrate(m, onStatus),
     cancel,
-    getState: () => (detector ? { ...detector.state } : { ...NEUTRAL_STATE }),
+    getState: () =>
+      !detector
+        ? { ...NEUTRAL_STATE }
+        : otherPerson
+          ? { ...detector.state, tracking: false, otherPerson: true }
+          : { ...detector.state, otherPerson: false },
     onMove(cb) {
       listeners.add(cb);
       return () => {
@@ -234,6 +395,9 @@ export function createSession(): Session {
     },
     get bodies() {
       return bodies;
+    },
+    get otherPerson() {
+      return otherPerson;
     },
     recent,
   };

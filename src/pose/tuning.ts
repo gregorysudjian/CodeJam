@@ -16,18 +16,61 @@ export const MIN_PRESENCE_CONFIDENCE = 0.5;
 export const MIN_TRACKING_CONFIDENCE = 0.5;
 
 /**
- * Bodies MediaPipe looks for. With more than 1, pickBody keeps the player (largest, closest to
- * where the player was) and ignores people behind them. Costs FPS: measure before raising it.
+ * Bodies MediaPipe looks for. 2, so a second person in the frame is reported next to the player
+ * instead of replacing them (session.ts follows the player and flags the other one).
  */
-export const MAX_POSES = 1;
-/** pickBody: score = shoulder width minus this × distance from the player's last position. */
+export const MAX_POSES = 2;
+/** pickBody (calibration only): score = shoulder width minus this × distance from the last position. */
 export const PICK_DISTANCE_WEIGHT = 0.5;
 /**
  * After calibration, a body whose shoulder width is off by more than this fraction from the
- * player's is someone else (e.g. a person behind the player after the player walks off).
- * A's clips vary by at most about ±30% (arms up, turning slightly).
+ * player's in the last frame is someone else (e.g. a person behind the player). Recorded clips
+ * change by at most ×1.3 in 100 ms (arms up, turning, a sidestep).
  */
 export const PICK_SIZE_TOLERANCE = 0.4;
+
+/*
+ * Following the player after calibration, and someone else in the frame (session.ts). Distances
+ * are in the player's shoulder width W; positions are shoulder centres. The play area is fixed
+ * where calibration put it: the calibrated centre, in the calibrated W.
+ */
+/**
+ * Following: the player is the body nearest their last pose (nose, shoulders, hips), if it moved
+ * at most this fast since (W per second). Recorded jumps peak at 8-10 W/s between two frames.
+ */
+export const FOLLOW_MAX_SPEED_W = 10;
+/** ... never less than this (landmark jitter, a slow frame) ... */
+export const FOLLOW_MIN_STEP_W = 0.4;
+/**
+ * ... and never more than this, however long the gap: a stranger walking in while the player
+ * is missing must not be taken for them. Recorded moves cover at most 1.6 W in 100 ms.
+ */
+export const FOLLOW_MAX_STEP_W = 1.2;
+/** Following holds across a gap this long; after it the player must be found again (below). */
+export const FOLLOW_GAP_MS = 400;
+/**
+ * Found again: a body standing still near the mark with the player's size (W and, on the floor,
+ * torso T, each within this fraction). Anyone else stepping onto the mark is someone else.
+ */
+export const REFIND_SIZE_TOLERANCE = 0.25;
+/** Near the mark: shoulder centre within this many W of the calibrated centre. */
+export const REFIND_AREA_W = 1;
+/** Still: the shoulder centre stays within this many W ... */
+export const REFIND_STILL_W = 0.3;
+/** ... for this long. A person walking across never stops long enough. */
+export const REFIND_STILL_MS = 400;
+/**
+ * Someone else in the play area: shoulder centre within this many W of the mark (the lanes plus
+ * a body), and shoulder width at least this fraction of the player's. Smaller = far behind (the
+ * expo crowd), never a pause.
+ */
+export const OTHER_AREA_W = 1.5;
+export const OTHER_MIN_SIZE = 0.6;
+/** A second pose this close to the player (shoulder centres, in W) is the same body twice. */
+export const OTHER_MIN_GAP_W = 0.5;
+/** otherPerson turns on after this long with someone else in the area, off after this long without. */
+export const OTHER_ON_MS = 300;
+export const OTHER_OFF_MS = 500;
 
 /** Skeleton drawing. Landmarks below this visibility are drawn dimmed. */
 export const DRAW_MIN_VISIBILITY = 0.5;

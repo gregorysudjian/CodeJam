@@ -100,7 +100,8 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   const cameraInfo = () => {
     const s = stream?.getVideoTracks()[0]?.getSettings();
     return s
-      ? `camera ${Math.round(s.frameRate ?? 0)} fps ${s.width ?? '?'}×${s.height ?? '?'}${timing}`
+      ? `camera ${Math.round(s.frameRate ?? 0)} fps ${s.width ?? '?'}×${s.height ?? '?'}${timing}` +
+          (session.otherPerson ? '\nsomeone else in the play area: paused' : '')
       : '';
   };
 
