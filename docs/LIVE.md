@@ -47,6 +47,41 @@ Left on purpose: the anonymous `auth.users` rows behind those profiles (no name,
 any board) and the kiosk's `Leaderboard` profiles (no rounds; count them with
 `select count(*) from public.profiles where display_name = 'Leaderboard';`).
 
+## Media delivery and the first round (Saturday 9 PM)
+
+**How it's measured** (`firstround.mjs`, a Playwright script kept out of the repo): headless Chrome on
+a real GPU (ANGLE D3D11), Chrome's network throttling at 2 s latency and 1.5 Mbps, a new guest,
+Shoulders treadmill 45 s, keyboard. WebGL `drawArrays`/`drawElements` are wrapped to time the
+game's **first frame**, `texImage2D` to time each **texture upload**, and every `/media/` request is
+logged with its start and end, all from the START click.
+
+**Before hx-media** (no `public/media/` yet). The textures are all drawn in the browser (canvases,
+128 to 512 px) and uploaded with the first frame; no request runs between START and the first frame.
+
+| START → | 8 s on select (main 4cfbb05) | Clicks START at once, before #87 | Clicks START at once, after #87 (live) |
+| --- | --- | --- | --- |
+| first frame | 676 ms | **2,630 ms** (the game chunk was still prefetching) | **802 ms** |
+| round clock counting | 3,796 ms | 5,673 ms | 3,934 ms |
+
+#87 starts the game download on the profile screen. On a production build of main 32542d4 the
+first frame comes at 809, 829 and 825 ms for a player who spends 0 + 0, 3 + 1 and 5 + 8 s on the
+profile and select screens: no wait left for a fast clicker. Unthrottled: 668 ms cold, 425 ms for a
+second round.
+
+**When hx-media lands**: `node scripts/media-budget.mjs` first, then the same measurement, cold and
+warm, with the verdict per file: loaded after the first frame (lazy) or before it (holding it up).
+
+**Deploy log** (`status.mjs` and a marker string in the live bundle):
+
+| Checked | Live build has | Notes |
+| --- | --- | --- |
+| 7:40 PM | #74 names | caching headers live |
+| 8:21 PM | through #81 (#80 heal) | |
+| 9:13 PM | through #87 (prefetch on the profile screen) | `index-gOkysHDL.js` |
+
+Every run so far: deploy current, board readable, FAIL only on `QA-` players in the projector's top
+5 (until the cleanup).
+
 ## Rollback plan for 0004 (and 0005): only if it blocks legitimate saves
 
 Not run. Each block undoes one part of `0004_session_limits.sql`, so only what is actually
