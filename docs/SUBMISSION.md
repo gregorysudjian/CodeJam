@@ -1,6 +1,6 @@
 # Devpost submission: Neon Arena
 
-The form checklist and the screenshots. The text for "About the project" is in [DEVPOST.md](DEVPOST.md). Both match `main` 28725de (PR #121): one round of 6 levels × 30 s inside the Montreal clips, 3 lives, the neon robot runner, sign-up with a unique username, and the friends leaderboard.
+The form checklist and the screenshots. The text for "About the project" is in [DEVPOST.md](DEVPOST.md). Both match the live build, `main` b27c6a6: dark neon menus, one round of 6 levels × 30 s inside the Montreal clips, 3 lives, the neon robot runner, sign-up with a unique username, and the friends leaderboard.
 
 ## Form checklist
 
@@ -29,7 +29,7 @@ The Claude API is in the list because the coach endpoint is built on it. No key 
 
 ## Screenshots
 
-Captured at 1280×720 on `main` 28725de by the scripted Chrome sweep (`docs/qa/sweep/`), in [docs/submission/](submission/), ready to upload. All are from `http://localhost:5173/?demo=1&store=local`: the fixed demo round, played **with the keyboard** by a script, on the local store. So no camera preview appears, and the boards hold only the script's own player.
+Captured at 1280×720 on `main` b27c6a6 by the scripted Chrome sweep (`docs/qa/sweep/`), in [docs/submission/](submission/), ready to upload. All are from `http://localhost:5173/?demo=1&store=local`: the fixed demo round, played **with the keyboard** by a script, on the local store. So no camera preview appears, and the boards hold only the script's own player.
 
 | File | Screen | Shows |
 | --- | --- | --- |
