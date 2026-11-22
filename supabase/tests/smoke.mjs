@@ -1,8 +1,8 @@
 // Sunday-morning smoke test of the live stack, after the final deploy. Node built-ins only.
 //   node --env-file=.env.local supabase/tests/smoke.mjs [siteUrl]
 // Reads VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (public values). Signs in a QA-smoke-<time>
-// guest, saves one valid 45 s round (Shoulders, treadmill, 100 points: low on the least-watched
-// board), reads the 45 s board and checks the round is on it. Also checks the site and /api/coach
+// guest, saves one valid 180 s round (Shoulders, treadmill, 100 points: low on the least-watched
+// board), reads the 180 s board and checks the round is on it. Also checks the site and /api/coach
 // answer. Prints PASS or FAIL per step and overall in under 10 s; exit code 0 or 1.
 // The guest is removed by the Sunday cleanup (docs/LIVE.md), like every QA- player.
 import { randomUUID } from 'node:crypto';
@@ -89,7 +89,7 @@ const signedIn = await step('guest sign-in', async () => {
 });
 
 if (signedIn) {
-  const saved = await step('save a 45 s round', async () => {
+  const saved = await step('save a 180 s round', async () => {
     const r = await call(SB + '/rest/v1/sessions?on_conflict=id', {
       method: 'POST',
       token,
@@ -100,8 +100,8 @@ if (signedIn) {
           user_id: uid,
           workout: 'shoulders',
           mode: 'treadmill',
-          duration_sec: 45,
-          active_sec: 45,
+          duration_sec: 180,
+          active_sec: 180,
           difficulty: 0.5,
           seed: 1,
           score: 100,
@@ -119,17 +119,17 @@ if (signedIn) {
     expectStatus(r, 201);
   });
 
-  await step('read the 45 s board', async () => {
+  await step('read the 180 s board', async () => {
     const top = await call(
       SB +
-        '/rest/v1/leaderboard?select=*&workout=eq.shoulders&mode=eq.treadmill&duration_sec=eq.45&order=score.desc&limit=10',
+        '/rest/v1/leaderboard?select=*&workout=eq.shoulders&mode=eq.treadmill&duration_sec=eq.180&order=score.desc&limit=10',
       { token },
     );
     expectStatus(top, 200);
     if (!saved) return `${top.json.length} rows`;
     const mine = await call(
       SB +
-        `/rest/v1/leaderboard?select=*&workout=eq.shoulders&mode=eq.treadmill&duration_sec=eq.45&display_name=eq.${encodeURIComponent(name)}`,
+        `/rest/v1/leaderboard?select=*&workout=eq.shoulders&mode=eq.treadmill&duration_sec=eq.180&display_name=eq.${encodeURIComponent(name)}`,
       { token },
     );
     expectStatus(mine, 200);
@@ -146,8 +146,8 @@ if (signedIn) {
         user_id: uid,
         workout: 'shoulders',
         mode: 'treadmill',
-        duration_sec: 45,
-        active_sec: 45,
+        duration_sec: 180,
+        active_sec: 180,
         score: 999999,
         reps: {},
         missed: {},
