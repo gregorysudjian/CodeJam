@@ -5,7 +5,7 @@
 //   node docs/qa/sweep/sweep.mjs [baseUrl] [outDir]
 //   default baseUrl http://localhost:5173/, default outDir <tmp>/neon-sweep-<time>
 //
-// Exit code 0 = every check passed; 1 = see summary.json. Each size takes about 2 minutes.
+// Exit code 0 = every check passed; 1 = see summary.json. Each size takes about 4 minutes (the demo round is 180 s).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -23,7 +23,7 @@ const SIZES = process.env.SIZES
       [1920, 1080, 1],
       [1280, 720, 1],
     ];
-timebox(6 * 60 * 1000, 'sweep');
+timebox(10 * 60 * 1000, 'sweep'); // the demo round is 180 s (6 levels)
 
 async function sweep([w, h, dsf], port) {
   const dir = join(OUT, `${w}x${h}@${dsf}`);
@@ -55,7 +55,7 @@ async function sweep([w, h, dsf], port) {
     check('select screen', await b.waitFor(/PICK A WORKOUT/i, 5000));
     const sel = await step('03-select');
     check('select fits the screen (Q1)', sel.pageH <= sel.viewH + 4, `${sel.pageH} of ${sel.viewH}`);
-    check('demo preselects Full body · floor · 45 s', /FULL BODY · FLOOR · 45 S/.test(await b.text()));
+    check('demo preselects Full body · floor · regular', /FULL BODY · FLOOR · REGULAR/.test(await b.text()));
 
     await b.click('^\\s*start\\b');
     check('tutorial on a first round', await b.waitFor(/TRY EACH MOVE/i, 5000));
@@ -64,20 +64,24 @@ async function sweep([w, h, dsf], port) {
     check('HUD appears', await b.waitFor(/TIME LEFT/i, 8000));
     await sleep(300);
     await b.eval(`(${AUTO})([])`);
-    for (const [name, t] of [['05-play-city', 8], ['06-play-tunnel', 18.5], ['07-play-bridge', 29], ['08-play-finale', 39.5]]) {
+    // Zones at 30 % and 52 % of the round, the finale in the last 10 s (src/game/tuning.ts); a level
+    // portal every 30 s washes the scene out, so no shot on a multiple of 30.
+    for (const [name, t] of [['05-play-city', 8], ['06-play-tunnel', 70], ['07-play-bridge', 100], ['08-play-finale', 174]]) {
       const t0 = Date.now();
-      while (Date.now() - t0 < 60000) {
+      while (Date.now() - t0 < 90000) {
         const g = await b.eval('window.__auto && Number.isFinite(window.__auto.offset) ? window.__auto.gameNow() : -1');
         if (g >= t) break;
         await sleep(30);
       }
       await step(name);
     }
-    check('round ends on results', await b.waitFor(/ROUND COMPLETE/i, 20000));
+    check('round ends on results', await b.waitFor(/ROUND COMPLETE|CLEARED|OUT OF LIVES/i, 30000));
     await sleep(3000);
     await step('09-results');
     const res = await b.text();
-    check('perfect demo scores 4,750', /4,750/.test(res), res.match(/ROUND COMPLETE[^\n]*\n+([\d,]+)/)?.[1]);
+    const score = res.match(/ACTIVE\s+([\d,]+)/)?.[1];
+    check('perfect demo scores 24,800', score === '24,800', score);
+    check('perfect demo clears all 6 levels', /ALL 6 LEVELS CLEARED/.test(res), res.split('\n')[0]);
     check('coach card (RULES)', /YOUR COACH[\s\S]*RULES/.test(res));
 
     await b.key('Enter'); // play again: no tutorial now
@@ -100,15 +104,17 @@ async function sweep([w, h, dsf], port) {
     await b.key('KeyL');
     check('leaderboard', await b.waitFor(/LEADERBOARD/i, 5000));
     await step('12-leaderboard');
-    check('board title has the round length', /FULL BODY · FLOOR · 45 S/.test(await b.text()));
-    await b.click('^\\s*90 s\\s*$');
+    const bt = await b.text();
+    check('board is workout · mode, no round length', /FULL BODY · FLOOR/.test(bt) && !/\b(45|90|180) S\b/.test(bt));
+    await b.click('^\\s*arms\\s*$');
     await sleep(600);
-    const b90 = await b.text();
-    check('empty 90 s board keeps filters and Back (Q3)', /BE THE FIRST/.test(b90) && /180 S/.test(b90) && /BACK/.test(b90));
+    const arms = await b.text();
+    check('empty Arms board keeps filters and Back (Q3)', /BE THE FIRST/.test(arms) && /ARMS · FLOOR/.test(arms) && /BACK/.test(arms));
 
     await b.go(`${BASE}?kiosk=1&store=local`, 3000);
     await step('13-kiosk');
-    check('kiosk shows the 45 s board', /FULL BODY · FLOOR · 45 S/.test(await b.text()));
+    const kt = await b.text();
+    check('kiosk shows the Full body board, no round length', /FULL BODY · FLOOR/.test(kt) && !/\b(45|90|180) S\b/.test(kt));
 
     await b.go(url, 2500);
     check('landing offers Continue as Sweep', /CONTINUE AS SWEEP/i.test(await b.text()));

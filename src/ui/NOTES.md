@@ -22,11 +22,7 @@ pair test-merges cleanly; all five together pass `npm run check` and the sweep a
 `tierOf` (snaps the rule coach's tenths), `asRound` (plays a coach pick as 180 s on its tier).
 Every "PLAY" of a coach pick goes through `asRound`.
 
-**Outside src/ui, for Greg:** `docs/qa/sweep/sweep.mjs` still checks "45 S" on select, board and
-kiosk (my scratch copy has the new checks); `DEMO_CONFIG` is still 45 s (`?demo=1` plays it
-whatever the select screen sends); the rule coach (`src/data/coach.ts`) still picks 45/90 s.
-
-**Known:** at 150 % the results columns stack and scroll (by design); a long AI recap can still push the coach panel past the footer at 125 %.
+**Sun: all of the above is merged** (#97, #105; main 093fb43). `DEMO_CONFIG` is 180 s and the coach snaps`ntiers (#92). `docs/qa/sweep/sweep.mjs` (`j1-sweep`) checks the 180 s demo: 24,800 and ALL 6 LEVELS`nCLEARED, shots off the 30 s portals, 36 checks per size, about 4 minutes.`n`n**Known:** at 150 % the results columns stack and scroll (by design); a long AI recap can still push the coach panel past the footer at 125 %.
 
 **Freeze:** from 10:00 Sunday only crash or unplayable fixes, nothing after 11:30.
 
