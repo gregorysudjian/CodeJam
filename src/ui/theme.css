@@ -615,6 +615,21 @@
 .dashboard-empty {
   min-height: calc(100dvh - 96px);
 }
+/* Calibration: a camera player at the mark can't scroll, so the 16:9 stage is only as wide as
+   the screen height allows; the subtracted height is the title, footer, gaps and padding. */
+.calibration-stage {
+  max-width: min(1200px, calc((100dvh - 340px) * 16 / 9));
+}
+@media (max-height: 900px) {
+  .calibration-screen main {
+    gap: 20px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+  .calibration-stage {
+    max-width: min(1200px, calc((100dvh - 260px) * 16 / 9));
+  }
+}
 .screen-shell.has-footer > main {
   padding-bottom: calc(var(--screen-footer-height, 136px) + 24px);
 }
