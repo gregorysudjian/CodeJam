@@ -327,8 +327,9 @@ export function WorkoutSelectScreen({
         />
         {mode === 'floor' && (
           <ToggleRow
-            className="min-h-14 border-0 bg-transparent p-0 shadow-none backdrop-blur-none [&_label>span]:text-[22px]"
+            className="min-h-14 border-0 bg-transparent p-0 shadow-none backdrop-blur-none [&_label>span:first-child]:text-[22px]"
             label="Low impact"
+            description="No jumps"
             checked={lowImpact}
             onCheckedChange={setLowImpact}
           />

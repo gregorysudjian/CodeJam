@@ -72,7 +72,7 @@ export function DashboardCharts({
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Eyebrow>ACTIVE MINUTES · LAST 7 DAYS</Eyebrow>
           <span className="text-caption text-text-muted">
-            Pace {Math.round((weeklyGoalMin / 7) * 10) / 10} min / day
+            Goal pace {Math.round((weeklyGoalMin / 7) * 10) / 10} min / day
           </span>
         </div>
         <div
