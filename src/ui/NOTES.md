@@ -6,7 +6,7 @@ Read this first if you pick up `src/ui` in a new conversation.
 
 Everything up to the accessibility pass is merged (main 181e9db). Greg's levels/lives queue
 (contracts #89–#91) is one branch per item, pushed, waiting for Greg's Claude to merge.
-**Merge order: `j1-tier` before `j1-board` and `j1-results`** (they use `kit/round.ts`). Every
+**Merge order: `j1-tier` before `j1-board` and `j1-results`, then `j1-results-fit`** (they use `kit/round.ts`). Every
 pair test-merges cleanly; all five together pass `npm run check` and the sweep at six sizes.
 
 | Branch | What a player sees | Wiring for `src/app` |
@@ -16,6 +16,7 @@ pair test-merges cleanly; all five together pass `npm run check` and the sweep a
 | `j1-board` | Leaderboard and kiosk: no round-length chips, title "FULL BODY · FLOOR" | Store: one board per workout + mode; `durationSec` prop now optional |
 | `j1-hud` | Hearts and "LEVEL 2/6" pill at the top; "Someone else is in the frame" pause | `lives`, `stage`, `pauseReason`, `resuming` (README table) |
 | `j1-results` | "OUT OF LIVES · LEVEL 3" / "ALL 6 LEVELS CLEARED" headline; tier instead of seconds | None: reads `summary.levelReached` / `outOfLives` |
+| `j1-results-fit` | Results fits one screen at 125 % (1093×614, 1024×576), also while the coach loads (on `j1-results`) | None |
 
 `kit/round.ts` (on `j1-tier`): `ROUND_LEVELS` 6, `ROUND_SEC` 180, `ROUND_LIVES` 3, tiers,
 `tierOf` (snaps the rule coach's tenths), `asRound` (plays a coach pick as 180 s on its tier).
@@ -25,7 +26,7 @@ Every "PLAY" of a coach pick goes through `asRound`.
 kiosk (my scratch copy has the new checks); `DEMO_CONFIG` is still 45 s (`?demo=1` plays it
 whatever the select screen sends); the rule coach (`src/data/coach.ts`) still picks 45/90 s.
 
-**Known, not fixed:** the results screen scrolls at 125–150 % (same on main before this batch).
+**Known:** at 150 % the results columns stack and scroll (by design); a long AI recap can still push the coach panel past the footer at 125 %.
 
 **Freeze:** from 10:00 Sunday only crash or unplayable fixes, nothing after 11:30.
 
