@@ -134,6 +134,26 @@ export function createSupabaseStore(
     return error;
   }
 
+  /**
+   * The rounds' profile row is gone (23503): a test player removed by the cleanup while this
+   * browser kept its login. Insert it again from the cached profile, so the rounds can follow.
+   */
+  async function recreateProfile(uid: string): Promise<boolean> {
+    const p = cachedProfile();
+    const { error } = await withTimeout(
+      sb.from('profiles').upsert(
+        {
+          id: uid,
+          display_name: nameOrGuest(p?.displayName),
+          ...(p ? profilePatchToRow({ goal: p.goal, level: p.level }) : {}),
+        },
+        { onConflict: 'id', ignoreDuplicates: true },
+      ),
+    );
+    if (error) console.warn('Could not recreate the profile; rounds stay queued.', error.message);
+    return !error;
+  }
+
   /** Push queued sessions; anything that still fails stays queued. Never throws. */
   async function sendQueue(): Promise<void> {
     try {
@@ -142,7 +162,10 @@ export function createSupabaseStore(
       const uid = await userId();
       if (!uid) return;
       const sent = new Set<string>();
-      const error = await upsertSessions(pending.map((s) => sessionToRow(s, uid)));
+      let error = await upsertSessions(pending.map((s) => sessionToRow(s, uid)));
+      if (error?.code === '23503' && (await recreateProfile(uid))) {
+        error = await upsertSessions(pending.map((s) => sessionToRow(s, uid)));
+      }
       if (!error) {
         for (const s of pending) sent.add(s.id);
       } else if (isRowRejected(error.code)) {
@@ -244,6 +267,17 @@ export function createSupabaseStore(
       const fromServer = fetchProfile(uid).then(
         (p) => {
           if (p) writeJson(kv, KEYS.profile, p);
+          // The server has no profile for this login (deleted by the cleanup): forget the cached
+          // one and its rounds, so the next sign-in creates the profile again instead of trusting
+          // the cache. Queued rounds stay; they are sent once the profile exists.
+          else
+            for (const key of [KEYS.profile, KEYS.sessions]) {
+              try {
+                kv?.removeItem(key);
+              } catch {
+                // Storage blocked: nothing cached to forget.
+              }
+            }
           return p;
         },
         () => cachedProfile(),
