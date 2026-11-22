@@ -19,6 +19,7 @@ import { createStore } from '@/data';
 import { createKeyboardInput } from '@/input';
 // Screens are imported from their own files, not the src/ui/screens barrel, so the lazily
 // loaded dashboard (and Recharts) can split into its own chunk.
+import { TIER_DIFFICULTY } from '@/ui/kit';
 import { LandingScreen } from '@/ui/screens/LandingScreen';
 import { LeaderboardScreen } from '@/ui/screens/LeaderboardScreen';
 import { ProfileScreen } from '@/ui/screens/ProfileScreen';
@@ -516,7 +517,15 @@ function MainApp() {
         <WorkoutSelectScreen
           workouts={workouts}
           coachPick={coachPick}
-          initial={config ?? (isDemo ? DEMO_CONFIG : undefined)}
+          initial={
+            // The tier starts at the player's fitness level (same three names) until they pick one.
+            config ??
+            (isDemo
+              ? DEMO_CONFIG
+              : profile
+                ? { difficulty: TIER_DIFFICULTY[profile.level] }
+                : undefined)
+          }
           settingsSlot={<InputSwitch value={inputKind} onChange={chooseInput} />}
           onStart={startSession}
           onBack={() => setScreen(sessions.length ? 'dashboard' : 'landing')}
@@ -535,7 +544,12 @@ function MainApp() {
         />
       )}
       {screen === 'tutorial' && config && (
-        <TryMoves moves={tutorialMoves(config)} input={gameInput} onDone={finishTutorial} />
+        <TryMoves
+          moves={tutorialMoves(config)}
+          input={gameInput}
+          pose={inputKind === 'pose' ? pose : null}
+          onDone={finishTutorial}
+        />
       )}
       {screen === 'play' && config && (
         <Suspense fallback={<div className="h-screen bg-bg" />}>

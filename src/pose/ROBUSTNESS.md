@@ -6,7 +6,7 @@ Baseline `7be4281` passed all 762 tests on Windows with Node 24.22.3 and the com
 
 ### A passerby controls a stationary player
 
-**Possible at the expo. Owner: Abdo.** The production model returns at most one pose. If it starts reporting the passerby alone, the calibrated session can accept that person immediately. The chance of the model making this switch on camera is unknown.
+**Fixed Sat night (`p5-camera`, DECISIONS 49).** The model now returns up to two poses and the session follows the calibrated player; a passer-by is never taken while walking, and one in the play area sets `otherPerson`. The `only walker` rows at 0.6–1.0× below now give zero wrong picks and moves. The table is the record from before the fix. Originally: the production model returned at most one pose. If it started reporting the passerby alone, the calibrated session could accept that person immediately.
 
 `crowd.robust.test.ts` feeds the real session a deterministic splice of `near/standing` (player) and `greg/sidestep` (walker). The shoulders cross from x = 0.15 to 0.85 over two seconds. Scale is the ratio of initial shoulder widths. Frame numbers are zero-based indices in the player clip. Expected zero stranger picks, moves and pauses.
 

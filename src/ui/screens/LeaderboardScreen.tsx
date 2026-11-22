@@ -14,6 +14,7 @@ import {
   SegmentedControl,
   WORKOUT_LABELS,
   MODE_LABELS,
+  ROUND_SEC,
   useHotkey,
   useNow,
 } from '@/ui/kit';
@@ -25,8 +26,9 @@ export interface LeaderboardScreenProps {
   entries: LeaderboardEntry[];
   workout: WorkoutId;
   mode: PlayMode;
-  /** One board per round length: a long round always outscores a short one. */
-  durationSec: number;
+  /** One board per workout and mode (every round is all 6 levels). Not shown; only handed back
+   *  to `onChangeFilter`, so the app's fetch keeps working until the store drops it. */
+  durationSec?: number;
   onChangeFilter(workout: WorkoutId, mode: PlayMode, durationSec: number): void;
   currentName?: string;
   loading?: boolean;
@@ -35,7 +37,6 @@ export interface LeaderboardScreenProps {
   onBack(): void;
   onPlay?(): void;
 }
-const BOARD_DURATIONS = [45, 90, 180] as const;
 const PODIUM = [
   { rank: 2, tone: 'text-cyan', height: 'min-h-[300px]' },
   { rank: 1, tone: 'text-lime', height: 'min-h-[350px]' },
@@ -123,7 +124,7 @@ export function LeaderboardScreen({
   entries,
   workout,
   mode,
-  durationSec,
+  durationSec = ROUND_SEC,
   onChangeFilter,
   currentName,
   loading = false,
@@ -150,9 +151,9 @@ export function LeaderboardScreen({
       });
     }
   }, [currentName, entries, loading, reduce]);
-  const change = (nextWorkout: WorkoutId, nextMode: PlayMode, nextDuration = durationSec) => {
+  const change = (nextWorkout: WorkoutId, nextMode: PlayMode) => {
     const filter = leaderboardFilter(nextWorkout, nextMode);
-    onChangeFilter(filter.workout, filter.mode, nextDuration);
+    onChangeFilter(filter.workout, filter.mode, durationSec);
   };
   useHotkey('Escape', onBack, !kiosk);
   useHotkey('Enter', () => onPlay?.(), Boolean(onPlay) && !kiosk);
@@ -192,8 +193,7 @@ export function LeaderboardScreen({
           <div>
             <Eyebrow className="mb-3">LEADERBOARD</Eyebrow>
             <h1 className="leaderboard-title font-display-italic text-display-md">
-              {WORKOUT_LABELS[workout]} <span className="text-text-dim">·</span> {MODE_LABELS[mode]}{' '}
-              <span className="text-text-dim">·</span> {durationSec} S
+              {WORKOUT_LABELS[workout]} <span className="text-text-dim">·</span> {MODE_LABELS[mode]}
             </h1>
           </div>
           {!kiosk && (
@@ -220,14 +220,6 @@ export function LeaderboardScreen({
                 ]}
                 className="border-0 bg-transparent"
                 onChange={(value) => change(workout, value)}
-              />
-              <SegmentedControl
-                size="md"
-                aria-label="Leaderboard round length"
-                value={String(durationSec)}
-                options={BOARD_DURATIONS.map((d) => ({ value: String(d), label: `${d} S` }))}
-                className="border-0 bg-transparent"
-                onChange={(value) => change(workout, mode, Number(value))}
               />
             </div>
           )}

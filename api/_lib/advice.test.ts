@@ -12,7 +12,7 @@ const answer = (over: Record<string, unknown> = {}) =>
   JSON.stringify({
     recap: 'Great round, Greg: 900 points.',
     tip: 'Squat a beat earlier.',
-    next: { workout: 'arms', durationSec: 90, difficulty: 0.6 },
+    next: { workout: 'arms', durationSec: 180, difficulty: 1 },
     reason: 'Arms is your least played workout this week.',
     ...over,
   });
@@ -22,7 +22,7 @@ describe('parseAdvice', () => {
     expect(parseAdvice(answer(), 'floor')).toEqual({
       recap: 'Great round, Greg: 900 points.',
       tip: 'Squat a beat earlier.',
-      next: { workout: 'arms', mode: 'floor', durationSec: 90, difficulty: 0.6 },
+      next: { workout: 'arms', mode: 'floor', durationSec: 180, difficulty: 1 },
       reason: 'Arms is your least played workout this week.',
       source: 'ai',
     });
@@ -37,12 +37,12 @@ describe('parseAdvice', () => {
     ).toBeNull();
   });
 
-  it('clamps difficulty, fixes the duration and keeps the played mode', () => {
+  it('snaps difficulty to a tier, makes the round every level (180 s), keeps the played mode', () => {
     const a = parseAdvice(
       answer({ next: { workout: 'legs', durationSec: 60, difficulty: 3 } }),
       'floor',
     );
-    expect(a?.next).toEqual({ workout: 'legs', mode: 'floor', durationSec: 90, difficulty: 1 });
+    expect(a?.next).toEqual({ workout: 'legs', mode: 'floor', durationSec: 180, difficulty: 1 });
   });
 
   it('never returns legs in treadmill mode', () => {

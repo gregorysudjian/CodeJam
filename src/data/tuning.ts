@@ -13,12 +13,16 @@ export const SAVE_WAIT_MS = 1500;
 
 /** Rule-based coach (docs/CONTRACTS.md). */
 export const DIFFICULTY_DEFAULT = 0.5;
-export const DIFFICULTY_STEP = 0.1;
+/** Difficulty is a tier (CONTRACTS.md): beginner, regular, athlete. The coach moves one tier. */
+export const COACH_TIERS = [0, 0.5, 1] as const;
 export const ACCURACY_RAISE_ABOVE = 0.85;
 export const ACCURACY_LOWER_BELOW = 0.6;
+/** Out of lives before reaching this level: one tier down, whatever the accuracy. */
+export const COACH_STRUGGLE_BELOW_LEVEL = 3;
 export const COACH_WEEK_MS = 7 * 24 * 3600 * 1000;
-export const COACH_DURATIONS = [45, 90, 180] as const;
-export const COACH_DEFAULT_DURATION = 90;
+/** A round is every level in a row: 6 levels of 30 s. */
+export const COACH_ROUND_SEC = 180;
+export const LEVEL_SEC = 30;
 
 /** Display names (names.ts): the profile screen's limit; the database allows 40. */
 export const NAME_MAX_LENGTH = 20;

@@ -29,10 +29,13 @@ describe('score ceiling in migration 0004', () => {
     expect(CAP_PER_SEC).toBeGreaterThan(0);
   });
 
-  // The three lengths the app offers, plus the ends of the 10 to 600 s range the table allows.
+  // Requested lengths: the old 45 / 90 / 180 s choices and the ends of the 10 to 600 s range the
+  // table allows. The cap applies to the duration that is saved, which is the level's own
+  // (level.config: the app passes it to the tracker, CONTRACTS.md). With levels, the generator may
+  // build a full round (180 s) whatever was asked, so compare against that, not the request.
   for (const durationSec of [10, 45, 90, 180, 600]) {
-    it(`leaves ${HEADROOM}x headroom over perfect play at ${durationSec} s`, () => {
-      let best = 0;
+    it(`leaves ${HEADROOM}x headroom over perfect play when ${durationSec} s is asked for`, () => {
+      let worst = 0; // highest perfect score per second of the round actually built
       for (const workout of Object.keys(WORKOUTS) as WorkoutId[])
         for (const mode of WORKOUTS[workout].availableIn as PlayMode[])
           for (let d = 0; d <= 10; d++)
@@ -46,9 +49,9 @@ describe('score ceiling in migration 0004', () => {
                   lowImpact,
                   seed: i * 7919 + 13,
                 });
-                best = Math.max(best, perfectScore(level));
+                worst = Math.max(worst, perfectScore(level) / level.config.durationSec);
               }
-      expect(best * HEADROOM).toBeLessThanOrEqual(CAP_PER_SEC * durationSec);
+      expect(worst * HEADROOM).toBeLessThanOrEqual(CAP_PER_SEC);
     });
   }
 });

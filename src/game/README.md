@@ -55,6 +55,24 @@ On the demo Mac, in `~/CodeJam`, once `main` is final:
 - **How it plays:** `autopilot.js` does what `core.test.ts`'s perfect player does, with real key events. It reads the level from React's fiber tree (the select screen picks a random seed except on the demo) and starts its clock `INTRO_SEC` after `<body data-game="running">` turns on. So it needs the dev server, not `npm run preview`.
 - **The camera** is Chrome's fake device (a test pattern), so the real webcam never turns on; the K case only checks that switching to it and back keeps the round alive.
 
+## Camera on the demo Mac (Sat night, measured)
+
+Chrome on the M4 Pro MacBook Pro, built-in display at 1512×945, the MacBook Pro Camera at 640×480 and 30 fps, pose on the GPU, `?demo=1&music=off`, a real body on the mark.
+
+| | `MAX_POSES` 2 (shipped) | `MAX_POSES` 1 |
+| --- | --- | --- |
+| Render FPS, game's line (average / slowest 5 % of frames) | 119.7 / 10.0 ms | 120.0 / 10.0 ms |
+| Worst full second of the round | 114 fps | 120 fps |
+| Frames over 50 ms in the round | 1 | 1 |
+| Graphics quality | 0 throughout | 0 throughout |
+| Model time per camera frame (mean / 95 %) | 11.2 / 13.9 ms | 7.2 / 9.3 ms |
+| Pose FPS | 30 (the camera's rate) | 30 |
+
+- **Where the time goes:** the camera delivers 30 fps; the model runs once per new frame on the main thread (11 ms with 2 poses); capture to pose state measured 8–11 ms on the fake camera. The game polls the state once per render frame (8 ms at 120 fps).
+- **Start:** camera open 0.6 s, model ready 0.6 s (it loads alongside the camera since `p5-camera`; before, it started after playback, about 0.7 s), first pose frame 0.76 s after START. The GPU warm-up moved into the load: the first model call went from 233 ms to 10–20 ms.
+- **D overlay** shows, under the camera line, frames per second, model ms, capture-to-state ms, missed frames and watchdog frames (`window.__poseTiming`).
+- `?gfx=low` is not needed on this Mac: render FPS stays at 114–120 with the camera on.
+
 ## Camera session: the next steps
 
 Everything here needs the webcam, the demo laptop and a body; the game prints what you need. Branch `p5-game` (merged as #47; it follows `main`). The results go in one small follow-up PR: push `p5-game`, then tell Greg "ready".

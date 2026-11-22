@@ -37,7 +37,7 @@ webcam ─► camera.ts (getUserMedia 640×480) ─► <video> (engine.ts mirror
 landmarker.ts  detect(video) → raw landmarks for 1..MAX_POSES bodies (one shared model from
                public/, GPU then CPU, MediaPipe JS loaded only when pose starts)
              ▼
-session.ts     size gate → pickBody → calibrating? calibration.ts : detect.ts → then gesture.ts
+session.ts     calibrating? pickBody → calibration.ts : follow the player (+ otherPerson) → detect.ts → gesture.ts
              ▼                                       │ status in 5% steps → calibrate(onStatus)
 detect.ts      EMA smoothing → lane / jump / squat / arms / tracking / drift → InputState + MoveEvents
 gesture.ts     reads detect's state and size → the held X → 'pause' (moves stay unchanged)
@@ -75,7 +75,7 @@ engine.ts      source: getState() (the game polls it), onMove, onGesture, drawSk
 - A one-frame visibility flicker keeps the smoothing (38).
 - **Head to knees at about 1.5 m** (40, corrected by 42). While ducking, the shoulders are enough, because deep squats push the hips to the frame's bottom edge. The room checks are 0.5 T above the shoulders and 0.5 T below the hips.
 - **Pause X** (41, corrected by 42 with A's real X): wrists past each other by at least 0.08 W, between the shoulders and the nose, in front of the body, held 1 s. Never fires while airborne, ducking or with an arm up.
-- `MAX_POSES = 1` with a size gate; pose handles D, the app handles R; the video keeps playing off the page.
+- `MAX_POSES = 2`: the session follows the calibrated player and flags anyone else in the play area as `otherPerson` (DECISIONS 49); pose handles D, the app handles R; the video keeps playing off the page.
 
 ## 5. Known bugs and risks (ranked)
 
@@ -88,6 +88,7 @@ engine.ts      source: getState() (the game polls it), onMove, onGesture, drawSk
 7. ~~A player more than 40% closer or further is a stranger~~: fixed Sat ~6 PM (DECISIONS 44, synthetic + `near/mixed`); confirm on A's `● drift` and `● turnStep` clips. Remaining: a player who walks closer while standing in a **side lane** keeps the old size until back in the centre lane.
 8. Treadmill mode is only simulated (scaled clips). If the runner drifts on the belt, press R.
 9. Known noise limits: a half press on a camera tilted 3° can read as a reach; Greg's fastest reach swaps can lose a rep or read as a jump at ±1% noise.
+10. **For A (from Patrick's camera session 3, Sat night): walking onto the mark from behind reads as jumps.** A player taken back about a step behind the mark (W 0.104, ×0.83 of the calibration) who then walked onto it (W 0.14–0.16, ×1.4) gave 3 `jump` events in 3 s at `dropT` −0.17 to −0.18 (the hips rise in the frame as the body grows). The drift re-baseline (DECISIONS 44/48) waits for stillness, so it only catches up after. Before DECISIONS 49 the player was usually not tracked yet at that point, which hid it. Recording: Patrick's Mac, scratch `capture-1795319347861.json`, steps `backFurther` → `onMark`. Not changed (detection logic).
 
 ## 6. Needs real-camera test (10 minutes, A's laptop)
 
@@ -150,7 +151,7 @@ When they land in `~/Downloads`:
 3. **Phase 1/2 done-check: the teammate check** with Greg's clips at 1.5 m (§7), added as `fixtures/extra/` tests.
 4. **Phase 4: `STATION.md`.** The operator card is done; add what the Mac session shows (distance, light, whether `?gfx=low` is needed) to the "Before the demo" list.
 5. **Phase 5 (Sunday):** fresh-eyes playtest. Only crash or unplayable fixes, a second reader for each, no threshold changes after 10 AM. Rehearse the X on the pause screen.
-6. Skip: new features, `MAX_POSES = 2`, treadmill tuning.
+6. Skip: new features, treadmill tuning. (`MAX_POSES = 2` is done: DECISIONS 49.)
 
 ## 9. Starter prompt for a new conversation
 

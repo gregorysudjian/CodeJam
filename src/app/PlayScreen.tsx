@@ -11,6 +11,7 @@ import type {
   SessionSummary,
 } from '@/contracts';
 import { createGame } from '@/game';
+import { ROUND_LEVELS, ROUND_LIVES } from '@/ui/kit';
 import { GameHud } from '@/ui/screens/GameHud';
 import { createSessionTracker, generateLevel } from '@/workout';
 import { SkeletonSlot, VideoSlot } from './slots';
@@ -59,6 +60,11 @@ export function PlayScreen({
   const [lastEvent, setLastEvent] = useState<HudEvent | null>(null);
   const [paused, setPaused] = useState(false);
   const [trackingLost, setTrackingLost] = useState(false);
+  const [pauseReason, setPauseReason] = useState<'trackingLost' | 'otherPerson' | 'user'>();
+  const [resuming, setResuming] = useState(false);
+  const [stage, setStage] = useState<{ index: number; total: number }>();
+  // Every round has 3 lives (CONTRACTS.md): full hearts from the start.
+  const [lives, setLives] = useState({ left: ROUND_LIVES, total: ROUND_LIVES });
   const [lostLong, setLostLong] = useState(false);
   useEffect(() => {
     if (!trackingLost) return;
@@ -126,11 +132,26 @@ export function PlayScreen({
           pausedByPlayerRef.current = e.reason === 'user';
           setPaused(true);
           setTrackingLost(e.reason === 'trackingLost');
+          setPauseReason(e.reason);
+          setResuming(false);
+          break;
+        case 'resuming':
+          // An X during the 3-2-1 pauses again (the core stops the countdown).
+          pausedByPlayerRef.current = false;
+          setResuming(true);
           break;
         case 'resumed':
           pausedByPlayerRef.current = false;
           setPaused(false);
           setTrackingLost(false);
+          setPauseReason(undefined);
+          setResuming(false);
+          break;
+        case 'stage':
+          setStage({ index: e.stage.index, total: level.stages?.length ?? ROUND_LEVELS });
+          break;
+        case 'lifeLost':
+          setLives({ left: e.livesLeft, total: ROUND_LIVES });
           break;
         case 'finished':
           finishedRef.current = true;
@@ -198,6 +219,10 @@ export function PlayScreen({
           lastEvent={lastEvent}
           paused={paused}
           trackingLost={trackingLost}
+          pauseReason={pauseReason}
+          resuming={resuming}
+          stage={stage}
+          lives={lives}
           cameraSlot={
             pose ? (
               // The skeleton over the preview shows the player they are tracked (pose NEEDS 6).

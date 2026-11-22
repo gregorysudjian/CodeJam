@@ -469,7 +469,41 @@
     row-gap: 8px;
   }
 }
+/* 150 % scaling (480-512 px tall): the pause messages kept their subtitle 35 px off the bottom. */
+@media (max-height: 520px) {
+  .hud-tracking-title {
+    font-size: 72px;
+  }
+  .hud-overlay .hud-guide-pulse svg {
+    max-height: 130px;
+  }
+}
+/* Level and hearts pill: it sits between the score and clock plates, so it narrows with them
+   (853 px wide at 150 % leaves ~360 px between the plates). */
+@container (max-width: 1100px) {
+  .hud-status {
+    gap: 12px;
+    padding-inline: 14px;
+  }
+  .hud-status-level {
+    font-size: 32px;
+  }
+  .hud-heart {
+    width: 32px;
+    height: 32px;
+  }
+}
 @container (max-width: 800px) {
+  .hud-status {
+    top: 12px;
+  }
+  .hud-status-level {
+    font-size: 22px;
+  }
+  .hud-heart {
+    width: 22px;
+    height: 22px;
+  }
   .hud-score {
     top: 12px;
     left: 12px;
@@ -676,8 +710,13 @@
 @media (max-width: 900px) {
   .hud-race {
     left: 270px;
-    right: 225px;
+    /* The clock plate is 264 px from the edge: at 225 the FINISH flag sat on TIME LEFT. */
+    right: 280px;
     top: 75px;
+  }
+  /* The race bar is 19 px higher here: the level and hearts pill moves up with it. */
+  .hud-status {
+    top: 6px;
   }
 }
 @media (max-width: 600px) {
@@ -1041,6 +1080,11 @@
     padding-top: 24px;
     gap: 24px;
   }
+  /* A returning player has the coach's pick above the cards: the figures give up its height
+     (at 1280×720 the settings row went 15 px under the footer). */
+  .workout-screen main:has(.coach-banner) [role='radiogroup'] > [role='radio'] svg {
+    max-height: 64px;
+  }
 }
 
 /* 125–150 % display scaling or browser zoom (QA Q19): the 1366×768 and 1280×720 screens become
@@ -1061,12 +1105,15 @@
   .workout-screen [role='radiogroup'][aria-label='Workout'] > [role='radio'] svg {
     max-height: 56px;
   }
+  .workout-screen main:has(.coach-banner) [role='radiogroup'] > [role='radio'] svg {
+    max-height: 40px;
+  }
   .workout-screen [role='radiogroup'][aria-label='Workout'] + div {
     padding-top: 8px;
   }
 }
 
-/* Narrower than 1440 px: let the select screen's settings segments shrink so mode, duration,
+/* Narrower than 1440 px: let the select screen's settings segments shrink so mode, tier,
    low impact and Camera/Keyboard stay on one row (QA Q1). */
 @media (max-width: 1439px) {
   .workout-settings [role='radio'] {
@@ -1076,15 +1123,31 @@
   }
 }
 /* …and at 125–150 % (Q19) shrink them further, so the row still fits in 850–1100 CSS px. */
+/* BEGINNER · REGULAR · ATHLETE is ~70 px wider than the old 45 S · 90 S · 180 S: 16 px segments
+   and 8 px gaps keep the row on one line at 1024×576 (it needs 913 px). */
 @media (max-height: 640px) {
+  .workout-settings {
+    column-gap: 8px;
+  }
   .workout-settings [role='radio'] {
     height: 44px;
     min-width: 0;
-    padding-left: 12px;
-    padding-right: 12px;
-    font-size: 18px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 16px;
   }
   .workout-settings label > span:first-child {
     font-size: 18px;
+  }
+}
+/* 1024×576 and 150 %: with the coach's pick above them the cards keep only their titles. */
+@media (max-height: 600px) {
+  .workout-screen main:has(.coach-banner) [role='radiogroup'] > [role='radio'] > span:has(> svg) {
+    display: none;
+  }
+}
+@media (max-height: 520px) {
+  .workout-screen .coach-banner {
+    padding-block: 6px;
   }
 }
