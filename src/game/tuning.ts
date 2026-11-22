@@ -350,3 +350,22 @@ export const MUSIC_LOOKAHEAD_SEC = 0.15; // notes are scheduled this far ahead o
 export const MUSIC_FILTER_HZ = [1400, 2600, 5000, 9000] as const; // master low-pass by streak tier
 export const MUSIC_DUCK_SEC = 0.35; // a hit muffles the music this long
 export const MUSIC_FADE_SEC = 0.25; // pause, resume and finish fades
+
+/* ── Realistic obstacles (props.ts, obstacles.ts), on levels with backdrop style 'real' ── */
+// Gameplay is identical to the neon look: same hitboxes, sizes, positions and timing. Only the
+// materials change (a lit texture, no glow, no neon edges) and a soft contact shadow is laid on
+// the road under every grounded object, so nothing floats over the video.
+export const REAL_PROPS = {
+  /** Contact shadow: darkness at its centre (0 to 1), and how far it spreads past the footprint
+   *  (world units on each side; along the track, the front and back). */
+  shadowOpacity: 0.55,
+  shadowSpread: 0.35,
+  /** Just above the track strip (0.004) and under the floor markers (0.02). */
+  shadowY: 0.012,
+  /** Bodies (posts, frames) are painted steel; the neon bars are paint in the move colour. */
+  steel: 0x5b636e,
+  /** Floor markers become road paint: normal blending at this opacity, not light. */
+  paintOpacity: 0.32,
+  /** A hit: the texture and paint tinted red (multiplied), still lit. */
+  hitTint: 0xff6a5a,
+} as const;

@@ -616,6 +616,7 @@ export function create3DView(
     setQuality(q) {
       quality = q;
       stage.setQuality(q);
+      obstacles.setLowGraphics(q >= 2); // Low graphics: neon obstacles (package B)
     },
     dispose() {
       videoBackdrop.dispose();
