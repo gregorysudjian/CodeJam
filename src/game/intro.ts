@@ -13,6 +13,15 @@ export function countdownAt(t: number): '3' | '2' | '1' | 'GO' | null {
   return t < T.INTRO_SEC + T.INTRO_GO_SEC ? 'GO' : null;
 }
 
+/**
+ * The number shown during the countdown before a resume (core.resumingIn: seconds left), as
+ * the intro shows it: '3', '2', '1'. Null when no countdown runs.
+ */
+export function resumeCountAt(secLeft: number | null): string | null {
+  if (secLeft === null || !(secLeft > 0)) return null;
+  return String(Math.max(1, Math.ceil(secLeft)));
+}
+
 /** Fly-in progress 0 to 1 (eased), `t` seconds into the intro. */
 export function flyProgress(t: number): number {
   const k = Math.min(1, Math.max(0, t / T.INTRO_FLY_SEC));

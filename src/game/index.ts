@@ -245,7 +245,14 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
     }
     if (!core.finished() && input.kind !== startKind) mixedInput = true;
     if (core.pauseReason() === null) shownLeads.step(leads(), Math.min(realDt, T.MAX_DT_SEC));
+    const countBefore = core.resumingIn();
     core.step(realDt, state, now);
+    // The 3-2-1 before a resume beeps like the intro's, and GO when the round goes on.
+    const countNow = core.resumingIn();
+    if (countNow !== null && (countBefore === null || Math.ceil(countNow) < Math.ceil(countBefore)))
+      audio.count(Math.ceil(countNow));
+    else if (countBefore !== null && countNow === null && core.pauseReason() === null)
+      audio.count(0);
     race?.syncTo(core.elapsed());
     if (recorder && core.started() && !core.finished() && core.pauseReason() === null)
       recorder.sample(core.elapsed(), state);
@@ -301,6 +308,7 @@ export function createGame(canvas: HTMLCanvasElement, level: Level, input: Input
         phase,
         streak: core.streak(),
         intro: introT,
+        resumeIn: core.resumingIn(),
         ghost: ghost ? ghostPoseAt(ghost.samples, ghost.hz, core.elapsed(), ghostPose) : null,
         race: race && phase !== 'finished' ? raceLead(result, race.ghost) : null,
       });

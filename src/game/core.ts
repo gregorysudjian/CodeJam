@@ -25,7 +25,7 @@ export interface CoreHooks {
   verdict?(item: Item, v: Verdict, offset: number | null): void;
 }
 
-export type PauseReason = 'user' | 'trackingLost';
+export type PauseReason = 'user' | 'trackingLost' | 'otherPerson';
 
 export interface Core {
   readonly items: readonly Item[];
@@ -34,7 +34,10 @@ export interface Core {
   streak(): number;
   started(): boolean;
   finished(): boolean;
+  /** Why the round is held; still set during the 3-2-1 before it resumes (resumingIn). */
   pauseReason(): PauseReason | null;
+  /** Seconds left of the countdown before a resume (game time frozen), or null. */
+  resumingIn(): number | null;
   start(): void;
   pause(): void;
   resume(): void;
@@ -76,6 +79,18 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
   let started = false;
   let finished = false;
   let pauseReason: PauseReason | null = null;
+  // Every resume counts down first (RESUME_COUNTDOWN_SEC, real time, game time frozen), so the
+  // player is back in position before objects move: null when no countdown runs.
+  let countdown: number | null = null;
+  const holdAgain = (reason: PauseReason): void => {
+    countdown = null;
+    pauseReason = reason;
+    emit({ type: 'paused', reason });
+  };
+  const countDown = (): void => {
+    countdown = T.RESUME_COUNTDOWN_SEC;
+    emit({ type: 'resuming', inSec: T.RESUME_COUNTDOWN_SEC });
+  };
   let elapsed = 0;
   let nextCue = 0;
   let firstUndecided = 0; // items before this index are all decided
@@ -128,27 +143,46 @@ export function createCore(level: Level, hooks: CoreHooks = {}, leads?: T.Leads)
     started: () => started,
     finished: () => finished,
     pauseReason: () => pauseReason,
+    resumingIn: () => countdown,
     start() {
       started = true;
     },
     pause() {
-      if (!started || finished || pauseReason) return;
-      pauseReason = 'user';
-      emit({ type: 'paused', reason: 'user' });
+      if (!started || finished) return;
+      // A pause during the countdown stops it: the player paused again.
+      if (pauseReason && countdown === null) return;
+      holdAgain('user');
     },
     resume() {
-      if (!pauseReason || finished) return;
-      pauseReason = null;
-      emit({ type: 'resumed' }); // if tracking is still lost, the next step pauses again
+      if (!pauseReason || finished || countdown !== null) return;
+      countDown(); // if tracking is still lost, the next step pauses again
     },
     step(realDtSec, state, nowMs) {
       if (!started || finished) return;
-      if (!state.tracking && pauseReason === null) {
-        pauseReason = 'trackingLost';
-        emit({ type: 'paused', reason: 'trackingLost' });
-      } else if (state.tracking && pauseReason === 'trackingLost') {
+      // Someone else in the play area, or the player gone: pose sets tracking false for both.
+      const lost: PauseReason | null = state.otherPerson
+        ? 'otherPerson'
+        : !state.tracking
+          ? 'trackingLost'
+          : null;
+      if (lost) {
+        // Paused now, or again if it happens during the countdown ('resumed' is never sent).
+        // A user pause keeps its reason; a tracking pause follows what the camera sees now.
+        if (pauseReason === null || countdown !== null) holdAgain(lost);
+        else if (pauseReason !== 'user' && pauseReason !== lost) holdAgain(lost);
+      } else if (
+        (pauseReason === 'trackingLost' || pauseReason === 'otherPerson') &&
+        countdown === null
+      ) {
+        countDown(); // the player is back: count down, then resume
+      }
+      if (countdown !== null) {
+        countdown -= Math.min(Math.max(0, realDtSec), T.RESUME_MAX_DT_SEC);
+        if (countdown > 0) return;
+        countdown = null;
         pauseReason = null;
         emit({ type: 'resumed' });
+        return; // game time starts with the next frame
       }
       if (pauseReason) return;
 
