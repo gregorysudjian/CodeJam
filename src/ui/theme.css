@@ -393,8 +393,9 @@
   -webkit-text-stroke: 4px var(--na-bg);
   paint-order: stroke fill;
 }
+/* A tight neon edge, not a halo: a wide glow smeared over the bright street videos. */
 @utility hud-text-glow {
-  text-shadow: 0 0 28px currentColor;
+  text-shadow: 0 0 10px color-mix(in srgb, currentColor 45%, transparent);
 }
 @utility hud-vignette {
   box-shadow:
@@ -458,10 +459,27 @@
 .calibration-stage .glass {
   backdrop-filter: blur(24px) saturate(140%);
 }
-.hud-root .move-figure,
 .calibration-stage .move-figure {
   filter: drop-shadow(0 0 6px color-mix(in srgb, currentColor 66%, transparent))
     drop-shadow(0 0 18px color-mix(in srgb, currentColor 33%, transparent));
+}
+/* In the round the figure sits on the cue's dark pill: a tight edge, no 18 px halo on video. */
+.hud-root .move-figure {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 50%, transparent));
+}
+/* The move cue floats over the street video (bright daylight clips): a dark pill sized to its
+   content keeps the word, figure and ring at 3:1+ over white (violet, the darkest accent, needs
+   ~83 % dark). Same place and size as before: width fits the content, centred between inset-x. */
+.hud-cue {
+  width: fit-content;
+  margin-inline: auto;
+  margin-top: -6px;
+  padding: 6px 28px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--na-bg) 86%, transparent);
+  border: 1px solid var(--na-glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.6);
 }
 .hud-root .font-display-italic {
   font-style: italic;
@@ -818,7 +836,7 @@
 }
 .hud-race-fill {
   background: linear-gradient(to right, var(--na-activity-bar), var(--na-lime));
-  box-shadow: 0 0 12px color-mix(in srgb, var(--na-lime) 45%, transparent);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--na-lime) 45%, transparent);
 }
 @media (max-width: 767px) {
   .dashboard-empty {

@@ -78,8 +78,9 @@ const Feedback = memo(
           className={cn(
             'absolute inset-x-0 top-[68%] text-center font-display-italic text-display-sm',
             tone,
-            // MISS is the only hit cue a red-blind player gets: outline it (theme.css text-outline).
-            event.kind === 'hit' && 'text-outline',
+            // A dark ring keeps +points and MISS readable over the bright street videos; MISS is
+            // also the only hit cue a red-blind player gets (theme.css text-outline).
+            'text-outline',
           )}
           initial={{ opacity: 1, y: 0 }}
           animate={{ opacity: [1, 1, 0], y: reduce ? 0 : -55 }}
@@ -130,7 +131,7 @@ function RoundStatus({
                 key={`${i}-on`}
                 aria-hidden="true"
                 className={cn(
-                  'hud-heart size-10 fill-danger text-danger drop-shadow-[0_0_8px_rgba(255,77,79,0.7)]',
+                  'hud-heart size-10 fill-danger text-danger drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]',
                   left === 1 && !reduce && 'hud-clock-pulse',
                 )}
               />
@@ -302,7 +303,7 @@ export function GameHud({
                 className="fill-bg"
               />
             </svg>
-            <span className="font-display text-caption text-text-muted">FINISH</span>
+            <span className="rounded-sm bg-bg/80 px-1 font-display text-caption text-text">FINISH</span>
           </div>
         </div>
       </div>
