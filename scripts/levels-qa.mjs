@@ -13,7 +13,8 @@
 //          the coach recap names the level.
 //   clean  perfect play: stage events 1..6 in order, no lifeLost, finished 'complete', the saved
 //          round has durationSec 180, levelReached 6, and the coach recap names the levels.
-//   pause  Esc mid-round, Esc again: a 'resuming' event and a visible 3-2-1 before 'resumed', and
+//   pause  Esc mid-round, Esc again: a 'resuming' event and a 3-2-1 before 'resumed' (drawn on the
+//          game's canvas, recorded through fillText/strokeText, or shown as page text), and
 //          game time frozen until 'resumed', then moving again.
 // Events are read by subscribing to the Game object itself (found through React's fiber tree,
 // as the autopilot finds the level), so this checks the contract, not only the screen.
@@ -231,9 +232,25 @@ async function clean(page, base) {
   };
 }
 
+// The game draws its 3-2-1 on a canvas (a texture in the 3D view, text in the 2D one), never as
+// page text: record every lone 1, 2 or 3 drawn with fillText or strokeText.
+const DRAW_HOOK = `(() => {
+  if (window.__qaDrawn) return;
+  window.__qaDrawn = [];
+  const P = CanvasRenderingContext2D.prototype;
+  for (const fn of ['fillText', 'strokeText']) {
+    const orig = P[fn];
+    P[fn] = function (text, ...rest) {
+      if (/^\\s*[123]\\s*$/.test(String(text))) window.__qaDrawn.push({ d: String(text).trim(), at: performance.now() });
+      return orig.call(this, text, ...rest);
+    };
+  }
+})()`;
+
 async function pause(page, base) {
   const fails = [];
   await toSelect(page, base);
+  await page.eval(DRAW_HOOK);
   await startRound(page, 'perfect');
   await page.waitFor(`(window.__qaGame?.getElapsedSec() ?? 0) >= 8`, 40000);
   await page.key('Escape');
@@ -247,6 +264,7 @@ async function pause(page, base) {
   // Resume, then sample game time and the screen every 100 ms until 'resumed' (or 6 s).
   const n0 = (await events(page)).length;
   const t0 = Date.now();
+  const keyAt = await page.eval('performance.now()');
   await page.key('Escape');
   const digits = new Set();
   let movedBeforeResumed = null;
@@ -278,8 +296,16 @@ async function pause(page, base) {
   }
   if (movedBeforeResumed !== null)
     fails.push(`game time moved ${movedBeforeResumed} ms after Esc, before 'resumed'`);
+  // What the game drew between the key and 'resumed', in order of first appearance.
+  const drawn = (await page.eval('window.__qaDrawn ?? []')).filter(
+    (x) => x.at >= keyAt && x.at <= (resumed?.at ?? Infinity),
+  );
+  const order = [...new Set(drawn.map((x) => x.d))].join('');
+  for (const d of order) digits.add(d);
   if (!['3', '2', '1'].every((d) => digits.has(d)))
-    fails.push(`3-2-1 not all seen on screen (saw "${[...digits].join('')}")`);
+    fails.push(`3-2-1 not all shown (drawn "${order}", page text "${[...digits].join('')}")`);
+  else if (order && order !== '321')
+    fails.push(`countdown drawn in the order "${order}" (want 321)`);
   if (resumed) {
     await sleep(1500);
     if ((await page.eval('window.__qaGame.getElapsedSec()')) <= pausedAt)
