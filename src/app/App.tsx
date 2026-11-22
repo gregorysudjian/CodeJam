@@ -322,7 +322,7 @@ function MainApp() {
       setSigningIn(false);
     }
   };
-  const playAsGuest = async () => {
+  const resetPreviousPlayer = async () => {
     if (returning || profile) {
       await store.signOut();
       setReturning(null);
@@ -333,6 +333,22 @@ function MainApp() {
       setAdvice(null);
       setConfig(null);
     }
+  };
+  const savePlayerProfile = async (p: ProfileInput) => {
+    await signIn(p.displayName || undefined);
+    const patch: Partial<ProfileInput> = { ...p };
+    if (!p.displayName?.trim()) delete patch.displayName;
+    return store.saveProfile(patch);
+  };
+  const signUp = async (p: ProfileInput) => {
+    await resetPreviousPlayer();
+    const saved = await savePlayerProfile(p);
+    setProfile(saved);
+    if (isDemo) setConfig({ ...DEMO_CONFIG, difficulty: TIER_DIFFICULTY[saved.level] });
+    setScreen('select');
+  };
+  const playAsGuest = async () => {
+    await resetPreviousPlayer();
     setProfile(await signIn());
     setScreen('profile');
   };
@@ -341,10 +357,7 @@ function MainApp() {
     setScreen('select');
   };
   const submitProfile = async (p: ProfileInput) => {
-    await signIn(p.displayName || undefined);
-    const patch: Partial<ProfileInput> = { ...p };
-    if (!p.displayName?.trim()) delete patch.displayName;
-    setProfile(await store.saveProfile(patch));
+    setProfile(await savePlayerProfile(p));
     setScreen('select');
   };
 
@@ -497,6 +510,7 @@ function MainApp() {
       {screen === 'landing' && (
         <LandingScreen
           appName={APP_NAME}
+          onSignUp={(p) => void withSignIn(() => signUp(p))}
           onPlayAsGuest={() => void withSignIn(playAsGuest)}
           returning={returning}
           onContinue={() => void withSignIn(continueAsReturning)}
