@@ -1,6 +1,6 @@
 // Display names go on a projector at the expo (kiosk, leaderboard). cleanDisplayName runs before
-// any name is saved, in both stores; migration 0006 applies the same rules in the database, for
-// names sent straight to the REST API. Keep the two term lists identical (names.test.ts checks).
+// any name is saved, in both stores, and again when a name is read back (leaderboard, profile),
+// so a name sent straight to the REST API is cleaned before it is shown.
 import { NAME_MAX_COMBINING_MARKS, NAME_MAX_LENGTH } from './tuning';
 
 /**
