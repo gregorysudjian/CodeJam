@@ -33,17 +33,17 @@ Captured at 1280×720 on `main` 28725de by the scripted Chrome sweep (`docs/qa/s
 
 | File | Screen | Shows |
 | --- | --- | --- |
-| [01-landing](submission/01-landing.jpg) | Landing, first visit | "Run Montréal with your body", the sign-up card with the username field |
+| [01-landing](submission/01-landing.jpg) | Landing, first visit | "Run Montréal with your body", the sign-up card with a username typed, the privacy line, the QR code |
 | [02-select](submission/02-select.jpg) | Workout select | The four workouts, floor or treadmill, tier, Low impact, Camera or Keyboard, "6 LEVELS · 3 LIVES" |
-| [03-tutorial](submission/03-tutorial.jpg) | "Try each move" | The first move of the walk-through (keyboard hint) |
+| [03-tutorial](submission/03-tutorial.jpg) | "Try each move" | The first of the seven steps of the walk-through (keyboard hint) |
 | [04-level-1](submission/04-level-1.jpg) | Play, level 1 | Old Montreal (Rue Saint-Paul), the neon robot, hearts, the move cue |
 | [05-level-3](submission/05-level-3.jpg) | Play, level 3 | The Old Port at blue hour |
 | [06-level-6](submission/06-level-6.jpg) | Play, level 6 | The Old Port again, the fastest level |
-| [07-results](submission/07-results.jpg) | Results | ALL 6 LEVELS CLEARED, score, reps per move, the coach card (RULES) |
-| [08-dashboard](submission/08-dashboard.jpg) | Dashboard | The week, day streak, recent rounds |
-| [09-leaderboard](submission/09-leaderboard.jpg) | Leaderboard, EVERYONE | The board for Full body · floor |
-| [10-friends](submission/10-friends.jpg) | Leaderboard, FRIENDS | The FRIENDS tab on the local store, which has no friends: it says so |
-| [11-kiosk](submission/11-kiosk.jpg) | `?kiosk=1` | The leaderboard-only screen with the QR code |
+| [07-results](submission/07-results.jpg) | Results | ALL 6 LEVELS CLEARED, 24,800 at 100%, grade S, reps per move, the coach card (RULES) with NEXT UP |
+| [08-dashboard](submission/08-dashboard.jpg) | Dashboard (PROGRESS) | Active minutes against the weekly goal, day streak, rounds, reps and estimated calories this week |
+| [09-leaderboard](submission/09-leaderboard.jpg) | Leaderboard, EVERYONE | The Full body · floor podium, with the EVERYONE / FRIENDS, workout and mode filters |
+| [10-friends](submission/10-friends.jpg) | Leaderboard, FRIENDS | The FRIENDS tab and the ADD FRIEND card. On the local store there are no friends, and adding one answers "Friends need the internet" |
+| [11-kiosk](submission/11-kiosk.jpg) | `?kiosk=1` | The leaderboard-only screen: "Beat 24,800 to take the crown", the QR code |
 
 **Retake before submitting if you can** (none of these can be scripted here):
 
