@@ -364,7 +364,8 @@ function MainApp() {
       setCoachPick(coach);
     });
     // A round on the local store is not on the shared board, so no rank (Jiscar 2, #64).
-    if (store.kind === 'supabase')
+    // Nor a 0-point round: "#1 on the leaderboard" for nothing reads wrong on a projector.
+    if (store.kind === 'supabase' && s.score > 0)
       void store
         .getLeaderboard(s.config.workout, s.config.mode, s.config.durationSec, LEADERBOARD_SIZE)
         .then((top) => {
