@@ -54,7 +54,7 @@ function crossBehind(scale: number, exposure: Exposure) {
   return { picks, moves, pauses, calibrated: !!session.calibration };
 }
 
-// MediaPipe currently reports at most one body. The two-body cases exercise the session picker
+// MediaPipe reports up to MAX_POSES (2) bodies. The two-body cases exercise the session picker
 // separately from a model handover, where only the passerby's landmarks reach the session.
 for (const exposure of ['both', 'during calibration'] as const) {
   test.each([0.4, 0.5, 0.6, 0.7, 0.8, 0.95, 1, 1.05])(
@@ -68,19 +68,17 @@ for (const exposure of ['both', 'during calibration'] as const) {
       }),
   );
 }
-test.each([0.4, 0.5, 0.55])('only a distant passerby at %s× is reported', (scale) => {
-  expect(crossBehind(scale, 'only stranger')).toEqual({
-    calibrated: true,
-    picks: [],
-    moves: [],
-    pauses: [],
-  });
-});
-test.fails.each([0.6, 0.65, 0.8, 1])(
-  'Abdo: the lone passerby at %s× must not control a standing player',
+// With the player missing, a lone passer-by of any size is followed only if they stand still
+// near the mark with the player's size (session.ts, REFIND_*); walking across, never.
+test.each([0.4, 0.5, 0.55, 0.6, 0.65, 0.8, 1])(
+  'a lone passerby at %s× never controls a standing player',
   (scale) => {
-    const { picks, moves } = crossBehind(scale, 'only stranger');
-    expect({ firstPick: picks[0], moves }).toEqual({ firstPick: undefined, moves: [] });
+    expect(crossBehind(scale, 'only stranger')).toEqual({
+      calibrated: true,
+      picks: [],
+      moves: [],
+      pauses: [],
+    });
   },
 );
 
@@ -110,11 +108,15 @@ function spectatorX(scale: number) {
   return pauses;
 }
 test.each([0.4, 0.55, 0.6])(
-  'a distant spectator at %s× demonstrating X does not pause the player',
+  'a spectator at %s× demonstrating X does not pause the player',
   (scale) => {
     expect(spectatorX(scale)).toEqual([]);
   },
 );
+// Known limits, with the player gone from the frame: a spectator alone near the mark at x0.6-1.67
+// the player's size may be the player coming back a step closer or further, so standing still
+// they are taken (REFIND_ALONE_SIZE_TOLERANCE); one under 1 W from where the player stood right
+// as the player vanishes is followed (FOLLOW_*). With 2 poses the player stays in the model's output.
 test.fails.each([0.65, 0.8, 1])(
   'Abdo: a spectator at %s× demonstrating X must not pause the player',
   (scale) => {

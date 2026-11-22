@@ -77,6 +77,13 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   let frames = 0;
   let windowStart = 0;
 
+  // Where the time goes, per FPS window (the camera session): shown after the camera line on the
+  // D overlay and kept in window.__poseTiming. Measuring only: nothing here changes detection.
+  const win = { modelMs: 0, modelMaxMs: 0, lagMs: 0, lagN: 0, presented: 0, skipped: 0, timer: 0 };
+  let lastPresented = -1;
+  let timing = '';
+  let startedAt = 0; // start() called; 0 once the first pose frame has been logged
+
   const overlay = createOverlay(() => ({
     fps,
     camera: cameraInfo(),
@@ -93,7 +100,8 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
   const cameraInfo = () => {
     const s = stream?.getVideoTracks()[0]?.getSettings();
     return s
-      ? `camera ${Math.round(s.frameRate ?? 0)} fps ${s.width ?? '?'}×${s.height ?? '?'}`
+      ? `camera ${Math.round(s.frameRate ?? 0)} fps ${s.width ?? '?'}×${s.height ?? '?'}${timing}` +
+          (session.otherPerson ? '\nsomeone else in the play area: paused' : '')
       : '';
   };
 
@@ -107,14 +115,55 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
    */
   const frameId = () => video.getVideoPlaybackQuality?.().totalVideoFrames ?? video.currentTime;
 
+  /** Closes an FPS window's timing: model ms, capture-to-state delay, frames the loop missed. */
+  const closeTimingWindow = (t: number) => {
+    const n = Math.max(frames, 1);
+    const sec = (t - windowStart) / 1000;
+    const report = {
+      poseFps: +fps.toFixed(1),
+      cameraFps: +(win.presented / sec).toFixed(1),
+      modelMs: +(win.modelMs / n).toFixed(1),
+      modelMaxMs: +win.modelMaxMs.toFixed(1),
+      captureToStateMs: win.lagN ? Math.round(win.lagMs / win.lagN) : null,
+      skippedFrames: win.skipped,
+      timerFrames: win.timer,
+      delegate: landmarker?.delegate ?? '',
+    };
+    (window as unknown as Record<string, unknown>).__poseTiming = report;
+    timing =
+      `\nframes ${report.cameraFps}/s · model ${report.modelMs} ms (max ${report.modelMaxMs})` +
+      ` · capture→state ${report.captureToStateMs ?? '–'} ms · missed ${report.skippedFrames}` +
+      ` · timer ${report.timerFrames}`;
+    Object.assign(win, {
+      modelMs: 0,
+      modelMaxMs: 0,
+      lagMs: 0,
+      lagN: 0,
+      presented: 0,
+      skipped: 0,
+      timer: 0,
+    });
+  };
+
   /** Runs the model on the current video frame, once per new frame. */
-  const processFrame = () => {
+  const processFrame = (meta?: VideoFrameCallbackMetadata) => {
     if (!running || !landmarker || video.readyState < 2) return;
     const id = frameId();
     if (id === lastFrameId) return;
     lastFrameId = id;
     const t = performance.now();
     lastProcessedAt = t;
+    if (meta) {
+      // Frames presented since the last callback beyond this one: the loop was busy and missed them.
+      if (lastPresented >= 0) {
+        win.presented += meta.presentedFrames - lastPresented;
+        win.skipped += Math.max(0, meta.presentedFrames - lastPresented - 1);
+      }
+      lastPresented = meta.presentedFrames;
+    } else {
+      win.timer++; // the watchdog ran this frame (rVFC was quiet)
+      lastPresented = -1;
+    }
     try {
       session.frame(landmarker.detect(video), t, aspect());
     } catch (err) {
@@ -123,9 +172,23 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
       errorLogged = true;
       session.frame([], t, aspect());
     }
+    const done = performance.now();
+    win.modelMs += done - t;
+    win.modelMaxMs = Math.max(win.modelMaxMs, done - t);
+    if (meta?.captureTime) {
+      win.lagMs += done - meta.captureTime;
+      win.lagN++;
+    }
+    if (startedAt) {
+      console.info(
+        `[pose] first pose frame ${Math.round(done - startedAt)} ms after start (model call ${Math.round(done - t)} ms, waited ${Math.round(t - startedAt)} ms for it)`,
+      );
+      startedAt = 0;
+    }
     frames++;
     if (t - windowStart >= FPS_WINDOW_MS) {
       fps = (frames * 1000) / (t - windowStart);
+      closeTimingWindow(t);
       frames = 0;
       windowStart = t;
     }
@@ -135,9 +198,9 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
 
   // requestVideoFrameCallback fires once per new camera frame. It stops while the video is not
   // on the page (the app moves it between screens), so a watchdog takes over then (below).
-  const onVideoFrame = () => {
+  const onVideoFrame = (_now: number, meta: VideoFrameCallbackMetadata) => {
     if (!running) return;
-    processFrame();
+    processFrame(meta);
     frameHandle = video.requestVideoFrameCallback(onVideoFrame);
   };
 
@@ -171,6 +234,15 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     if (starting) return starting;
     const my = ++gen;
     const run = async () => {
+      const t0 = performance.now();
+      // Load the model while the camera opens (and while a permission prompt waits) instead of
+      // after it: one page-wide model (landmarker.ts), so a superseded start wastes nothing.
+      const model = getLandmarker();
+      let modelMs = -1;
+      model.then(
+        () => (modelMs = performance.now() - t0),
+        () => {}, // reported where it is awaited below
+      );
       // Get the stream before touching the video: a start superseded by stop() (React StrictMode
       // runs start, stop, start) must never detach the newer stream or leave its camera on.
       let s: MediaStream;
@@ -195,13 +267,20 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
         checkTrack();
         interruptSetup = onEnded;
         track.addEventListener('ended', onEnded);
+        const cameraMs = performance.now() - t0;
         await Promise.race([attachStream(video, s), ended]);
         if (my !== gen) return;
         checkTrack();
-        const lm = await Promise.race([getLandmarker(), ended]);
+        const playingMs = performance.now() - t0;
+        const lm = await Promise.race([model, ended]);
         if (my !== gen) return; // stop() already released the stream
         checkTrack();
         landmarker = lm;
+        console.info(
+          `[pose] start: camera open ${Math.round(cameraMs)} ms, playing ${Math.round(playingMs)} ms,` +
+            ` model ready ${Math.round(modelMs)} ms (${lm.delegate}, loaded alongside the camera)`,
+        );
+        startedAt = t0;
       } catch (err) {
         if (my !== gen) return;
         stopStream(video, s);
@@ -213,6 +292,7 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
       }
       running = true;
       frames = 0;
+      lastPresented = -1;
       windowStart = performance.now();
       if (keys) window.addEventListener('keydown', onKey);
       video.addEventListener('pause', onPause);
@@ -254,7 +334,12 @@ export function createPoseEngine({ keys = true } = {}): PoseEngine {
     onMove: (cb) => session.onMove(cb),
     onGesture: (cb) => session.onGesture(cb),
     async calibrate(mode, onStatus) {
+      const asked = performance.now();
       const done = session.calibrate(mode, onStatus);
+      done.then(
+        () => console.info(`[pose] calibration took ${Math.round(performance.now() - asked)} ms`),
+        () => {}, // the caller gets the rejection
+      );
       if (!running) {
         onStatus({ step: 'noBody', progress: 0, message: 'Starting the camera…' });
         // Observe cancellation even while a permission prompt or model load is still pending.
