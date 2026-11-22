@@ -80,7 +80,7 @@ window.__startAutopilot = (mode, introSec) => {
     if (t0 === null) {
       t0 = now + introSec * 1000;
       level = window.__findLevel();
-      window.__e2eLevel = level && { config: level.config, objects: level.waves.reduce((n, w) => n + w.spawns.length, 0) };
+      window.__e2eLevel = level && { config: level.config, stages: level.stages, objects: level.waves.reduce((n, w) => n + w.spawns.length, 0) };
     }
     if (pausedAt !== null) (pausedMs += now - pausedAt), (pausedAt = null);
     if (now < t0) return;
