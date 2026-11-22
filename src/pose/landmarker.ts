@@ -1,6 +1,6 @@
 // Owner: A. Creates the MediaPipe Pose Landmarker from files in public/.
-// The MediaPipe JS (~150 kB) is loaded only when the pose input starts, so the first page load
-// stays small and keyboard players never download it.
+// The MediaPipe JS (~150 kB) and the pose files load on the profile and select screens when a
+// camera exists (download.ts), or when the pose input starts, so the first page load stays small.
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import {
   MAX_POSES,
@@ -10,8 +10,8 @@ import {
   MODEL_PATH,
   VIDEO_HEIGHT,
   VIDEO_WIDTH,
-  WASM_PATH,
 } from './tuning';
+import { loadPoseFiles } from './download';
 
 export type Delegate = 'GPU' | 'CPU';
 
@@ -23,13 +23,16 @@ export interface Landmarker {
 
 /** Tries the GPU delegate first and falls back to CPU if it fails to start. */
 async function create(): Promise<Landmarker> {
-  const { FilesetResolver, PoseLandmarker } = await import('@mediapipe/tasks-vision');
-  const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
+  const { PoseLandmarker } = await import('@mediapipe/tasks-vision');
+  // Usually already downloaded on the profile or select screen (download.ts).
+  const { fileset, model: modelBytes } = await loadPoseFiles();
   const gpuCanvas = document.createElement('canvas');
   const make = (delegate: Delegate) =>
     PoseLandmarker.createFromOptions(fileset, {
       canvas: delegate === 'GPU' ? gpuCanvas : undefined,
-      baseOptions: { modelAssetPath: MODEL_PATH, delegate },
+      baseOptions: modelBytes
+        ? { modelAssetBuffer: modelBytes, delegate }
+        : { modelAssetPath: MODEL_PATH, delegate },
       runningMode: 'VIDEO',
       numPoses: MAX_POSES,
       minPoseDetectionConfidence: MIN_DETECTION_CONFIDENCE,

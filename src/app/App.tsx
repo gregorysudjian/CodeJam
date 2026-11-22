@@ -286,7 +286,15 @@ function MainApp() {
   // Fetch the game (Three.js) while the player picks a workout, so Start is instant (QA perf 1).
   useEffect(() => {
     // From the profile step too: a fast clicker reaches Start before the chunk lands otherwise.
-    if (screen === 'profile' || screen === 'select') void import('./PlayScreen');
+    if (screen === 'profile' || screen === 'select') {
+      void import('./PlayScreen');
+      // And the body tracker's ~9 MB when a camera exists (docs/LIVE.md "Camera path").
+      if (readInputChoice() !== 'keyboard')
+        void import('@/pose').then(
+          (m) => m.preloadPoseFiles(),
+          () => {},
+        );
+    }
     // And the dashboard's charts while the results show, so Dashboard opens at once (#76).
     if (screen === 'results') void import('@/ui/screens/DashboardScreen');
   }, [screen]);

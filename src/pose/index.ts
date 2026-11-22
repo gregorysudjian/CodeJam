@@ -7,6 +7,9 @@ export function createPoseInput(): PoseSource {
   return createPoseEngine().source;
 }
 
+/** Starts the pose file download early (profile and select screens) when a camera exists. */
+export { preloadPoseFiles } from './download';
+
 /** The ?dev=pose page (debug overlay, calibrate buttons, move tally, clip recorder). Greg's request. */
 export { mountPoseDebug } from './debug';
 
