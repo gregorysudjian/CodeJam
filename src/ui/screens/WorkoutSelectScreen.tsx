@@ -121,9 +121,8 @@ function WorkoutCard({
       }
       className={cn(
         'glass focus-ring group relative flex min-h-[360px] cursor-pointer flex-col overflow-hidden rounded-[28px] p-6 text-left transition-[transform,box-shadow,border-color,filter,opacity] duration-300 ease-arena',
-        selected
-          ? '-translate-y-2 border-transparent'
-          : 'hover:-translate-y-1 hover:border-white/20',
+        // Picked = border, glow and check only: no lift or size change, so the row never jumps.
+        selected ? 'border-transparent' : 'hover:-translate-y-1 hover:border-white/20',
         disabled && 'cursor-not-allowed opacity-45 grayscale hover:translate-y-0',
       )}
     >
@@ -140,9 +139,9 @@ function WorkoutCard({
           opacity: selected || hover ? 1 : 0.55,
         }}
       />
-      {/* tight: the check badge floats in the corner instead of taking a row. */}
-      <span className="relative flex items-start justify-between tight:absolute tight:top-3 tight:right-3 tight:z-10">
-        <span />
+      {/* The badge floats in the corner: as a row it made the picked card 36 px taller and the
+          whole grid row with it. */}
+      <span className="absolute top-5 right-5 z-10 tight:top-3 tight:right-3">
         {selected ? (
           <span
             aria-hidden="true"
@@ -162,7 +161,7 @@ function WorkoutCard({
       </span>
       <span
         aria-hidden="true"
-        className="relative flex flex-1 items-center justify-center py-4 tight:py-1"
+        className="relative flex items-center justify-center py-4 tight:py-1"
       >
         <MoveFigure
           pose={WORKOUT_SIGNATURE[info.id]}
@@ -171,7 +170,9 @@ function WorkoutCard({
           size={145}
         />
       </span>
-      <span className="relative flex flex-col gap-3 tight:gap-2">
+      {/* flex-1 + top-aligned: every title sits at the same height; a card with fewer chip rows
+          keeps its spare space at the bottom. */}
+      <span className="relative flex flex-1 flex-col gap-3 tight:gap-2">
         {/* md–xl: four narrow cards, so the title steps down (SHOULDERS must fit). */}
         <span className="font-display-italic pr-[0.06em] text-display-md leading-[0.9] md:text-title xl:text-display-sm tight:text-title">
           {info.name}
@@ -327,7 +328,9 @@ export function WorkoutSelectScreen({
         />
         {mode === 'floor' && (
           <ToggleRow
-            className="min-h-14 border-0 bg-transparent p-0 shadow-none backdrop-blur-none [&_label>span:first-child]:text-[22px]"
+            // Same box as the segmented controls beside it: glass, 20 px radius, 6 px padding,
+            // a 48 px content row.
+            className="min-h-0 gap-4 rounded-[20px] py-1.5 pr-3 pl-5 [&_label>span:first-child]:text-[22px] [&>label]:min-h-12 [&>label]:justify-center tight:[&>label]:min-h-11"
             label="Low impact"
             description="No jumps"
             checked={lowImpact}
