@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useReducedMotion } from 'motion/react';
 import { ArrowLeft, Crown, Play, QrCode, Trophy } from 'lucide-react';
 import type { LeaderboardEntry, PlayMode, WorkoutId } from '@/contracts';
@@ -15,10 +15,11 @@ import {
   WORKOUT_LABELS,
   MODE_LABELS,
   useHotkey,
+  useNow,
 } from '@/ui/kit';
 import { cn } from '@/ui/lib/utils';
 import { relativeTime } from '@/ui/screens/dashboardStats';
-import { leaderboardFilter } from '@/ui/screens/leaderboardRules';
+import { POSTED_CLOCK_MS, leaderboardFilter } from '@/ui/screens/leaderboardRules';
 
 export interface LeaderboardScreenProps {
   entries: LeaderboardEntry[];
@@ -128,7 +129,8 @@ export function LeaderboardScreen({
   onPlay,
 }: LeaderboardScreenProps) {
   const reduce = useReducedMotion();
-  const [now] = useState(() => Date.now());
+  // Ticks, so the kiosk's "POSTED" times don't freeze at "JUST NOW" (it stays open for an hour).
+  const now = useNow(POSTED_CLOCK_MS);
   const youRow = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
