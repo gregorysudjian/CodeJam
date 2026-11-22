@@ -13,7 +13,7 @@ export type ObstacleKind = 'block' | 'hurdle' | 'beam' | 'crate' | 'orb';
 export interface SessionConfig {
   workout: WorkoutId;
   mode: PlayMode;
-  durationSec: number; // every level, 30 s each (4 levels = 120); the round ends early with no lives left
+  durationSec: number; // every level, 30 s each (6 levels = 180); the round ends early with no lives left
   difficulty?: number; // tier, sets how many obstacles: 0 beginner, 0.5 regular, 1 athlete (default 0.5)
   lowImpact?: boolean; // true = no hurdles
   seed?: number; // same seed, same level; integer 0 to 2^31 - 1 (stored as Postgres int)
