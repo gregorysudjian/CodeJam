@@ -3,8 +3,10 @@
 // shown by a 100 ms poll), keeping the smallest offset seen. `skip` lists wave indices to ignore
 // (to make a weaker run for the ghost).
 (async (skip = []) => {
-  const { generateLevel, DEMO_CONFIG } = await import('/src/workout/index.ts');
-  const waves = generateLevel({ ...DEMO_CONFIG }).waves;
+  // A production build has no /src: the sweep then injects the demo level's waves (WAVES=file).
+  const waves =
+    window.__qaWaves ??
+    (await import('/src/workout/index.ts').then(({ generateLevel, DEMO_CONFIG }) => generateLevel({ ...DEMO_CONFIG }).waves));
   const A = (window.__auto = { waves: waves.length, offset: Infinity, cue: 0, log: [], lane: 0, done: false });
   const gameNow = () => (performance.now() - A.offset) / 1000;
   A.gameNow = gameNow;

@@ -92,6 +92,7 @@ async function sweep([w, h, dsf], port) {
     await b.key('Escape');
     check('HUD appears', await b.waitFor(/TIME LEFT/i, 8000));
     await sleep(300);
+    if (process.env.WAVES) await b.eval(`window.__qaWaves = ${readFileSync(process.env.WAVES, 'utf8')}`);
     await b.eval(`(${AUTO})([])`);
     // Zones at 30 % and 52 % of the round, the finale in the last 10 s (src/game/tuning.ts); a level
     // portal every 30 s washes the scene out, so no shot on a multiple of 30.
