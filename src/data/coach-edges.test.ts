@@ -52,9 +52,8 @@ const valid = (a: ReturnType<typeof ruleBasedAdvice>) => {
     expect(text.length).toBeGreaterThan(0);
     expect(text).not.toMatch(/undefined|NaN|null/);
   }
-  expect([45, 90, 180]).toContain(a.next.durationSec);
-  expect(a.next.difficulty).toBeGreaterThanOrEqual(0);
-  expect(a.next.difficulty).toBeLessThanOrEqual(1);
+  expect(a.next.durationSec).toBe(180);
+  expect([0, 0.5, 1]).toContain(a.next.difficulty);
 };
 
 describe('ruleBasedAdvice: accuracy boundaries', () => {
@@ -63,39 +62,45 @@ describe('ruleBasedAdvice: accuracy boundaries', () => {
     expect(ruleBasedAdvice(profile, [session({ accuracy: 0.6 })], NOW).next.difficulty).toBe(0.5);
   });
 
-  it('rounds away floating-point noise (0.7 + 0.1 is 0.8, 0.3 - 0.1 is 0.2)', () => {
-    const up = ruleBasedAdvice(
-      profile,
-      [session({ accuracy: 0.95, config: { difficulty: 0.7 } })],
-      NOW,
-    );
-    const down = ruleBasedAdvice(
-      profile,
-      [session({ accuracy: 0.1, config: { difficulty: 0.3 } })],
-      NOW,
-    );
-    expect(up.next.difficulty).toBe(0.8);
-    expect(down.next.difficulty).toBe(0.2);
+  it('snaps an old 0.1-step difficulty to the nearest tier before moving (halves round up)', () => {
+    const next = (difficulty: number, accuracy: number) =>
+      ruleBasedAdvice(profile, [session({ accuracy, config: { difficulty } })], NOW).next
+        .difficulty;
+    expect(next(0.7, 0.7)).toBe(0.5); // nearest tier, kept
+    expect(next(0.8, 0.7)).toBe(1);
+    expect(next(0.25, 0.7)).toBe(0.5); // a half rounds up
+    expect(next(0.75, 0.7)).toBe(1);
+    expect(next(0.2, 0.7)).toBe(0);
+    expect(next(0.3, 0.95)).toBe(1); // regular, one up
+    expect(next(0.3, 0.1)).toBe(0); // regular, one down
   });
 
-  it('starts from 0.5 when the latest round has no difficulty', () => {
+  it('never leaves the tiers: athlete stays athlete, beginner stays beginner', () => {
+    const next = (difficulty: number, accuracy: number) =>
+      ruleBasedAdvice(profile, [session({ accuracy, config: { difficulty } })], NOW).next
+        .difficulty;
+    expect(next(1, 1)).toBe(1);
+    expect(next(0, 0)).toBe(0);
+  });
+
+  it('starts from regular when the latest round has no difficulty', () => {
     const a = ruleBasedAdvice(
       profile,
       [session({ accuracy: 0.9, config: { difficulty: undefined } })],
       NOW,
     );
-    expect(a.next.difficulty).toBe(0.6);
+    expect(a.next.difficulty).toBe(1);
   });
 
-  it('says it is turning it up, easing off or keeping the level', () => {
+  it('says which tier is next: moving up, easing back or keeping', () => {
     expect(ruleBasedAdvice(profile, [session({ accuracy: 0.9 })], NOW).reason).toMatch(
-      /up a notch/,
+      /moving you up to athlete/,
     );
     expect(ruleBasedAdvice(profile, [session({ accuracy: 0.3 })], NOW).reason).toMatch(
-      /easing off/,
+      /easing back to beginner/,
     );
     expect(ruleBasedAdvice(profile, [session({ accuracy: 0.7 })], NOW).reason).toMatch(
-      /same level/,
+      /keeping you on regular/,
     );
   });
 
@@ -105,7 +110,7 @@ describe('ruleBasedAdvice: accuracy boundaries', () => {
       [session({ accuracy: 0, cleared: 0, hit: 0, score: 0 })],
       NOW,
     );
-    expect(a.next.difficulty).toBe(0.4);
+    expect(a.next.difficulty).toBe(0);
     valid(a);
   });
 });

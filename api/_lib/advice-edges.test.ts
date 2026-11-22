@@ -48,21 +48,21 @@ describe('parseAdvice: edge cases', () => {
     expect(parseAdvice(answer({ tip: exact }), 'floor')?.tip).toBe(exact);
   });
 
-  it('defaults a bad duration to 90 and a non-numeric difficulty to 0.5', () => {
+  it('makes any duration 180 s and a non-numeric difficulty regular (0.5)', () => {
     const a = parseAdvice(
       answer({ next: { workout: 'legs', durationSec: '45', difficulty: '0.9' } }),
       'floor',
     );
-    expect(a?.next).toEqual({ workout: 'legs', mode: 'floor', durationSec: 90, difficulty: 0.5 });
+    expect(a?.next).toEqual({ workout: 'legs', mode: 'floor', durationSec: 180, difficulty: 0.5 });
   });
 
-  it('rounds difficulty to one decimal, half up', () => {
+  it('snaps difficulty to the nearest tier (0, 0.5, 1), halves up', () => {
     const d = (difficulty: number) =>
-      parseAdvice(answer({ next: { workout: 'arms', durationSec: 90, difficulty } }), 'floor')?.next
-        .difficulty;
-    expect(d(0.25)).toBe(0.3);
-    expect(d(0.75)).toBe(0.8);
-    expect(d(-0.04)).toBe(0);
+      parseAdvice(answer({ next: { workout: 'arms', durationSec: 180, difficulty } }), 'floor')
+        ?.next.difficulty;
+    expect([0, 0.2, 0.25, 0.6, 0.75, 0.9, 1, -0.04, 3, NaN].map(d)).toEqual([
+      0, 0, 0.5, 0.5, 1, 1, 1, 0, 1, 0.5,
+    ]);
   });
 
   it('keeps legs on the floor, ignores a mode or source in the answer', () => {
