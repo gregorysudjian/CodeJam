@@ -63,7 +63,13 @@ export function createSessionTracker(
 
   return {
     handleGameEvent(e: GameEvent) {
-      if (runningSince === null && e.type !== 'paused' && e.type !== 'finished')
+      // The 3-2-1 before a resume ('resuming') is still paused: time runs again from 'resumed'.
+      if (
+        runningSince === null &&
+        e.type !== 'paused' &&
+        e.type !== 'resuming' &&
+        e.type !== 'finished'
+      )
         runningSince = now();
       switch (e.type) {
         case 'cleared':

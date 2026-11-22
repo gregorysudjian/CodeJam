@@ -7,6 +7,11 @@ export const WINDOW_BEFORE_SEC = 0.35; // cleared if the move happens from t - 0
 export const WINDOW_AFTER_SEC = 0.15; // ... to t + 0.15 s
 export const HOLD_GRACE_SEC = 0.3; // a held beam / crate tolerates a gap this long
 export const CUE_LEAD_SEC = 2.0; // 'cue' fires this long before a wave arrives
+// Every resume (Esc or X, tracking back, the other person gone) counts 3-2-1 first, game time
+// frozen ('resuming', then 'resumed'). Counted in real time; a frame longer than
+// RESUME_MAX_DT_SEC (a stall, a hidden tab) counts as that long.
+export const RESUME_COUNTDOWN_SEC = 3;
+export const RESUME_MAX_DT_SEC = 0.25;
 /**
  * Latency compensation: each object is drawn this far ahead of the judging clock, by the move
  * that clears it, so it visually reaches the runner this much before its judging time t. A
