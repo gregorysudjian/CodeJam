@@ -123,6 +123,8 @@ function MainApp() {
   const [device] = useState(() => checkDevice(readEnvironment()));
   const [deviceOk, setDeviceOk] = useState(device.verdict === 'ok');
   const [notice, setNotice] = useState('');
+  // True while "Play as guest", "New guest" or "Continue as …" signs in (landing shows a spinner).
+  const [signingIn, setSigningIn] = useState(false);
   const [cameraError, setCameraError] = useState<CameraErrorInfo | null>(null);
   const [tutorialDone, setTutorialDone] = useState(false);
   const online = useOnline();
@@ -277,7 +279,8 @@ function MainApp() {
 
   // Fetch the game (Three.js) while the player picks a workout, so Start is instant (QA perf 1).
   useEffect(() => {
-    if (screen === 'select') void import('./PlayScreen');
+    // From the profile step too: a fast clicker reaches Start before the chunk lands otherwise.
+    if (screen === 'profile' || screen === 'select') void import('./PlayScreen');
     // And the dashboard's charts while the results show, so Dashboard opens at once (#76).
     if (screen === 'results') void import('@/ui/screens/DashboardScreen');
   }, [screen]);
@@ -304,6 +307,19 @@ function MainApp() {
     const p = await store.signInGuest(displayName);
     if (startedRemote && storeKind() === 'local') setNotice(BUSY_NOTICE);
     return p;
+  };
+  // One sign-in at a time: a double click or Enter during a slow sign-in must not start two.
+  const signInBusy = useRef(false);
+  const withSignIn = async (run: () => Promise<void>) => {
+    if (signInBusy.current) return;
+    signInBusy.current = true;
+    setSigningIn(true);
+    try {
+      await run();
+    } finally {
+      signInBusy.current = false;
+      setSigningIn(false);
+    }
   };
   const playAsGuest = async () => {
     if (returning || profile) {
@@ -479,9 +495,10 @@ function MainApp() {
       {screen === 'landing' && (
         <LandingScreen
           appName={APP_NAME}
-          onPlayAsGuest={() => void playAsGuest()}
+          onPlayAsGuest={() => void withSignIn(playAsGuest)}
           returning={returning}
-          onContinue={() => void continueAsReturning()}
+          onContinue={() => void withSignIn(continueAsReturning)}
+          busy={signingIn}
           onLeaderboard={openLeaderboard}
           topScores={topScores}
           qrSlot={qr}
