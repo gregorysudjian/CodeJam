@@ -63,8 +63,8 @@ export function PlayScreen({
   const [pauseReason, setPauseReason] = useState<'trackingLost' | 'otherPerson' | 'user'>();
   const [resuming, setResuming] = useState(false);
   const [stage, setStage] = useState<{ index: number; total: number }>();
-  // Hearts appear with the first life lost (rounds without lives never send one).
-  const [lives, setLives] = useState<{ left: number; total: number }>();
+  // Every round has 3 lives (CONTRACTS.md): full hearts from the start.
+  const [lives, setLives] = useState({ left: ROUND_LIVES, total: ROUND_LIVES });
   const [lostLong, setLostLong] = useState(false);
   useEffect(() => {
     if (!trackingLost) return;

@@ -61,6 +61,14 @@ export const FINISH_GLOW = 0.4;
 // to the runner), and at this height, between the runner's head and GameHud's cue band.
 export const RESUME_COUNT = { scale: 2.4, y: 2.9 };
 
+/* ── Lives (view3d.ts, view2d.ts) ── */
+// A lost life: one red flash over the whole canvas (single, well under the WCAG 3-a-second
+// limit), then the runner flickers at GRACE_BLINK_HZ through the grace (none with reduced
+// motion). Out of lives, the world stops OUT_STOP times faster than after a finish.
+export const LIFE_FLASH = { peak: 0.35, reducedPeak: 0.2, sec: 0.5 };
+export const GRACE_BLINK_HZ = 2.5;
+export const OUT_STOP = 3;
+
 /* ── Reduced motion (scene.ts) ── */
 // A milestone brightens the lane lines and horizon; with prefers-reduced-motion, this much of it.
 export const REDUCED_FLASH = 0.4;
@@ -105,6 +113,7 @@ export const SFX = {
   go: 0.4,
   perfect: 0.12,
   finish: 0.35,
+  outOfLives: 0.35, // with the beat stopped; never with the fanfare
 } as const;
 export const MUSIC_VOLUME = 0.35; // the beat, relative to AUDIO_VOLUME
 // While Chrome keeps audio suspended (no gesture on the page yet), at most one resume attempt

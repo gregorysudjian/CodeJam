@@ -29,6 +29,8 @@ export interface GameAudio {
   /** The beat (music.ts): start or fade it out, and feed it the round's state every frame. */
   music: Pick<Music, 'start' | 'stop' | 'update'>;
   finish(): void;
+  /** The last life went: the beat stops and a falling phrase plays (no fanfare). */
+  outOfLives(): void;
   dispose(): void;
 }
 
@@ -79,6 +81,7 @@ const silent: GameAudio = {
   perfect() {},
   music: noMusic,
   finish() {},
+  outOfLives() {},
   dispose() {},
 };
 
@@ -274,6 +277,15 @@ export function createGameAudio(): GameAudio {
         );
         tone('triangle', hz(24), hz(24), 0.36, 0.6, S.finish);
         tone('sine', hz(12), hz(12), 0.36, 0.6, S.finish * 0.57);
+      });
+    },
+    outOfLives() {
+      play(() => {
+        beat?.stop();
+        [7, 3, 0].forEach((st, i) =>
+          tone('triangle', hz(st), hz(st - 1), i * 0.22, 0.32, S.outOfLives),
+        );
+        tone('sine', hz(-12), hz(-14), 0.66, 0.7, S.outOfLives * 0.8);
       });
     },
     dispose() {
