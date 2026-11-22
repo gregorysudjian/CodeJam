@@ -1,7 +1,13 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useReducedMotion } from 'motion/react';
-import { ArrowLeft, Crown, Play, QrCode, Trophy } from 'lucide-react';
-import type { LeaderboardEntry, PlayMode, WorkoutId } from '@/contracts';
+import { ArrowLeft, Check, Crown, Play, QrCode, Trophy, UserPlus, Users, X } from 'lucide-react';
+import type {
+  AddFriendResult,
+  FriendBoardEntry,
+  LeaderboardEntry,
+  PlayMode,
+  WorkoutId,
+} from '@/contracts';
 import { Skeleton } from '@/ui/components/ui/skeleton';
 import {
   AnimatedNumber,
@@ -13,6 +19,7 @@ import {
   Screen,
   ScreenFooter,
   SegmentedControl,
+  TextField,
   WORKOUT_LABELS,
   MODE_LABELS,
   ROUND_SEC,
@@ -22,7 +29,11 @@ import {
 } from '@/ui/kit';
 import { cn } from '@/ui/lib/utils';
 import { relativeTime } from '@/ui/screens/dashboardStats';
-import { POSTED_CLOCK_MS, leaderboardFilter } from '@/ui/screens/leaderboardRules';
+import {
+  POSTED_CLOCK_MS,
+  addFriendMessage,
+  leaderboardFilter,
+} from '@/ui/screens/leaderboardRules';
 
 export interface LeaderboardScreenProps {
   entries: LeaderboardEntry[];
@@ -40,7 +51,18 @@ export interface LeaderboardScreenProps {
   onPlay?(): void;
   /** The nav bar on top (current: 'leaderboard'); absent: no bar, as before. Never on the kiosk. */
   nav?: NavBarProps;
+  /** The friends board (never on the kiosk): adds an EVERYONE | FRIENDS toggle. The screen makes
+   *  no network calls; the app fetches `entries` and `names` and does the add. */
+  friends?: {
+    entries: FriendBoardEntry[];
+    names: string[];
+    onAdd(username: string): Promise<AddFriendResult>;
+  };
 }
+type BoardView = 'everyone' | 'friends';
+/** Your own row: `isMe` on the friends board, your name on the public one. */
+const isYouOn = (currentName: string | undefined) => (entry: LeaderboardEntry) =>
+  'isMe' in entry ? entry.isMe === true : entry.displayName === currentName;
 /** Kiosk rows stop after this rank: two columns of four, with no scrolling on a projector. */
 const KIOSK_LAST_RANK = 11;
 const PODIUM = [
@@ -50,12 +72,12 @@ const PODIUM = [
 ] as const;
 function Podium({
   entries,
-  currentName,
+  isYou,
   now,
   kiosk,
 }: {
   entries: LeaderboardEntry[];
-  currentName: string | undefined;
+  isYou: (entry: LeaderboardEntry) => boolean;
   now: number;
   kiosk: boolean;
 }) {
@@ -93,7 +115,7 @@ function Podium({
             >
               {entry.displayName}
             </h2>
-            {entry.displayName === currentName && (
+            {isYou(entry) && (
               <span className="rounded bg-lime px-2 font-display-italic text-caption text-bg">
                 YOU
               </span>
@@ -126,6 +148,102 @@ function Podium({
     </div>
   );
 }
+/** Add a friend by username, the result line, and the friends you have. */
+function FriendsPanel({
+  names,
+  onAdd,
+}: {
+  names: string[];
+  onAdd(username: string): Promise<AddFriendResult>;
+}) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const typed = name.trim();
+    if (!typed || busy) return;
+    setBusy(true);
+    // onAdd never rejects (DataStore contract); a throw is treated as no connection anyway.
+    const result = await onAdd(typed).catch((): AddFriendResult => ({
+      ok: false,
+      reason: 'offline',
+    }));
+    setBusy(false);
+    setMessage(addFriendMessage(result, typed));
+    if (result.ok) setName('');
+  };
+  return (
+    <GlassPanel
+      as="aside"
+      aria-label="Friends"
+      className="flex min-w-0 flex-col gap-5 self-start p-5 md:p-6"
+    >
+      <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
+        <TextField
+          label="ADD FRIEND"
+          placeholder="Username"
+          autoComplete="off"
+          spellCheck={false}
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setMessage(null);
+          }}
+          trailing={
+            <GameButton
+              type="submit"
+              size="md"
+              leadingIcon={UserPlus}
+              disabled={!name.trim() || busy}
+              className="h-12 px-4 text-[20px]"
+            >
+              ADD
+            </GameButton>
+          }
+        />
+        <p
+          role="status"
+          className={cn(
+            'flex min-h-6 items-center gap-2 font-display text-[20px] font-semibold',
+            message?.ok ? 'text-violet' : 'text-danger',
+          )}
+        >
+          {message && (
+            <>
+              {message.ok ? (
+                <Check aria-hidden="true" className="size-5 shrink-0" strokeWidth={3} />
+              ) : (
+                <X aria-hidden="true" className="size-5 shrink-0" strokeWidth={3} />
+              )}
+              <span className="min-w-0 break-words">{message.text}</span>
+            </>
+          )}
+        </p>
+      </form>
+      <section aria-label="Your friends" className="border-t border-glass-border pt-4">
+        <Eyebrow accent="muted" className="mb-3">
+          YOUR FRIENDS · {names.length}
+        </Eyebrow>
+        {names.length === 0 ? (
+          <p className="text-caption text-text-muted">No friends yet.</p>
+        ) : (
+          <ul className="flex max-h-[220px] flex-wrap gap-2 overflow-y-auto [scrollbar-width:thin]">
+            {names.map((friend) => (
+              <li
+                key={friend}
+                title={friend}
+                className="max-w-full truncate rounded-full border border-glass-border bg-glass-strong px-3 py-1 font-display-italic text-[20px]"
+              >
+                {friend}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </GlassPanel>
+  );
+}
 export function LeaderboardScreen({
   entries,
   workout,
@@ -139,8 +257,13 @@ export function LeaderboardScreen({
   onBack,
   onPlay,
   nav,
+  friends,
 }: LeaderboardScreenProps) {
   const reduce = useReducedMotion();
+  const [view, setView] = useState<BoardView>('everyone');
+  const showFriends = Boolean(friends) && !kiosk && view === 'friends';
+  const board: LeaderboardEntry[] = showFriends && friends ? friends.entries : entries;
+  const isYou = isYouOn(currentName);
   // Ticks, so the kiosk's "POSTED" times don't freeze at "JUST NOW" (it stays open for an hour).
   const now = useNow(POSTED_CLOCK_MS);
   const youRow = useRef<HTMLDivElement>(null);
@@ -157,7 +280,7 @@ export function LeaderboardScreen({
         behavior: reduce ? 'instant' : 'smooth',
       });
     }
-  }, [currentName, entries, loading, reduce]);
+  }, [currentName, board, loading, reduce]);
   const change = (nextWorkout: WorkoutId, nextMode: PlayMode) => {
     const filter = leaderboardFilter(nextWorkout, nextMode);
     onChangeFilter(filter.workout, filter.mode, durationSec);
@@ -166,7 +289,7 @@ export function LeaderboardScreen({
   useHotkey('Enter', () => onPlay?.(), Boolean(onPlay) && !kiosk);
   const top = entries[0];
   // The kiosk can't scroll, so it shows ranks 4–11 in two columns (4–9 on short screens).
-  const rows = entries.slice(3, kiosk ? KIOSK_LAST_RANK : 20);
+  const rows = board.slice(3, kiosk ? KIOSK_LAST_RANK : 20);
   const crown =
     kiosk && top && !loading ? (
       // Not .kiosk-crown-banner: its opacity pulse drops cream on maple red below 4.5:1.
@@ -228,6 +351,18 @@ export function LeaderboardScreen({
           {crown}
           {!kiosk && (
             <div className="leaderboard-filters flex flex-wrap items-center gap-4">
+              {friends && (
+                <SegmentedControl
+                  size="md"
+                  aria-label="Leaderboard view"
+                  value={view}
+                  options={[
+                    { value: 'everyone', label: 'EVERYONE' },
+                    { value: 'friends', label: 'FRIENDS', icon: Users },
+                  ]}
+                  onChange={setView}
+                />
+              )}
               <SegmentedControl
                 size="md"
                 aria-label="Leaderboard workout"
@@ -261,6 +396,7 @@ export function LeaderboardScreen({
         className={cn(
           'grid min-w-0 gap-8',
           kiosk && 'md:grid-cols-[minmax(0,1fr)_200px] 2xl:grid-cols-[minmax(0,1fr)_280px]',
+          showFriends && 'lg:grid-cols-[minmax(0,1fr)_340px]',
         )}
       >
         <div className="min-w-0">
@@ -277,7 +413,21 @@ export function LeaderboardScreen({
                 ))}
               </div>
             </div>
-          ) : entries.length === 0 ? (
+          ) : showFriends && friends?.names.length === 0 ? (
+            <EmptyState
+              icon={UserPlus}
+              title="NO FRIENDS YET"
+              body="Add a friend by their username to compare scores"
+              className="min-h-[430px]"
+            />
+          ) : showFriends && board.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="NO ROUNDS HERE YET"
+              body={`Nobody on your friends board has played ${WORKOUT_LABELS[workout]} · ${MODE_LABELS[mode]} yet.`}
+              className="min-h-[430px]"
+            />
+          ) : board.length === 0 ? (
             <EmptyState
               icon={Trophy}
               title="BE THE FIRST ON THE BOARD"
@@ -293,7 +443,7 @@ export function LeaderboardScreen({
             />
           ) : (
             <>
-              <Podium entries={entries} currentName={currentName} now={now} kiosk={kiosk} />
+              <Podium entries={board} isYou={isYou} now={now} kiosk={kiosk} />
               {rows.length > 0 &&
                 (kiosk ? (
                   <section
@@ -344,7 +494,7 @@ export function LeaderboardScreen({
                       role="list"
                     >
                       {rows.map((entry, i) => {
-                        const you = entry.displayName === currentName;
+                        const you = isYou(entry);
                         return (
                           <div
                             key={`${entry.displayName}-${entry.at}-${i}`}
@@ -398,6 +548,7 @@ export function LeaderboardScreen({
             </>
           )}
         </div>
+        {showFriends && friends && <FriendsPanel names={friends.names} onAdd={friends.onAdd} />}
         {kiosk && (
           <section
             aria-label="Play on your laptop"
