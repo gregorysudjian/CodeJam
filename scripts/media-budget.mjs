@@ -1,14 +1,16 @@
 // Asset budget for public/media/ (backdrops and obstacle images). Node built-ins only.
 //   node scripts/media-budget.mjs [dir]        (default: public/media)
-// Lists every file with its size, then PASS or FAIL: at most 2 MB per image, 3 MB per video and
-// 15 MB in total. Exit code 1 on FAIL. Run it on every hx-media merge.
+// Lists every file with its size, then PASS or FAIL: at most 2 MB per image, 8 MB per video and
+// 45 MB in total. Exit code 1 on FAIL. Run it on every hx-media merge.
 // Every visitor on the venue wifi downloads these, and on a 2 s-latency network each extra MB costs
 // seconds, so the budget is on the files as served (Vercel compresses text, not images or video).
 import { readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, extname } from 'node:path';
 
 const MB = 1024 * 1024;
-const BUDGET = { image: 2 * MB, video: 3 * MB, total: 15 * MB };
+// Videos raised from 3 MB / 15 MB total for the full-screen 720p level clips (Sun ~2 AM, Greg):
+// only the current and next level's clip load at once, about 12 MB before level 2.
+const BUDGET = { image: 2 * MB, video: 8 * MB, total: 45 * MB };
 const KINDS = {
   image: ['.png', '.jpg', '.jpeg', '.webp', '.avif', '.gif', '.svg'],
   video: ['.mp4', '.webm', '.mov', '.m4v'],

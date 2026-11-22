@@ -29,6 +29,17 @@ export const NAME_MAX_LENGTH = 20;
 /** Combining marks kept on one letter (enough for Hindi, Thai, Vietnamese; stops "Zalgo"). */
 export const NAME_MAX_COMBINING_MARKS = 3;
 
+/** Profile age and height (contract and migration 0006): outside these, stored as unknown. */
+export const AGE_MIN = 10;
+export const AGE_MAX = 100;
+export const HEIGHT_CM_MIN = 100;
+export const HEIGHT_CM_MAX = 250;
+
+/** A taken username gets a new "-NNNN" suffix this many times before giving up (migration 0007). */
+export const NAME_TAKEN_RETRIES = 3;
+/** Friends board rows asked for when no limit is given (the server caps it at 51). */
+export const FRIENDS_BOARD_LIMIT = 50;
+
 /** Local storage. */
 export const LOCAL_MAX_SESSIONS = 200;
 export const DEFAULT_WEEKLY_GOAL_MIN = 60;

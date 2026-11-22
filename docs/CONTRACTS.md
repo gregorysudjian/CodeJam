@@ -290,6 +290,17 @@ Row-level security, enabled on both tables:
 
 Add check constraints for the enum-like text columns and for sane ranges (`score >= 0`, `duration_sec` between 10 and 600).
 
+### Friends (`0007_friends.sql`)
+
+- **Usernames are unique**, ignoring case (`profiles_display_name_unique` on `lower(display_name)`). The migration renames older duplicates to `<name>-<first 6 of id>`. In the client a taken name never fails a save: `src/data` retries with `-NNNN` and returns the name actually stored. Screens call `isUsernameTaken` first to tell the player.
+- **`friends`** (`user_id`, `friend_id`, `created_at`). It is one-way: you see the scores of the people you added, and they see yours once they add you back, so nobody can put themselves on someone else's board. RLS is on and there are no grants: nobody reads or writes the table directly.
+- **Functions** (security definer, `search_path = ''`, executable by `authenticated` only, except `username_taken`, which `anon` can also run since `0008` so the sign-up form can ask before sign-in):
+  - `username_taken(name)`
+  - `add_friend(name)`: returns `ok`, `notFound`, `self`, `already` or `limit` (50 friends), plus the stored name.
+  - `list_friends()`
+  - `friends_board(workout, mode, duration, limit)`: the best round of you and each friend.
+- **Shared data:** like the leaderboard view, these share only names and scores, never ids, age, weight or height.
+
 ## Server endpoint (C)
 
 `POST /api/coach`, in `api/coach.ts`.

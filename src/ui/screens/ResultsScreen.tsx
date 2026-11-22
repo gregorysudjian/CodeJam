@@ -10,6 +10,7 @@ import {
   GlassPanel,
   MoveChip,
   MoveFigure,
+  NavBar,
   Screen,
   ScreenFooter,
   StatTile,
@@ -24,6 +25,7 @@ import {
   asRound,
   tierOf,
   useHotkey,
+  type NavBarProps,
 } from '@/ui/kit';
 import { formatTime } from '@/ui/lib/format';
 import { cn } from '@/ui/lib/utils';
@@ -39,12 +41,15 @@ export interface ResultsScreenProps {
   onStartNext(config: SessionConfig): void;
   onDashboard(): void;
   onLeaderboard?(): void;
+  /** The nav bar on top (current: null, results is no nav item); absent: no bar, as before. */
+  nav?: NavBarProps;
 }
+// A solid stamp: the grade's colour as text, edge and a light wash (no neon glow).
 const GRADE_COLOR = {
-  S: 'text-lime border-lime/50',
-  A: 'text-cyan border-cyan/50',
-  B: 'text-amber border-amber/50',
-  C: 'text-text-muted border-glass-border',
+  S: 'text-lime border-lime/50 bg-lime/[0.07]',
+  A: 'text-cyan border-cyan/50 bg-cyan/[0.07]',
+  B: 'text-amber border-amber/50 bg-amber/[0.07]',
+  C: 'text-text-muted border-glass-border bg-glass-strong',
 };
 const STAT_TILE = 'gap-2 p-5 short:p-3 tight:gap-1 tight:[&_.eyebrow]:tracking-normal';
 export function ResultsScreen({
@@ -57,6 +62,7 @@ export function ResultsScreen({
   onStartNext,
   onDashboard,
   onLeaderboard,
+  nav,
 }: ResultsScreenProps) {
   const reduce = useReducedMotion();
   const grade = accuracyGrade(summary.accuracy);
@@ -96,6 +102,9 @@ export function ResultsScreen({
   );
   return (
     <Screen backdrop="arena" className="results-screen polish-screen" footer={footer}>
+      {/* Under 600 px tall (1024×576, 125 %) the bar gives way: PLAY THIS NEXT stays above the
+          footer, and the footer has DASHBOARD and PLAY AGAIN. */}
+      {nav && <NavBar {...nav} className="[@media(max-height:600px)]:hidden" />}
       {/* One screen tall at 1280×720 and 1366×768 (QA Q5): badges sit beside the score, the
           active time on the eyebrow line, and `short:` / `tight:` shrink spacing, not text (except the coach's
           copy at 125 %, whose length varies: 17 px there). */}
@@ -132,7 +141,7 @@ export function ResultsScreen({
             />
             <div
               className={cn(
-                'hud-text-glow grid size-24 shrink-0 -rotate-6 place-items-center rounded-2xl border font-display-italic text-display-md tight:size-16 tight:text-display-sm',
+                'grid size-24 shrink-0 -rotate-6 place-items-center rounded-2xl border-2 font-display-italic text-display-md tight:size-16 tight:text-display-sm',
                 GRADE_COLOR[grade],
               )}
               aria-label={`Grade ${grade}`}
@@ -241,7 +250,8 @@ export function ResultsScreen({
         <GlassPanel
           as="aside"
           glow="lime"
-          className="results-coach flex min-w-0 flex-col gap-5 p-6 short:gap-4 short:p-5 tight:gap-3 tight:p-4"
+          // short: tighter, so PLAY THIS NEXT stays above the footer at 1280×720 under the nav bar.
+          className="results-coach flex min-w-0 flex-col gap-5 p-6 short:gap-3 short:p-4 tight:gap-3 tight:p-4"
         >
           <div className="flex items-center justify-between">
             <Eyebrow className="flex items-center gap-2 text-lime">
@@ -289,14 +299,15 @@ export function ResultsScreen({
                             : 'jump'
                     }
                     size={72}
-                    className="tight:hidden"
+                    className="short:hidden"
                   />
                   <h2 className="min-w-0 font-display-italic text-title">
                     {WORKOUT_LABELS[advice.next.workout]} · {MODE_LABELS[advice.next.mode]} ·{' '}
                     {TIER_LABELS[tierOf(advice.next.difficulty)]}
                   </h2>
                 </div>
-                <p className="text-caption leading-relaxed text-text-muted tight:leading-snug [@media(max-height:600px)]:hidden">
+                {/* tight (125 % scaling): hidden, so PLAY THIS NEXT stays above the footer under the nav bar. */}
+                <p className="text-caption leading-relaxed text-text-muted tight:hidden">
                   {advice.reason}
                 </p>
               </div>
