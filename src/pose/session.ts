@@ -38,6 +38,8 @@ import {
   REFIND_SIZE_TOLERANCE,
   REFIND_STILL_MS,
   REFIND_STILL_W,
+  RIVAL_MEMORY_MS,
+  RIVAL_WINDOW_MS,
 } from './tuning';
 
 export const NEUTRAL_STATE: InputState = Object.freeze({
@@ -144,6 +146,25 @@ export function createSession(): Session {
   let otherPerson = false;
   let otherSince = -1;
   let otherLastAt = -Infinity;
+  /**
+   * Someone else, remembered while in view (rivals): never followed, never taken as the player,
+   * and they set otherPerson. On camera, two people side by side were reported one per frame,
+   * alternating, then only the newcomer; without this memory the newcomer was followed.
+   * A body becomes a rival only with proof of two people: seen in the same frame as the player,
+   * or seen while the player was missing and then the player seen again elsewhere within
+   * RIVAL_WINDOW_MS (one body cannot be in two places that fast). A missed follow frame of a lone
+   * player never makes them a rival of themselves.
+   */
+  let rivals: { pose: Point[]; at: number }[] = [];
+  let maybeRivals: { pose: Point[]; at: number }[] = [];
+  const centreDist = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+    Math.hypot(a.x - b.x, (a.y - b.y) / aspect);
+  /** Is this body nearer (whole pose, same size) to rival r than to the player's last pose? */
+  const isRival = (pose: Point[], r: { pose: Point[] }, prev: Point[] | null) =>
+    within(widthOf(pose) / widthOf(r.pose), FOLLOW_SIZE_TOLERANCE) &&
+    poseDistance(pose, r.pose, aspect) <= FOLLOW_MAX_STEP_W * widthOf(r.pose) &&
+    !(prev && poseDistance(pose, prev, aspect) <= poseDistance(pose, r.pose, aspect));
+  const rivalAt = (pose: Point[]) => rivals.find((r) => isRival(pose, r, last));
 
   /**
    * How far a body's shoulder centre is from the mark, in the calibrated shoulder width: the play
@@ -192,6 +213,8 @@ export function createSession(): Session {
         // Size against the last frame, not the calibration: a player who stands closer than at
         // calibration is still followed, someone much bigger or smaller never is.
         if (!within(widthOf(pose) / widthOf(prev), FOLLOW_SIZE_TOLERANCE)) continue;
+        // Nearer where someone else was just seen than where the player was: that someone.
+        if (rivals.some((r) => isRival(pose, r, prev))) continue;
         const dist = poseDistance(pose, prev, aspect);
         if (dist <= bestDist) {
           best = pose;
@@ -208,7 +231,7 @@ export function createSession(): Session {
     let best: Point[] | null = null;
     let bestDist = Infinity;
     for (const pose of usable) {
-      if (!mayBePlayer(pose, usable, d)) continue;
+      if (!mayBePlayer(pose, usable, d) || rivalAt(pose)) continue;
       const c = shoulderCentre(pose);
       const fromLast = lastC
         ? Math.hypot(c.x - lastC.x, (c.y - lastC.y) / aspect) / lastW
@@ -233,27 +256,55 @@ export function createSession(): Session {
     return best;
   }
 
+  /** Updates the rivals with this frame's bodies; returns the ones that are rivals now. */
+  function updateRivals(poses: Point[][], t: number, W: number): Set<Point[]> {
+    rivals = rivals.filter((r) => t - r.at <= RIVAL_MEMORY_MS);
+    maybeRivals = maybeRivals.filter((m) => t - m.at <= RIVAL_WINDOW_MS);
+    const pc = player ? shoulderCentre(player) : null;
+    const apart = (pose: Point[]) =>
+      !!pc && centreDist(shoulderCentre(pose), pc) >= OTHER_MIN_GAP_W * W;
+    if (pc) {
+      // The player seen again: bodies seen just before, elsewhere, were someone else.
+      rivals.push(...maybeRivals.filter((m) => apart(m.pose)));
+      maybeRivals = [];
+    }
+    const now = new Set<Point[]>();
+    for (const pose of poses) {
+      if (pose === player || !hasShoulders(pose) || widthOf(pose) < OTHER_MIN_SIZE * W) continue;
+      const r = rivalAt(pose);
+      if (r) {
+        r.pose = pose;
+        r.at = t;
+        now.add(pose);
+      } else if (apart(pose)) {
+        rivals.push({ pose, at: t });
+        now.add(pose);
+      } else if (!pc && t - lastSeenAt <= RIVAL_WINDOW_MS) {
+        maybeRivals.push({ pose, at: t });
+      }
+    }
+    return now;
+  }
+
   /** Someone else in the play area: on after OTHER_ON_MS, off after OTHER_OFF_MS. */
-  function updateOther(poses: Point[][], t: number, d: Detector) {
-    // The player missing but not yet lost (someone walking in front of them): keep the flag as it
-    // is, or it would drop for a few frames and the game would start its 3-2-1 for nothing.
-    if (!player && d.state.tracking) return;
+  function updateOther(poses: Point[][], t: number, d: Detector, rivalsNow: Set<Point[]>) {
     const W = d.readout.W;
     const pc = player ? shoulderCentre(player) : null;
+    // The player missing but not yet lost (someone walking in front of them): the flag may turn
+    // on but not off, or it would drop for a few frames and the game would start a 3-2-1 for nothing.
+    const missing = !player && d.state.tracking;
     const found = poses.some((pose) => {
       if (pose === player || !inArea(pose, W)) return false;
-      if (pc) {
-        const c = shoulderCentre(pose);
-        return Math.hypot(c.x - pc.x, (c.y - pc.y) / aspect) >= OTHER_MIN_GAP_W * W;
-      }
+      if (pc) return centreDist(shoulderCentre(pose), pc) >= OTHER_MIN_GAP_W * W;
+      if (rivalsNow.has(pose)) return true;
       // With the player away, a body that may be them coming back is not flagged (follow decides).
-      return !mayBePlayer(pose, poses, d);
+      return !missing && !mayBePlayer(pose, poses, d);
     });
     if (found) {
       if (otherSince < 0) otherSince = t;
       otherLastAt = t;
       if (t - otherSince >= OTHER_ON_MS) otherPerson = true;
-    } else if (t - otherLastAt >= OTHER_OFF_MS) {
+    } else if (!missing && t - otherLastAt >= OTHER_OFF_MS) {
       otherSince = -1;
       otherPerson = false;
     }
@@ -318,7 +369,7 @@ export function createSession(): Session {
         last = player;
         lastSeenAt = t;
       }
-      updateOther(poses, t, d);
+      updateOther(poses, t, d, updateRivals(poses, t, d.readout.W));
     } else {
       // Calibrating: the largest body nearest where the player was (or the frame centre).
       const i = poses.length > 1 ? pickBody(poses, lastCentre) : poses.length - 1;
@@ -346,6 +397,8 @@ export function createSession(): Session {
         refind = null;
         otherPerson = false;
         otherSince = -1;
+        rivals = [];
+        maybeRivals = [];
         p.resolve();
       }
       return;

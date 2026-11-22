@@ -181,6 +181,35 @@ describe('someone walks in front of the player, then stands on the mark', () => 
   });
 });
 
+// Also from the camera: with a helper shoulder to shoulder, the model reported one body per frame,
+// alternating between the two, then only the helper.
+test('side by side, reported one per frame: the helper is never followed and pauses the round', () => {
+  const { s, t: t0 } = calibrated();
+  const player = body(0);
+  const helper = body(-1.2, 0.95);
+  const log: Log[] = [];
+  let t = t0;
+  const step = (bodies: Point[][]) => {
+    s.frame(bodies, t);
+    const st = s.getState();
+    log.push({
+      t: t - t0,
+      other: !!st.otherPerson,
+      tracking: st.tracking,
+      isPlayer: s.player === player,
+    });
+    expect(s.player).not.toBe(helper);
+    t += FRAME_MS;
+  };
+  for (let i = 0; i < 12; i++) step(i % 3 === 1 ? [helper] : [player]); // alternating
+  for (let i = 0; i < 60; i++) step([helper]); // then only the helper, for 2 s
+  expect(firstOn(log, 'other')).toBeLessThanOrEqual(12 * FRAME_MS + OTHER_ON_MS + 2 * FRAME_MS);
+  expect(log.at(-1)).toMatchObject({ other: true, tracking: false });
+  // The helper leaves, the player is reported again where they were: play resumes.
+  const back = hold(s, t, 1500, [player]);
+  expect(back.log.at(-1)).toMatchObject({ other: false, tracking: true, isPlayer: true });
+});
+
 describe('the player away, someone on the mark', () => {
   test.each([1.8, 2.2])('a %s× stranger on the mark is someone else, never the player', (scale) => {
     const { s, t } = calibrated();

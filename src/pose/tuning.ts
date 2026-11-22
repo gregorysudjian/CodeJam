@@ -77,6 +77,14 @@ export const OTHER_MIN_GAP_W = 0.5;
 /** otherPerson turns on after this long with someone else in the area, off after this long without. */
 export const OTHER_ON_MS = 300;
 export const OTHER_OFF_MS = 500;
+/**
+ * Someone else remembered (session.ts rivals): a body seen at least OTHER_MIN_GAP_W from the
+ * player within this long of the player being seen is a second person (one body cannot be in two
+ * places 3 frames apart). On camera, two people side by side were reported one per frame.
+ */
+export const RIVAL_WINDOW_MS = 100;
+/** ... and is forgotten after this long out of view. It is never followed or taken as the player. */
+export const RIVAL_MEMORY_MS = 500;
 
 /** Skeleton drawing. Landmarks below this visibility are drawn dimmed. */
 export const DRAW_MIN_VISIBILITY = 0.5;

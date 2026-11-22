@@ -299,6 +299,18 @@ or the named file.
       ranking by where the player vanished and `FOLLOW_SIZE_TOLERANCE`; the replay of that session
       now keeps the player, names the newcomer `otherPerson`, and gives the same moves as live in
       every one-person step. Model time with a body in view: 7.2 ms (1 pose) vs 11.2 ms (2 poses).
+    - **Rivals (second camera session, a real helper):** shoulder to shoulder, the model never
+      reported both people in one frame: it alternated, then reported only the helper, who was
+      followed for 4 s. Now a body seen apart from the player in the same frame, or seen while the
+      player was missing and then the player seen again elsewhere within 100 ms
+      (`RIVAL_WINDOW_MS`), is someone else until out of view for 500 ms (`RIVAL_MEMORY_MS`): never
+      followed (whole pose and size, ×0.7–1.43), never taken back, and it sets `otherPerson`. A
+      missed follow frame of a lone player is no proof, so the drift and single-body tests are
+      unchanged. Session 2 replay: beside → `otherPerson` for as long as the helper stands there;
+      far behind → nothing; the player back a step closer (×1.5) or further, alone → taken back,
+      never "someone else". Close behind (1 m, at the side): the model dropped the player for 1.7 s
+      (tracking lost, nobody else followed). A same-size stranger alone on the mark while the
+      player is fully out of view is still taken (accepted limit).
     - The play area uses the calibrated W and centre, so a player who steps closer does not widen it.
     Evidence: `other.test.ts` (beside at 0.65–1.2×, far behind, edge, duplicate, a passer-by crossing,
     a stranger on the mark while away, coming back closer/further, every clip at 30/15/10 FPS never
