@@ -1,9 +1,6 @@
-/* MONTREAL STREETS: every design token, utility and keyframe for the product lives here.
-   Limestone cream pages, slate ink, solid cards with soft shadows, one maple-red accent.
-   Token NAMES are the old Neon Arena ones on purpose (every screen uses them): "lime" is now the
-   maple-red accent, "cyan" metro blue, "magenta" plum, "amber" ochre, "violet" Mont-Royal green.
-   Every text colour below is at least 4.5:1 on both --na-bg and --na-bg-raised.
-   The in-game HUD and the camera stage keep the old dark values (see .hud-root below). */
+/* NEON ARENA: every design token, utility and keyframe for the product lives here.
+   Dark arcade menus (near-black, neon lime / cyan / magenta glows) matching the in-game HUD.
+   Kept light on the GPU: solid cards, no backdrop blur, a static backdrop. */
 @import '@fontsource/barlow-condensed/600.css';
 @import '@fontsource/barlow-condensed/700.css';
 @import '@fontsource/barlow-condensed/800.css';
@@ -11,27 +8,28 @@
 @import '@fontsource-variable/inter';
 
 :root {
-  color-scheme: light;
-  /* Raw palette */
-  --na-bg: #f2ece1; /* limestone */
-  --na-bg-raised: #fffbf4; /* card */
-  --na-glass: #fffbf4; /* solid card surface (was translucent glass) */
-  --na-glass-strong: #e8e0d1; /* inset / chip surface */
-  --na-glass-border: rgba(64, 48, 32, 0.16);
-  --na-text: #1f2429; /* slate ink: 14:1 */
-  --na-text-muted: #46505a; /* 7:1 */
-  --na-text-dim: #58616b; /* 5.3:1 (4.8:1 on glass-strong) */
-  --na-lime: #b3261e; /* maple red: 5.6:1, cream on it 5.6:1 */
-  --na-cyan: #1f5f8b; /* metro blue */
-  --na-magenta: #8a2e5c; /* plum */
-  --na-amber: #8a5600; /* ochre */
-  --na-violet: #2d6a4f; /* Mont-Royal green */
-  --na-danger: #9b1c1c;
-  --na-brick: #8e3b2a; /* brick, for surfaces only */
-  --na-slate: #2b3138; /* dark slate surface (hero) */
-  --na-shadow: 0 1px 2px rgba(48, 36, 24, 0.08), 0 14px 32px -18px rgba(48, 36, 24, 0.35);
+  color-scheme: dark;
+  /* Raw palette: dark neon arcade. Surfaces are solid (no backdrop blur: light on the GPU).
+     Every text colour is at least 4.5:1 on --na-bg, --na-bg-raised and --na-glass-strong. */
+  --na-bg: #07090d;
+  --na-bg-raised: #0d1118;
+  --na-glass: #0f141d; /* solid card surface */
+  --na-glass-strong: #1a212d; /* inset / chip surface */
+  --na-glass-border: rgba(255, 255, 255, 0.1);
+  --na-text: #f5f7fa;
+  --na-text-muted: #a3adbd;
+  --na-text-dim: #8b95a7;
+  --na-lime: #c6ff3d;
+  --na-cyan: #22d3ee;
+  --na-magenta: #ff3dcb;
+  --na-amber: #ffb020;
+  --na-violet: #a78bfa;
+  --na-danger: #ff5c5e;
+  --na-brick: #8e3b2a; /* for surfaces only */
+  --na-slate: #0a0e15; /* hero panel behind the landing clip */
+  --na-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 24px 60px -24px rgba(0, 0, 0, 0.8);
   --na-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --na-activity-bar: color-mix(in srgb, var(--na-lime) 45%, var(--na-bg));
+  --na-activity-bar: color-mix(in srgb, var(--na-lime) 55%, var(--na-bg));
   /* The page's card colour and shadow, resolved here at :root so the dark .calibration-stage
      (which redefines --na-*) can still sit in a cream card frame with the page's shadow. */
   --na-page-card: var(--na-bg-raised);
@@ -56,7 +54,7 @@
   --destructive: var(--na-danger);
   --destructive-foreground: var(--na-text);
   --border: var(--na-glass-border);
-  --input: rgba(64, 48, 32, 0.24);
+  --input: rgba(255, 255, 255, 0.2);
   --ring: var(--na-lime);
   --chart-1: var(--na-lime);
   --chart-2: var(--na-cyan);
@@ -161,17 +159,17 @@
 
   /* "glow" names kept: they are now a thin accent ring plus a soft drop shadow. */
   --shadow-glow-lime:
-    0 0 0 2px color-mix(in srgb, var(--na-lime) 55%, transparent),
-    0 12px 28px -14px color-mix(in srgb, var(--na-lime) 55%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--na-lime) 60%, transparent),
+    0 0 26px -4px color-mix(in srgb, var(--na-lime) 55%, transparent);
   --shadow-glow-cyan:
-    0 0 0 2px color-mix(in srgb, var(--na-cyan) 55%, transparent),
-    0 12px 28px -14px color-mix(in srgb, var(--na-cyan) 55%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--na-cyan) 60%, transparent),
+    0 0 26px -4px color-mix(in srgb, var(--na-cyan) 55%, transparent);
   --shadow-glow-magenta:
-    0 0 0 2px color-mix(in srgb, var(--na-magenta) 55%, transparent),
-    0 12px 28px -14px color-mix(in srgb, var(--na-magenta) 55%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--na-magenta) 60%, transparent),
+    0 0 26px -4px color-mix(in srgb, var(--na-magenta) 55%, transparent);
   --shadow-glow-danger:
-    0 0 0 2px color-mix(in srgb, var(--na-danger) 55%, transparent),
-    0 12px 28px -14px color-mix(in srgb, var(--na-danger) 50%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--na-danger) 60%, transparent),
+    0 0 26px -4px color-mix(in srgb, var(--na-danger) 55%, transparent);
 
   --animate-drift-a: na-drift-a 38s ease-in-out infinite alternate;
   --animate-drift-b: na-drift-b 46s ease-in-out infinite alternate;
@@ -192,9 +190,9 @@
 /* The name stays; on the menus it is upright, like Montreal street and metro signs. */
 @utility font-display-italic {
   font-family: var(--font-display);
-  font-style: normal;
+  font-style: italic;
   font-weight: 800;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -222,30 +220,39 @@
   border-color: var(--na-lime);
   box-shadow:
     0 0 0 1px var(--na-lime),
+    0 0 28px -6px color-mix(in srgb, var(--na-lime) 60%, transparent),
     var(--na-shadow);
 }
 @utility glow-edge-cyan {
   border-color: var(--na-cyan);
   box-shadow:
     0 0 0 1px var(--na-cyan),
+    0 0 28px -6px color-mix(in srgb, var(--na-cyan) 60%, transparent),
     var(--na-shadow);
 }
 @utility glow-edge-magenta {
   border-color: var(--na-magenta);
   box-shadow:
     0 0 0 1px var(--na-magenta),
+    0 0 28px -6px color-mix(in srgb, var(--na-magenta) 60%, transparent),
     var(--na-shadow);
 }
 
 /* No neon: the text-glow names stay for the screens that use them, without a glow. */
 @utility text-glow-lime {
-  text-shadow: none;
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--na-lime) 50%, transparent),
+    0 0 44px color-mix(in srgb, var(--na-lime) 25%, transparent);
 }
 @utility text-glow-cyan {
-  text-shadow: none;
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--na-cyan) 50%, transparent),
+    0 0 44px color-mix(in srgb, var(--na-cyan) 25%, transparent);
 }
 @utility text-glow-magenta {
-  text-shadow: none;
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--na-magenta) 50%, transparent),
+    0 0 44px color-mix(in srgb, var(--na-magenta) 25%, transparent);
 }
 
 /* Tinted chip driven by a --chip colour variable set by the component */
@@ -260,8 +267,14 @@
   display: none;
 }
 
+/* Static neon pools: one painted gradient layer, no blur filter and no animation. */
 @utility pool {
-  display: none;
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 60% at 12% 8%, color-mix(in srgb, var(--na-lime) 10%, transparent), transparent 70%),
+    radial-gradient(ellipse 50% 60% at 92% 30%, color-mix(in srgb, var(--na-cyan) 11%, transparent), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 45% 105%, color-mix(in srgb, var(--na-magenta) 9%, transparent), transparent 70%);
 }
 
 /* Perspective floor grid with lime lane lines */
@@ -752,12 +765,11 @@
    tokens. The clip is darkened and the scrim is heaviest on the left: over a white frame muted
    text stays >= 5:1 and the light maple title about 3:1 (large text), plus a soft shadow. */
 .landing-stage {
-  --na-text: #f6f1e7;
-  --na-text-muted: #e2dbcd;
-  --na-lime: #ff7a63;
+  --na-text-muted: #d5dbe6;
   color: var(--na-text);
   min-height: 300px;
-  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45);
+  border: 1px solid color-mix(in srgb, var(--na-lime) 35%, transparent);
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.6);
 }
 .landing-stage video {
   filter: brightness(0.6) saturate(0.9);
