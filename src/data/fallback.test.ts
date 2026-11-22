@@ -42,6 +42,10 @@ function rateLimitedRemote(): DataStore {
     listSessions: fail,
     getLeaderboard: () => Promise.resolve(realBoard),
     getCoachAdvice: fail,
+    isUsernameTaken: fail,
+    addFriend: fail,
+    listFriends: fail,
+    getFriendsBoard: fail,
     signOut: () => Promise.resolve(),
   };
 }
