@@ -106,7 +106,8 @@ async function sweep([w, h, dsf], port) {
         await sleep(30);
       }
     };
-    const hud = { root: '[aria-label="Game HUD"]', cover: false, graphics: '.hud-heart' };
+    // minAlpha: skip text whose element (or an ancestor) is mid-fade: an outgoing cue, a popup.
+    const hud = { root: '[aria-label="Game HUD"]', cover: false, graphics: '.hud-heart', minAlpha: 0.97 };
     const cueReady = `(() => { const c = document.querySelector('.hud-cue-label'); if (!c) return false;
       let op = 1; for (let a = c; a; a = a.parentElement) op *= Number(getComputedStyle(a).opacity); return op > 0.97; })()`;
     const hudSample = async (name, from, cue) => {

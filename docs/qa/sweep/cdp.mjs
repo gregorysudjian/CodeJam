@@ -120,7 +120,7 @@ export async function launch({ port, profile, base, camera = false }) {
      *  covered-text test (the HUD is pointer-events: none, so elementFromPoint never returns it);
      *  `graphics` is a selector of icons (hearts) checked at 3:1 against what is behind their box,
      *  hidden in the second screenshot like the text. */
-    async contrast({ root = 'body', cover = true, graphics = '' } = {}) {
+    async contrast({ root = 'body', cover = true, graphics = '', minAlpha = 0.05 } = {}) {
       const runs = await b.eval(`(() => {
         const out = [];
         const rootEl = document.querySelector(${JSON.stringify(root)});
@@ -140,6 +140,7 @@ export async function launch({ port, profile, base, camera = false }) {
           const c = paint.match(/[\\d.]+/g).map(Number);
           const alpha = (c[3] ?? 1) * op;
           if (alpha < 0.05) continue; // gradient-clipped or faded-out text
+          if (op < ${minAlpha}) continue; // HUD: a cue or popup fading in or out, not the steady state
           const range = document.createRange(); range.selectNodeContents(n);
           for (const r of range.getClientRects()) {
             const x = Math.max(0, r.left), y = Math.max(0, r.top), x2 = Math.min(innerWidth, r.right), y2 = Math.min(innerHeight, r.bottom);
