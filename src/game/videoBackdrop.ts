@@ -89,6 +89,7 @@ export function createVideoBackdrop(): VideoBackdrop {
     let clip = clips.get(src);
     if (!clip) {
       clip = openClip(src);
+      clip.texture.userData.horizon = backdropFor(level).horizon; // scene.ts lines it up
       clips.set(src, clip);
     }
     return clip;
