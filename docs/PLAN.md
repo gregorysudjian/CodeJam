@@ -1,5 +1,7 @@
 # Build plan: webcam fitness app (CodeJam 16)
 
+> **This is the original plan, written Saturday around 2 AM, kept as a record.** The game changed a lot since (six 30 s levels, three lives, Montreal clips, friends). For the current state, read [README.md](../README.md) and [CONTRACTS.md](CONTRACTS.md).
+
 Revised Saturday around 1:45 AM. Code freeze is Sunday 12:00 PM. All times are Montreal time.
 
 Companion docs: [CONTRACTS.md](CONTRACTS.md) (shared interfaces, database schema, detection rules) and [DEMO.md](DEMO.md) (pitch, demo, judge Q&A).

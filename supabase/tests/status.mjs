@@ -1,7 +1,7 @@
 // Sunday-morning status in one command, one screen. Node built-ins only.
 //   node --env-file=.env.local supabase/tests/status.mjs [siteUrl] [--no-smoke]
 // Runs live-headers.mjs (is the live site the latest main?) and smoke.mjs (sign-in, save, board,
-// cap, /api/coach), prints the top 5 of the 45 s Full body board (the one on the landing page and
+// cap, /api/coach), prints the top 5 of the 180 s Full body board (the one on the landing page and
 // the kiosk) and counts the QA- players still on any board. Overall PASS/FAIL on the first line.
 // The smoke test adds one QA-smoke player (Shoulders treadmill board); --no-smoke skips it.
 // QA- players without any round are not visible to the anon key (row-level security), so they are
@@ -80,7 +80,7 @@ if (!SB || !KEY) {
       return res.json();
     };
     const top = await get(
-      'select=display_name,score,created_at&workout=eq.fullBody&mode=eq.floor&duration_sec=eq.45&order=score.desc&limit=5',
+      'select=display_name,score,created_at&workout=eq.fullBody&mode=eq.floor&duration_sec=eq.180&order=score.desc&limit=5',
     );
     const qa = await get(
       'select=display_name,workout,mode,duration_sec,score&display_name=ilike.QA-*',
@@ -89,7 +89,7 @@ if (!SB || !KEY) {
     const topQa = top.filter((r) => /^qa-/i.test(r.display_name)).length;
     boardOk = true;
     sections.push(
-      `Full body · floor · 45 s, top 5 (landing page and kiosk):\n` +
+      `Full body · floor · 180 s, top 5 (landing page and kiosk):\n` +
         (top.length
           ? top
               .map(

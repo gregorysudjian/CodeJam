@@ -94,7 +94,7 @@ With the foreground continuously visible, scales 0.40, 0.60, 0.80, 0.95 and 1.00
 
 **Possible, spectator demonstrates X.** `crowd.robust.test.ts` first calibrates on 2.5 s of near/standing and then supplies only the spectator from near/pauseX, displaced sideways by 0.15 frame widths. Expected zero pauses from a stationary player. At 0.65× and 0.70×, source frame 123 incorrectly pauses the game. At 0.80× both frames 44 and 123 pause it. At 0.60× neither does. This is a synthetic identity switch involving a real recorded X gesture. [Frame evidence sent to Abdo](https://github.com/gregorysudjian/CodeJam/commit/821b882fec3a59192181012bcffcefc382cdaf64#commitcomment-211230809).
 
-**Low demo priority, detector-only regression.** On main `646254f`, greg/leaveFrame at irregular 10 FPS adds two unmatched sidesteps on source frames 155 and 184 (5250 and 6225 ms). Neither reaches the public session's move listener in the corresponding calibrated replay. That listener emits one sidestep at 6796 ms. The original matrix above is from `56fb514`; the current detector's 10 FPS row therefore has two additional extra sidesteps. The regression test now checks the user-visible result as well as the isolated detector.
+**Low demo priority, detector-only regression.** On main `646254f`, greg/leaveFrame at irregular 10 FPS adds two unmatched sidesteps on source frames 155 and 184 (5250 and 6225 ms). Neither reaches the public session's move listener in the corresponding calibrated replay. That listener emits one sidestep at 6796 ms. The original matrix above is from `56fb514`; the current detector's 10 FPS row therefore has two additional extra sidesteps. The regression test now checks the user-visible result as well as the isolated detector. DECISIONS 48 later removed these two sidesteps in the detector; the `known` list in `matrix.robust.test.ts` still names them.
 
 ## Two tabs sharing a camera
 
@@ -141,14 +141,6 @@ Chrome ran the production pose engine code on the public sample fed through a fa
 **Possible on a cold start, before frame 0.** In Windows Chrome, DevTools held the model response while 30 successive pose engines each opened a file-backed camera and stopped. On `75beb3e`, all 30 tracks ended, but all 30 startup promises stayed pending and all 30 track listeners remained registered until the response resumed. A player switching to keyboard or leaving calibration can stop a camera during this window.
 
 Calling `stop()` now interrupts the pending setup. In five repeats of 30 stops, all 30 promises settled and all 30 listeners were removed before releasing the response in every run. No track was live. The regression in `engine.robust.test.ts` also checks that releasing the model later cannot start a stale frame loop. Removing the fix made that test fail again.
-
-## Saturday 6:09 pm Montreal · first-hour review
-
-**Grade B+.** The highest-value result for the judges was a working keyboard round after camera permission disappears during setup. The repeat-start soak also caught 30 stopped sessions still waiting on the model download. For the operator, a spectator's X and a pause after wrist release matter more than two extra detector sidesteps that never reached the game. Abdo has the clip and frame numbers for both pause cases.
-
-For the judges' privacy question, the decoded SDK request contained counters and timing data. The warmed page completed the demo offline. A physical webcam, a live crowd and Patrick's Mac GPU are **not tested** on laptop 2. This Windows machine has no camera or ffmpeg; plain Node can drive Chrome and a file-backed camera.
-
-Next hour, verify camera re-entry after a mid-round GPU loss, replay incoming live near-miss and passerby clips first, and retire the obsolete drift expectations when decision 48 reaches main. Further repeats of unchanged landmark scale sweeps have low priority.
 
 ## Switching back to camera after mid-round GPU loss
 

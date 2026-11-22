@@ -67,7 +67,7 @@ Treadmill mode is for people already running on one: it uses upper-body moves on
 - **The video never leaves the laptop.** Pose tracking (MediaPipe) runs in the browser, and the model is downloaded from our own site, not a CDN. No frame and no body landmark is sent anywhere. Only `src/data` talks to the network; `src/pose` makes no network call.
 - **What we store per player** (Supabase Postgres): an anonymous account (no email, no password, no phone) and a profile with the username you type, goal, fitness level, weekly goal, and age, weight and height only if you enter them. Per round: workout, mode, length, score, accuracy, streak, reps and misses per move, estimated calories, date.
 - **Who can read it:** row-level security on every table. You can read and write only your own profile and rounds, and a saved round can't be changed or deleted. The leaderboard shares only a name, workout, mode, round length, score and date (each player's best). Friends see the same, nothing more; adding a friend is one-way, so nobody can put themselves on your board.
-- **The coach:** no Claude key is configured for the demo, so the card is the rule-based coach, which runs in the browser on your own numbers. When a key is set, the server sends Claude your profile's name, goal, level and weekly goal and your last 10 rounds' numbers. Never your age, weight or height, never video.
+- **The coach:** on the live site the card is written by Claude (Haiku 5.5; its badge says AI). The server sends Claude your profile's name, goal, level and weekly goal and your last 10 rounds' numbers. Never your age, weight or height, never video. If the call fails or takes too long, or with no key (local runs), the card is the rule-based coach (badge RULES), which runs in the browser on your own numbers.
 - **Being forgotten:** "New player" signs you out on this laptop and erases the local copy. Server rows stay anonymous until we delete them; ask us and we will.
 
 Full details: [docs/LIVE.md](docs/LIVE.md) ("Privacy").
@@ -90,13 +90,13 @@ flowchart LR
   Store -- "numbers only" --> SB[("Supabase<br/>Auth + Postgres + RLS")]
   Store -- "POST /api/coach" --> API["Vercel function<br/>api/coach.ts"]
   API -- "user's own token" --> SB
-  API -. "when a key is set" .-> Claude["Claude API"]
+  API -- "numbers only" --> Claude["Claude API<br/>(Haiku 5.5)"]
 ```
 
 - **One contract file** (`src/contracts/index.ts`): modules never import each other; only `src/app` wires them together. Every outside dependency has a stand-in behind the same interface: keyboard for the camera, local store for Supabase, rule-based coach for Claude.
 - **Pose** (`src/pose`): calibration records hip centre, shoulder width and torso length; every threshold is a fraction of those. Design notes: [src/pose/DECISIONS.md](src/pose/DECISIONS.md).
 - **Game** (`src/game`): its own loop, outside React. Details: [src/game/README.md](src/game/README.md).
-- **Backend** (`src/data`, `supabase/migrations`, `api/`): anonymous sign-in, `profiles` and `sessions` behind row-level security, a `leaderboard` view of each player's best, friends through security-definer functions, and database checks that refuse impossible scores. The coach endpoint checks the player's token, reads their history under row-level security (no service key), allows one call per player per 10 s, asks Claude for structured JSON with a 7 s timeout and validates the answer; any failure falls back to the rules.
+- **Backend** (`src/data`, `supabase/migrations`, `api/`): anonymous sign-in, `profiles` and `sessions` behind row-level security, a `leaderboard` view of each player's best, friends through security-definer functions, and database checks that refuse impossible scores. The coach endpoint checks the player's token, reads their history under row-level security (no service key), allows one call per player per 10 s, asks Claude Haiku 5.5 for structured JSON with a 7 s timeout and validates the answer; any failure falls back to the rules.
 
 ## Run it locally
 
@@ -117,7 +117,8 @@ npm run dev        # http://localhost:5173
 | `?dev=pose` | Pose debug page: live landmarks, thresholds, move tally, clip recorder |
 | `?gfx=low` / `?gfx=2d` | Lower graphics (built-in scenery instead of video) / force the Canvas 2D fallback |
 | `?mute=1`, `?music=off` | No sound / effects only |
-| `?ghost=off`, `?intro=off` | No ghost runner / no 3-2-1 intro |
+| `?ghost=off`, `?ghost=reset`, `?intro=off` | No ghost runner / erase the stored ghosts / no 3-2-1 intro |
+| `?debug=timing` | Print each move's measured timing to the console when a round ends |
 
 Example: http://localhost:5173/?demo=1&store=local
 

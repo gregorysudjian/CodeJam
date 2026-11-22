@@ -20,5 +20,4 @@
 The logic is the pure `createKeyboardController(now)` in `keyboard.ts`, tested in `keyboard.test.ts`. Numbers live in `tuning.ts`.
 
 ## Status
-- Works and is unit-tested (7 tests).
-- Not tested yet: in the real app against D's screens (scaffold not merged when written).
+- Works and is unit-tested (`keyboard.test.ts`, `chords.robust.test.ts`, `lifecycle.robust.test.ts`).

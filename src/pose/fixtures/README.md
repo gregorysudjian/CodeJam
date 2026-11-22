@@ -24,14 +24,14 @@ Raw MediaPipe landmarks only (no images), recorded on the `?dev=pose` page: 8 s 
 **Greg** (second body, Sat ~1 PM, hips at ~0.64; calibrate on `greg/standing.json`): `greg/`
 standing, sidestep (10 lane changes), jump (4), squat (2, the second ends near the clip end),
 armsUp (a half press first, then 3 presses), reach (8 alternating, right first), leaveFrame, mixed
-(crouch-jump, reaches, squat, sidesteps, walks out). His notes: `docs/clips/greg/README.md` on the
-`greg-clips` branch.
+(crouch-jump, reaches, squat, sidesteps, walks out).
 
 To add a clip: record it with a `● …` button on `?dev=pose`, rename it to `<name>.json` here, and
 add an expectation in `../variants.test.ts` (`CLIPS` and the expected-moves table).
 
 **Quick regression clips (e.g. a teammate's):** stand still for the first second, do N of one move,
-and save the download as `extra/<move>-<N>[-name].json` (e.g. `extra/jump-4-patrick.json`; moves:
+and save the download as `extra/<move>-<N>[-name].json` (for example `extra/jump-4-patrick.json`; the
+folder does not exist until the first such clip; moves:
 sidestep, jump, squat, armsUp, reachLeft, reachRight). `variants.test.ts` then expects exactly N of
 that move, with no code change. An 8 s clip fits about 4–5 reps.
 

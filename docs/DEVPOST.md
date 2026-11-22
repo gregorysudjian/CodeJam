@@ -1,6 +1,6 @@
 # Neon Arena: Devpost story
 
-The text for Devpost's "About the project" field. It matches the live build, `main` b27c6a6. The form checklist and the screenshots are in [SUBMISSION.md](SUBMISSION.md).
+The text for Devpost's "About the project" field. It matches the live build (`main` at the Sunday 12:00 code freeze). The form checklist and the screenshots are in [SUBMISSION.md](SUBMISSION.md).
 
 ## Inspiration
 
@@ -14,7 +14,7 @@ After each round: your score, reps per move, estimated calories and a coach card
 
 ## How we built it
 
-React, TypeScript and Vite for the app; plain Three.js for the game, on its own loop outside React. MediaPipe's Pose Landmarker runs in the browser, so the video never leaves the laptop. Supabase provides sign-in and Postgres with row-level security; a Vercel function is the coach endpoint, built to ask Claude for structured advice. Three people worked in separate folders joined by one shared contract file, and every outside dependency has a stand-in: keyboard for the camera, browser storage for the database, rules for Claude.
+React, TypeScript and Vite for the app; plain Three.js for the game, on its own loop outside React. MediaPipe's Pose Landmarker runs in the browser, so the video never leaves the laptop. Supabase provides sign-in and Postgres with row-level security; a Vercel function is the coach endpoint: it asks Claude (Haiku 5.5) for structured advice from the player's own numbers, and falls back to a rule-based coach if the call fails. Three people worked in separate folders joined by one shared contract file, and every outside dependency has a stand-in: keyboard for the camera, browser storage for the database, rules for Claude.
 
 ## Challenges we ran into
 
@@ -33,6 +33,6 @@ Measure before tuning: our recorded clips settled arguments that intuition could
 
 ## What's next
 
-Form feedback (squat depth), server-verified scores, friend challenges, a two-player mode, a phone as the camera for TVs, and turning on the Claude coach.
+Form feedback (squat depth), server-verified scores, friend challenges, a two-player mode, and a phone as the camera for TVs.
 
 **Try it:** https://codejam-jet.vercel.app (Chrome on a laptop with a webcam)

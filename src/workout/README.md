@@ -7,7 +7,8 @@ Exports from `index.ts`: `generateLevel`, `createSessionTracker`, `WORKOUTS` (al
 Pure and seeded (mulberry32): the same complete config always gives the same level. It fills `difficulty` (0.5), `lowImpact` (false) and `seed` (random integer 0 to 2^31 − 1 when missing or invalid), and returns them in `level.config`.
 
 1. **Levels.** Every round is `LEVELS` = 6 levels of `LEVEL_SEC` = 30 s in a row: `durationSec` is always 180 (`ROUND_SEC`) whatever was picked, and `level.stages` lists them (index 1 to 6). The level sets the speed: every wave of level n has intensity `TIER_SPEED_BASE` + (n − 1) × `LEVEL_SPEED_STEP` (0.14), flat within the level. Beginner level 1 is the old slowest (0.1), regular level 1 a little faster (0.16), athlete level 6 exactly the old top speed (1). No wave, hold included, comes within `PORTAL_BREATHER_SEC` (2 s) of a level boundary: that is where the game shows the portal. Level 1 is the warm-up: a longer gap (`LEVEL1_EXTRA_GAP_SEC`), no holds, no combos.
-2. **Tier** (`difficulty`: 0 beginner, 0.5 regular, 1 athlete, lerped in between) sets the density, the gap between waves (`TIER_GAP`), and also lengthens holds and adds combos. The old round curve (warm-up, build, peak, cool-down) is gone.3. **Mix.** Each wave's kind is drawn from the PLAN.md table for the workout. A third wave of the same kind in a row is re-rolled once. Treadmill keeps only crates and orbs. `lowImpact` drops hurdles and gives their share to the gentle moves, half to sidestep blocks and half to reach orbs (`LOW_IMPACT_SHARE`), so squats stay as frequent as in the normal level. Spread over every kind, the low-impact demo had 5 squats instead of 3, three of them within 6 s.
+2. **Tier** (`difficulty`: 0 beginner, 0.5 regular, 1 athlete, lerped in between) sets the density, the gap between waves (`TIER_GAP`), and also lengthens holds and adds combos. The old round curve (warm-up, build, peak, cool-down) is gone.
+3. **Mix.** Each wave's kind is drawn from the PLAN.md table for the workout. A third wave of the same kind in a row is re-rolled once. Treadmill keeps only crates and orbs. `lowImpact` drops hurdles and gives their share to the gentle moves, half to sidestep blocks and half to reach orbs (`LOW_IMPACT_SHARE`), so squats stay as frequent as in the normal level. Spread over every kind, the low-impact demo had 5 squats instead of 3, three of them within 6 s.
 4. **Flavour.**
    - Legs: half the beams are held squats.
    - Shoulders: half the crates are held presses.
@@ -46,7 +47,7 @@ Scoring per CONTRACTS.md:
 
 **Since the level system (p8-levels):** every round is the six levels, 180 s, so rounds compare like with like whatever length the board filters by; the numbers below are from before it.
 
-**Done (#45, no scoring change):** the board ranks per workout, mode **and** round length (`supabase/migrations/0003_leaderboard_duration.sql`, `LeaderboardEntry.durationSec`, a 45 S / 90 S / 180 S filter; landing and kiosk show 45 s). The measurements that led to it are below.
+**Done (#45, no scoring change):** the board ranks per workout, mode **and** round length (`supabase/migrations/0003_leaderboard_duration.sql`, `LeaderboardEntry.durationSec`). Its 45 S / 90 S / 180 S filter is gone again: every round is 180 s, and the boards ask for 180 (`BOARD_DEFAULT_DURATION_SEC` in `src/app/tuning.ts`. The measurements that led to it are below.
 
 Before #45, the board (`public.leaderboard`, `supabase/migrations/0001_init.sql`) kept each player's best score per **workout and mode**, whatever the duration, difficulty or low impact. Judges play 45 s.
 
@@ -70,7 +71,7 @@ Before #45, the board (`public.leaderboard`, `supabase/migrations/0001_init.sql`
 
 ## Physical load: what an unwarmed judge in jeans gets
 
-From the generator, 30 seeds per row. "Big moves" are squats, jumps and crates.
+From the generator before the level system (rounds of 45, 90 and 180 s), 30 seeds per row. "Big moves" are squats, jumps and crates.
 
 | Workout (floor unless noted), difficulty 0.5 → 1 | Squats / min | Jumps / min | Crates / min | Held s / min | Longest hold | Most big moves in 10 s |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -85,14 +86,14 @@ Low impact: no jumps; squats and crates as above. The ranges are over 45, 90 and
 **Flags:**
 - **Legs is the hardest by far:** 6–7 squats and 6–7 jumps in 45 s, up to 8 big moves in a 10 s stretch. The results screen suggests it as "play this next", so a judge may well get it.
 - **Squats came back to back.** Pairs at the 1.1 s minimum gap happened up to 10 times in a 180 s Legs round, and a few times in Full body. **Fixed:** `MIN_GAP_SQUAT_TO_SQUAT_SEC` (1.8 s from the end of one squat to the next), a fairness test over every level, and **both demo levels unchanged**. `demo.test.ts` now pins them, so any generator change that alters them fails loudly.
-- **Shoulders and the treadmill keep the arms overhead for long:** up to 10 s of holds a minute at difficulty 1. That is their purpose, so it's left as is. For judges, prefer the demo level (Full body, 45 s, low impact on offer).
+- **Shoulders and the treadmill keep the arms overhead for long:** up to 10 s of holds a minute at difficulty 1. That is their purpose, so it's left as is. For judges, prefer the demo level (Full body, low impact on offer).
 - **Not changed:** the Legs mix and the hold lengths. Lowering them would change what Legs is; tell me if you want a gentler Legs for judges.
 
 ## Settled: crates with `holdSec`
 
-A crate with `holdSec` is judged like a held beam: both arms must go up inside `[t − 0.35, t + 0.15]`, then stay up until `t + holdSec`. A drop longer than 0.3 s is a hit. The game smashes the crate front on contact and shows magenta rails for the hold. Proposed wording for the crate row in the CONTRACTS.md collision table: "both arms up (for the whole `holdSec` if set, with 0.3 s of grace)".
+A crate with `holdSec` is judged like a held beam: both arms must go up inside `[t − 0.35, t + 0.15]`, then stay up until `t + holdSec`. A drop longer than 0.3 s is a hit. The game smashes the crate front on contact and shows magenta rails for the hold. The crate row of the CONTRACTS.md collision table says the same.
 
 ## Status
 - **Works:** generator and tracker. Fairness checks are mutation-tested: weakening any rule makes them fail. They run over every difficulty the coach can recommend (0 to 1 in 0.1 steps), and a "coach compatibility" test checks that each step up is at least as hard as the one below. Both demo levels are pinned object by object (`demo.test.ts`).
 - **Leaderboard fairness:** fixed by D in #45 (one board per round length). The scoring formula is unchanged; changing it would need Greg's OK, because it affects saved sessions.
-- **Not tested:** whether the gaps and speeds feel right for a body in front of a webcam. Tune `GAP_*`, `HOLD_*` and the game's `SPEED_*` with Abdo at the camera.
+- **Not tested:** whether the gaps and speeds feel right for a body in front of a webcam.

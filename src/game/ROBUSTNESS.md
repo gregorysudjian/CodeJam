@@ -1,6 +1,6 @@
 # Expo robustness
 
-Patrick’s Windows QA station, Saturday 21 November. App baseline `7be4281`, keyboard fix `b7e66d6`. The preview uses the local store and denies camera permission. Measurements below come from a fresh Chrome profile. Run the browser scripts from the repo root with Node 22 or later. They reuse Greg’s package-free CDP driver.
+Patrick’s Windows QA station, Saturday 21 November. App baseline `7be4281`, keyboard fix `b7e66d6`. The preview uses the local store and denies camera permission. Measurements below come from a fresh Chrome profile. Run the browser scripts from the repo root with Node 22 or later. They reuse Greg’s package-free CDP driver. The measurements predate the six-level rounds (every round is now 180 s) and the three lives.
 
 ## Verified changes
 
@@ -85,9 +85,9 @@ A tracker-only replay also compared the proposed pause diff in memory: one W pre
 
 ## Thirty consecutive demo rounds
 
-One guest played 30 full rounds in one tab. Every Play again added one local session. Each summary had a score of 300 and accuracy of 3/16. Round 1 established the ghost for replay. All 30 result screens had 14 window listeners and zero open audio contexts after the two-second audio tail. A second CDP connection queried live browser objects on results for rounds 16?30; it found zero retained game canvases and zero WebGL2 contexts on each sample. That extra inspection can trigger garbage collection and affects comparison of heap readings across round 16.
+One guest played 30 full rounds in one tab. Every Play again added one local session. Each summary had a score of 300 and accuracy of 3/16. Round 1 established the ghost for replay. All 30 result screens had 14 window listeners and zero open audio contexts after the two-second audio tail. A second CDP connection queried live browser objects on results for rounds 16 to 30; it found zero retained game canvases and zero WebGL2 contexts on each sample. That extra inspection can trigger garbage collection and affects comparison of heap readings across round 16.
 
-GPU counts are sampled during play after the same seven keys. Heap is the page?s used JS heap after explicit GC on results. FPS is relative to round 2, the first replay with a ghost. The final column is the interval to the return of the first Three.js render call (including offscreen passes), starting at tutorial skip for round 1 and Play again for replays. It excludes display scanout. The checked-in probe refines the endpoint to the first render to the canvas framebuffer. This station also ran other browser checks during the soak.
+GPU counts are sampled during play after the same seven keys. Heap is the page’s used JS heap after explicit GC on results. FPS is relative to round 2, the first replay with a ghost. The final column is the interval to the return of the first Three.js render call (including offscreen passes), starting at tutorial skip for round 1 and Play again for replays. It excludes display scanout. The checked-in probe refines the endpoint to the first render to the canvas framebuffer. This station also ran other browser checks during the soak.
 
 | Round | Heap MiB | Geometries / textures / programs | Open audio | Window listeners | Relative FPS | First render ms |
 | ---: | ---: | --- | ---: | ---: | ---: | ---: |
@@ -132,7 +132,7 @@ Start `npm run dev` for the soak, or `npm run preview -- --port 5183` after a pr
 
 | Command | Measurement |
 | --- | --- |
-| `node src/game/robust/soak.mjs 30` | One tab, natural 45 s demo rounds, real keys and Play again. One JSON record per saved summary. |
+| `node src/game/robust/soak.mjs 30` | One tab, natural demo rounds, real keys and Play again. One JSON record per saved summary. |
 | `node src/game/robust/hardware.mjs http://localhost:5183/` | Resize, DPR, fullscreen, forced WebGL loss/restore, 60 s in another tab. Samples pixels from the game canvas after each event, checks pause and the saved round. Use preview to keep a Vite HMR reconnect from reloading the tab. |
 | `node src/game/robust/judges.mjs http://localhost:5183/` | Idle play, every movement key every frame, repeated Esc, 20 camera attempts with keyboard fallback, pause at 0:01, and quit at 0:01. Checks the local-store rows and summary values. |
 | `node src/game/robust/drift.mjs http://localhost:5183/` | A real 180 s round with music enabled. Samples wall time, the audio clock and scheduled kick timestamps at 2:50 and 0:10. Add `--slow` to deliver animation callbacks every fourth display tick. |

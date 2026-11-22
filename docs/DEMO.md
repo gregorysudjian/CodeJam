@@ -1,6 +1,6 @@
 # Demo and pitch plan
 
-**For the final build: `main` b27c6a6 (PRs #121 to #126), Sunday 10 AM.** The menus are the dark neon arcade look, all six levels run inside the Montreal clips, and the runner is the neon robot. The clock times were written on the rehearsal build and have not been re-timed with the camera on the final one (see "Check before the pitch" below).
+**For the final build: `main` at the Sunday 12:00 code freeze.** The menus are the dark neon arcade look, all six levels run inside the Montreal clips, and the runner is the neon robot. The clock times were written on the rehearsal build and have not been re-timed with the camera on the final one (see "Check before the pitch" below).
 
 The demo is one full round: **six levels of 30 s, 3 minutes of play**, through three Montreal streets. The pitch is spoken over the round, so the judges see the game the whole time. With sign-up before it and results after it, the run lasts about 4 minutes 15 seconds. Popular Vote has its own 2-minute cut (see Popular Vote below).
 
@@ -50,7 +50,7 @@ On the final build (`src/game/backdrop.ts`): levels 1 and 4 are Old Montreal, 2 
 
 - [ ] Time START → results with the camera (expected about 3:05: 180 s of play, 3 s intro, about 2 s of calibration) and the whole run with a stopwatch, twice.
 - [ ] The clip and the realistic obstacles show on every level, at 60 FPS on the demo laptop (D shows FPS).
-- [ ] The coach badge: RULES, or the Claude coach if a key was added. Fix the Q&A answers below to match.
+- [ ] The coach badge after a round on the live site: AI (the Claude key was added Sunday morning). If it says RULES, the call failed or timed out: say "rule-based coach" in the Q&A answers below instead.
 
 ## The demo level
 
@@ -97,9 +97,9 @@ Decide these in advance so nobody improvises in front of judges.
 
 ## Popular Vote
 
-Per the opening slides, Popular Vote is a 2-minute demo, then the audience ranks the finalists. It is not a queue at your table. A full round is 3 minutes, so it can't finish inside 2:00. **Proposal, for Greg to decide:** show the first three levels (all three places), then end the round.
+Per the opening slides, Popular Vote is a 2-minute demo, then the audience ranks the finalists. It is not a queue at your table. A full round is 3 minutes, so it can't finish inside 2:00. The 2-minute cut shows the first three levels (all three places), then ends the round.
 
-### 2-minute script (proposal)
+### 2-minute script
 
 | Time | Who | What |
 | --- | --- | --- |
@@ -137,7 +137,7 @@ The pose model is pre-trained by Google, and Supabase hosts the database and sig
 They're 30 s generated clips (1280×720, no sound) of real places: Rue Saint-Paul in Old Montreal, the deck of the Jacques Cartier Bridge, and the Old Port at blue hour with the Clock Tower. We measured where each clip's road vanishes and where its curbs are, and line that up with the 3D track; the clip plays at the game's speed. If a clip can't load, or the laptop drops to Low graphics, the level shows our built-in neon scenery instead and the round is unchanged.
 
 **What is in your backend, and why does the tracking not run there?**
-Postgres with row-level security for profiles, sessions and friends, anonymous sign-in with a username, a leaderboard view that exposes only each player's best (name, score, date) per workout and mode, and a serverless coach endpoint. The endpoint checks the player's token, reads their history under the same row-level security, limits each player to one call per 10 s, and asks Claude for structured JSON. No Claude key is configured for the demo, so the card shows our rule-based coach; adding the key switches the endpoint on. Tracking stays on the device on purpose: a round trip to a server would add lag you can feel in a game, and it would mean uploading video of people exercising.
+Postgres with row-level security for profiles, sessions and friends, anonymous sign-in with a username, a leaderboard view that exposes only each player's best (name, score, date) per workout and mode, and a serverless coach endpoint. The endpoint checks the player's token, reads their history under the same row-level security, limits each player to one call per 10 s, and asks Claude (Haiku 5.5) for structured JSON, which it validates. If the call fails or takes more than 7 s, the card shows our rule-based coach instead. Tracking stays on the device on purpose: a round trip to a server would add lag you can feel in a game, and it would mean uploading video of people exercising.
 
 **How do friends work?**
 Add someone by their username and the FRIENDS tab shows their best scores next to yours. It's one-way ("you see their scores"), so nobody can put themselves on your board, and only names and scores are shared, as on the public leaderboard. It needs the network; the local store says "Friends need the internet".
@@ -146,7 +146,7 @@ Add someone by their username and the FRIENDS tab shows their best scores next t
 The video and the body landmarks never do: tracking runs in the browser, and the model and its WASM are served by our own app. The server gets only the round's numbers (score, reps, accuracy) and the profile the player typed. Honest detail if pressed: Google's MediaPipe library sends anonymous usage metrics (library version, inference counts and timings). We decoded those payloads: no images, frames or landmarks (`src/pose/ROBUSTNESS.md`).
 
 **Where is the AI?**
-On screen today: the pose model, the generated Montreal clips, and a rule-based coach (the card's badge says RULES). The Claude path is built and tested up to the API call (token check, rate limit, answer validation), but has not answered with a real key. Say this plainly rather than let a judge find the RULES badge.
+On screen today: the pose model, the generated Montreal clips, and the coach card, written by Claude Haiku 5.5 from the player's own numbers (the card's badge says AI). A rule-based coach takes over when the call fails (badge RULES), and on a local run with no key.
 
 **Is the coach giving medical advice?**
 No. The card says "General fitness encouragement, not medical advice." The rule-based coach uses only the player's own numbers (accuracy, missed moves, workouts this week) and fixed tips. The Claude prompt is limited to general encouragement with no medical, diet or body comments, its answer is validated on the server, and any failure falls back to the rules.
