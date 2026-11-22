@@ -64,14 +64,14 @@ export function LandingScreen({
       </header>
 
       {/* Hero */}
-      <section className="grid items-stretch gap-12 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col justify-center gap-8">
+      <section className="grid items-stretch gap-12 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] short:gap-8">
+        <div className="flex min-w-0 flex-col justify-center gap-8 short:gap-4">
           <Eyebrow>Webcam fitness game</Eyebrow>
           <motion.h1
             initial={reduce ? false : { opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: reduce ? 0 : 0.6, ease: EASE_ARENA, delay: reduce ? 0 : 0.1 }}
-            className="font-display-italic pr-[0.06em] text-display-md sm:text-display-lg"
+            className="font-display-italic pr-[0.06em] text-display-md sm:text-display-lg sm:tight:text-display-md"
           >
             Your body
             <br />
@@ -81,7 +81,7 @@ export function LandingScreen({
             Move through the arena. Just you and your webcam.
           </p>
 
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-5 short:gap-3">
             {isReturning && returning ? (
               <div className="flex flex-col gap-4">
                 <div className="flex flex-wrap items-center gap-4">
@@ -133,16 +133,36 @@ export function LandingScreen({
           transition={{ duration: reduce ? 0 : 0.6, ease: EASE_ARENA, delay: reduce ? 0 : 0.45 }}
           className="min-w-0"
         >
-          <div className="flex h-full min-h-[460px] flex-col items-center justify-center gap-6">
+          {/* Short screens cap the figure (it is 420 px tall) so the QR below it stays above the
+              fold at 1280×720 and 1366×768 (QA Q12). */}
+          <div className="flex h-full min-h-[460px] flex-col items-center justify-center gap-6 short:min-h-0 short:gap-3">
             <div className="flex w-full items-center justify-between">
               <Eyebrow>How you play</Eyebrow>
             </div>
-            <MoveFigureCycle moves={MOVE_ORDER} size={280} className="flex-1 justify-center" />
+            <MoveFigureCycle
+              moves={MOVE_ORDER}
+              size={280}
+              className="w-full flex-1 justify-center short:[&_svg]:max-h-[240px] tight:[&_svg]:max-h-[150px]"
+            />
+            {qrSlot && publicUrl && (
+              <div className="flex items-center gap-4">
+                {/* Dark modules on a light tile: the polarity every phone camera scans. */}
+                <div className="grid size-28 shrink-0 place-items-center rounded-xl bg-text p-2 text-bg tight:size-20 [&>svg]:size-full">
+                  {qrSlot}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-display-italic text-title leading-none text-cyan">
+                    PLAY ON YOUR LAPTOP
+                  </p>
+                  <p className="mt-2 max-w-64 truncate text-caption text-text-muted">{publicUrl}</p>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       </section>
 
-      {(scores.length > 0 || (qrSlot && publicUrl)) && (
+      {scores.length > 0 && (
         <section className="flex flex-wrap items-center justify-between gap-8 border-y border-glass-border py-4">
           {scores.length > 0 && (
             <div className="flex min-w-0 flex-wrap items-center gap-6">
@@ -159,17 +179,6 @@ export function LandingScreen({
                   </li>
                 ))}
               </ol>
-            </div>
-          )}
-          {qrSlot && publicUrl && (
-            <div className="flex items-center gap-4">
-              <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg">
-                {qrSlot}
-              </div>
-              <div>
-                <p className="font-display-italic text-[20px] text-cyan">PLAY ON YOUR LAPTOP</p>
-                <p className="max-w-64 truncate text-caption text-text-muted">{publicUrl}</p>
-              </div>
             </div>
           )}
         </section>

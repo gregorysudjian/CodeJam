@@ -614,6 +614,14 @@
   min-height: 100dvh;
   justify-content: center;
 }
+/* Short screens: the hero and its QR fit in one screen (QA Q12). */
+@media (max-height: 900px) {
+  .landing-screen main {
+    padding-top: 20px;
+    padding-bottom: 20px;
+    gap: 20px;
+  }
+}
 .dashboard-empty {
   min-height: calc(100dvh - 96px);
 }
