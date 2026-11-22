@@ -1,5 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { nextTier, parseAdvice } from './advice';
+import { nextTier, parseAdvice, planNumbers } from './advice';
+
+describe("planNumbers: today's plan, decided by the game", () => {
+  it('rounds by level, calories from the per-round average, share of the weekly goal', () => {
+    expect(planNumbers('regular', 60, [{ kcal: 20 }, { kcal: '22' }])).toEqual({
+      rounds: 3,
+      kcal: 63,
+      minutes: 9,
+      weeklyShare: 15,
+    });
+    expect(planNumbers('beginner', 30, [{ kcal: 10 }])).toEqual({
+      rounds: 2,
+      kcal: 20,
+      minutes: 6,
+      weeklyShare: 20,
+    });
+  });
+  it('no usable history or goal: no calories, no share', () => {
+    expect(planNumbers(undefined, 0, [{ kcal: 'x' }])).toEqual({
+      rounds: 2,
+      kcal: 0,
+      minutes: 6,
+      weeklyShare: null,
+    });
+  });
+});
 
 const card = (extra: Record<string, unknown>) =>
   JSON.stringify({

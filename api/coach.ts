@@ -19,6 +19,7 @@ import {
   buildUserPrompt,
   nextTier,
   parseAdvice,
+  planNumbers,
   readSessionId,
   type ProfileFacts,
   type SessionFacts,
@@ -91,6 +92,11 @@ export async function POST(request: Request): Promise<Response> {
   if (!apiKey) return json({ error: 'coach not configured' }, 503);
 
   const tier = nextTier(latest);
+  const plan = planNumbers(profileRes.data?.level, profileRes.data?.weekly_goal_min, sessions);
+  const planLine =
+    `Today's plan numbers (decided by the game): ${plan.rounds} rounds, ${plan.minutes} active minutes` +
+    (plan.kcal > 0 ? `, about ${plan.kcal} kcal` : '') +
+    (plan.weeklyShare !== null ? `, ${plan.weeklyShare}% of the weekly goal` : '');
   const client = new Anthropic({ apiKey, timeout: COACH_TIMEOUT_MS, maxRetries: 0 });
   try {
     // Claude Haiku 5.5 has no server-side refusal fallback: a decline (stop_reason "refusal")
@@ -107,7 +113,7 @@ export async function POST(request: Request): Promise<Response> {
       messages: [
         {
           role: 'user',
-          content: `${buildUserPrompt(profileRes.data, sessions, sessionId)}\n\nNext tier (decided by the game): ${TIER_NAMES[tier]} (difficulty ${tier})`,
+          content: `${buildUserPrompt(profileRes.data, sessions, sessionId)}\n\nNext tier (decided by the game): ${TIER_NAMES[tier]} (difficulty ${tier})\n${planLine}`,
         },
       ],
     });
