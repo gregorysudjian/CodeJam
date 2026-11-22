@@ -71,6 +71,36 @@ second round.
 **When hx-media lands**: `node scripts/media-budget.mjs` first, then the same measurement, cold and
 warm, with the verdict per file: loaded after the first frame (lazy) or before it (holding it up).
 
+### Camera path: the pose model on a first visit (Saturday 10:15 PM, live site)
+
+Headless Chrome with a fake webcam, a new guest, Camera chosen on the select screen, 8 s there,
+then START. Timed until calibration stops saying "Starting the camera…" and tracks.
+
+| | 2 s latency, 1.5 Mbps | 100 ms, 10 Mbps |
+| --- | --- | --- |
+| download starts | 4.4 s after the select screen shows (Camera chosen) | 3 s after load of select |
+| `vision_wasm_internal.js` 82 KB | 2.5 s | 0.2 s |
+| `vision_wasm_internal.wasm` 3.9 MB | 23.3 s | 3.5 s |
+| `pose_landmarker_lite.task` 4.9 MB, **starts only after the WASM ends** | 29.2 s | 4.2 s |
+| **START → tracking, first visit** | **53.9 s** of "Starting the camera…" | **2.6 s** |
+| START → tracking, second visit | **0.5 s** (all three from the browser cache, 0 bytes) | 0.5 s |
+
+The day-long cache (#72) works: a returning camera player waits half a second. A first-time camera
+player on a weak link waits almost a minute with no sign of progress. At 1.5 Mbps that is mostly
+bandwidth (8.8 MB is about 47 s however it is fetched); on a typical link the late start and the
+sequential fetch are what show. The demo itself runs on the local dev server, so none of this
+applies to it: only to visitors on the live site.
+
+**Recommended (not my folders: `src/app`, `src/pose`):**
+1. **Start the pose download on the profile screen** when a camera exists, as #87 did for the game
+   code: at 10 Mbps the remaining 2.6 s disappears; at 1.5 Mbps it saves the time spent on profile
+   and select (10 to 15 s).
+2. **Show progress** while it downloads ("Downloading the body tracker: 3.1 of 8.8 MB"), with the
+   keyboard offered meanwhile. A minute of "Starting the camera…" reads as broken.
+3. **Fetch the model at the same time as the WASM** (for example `fetch('/models/…')` into the HTTP
+   cache when the download starts): one round trip less, and the model no longer waits for the
+   WASM.
+
 **Deploy log** (`status.mjs` and a marker string in the live bundle):
 
 | Checked | Live build has | Notes |
@@ -78,6 +108,7 @@ warm, with the verdict per file: loaded after the first frame (lazy) or before i
 | 7:40 PM | #74 names | caching headers live |
 | 8:21 PM | through #81 (#80 heal) | |
 | 9:13 PM | through #87 (prefetch on the profile screen) | `index-gOkysHDL.js` |
+| 10:12 PM | same build (#89 to #91 change only contract types) | **status PASS**: no `QA-` player in the top 5 any more |
 
 Every run so far: deploy current, board readable, FAIL only on `QA-` players in the projector's top
 5 (until the cleanup).
