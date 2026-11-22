@@ -13,6 +13,7 @@
 //    read through Object3D.onBeforeRender: realistic mode is a clip as the background with no
 //    bloom (scene.ts turns bloom off only on a real level; at Low graphics there is no clip).
 //    "real" if at least 90% of the level's frames are, "neon" if at most 10%, else "mixed".
+//    The runner column, the same way: "human" when a skinned mesh is drawn, else "robot".
 //    Screenshots 15 s into each level and 0.5 s after each portal; the finished reason; console
 //    errors (a 404 on /api/coach is ignored: the dev server has no /api).
 //    FAIL if it does not finish 'complete', loses a life, misses a screenshot, logs an error, or a
@@ -115,41 +116,45 @@ const RENDER_HOOK = `(async () => {
   const P = THREE.Object3D.prototype;
   const orig = P.onBeforeRender;
   P.onBeforeRender = function (renderer, scene, ...rest) {
-    if (scene?.isScene && scene.fog)
+    if (scene?.isScene && scene.fog) {
       window.__qaRender = { real: !!scene.background?.isVideoTexture && renderer.getRenderTarget() === null, at: performance.now() };
+      if (this.isSkinnedMesh) window.__qaSkin = performance.now(); // the human runner is skinned
+    }
     return orig.call(this, renderer, scene, ...rest);
   };
   return true;
 })()`;
 
 // Every animation frame records the game time, so frames are grouped by level and frozen time
-// (intro, pauses) is left out, and whether that frame drew realistic mode (1), neon (0) or
-// nothing readable (-1).
+// (intro, pauses) is left out, whether that frame drew realistic mode (1), neon (0) or nothing
+// readable (-1), and whether it drew a skinned mesh (the human runner: 1; the robot: 0).
 const FRAME_SAMPLER = `(() => {
   window.__qaFrames = [];
   const loop = () => {
     const g = window.__qaGame;
     const r = window.__qaRender;
     const now = performance.now();
-    if (g) window.__qaFrames.push([now, g.getElapsedSec(), r && now - r.at < 200 ? (r.real ? 1 : 0) : -1]);
+    const known = r && now - r.at < 200;
+    if (g) window.__qaFrames.push([now, g.getElapsedSec(), known ? (r.real ? 1 : 0) : -1, known ? (now - (window.__qaSkin ?? -1e9) < 200 ? 1 : 0) : -1]);
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
 })()`;
-/** Per level: 'real', 'neon', 'mixed (n% real)', or '?' when no frame could be read. */
-function screenByLevel(frames) {
+/**
+ * Per level, from frame field `k` (1 yes, 0 no, -1 unknown): `yes` if at least 90% of the known
+ * frames are, `no` if at most 10%, else 'mixed (n% yes)'; '?' when no frame could be read.
+ */
+function byLevel(frames, k, yes, no) {
   const out = [];
   for (let lv = 1; lv <= LEVELS; lv++) {
     const lo = (lv - 1) * LEVEL_SEC;
-    const known = frames.filter(([, sec, r]) => sec >= lo && sec < lv * LEVEL_SEC && r >= 0);
+    const known = frames.filter((f) => f[1] >= lo && f[1] < lv * LEVEL_SEC && f[k] >= 0);
     if (!known.length) {
       out.push('?');
       continue;
     }
-    const share = known.filter((f) => f[2] === 1).length / known.length;
-    out.push(
-      share >= 0.9 ? 'real' : share <= 0.1 ? 'neon' : `mixed (${Math.round(share * 100)}% real)`,
-    );
+    const share = known.filter((f) => f[k] === 1).length / known.length;
+    out.push(share >= 0.9 ? yes : share <= 0.1 ? no : `mixed (${Math.round(share * 100)}% ${yes})`);
   }
   return out;
 }
@@ -276,7 +281,8 @@ async function mainRun(page, w) {
     lost[Math.min(LEVELS, Math.floor(e.sec / LEVEL_SEC) + 1) - 1]++;
   const frames = await page.eval('window.__qaFrames ?? []');
   const fps = fpsByLevel(frames);
-  const screen = screenByLevel(frames);
+  const screen = byLevel(frames, 2, 'real', 'neon');
+  const runner = byLevel(frames, 3, 'human', 'robot');
   if (!hooked)
     fails.push("could not read what three.js renders (the app's three module not found)");
   styles?.forEach((st, i) => {
@@ -303,6 +309,7 @@ async function mainRun(page, w) {
     level: i + 1,
     style: styles?.[i] ?? '?',
     screen: screen[i],
+    runner: runner[i],
     fps: fps[i] ?? '-',
     lost: lost[i],
     shots: (taken[i + 1] ?? []).join(', ') || '-',
@@ -324,7 +331,7 @@ async function contactSheet(page, rows) {
     } catch {
       /* not taken */
     }
-    return { src, label: `Level ${r.level}: ${r.style}, on screen ${r.screen}` };
+    return { src, label: `Level ${r.level}: ${r.style}, on screen ${r.screen}, ${r.runner}` };
   });
   const url = await page.eval(`(async () => {
     const tiles = ${JSON.stringify(tiles)};
@@ -421,10 +428,11 @@ const lines = [
   '',
   `Main run (${QUERY}, perfect autopilot, ${ROUND_SEC} s, 1280x720): ${main.fails.length ? 'FAIL' : 'PASS'}. ${main.note}`,
   '',
-  '| level | style (backdrop.ts) | on screen | fps | lives lost | screenshot |',
-  '| --- | --- | --- | --- | --- | --- |',
+  '| level | style (backdrop.ts) | on screen | runner | fps | lives lost | screenshot |',
+  '| --- | --- | --- | --- | --- | --- | --- |',
   ...main.rows.map(
-    (r) => `| ${r.level} | ${r.style} | ${r.screen} | ${r.fps} | ${r.lost} | ${r.shots} |`,
+    (r) =>
+      `| ${r.level} | ${r.style} | ${r.screen} | ${r.runner} | ${r.fps} | ${r.lost} | ${r.shots} |`,
   ),
   ...main.fails.map((f) => `- ${f}`),
   '',
