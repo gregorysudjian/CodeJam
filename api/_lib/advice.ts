@@ -55,11 +55,22 @@ export const PLAN_ROUNDS: Record<string, number> = { beginner: 2, regular: 3, at
 export function planNumbers(
   level: string | undefined,
   weeklyGoalMin: number | undefined,
-  sessions: Pick<SessionFacts, 'kcal'>[],
+  sessions: (Pick<SessionFacts, 'kcal'> & Partial<Pick<SessionFacts, 'active_sec'>>)[],
 ): { rounds: number; kcal: number; minutes: number; weeklyShare: number | null } {
   const rounds = PLAN_ROUNDS[level ?? ''] ?? 2;
-  const kcals = sessions.map((s) => n(s.kcal)).filter((k): k is number => k !== null && k > 0);
-  const perRound = kcals.length ? kcals.reduce((a, b) => a + b, 0) / kcals.length : 0;
+  // Calories per full round, from the player's burn rate: a round that ended early (out of
+  // lives) counts for the seconds it lasted, so it does not shrink the plan's estimate. A row
+  // with no active time counts as one full round.
+  let kcal = 0;
+  let sec = 0;
+  for (const s of sessions) {
+    const k = n(s.kcal);
+    if (k === null || k <= 0) continue;
+    const a = n(s.active_sec);
+    kcal += k;
+    sec += a !== null && a > 0 ? Math.min(a, ROUND_SEC) : ROUND_SEC;
+  }
+  const perRound = sec > 0 ? (kcal / sec) * ROUND_SEC : 0;
   const minutes = (rounds * ROUND_SEC) / 60;
   const weeklyShare =
     weeklyGoalMin && weeklyGoalMin > 0 ? Math.round((minutes / weeklyGoalMin) * 100) : null;
