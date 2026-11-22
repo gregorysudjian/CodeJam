@@ -13,7 +13,7 @@ const repo = fileURLToPath(new URL('../..', import.meta.url));
 const last = Number(process.argv[2] ?? 99);
 const db = new PGlite();
 
-await db.exec(`
+const SUPABASE_LIKE = `
   create role anon nologin; create role authenticated nologin;
   create schema auth;
   create table auth.users (id uuid primary key);
@@ -25,10 +25,12 @@ await db.exec(`
   alter default privileges in schema public grant all on tables to anon, authenticated;
   alter default privileges in schema public grant all on functions to anon, authenticated;
   alter default privileges in schema public grant all on sequences to anon, authenticated;
-`);
+`;
+await db.exec(SUPABASE_LIKE);
 
 const dir = join(repo, 'supabase', 'migrations');
-for (const f of readdirSync(dir).sort()) {
+const migrations = readdirSync(dir).sort();
+for (const f of migrations) {
   if (Number(f.slice(0, 4)) > last) continue;
   await db.exec(readFileSync(join(dir, f), 'utf8'));
   console.log('applied', f);
@@ -225,6 +227,110 @@ if (last >= 6) {
   const hidden = !boardCols.some((c) => c === 'age' || c === 'height_cm');
   results.push(hidden);
   console.log(`${hidden ? 'PASS' : 'FAIL'} leaderboard columns ${boardCols.join(', ')}`);
+}
+if (last >= 7) {
+  // 0007: unique usernames, friends by username (one-way), only through the functions.
+  const check = (name, ok) => {
+    results.push(ok);
+    console.log(`${ok ? 'PASS' : 'FAIL'} ${name}`);
+  };
+  const rpc = (uid, sql, params = []) => as(uid ? 'authenticated' : 'anon', uid, sql, params);
+  // Earlier probes rename players: start from known names.
+  await db.query(`update public.profiles set display_name='QA-A' where id=$1`, [A]);
+  await db.query(`update public.profiles set display_name='QA-B' where id=$1`, [B]);
+  expect(
+    "B takes A's name in another case",
+    await as('authenticated', B, `update public.profiles set display_name='qa-a' where id=$1`, [B]),
+    'denied',
+  );
+  const t1 = await rpc(A, `select public.username_taken('  qa-b ') as t`);
+  const t2 = await rpc(A, `select public.username_taken('Nobody') as t`);
+  check(
+    'username_taken: QA-B yes, Nobody no',
+    t1.rows?.[0]?.t === true && t2.rows?.[0]?.t === false,
+  );
+  expect(
+    'anon calls username_taken',
+    await rpc(null, `select public.username_taken('x')`),
+    'denied',
+  );
+  const add = async (uid, name) =>
+    (await rpc(uid, `select * from public.add_friend($1)`, [name])).rows?.[0]?.status;
+  check('A adds qa-b: ok', (await add(A, 'qa-b')) === 'ok');
+  check('A adds QA-B again: already', (await add(A, 'QA-B')) === 'already');
+  check('A adds itself: self', (await add(A, 'QA-A')) === 'self');
+  check('A adds Nobody: notFound', (await add(A, 'Nobody')) === 'notFound');
+  expect(
+    'anon calls add_friend',
+    await rpc(null, `select * from public.add_friend('QA-A')`),
+    'denied',
+  );
+  expect(
+    'A reads friends directly',
+    await as('authenticated', A, 'select * from public.friends'),
+    'denied',
+  );
+  expect(
+    'A inserts a friend row directly',
+    await as('authenticated', A, 'insert into public.friends values ($1, $2)', [A, B]),
+    'denied',
+  );
+  const lf = await rpc(A, 'select * from public.list_friends()');
+  check(
+    `list_friends for A: ${JSON.stringify(lf.rows)}`,
+    lf.rows?.length === 1 && lf.rows[0].display_name === 'QA-B',
+  );
+  q = ins(B, { score: 100 });
+  expect('B saves a 45 s round', await as('authenticated', B, q[0], q[1]), 'ok');
+  const board = async (uid) =>
+    (await rpc(uid, `select * from public.friends_board('fullBody', 'floor', 45, 10)`)).rows ?? [];
+  const ab = await board(A);
+  check(
+    `A's friends board has A (me) then B: ${ab.map((r) => `${r.display_name}:${r.score}:${r.is_me}`).join(', ')}`,
+    ab.length === 2 &&
+      ab[0].is_me === true &&
+      ab[1].display_name === 'QA-B' &&
+      ab[0].score >= ab[1].score,
+  );
+  const bb = await board(B);
+  check(
+    `B's board has only B (one-way): ${bb.map((r) => r.display_name).join(', ')}`,
+    bb.length === 1 && bb[0].is_me === true,
+  );
+
+  // The rename of existing duplicates, on a fresh database: older keeps the name.
+  const d2 = new PGlite();
+  await d2.exec(SUPABASE_LIKE);
+  for (const f of migrations)
+    if (Number(f.slice(0, 4)) <= 6) await d2.exec(readFileSync(join(dir, f), 'utf8'));
+  const ids = [randomUUID(), randomUUID(), randomUUID()];
+  for (const [i, n] of [
+    ['Alex', 0],
+    ['alex', 1],
+    ['Sam', 2],
+  ].map(([n, i]) => [i, n])) {
+    await d2.query('insert into auth.users (id) values ($1)', [ids[i]]);
+    await d2.query(
+      `insert into public.profiles (id, display_name, created_at) values ($1, $2, now() + ($3 || ' seconds')::interval)`,
+      [ids[i], n, String(i)],
+    );
+  }
+  await d2.exec(
+    readFileSync(
+      join(
+        dir,
+        migrations.find((f) => f.startsWith('0007')),
+      ),
+      'utf8',
+    ),
+  );
+  const names = (
+    await d2.query('select display_name from public.profiles order by created_at')
+  ).rows.map((r) => r.display_name);
+  check(
+    `duplicates renamed, oldest kept: ${names.join(', ')}`,
+    names[0] === 'Alex' && names[1] === `alex-${ids[1].slice(0, 6)}` && names[2] === 'Sam',
+  );
 }
 const viewOpts = await db.query(`select reloptions from pg_class where relname='leaderboard'`);
 const plain = !JSON.stringify(viewOpts.rows[0].reloptions ?? '').includes('security_invoker');

@@ -2,6 +2,7 @@
 import type {
   CoachAdvice,
   FitnessLevel,
+  FriendBoardEntry,
   Goal,
   LeaderboardEntry,
   MoveType,
@@ -173,6 +174,31 @@ export function leaderboardFromRow(r: LeaderboardRow): LeaderboardEntry {
     mode: r.mode,
     durationSec: r.duration_sec,
     at: Date.parse(r.created_at),
+  };
+}
+
+/** A row of the friends_board function (migration 0007). */
+export interface FriendBoardRow {
+  display_name: string;
+  score: number;
+  created_at: string;
+  is_me: boolean;
+}
+
+export function friendBoardFromRow(
+  r: FriendBoardRow,
+  workout: WorkoutId,
+  mode: PlayMode,
+  durationSec: number,
+): FriendBoardEntry {
+  return {
+    displayName: shownName(r.display_name),
+    score: num(r.score),
+    workout,
+    mode,
+    durationSec,
+    at: Date.parse(r.created_at),
+    isMe: r.is_me === true,
   };
 }
 
