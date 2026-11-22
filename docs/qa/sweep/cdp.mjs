@@ -1,5 +1,6 @@
 // Minimal Chrome DevTools Protocol driver for the QA sweep. Node 22+ (built-in WebSocket), no packages.
-// The page's camera permission is denied, so no webcam ever turns on.
+// The page's camera permission is denied, so no webcam ever turns on (launch's `camera` option uses
+// Chrome's fake camera instead, never a real one).
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -21,19 +22,22 @@ export function timebox(ms, label) {
   }, ms).unref();
 }
 
-export async function launch({ port, profile, base }) {
+/** `camera: true`: Chrome's fake camera (a test pattern, no person) with permission granted, for
+ *  the calibration screen. Otherwise the camera is denied. */
+export async function launch({ port, profile, base, camera = false }) {
   mkdirSync(profile, { recursive: true });
   const proc = spawn(
     CHROME,
     [
       '--headless=new',
+      ...(camera ? ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] : []),
       `--remote-debugging-port=${port}`,
       `--user-data-dir=${profile}`,
       '--no-first-run',
       '--no-default-browser-check',
       '--disable-extensions',
       '--mute-audio',
-      '--deny-permission-prompts',
+      ...(camera ? [] : ['--deny-permission-prompts']),
       'about:blank',
     ],
     { stdio: 'ignore' },
@@ -86,7 +90,7 @@ export async function launch({ port, profile, base }) {
   await send('Browser.setPermission', {
     origin: new URL(base).origin,
     permission: { name: 'videoCapture' },
-    setting: 'denied',
+    setting: camera ? 'granted' : 'denied',
   }).catch(() => {});
 
   const KEYS = {

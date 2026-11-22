@@ -147,6 +147,16 @@ async function sweep([w, h, dsf], port) {
     await sleep(600);
     const arms = await b.text();
     check('empty Arms board keeps filters and Back (Q3)', /BE THE FIRST/.test(arms) && /ARMS · FLOOR/.test(arms) && /BACK/.test(arms));
+    // FRIENDS tab: empty state and the add-friend panel; adding one with the local store (no
+    // friends service) answers "Friends need the internet".
+    if (await b.eval(`[...document.querySelectorAll('[role=radio], button')].some((e) => /^\\s*friends\\s*$/i.test(e.innerText || ''))`)) {
+      await b.click('^\\s*friends\\s*$');
+      check('FRIENDS tab: no friends yet, add-friend panel', await b.waitFor(/NO FRIENDS YET/i, 3000) && /ADD FRIEND/i.test(await b.text()));
+      await fill('[aria-label="Friends"] input', 'Someone');
+      await b.click('^\\s*add\\s*$');
+      check('FRIENDS add with the local store: "Friends need the internet"', await b.waitFor(/friends need the internet/i, 3000));
+      await step('12b-leaderboard-friends', { settle: 500, aa: true });
+    }
 
     await b.go(`${BASE}?kiosk=1&store=local`, 3000);
     await step('13-kiosk', { settle: 2000, aa: true });
@@ -208,6 +218,11 @@ async function sweep([w, h, dsf], port) {
         check(`select nav: ${item} button exists`, await navClick(item));
         const got = await where();
         check(`select nav: ${item} -> ${NAV[item][1]}`, got === NAV[item][1], got);
+        if (item === 'chip') {
+          // Editing an existing player: the profile screen keeps the nav bar (first-time setup has none).
+          check('profile from the nav chip shows the nav bar', await b.eval(`Boolean(document.querySelector('nav[aria-label="Main"]'))`));
+          await step('16b-profile-from-chip', { settle: 1000, aa: true });
+        }
         check(`select nav: back to select after ${item}`, await toSelect());
       }
       for (const item of ['play', 'progress', 'leaderboard', 'chip']) {
@@ -228,6 +243,7 @@ async function sweep([w, h, dsf], port) {
       check('New player opens the sign-up card', await b.waitFor(/USERNAME/i, 3000));
       await b.click('^\\s*play as guest\\s*$');
       check('Play as guest opens the profile screen', await b.waitFor(/WHO'S PLAYING/i, 5000));
+      check('first-time profile setup has no nav bar', !(await b.eval(`Boolean(document.querySelector('nav[aria-label="Main"]'))`)));
       await step('15-profile', { settle: 1000, aa: true });
     }
   } catch (e) {
@@ -238,6 +254,56 @@ async function sweep([w, h, dsf], port) {
   const logs = b.logs.filter((l) => !(process.env.REDUCED_MOTION && /reduced-motion-disabled/.test(l)));
   check('no console errors or warnings', logs.length === 0, logs.slice(0, 5).join(' | '));
   await b.close();
+
+  // Calibration: its own browser with Chrome's fake camera (a test pattern, no person, so it waits
+  // in "Get in position"). Camera on select -> START -> calibration; Esc back to select; START
+  // again -> K (use the keyboard) -> tutorial. Not in the main browser: with a camera present the
+  // app switches the whole flow to pose input.
+  const c = await launch({ port, profile: join(OUT, 'profiles', `${w}x${h}@${dsf}-camera`), base: BASE, camera: true });
+  try {
+    await c.size(w, h, dsf);
+    if (process.env.REDUCED_MOTION) await c.reducedMotion();
+    await c.go(`${BASE}?demo=1&store=local`, 2500);
+    await c.eval(`(() => {
+      const i = document.querySelector('section[aria-label="New player"] input');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'Cal');
+      i.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await c.click('^\\s*start\\b');
+    check('camera: select screen', await c.waitFor(/PICK A WORKOUT/i, 5000));
+    await c.click('^\\s*camera\\s*$');
+    await sleep(500);
+    await c.click('^\\s*start\\b');
+    let opened = await c.waitFor(/GET IN POSITION|CAMERA DID NOT START/i, 20000);
+    if (/CAMERA DID NOT START/i.test(await c.text())) {
+      // Chrome's fake camera sometimes fails to open when several headless browsers start one at
+      // once. The app's error screen is right; retry once through it and say so.
+      check('camera: fake camera started first time (else the error screen, then TRY AGAIN)', false, 'Camera did not start: retried');
+      await c.click('^\\s*try again\\s*$');
+      opened = await c.waitFor(/GET IN POSITION/i, 20000);
+    }
+    check('camera: START opens calibration', opened && /GET IN POSITION/i.test(await c.text()));
+    await sleep(3000); // the pose model loads and the status settles
+    await c.shot(dir, '18-calibration');
+    const cl = await c.layout();
+    check('18-calibration: no horizontal scroll', !cl.hScroll);
+    check('18-calibration: fits the screen', cl.pageH <= cl.viewH + 4, `${cl.pageH} of ${cl.viewH}`);
+    const fails = await c.contrast();
+    check('18-calibration: text AA contrast', fails.length === 0, fails.slice(0, 4).map((f) => `"${f.text}" ${f.ratio}<${f.need}`).join(' | '));
+    await c.key('Escape');
+    check('calibration: Esc returns to select', await c.waitFor(/PICK A WORKOUT/i, 5000));
+    await c.click('^\\s*start\\b');
+    await c.waitFor(/GET IN POSITION/i, 20000);
+    await c.key('KeyK');
+    check('calibration: K (keyboard) goes on to the tutorial', await c.waitFor(/TRY EACH MOVE/i, 5000));
+  } catch (e) {
+    check('calibration flow completed', false, e.message);
+    await c.shot(dir, 'zz-calibration-error').catch(() => {});
+  }
+  // MediaPipe's own native notice on every camera start (a real webcam too): not an app bug.
+  const camLogs = c.logs.filter((l) => !(process.env.REDUCED_MOTION && /reduced-motion-disabled/.test(l)) && !/gl_context\.cc.*OpenGL error checking is disabled/.test(l));
+  check('calibration: no console errors or warnings', camLogs.length === 0, camLogs.slice(0, 5).join(' | '));
+  await c.close();
   return { size: `${w}x${h}@${dsf}`, passed: checks.filter((c) => c.ok).length, failed: checks.filter((c) => !c.ok), perf, checks };
 }
 
