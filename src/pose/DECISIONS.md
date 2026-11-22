@@ -31,7 +31,7 @@ or the named file.
 11. **Treadmill T without visible hips is estimated as 1.5 × W in pixels** (A's clips: W 64 px,
     T 96 px). Treadmill mode needs T only for arm heights.
 12. **Did not merge `main` into `abdo-1`** (A's call). The pose module is built to match how `main`'s
-    app uses it, read with `git show origin/main:…` (see NEEDS.md).
+    app uses it, read with `git show origin/main:…`.
 13. **The pose module handles D (debug overlay) itself; R stays with the app** (A's call). `main`'s
     `App.tsx` already calls `pose.calibrate()` on R; `calibrate()` is safe to call again mid-round
     (the older call is rejected with "Calibration restarted.", tracking is false until done).

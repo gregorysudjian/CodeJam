@@ -1,10 +1,22 @@
 # Neon Arena
 
-**Run Montréal with your body.** A workout you play in Chrome with your laptop's webcam: no controller, no install, no equipment. Built at CodeJam 16 (McGill).
+**Your body is the controller.** A full-body workout you play in Chrome with your laptop's webcam: no controller, no install, no equipment. Built at CodeJam 16 (McGill).
 
-You stand about 1.5 m from the laptop and your body steers a runner along a 3-lane street: sidestep to change lane, jump hurdles, squat under beams, raise both arms to smash crates, raise one arm to grab orbs. You pick what to train (legs, arms, shoulders or full body) and the level is generated for that workout. A round is 6 levels of 30 seconds, each one faster than the last, played inside AI-generated video clips of real Montreal streets (made with Higgsfield, the road lined up with the 3D track): the cobblestones of Old Montreal, the deck of the Jacques Cartier Bridge and the Old Port at blue hour. You have 3 lives. Pose tracking runs in the browser, so **your video never leaves your laptop**. Every round is saved to your profile, and a dashboard, a public and a friends leaderboard and a coach show you how you're doing and what to play next.
+Neon Arena is three things in one app:
+
+- **A game.** You stand about 1.5 m from the laptop and your body steers a neon robot runner along a 3-lane track: sidestep to change lane, jump hurdles, squat under beams, raise both arms to smash crates, raise one arm to grab orbs. A round is 6 levels of 30 seconds, each one faster than the last, and you have 3 lives.
+- **A workout.** You pick what to train (legs, arms, shoulders or full body) and a tier, and the levels are generated for that workout. Every rep is counted, and low impact and treadmill modes adapt it to you.
+- **A training log.** Every round is saved to your profile. A dashboard tracks your week, a public and a friends leaderboard rank your best rounds, and a coach recaps each round and recommends the next one.
+
+The levels have two looks: the game's own neon scenery (a city, a tunnel, a bridge), and AI-generated video clips of real Montreal streets (made with Higgsfield, the road lined up with the 3D track): Old Montreal, the Jacques Cartier Bridge and the Old Port. Pose tracking runs in the browser, so **your video never leaves your laptop**.
 
 **Live:** https://codejam-jet.vercel.app (Chrome on a laptop; deployed from `main`)
+
+| Sign up and play | Level 3, the Old Port | Results and the coach |
+| --- | --- | --- |
+| ![Landing page with the sign-up card](docs/submission/01-landing.jpg) | ![Level 3 in play](docs/submission/05-level-3.jpg) | ![Results screen with the coach card](docs/submission/07-results.jpg) |
+
+More screenshots: [docs/submission/](docs/submission/).
 
 ## How to play
 
@@ -39,13 +51,13 @@ Treadmill mode is for people already running on one: it uses upper-body moves on
 ## Features
 
 - **Body-controlled 3D runner** in plain Three.js, with a Canvas 2D fallback and automatic graphics levels for slow laptops.
-- **6 levels × 30 s** inside generated clips of Montreal streets (built-in 3D scenery if a clip can't load or on Low graphics), 3 lives, PERFECT / GOOD / LATE grades and streak multipliers.
+- **6 levels × 30 s**, 3 lives, PERFECT / GOOD / LATE grades and streak multipliers. Levels play inside generated clips of Montreal streets, or in the built-in neon scenery when a clip can't load or on Low graphics.
 - **Fair on a webcam:** webcam moves arrive late, so obstacles are drawn early by each move's measured detection lag. Only the drawing moves; the judging rules stay the same.
 - **Generated levels:** a seeded generator builds each round from the workout's mix of moves, with fairness rules (minimum gaps, a breather between squats, time to stand up between a beam and a hurdle) tested on every workout and mode.
 - **Hands-free:** X-arms pause and resume, arms up to replay. A second person stepping into the play area pauses the round.
 - **Accounts and progress:** sign-up with a unique username, or play as a guest; a dashboard with your week, day streak and recent rounds.
 - **Leaderboards:** a public board of each player's best per workout and mode, and a **Friends** view: add a friend by username to see their best next to yours.
-- **Coach:** after every round, a recap, a tip for the move you missed most and a recommended next session (workout and tier).
+- **Coach:** after every round, a recap, a tip for the move you missed most and a recommended next session (workout and tier). If you entered an age of 60 or more, it recommends low impact (no jumps).
 - **Ghost runner:** replay the same level and a see-through runner replays your best run beside you (stored in this browser only).
 - **Kiosk mode** (`?kiosk=1`): a leaderboard-only screen for a demo table, with a QR code to the live site, refreshing every 15 s.
 - **Works offline:** rounds played without a connection wait in a local queue and sync later; with no backend at all, everything runs on the local store.
@@ -125,7 +137,8 @@ AI coding assistants helped write code against interfaces the team designed. The
 | --- | --- |
 | [docs/DEMO.md](docs/DEMO.md) | Pitch script, demo fallbacks, judge Q&A |
 | [docs/DEVPOST.md](docs/DEVPOST.md) | Devpost story |
+| [docs/SUBMISSION.md](docs/SUBMISSION.md) | Devpost form checklist and the screenshots |
 | [docs/CONTRACTS.md](docs/CONTRACTS.md) | Shared interfaces, database schema, endpoint, collision and level rules, detection thresholds |
 | [docs/LIVE.md](docs/LIVE.md) | Live site, backend security checks, privacy |
-| [docs/PLAN.md](docs/PLAN.md) | The original build plan |
+| [docs/PLAN.md](docs/PLAN.md) | The original build plan (Saturday 2 AM; the game changed since) |
 | [AGENTS.md](AGENTS.md) | Rules every AI coding tool on the team follows |

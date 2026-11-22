@@ -30,9 +30,10 @@ export interface Backdrop {
    */
   edges?: { left: readonly [number, number]; right: readonly [number, number] };
   /**
-   * 'real': realistic mode on this level (human runner, real obstacles, no neon: look.ts REAL_MODE,
-   * scene.ts, human.ts, props.ts). 'neon' (the default): today's look. A real level still falls
-   * back to neon without its clip, with a missing asset, or in Low graphics.
+   * 'real': realistic mode on this level (real obstacles, no neon scenery: look.ts REAL_MODE,
+   * scene.ts, props.ts; the runner stays the neon robot). 'neon' (the default): the built-in
+   * look. A real level still falls back to neon without its clip, with a missing asset, or in
+   * Low graphics.
    */
   style?: 'real' | 'neon';
 }

@@ -10,7 +10,7 @@ them so Lovable can pick them up.
 | Folder | Contents |
 | --- | --- |
 | `theme.css` | Every design token (`@theme`), font imports, glass, glow, grain, grid and keyframes. Imported by `src/index.css`. |
-| `components/ui/` | shadcn primitives (button, card, badge, input, progress, skeleton, slider, switch, tooltip). |
+| `components/ui/` | shadcn primitives (button, input, skeleton, switch). |
 | `kit/` | Design system: `Screen` (with a measured, full-bleed `footer` slot), `ScreenFooter` (standard Back · Primary bar), `CoachBanner` (one-line coach's pick), `Backdrop`, `GlassPanel`, `GameButton`, `SectionTitle`, `StatTile`, `AnimatedNumber`, `MoveChip`, `MoveFigure` (a pose per move, plus `stand` and `pause`, forearms crossed in an X; mirror view: `reachLeft` raises the screen-left arm; data in `figurePoses.ts`), `BustOutline`, `ProgressRing`, `SegmentedControl`, `ToggleRow`, `TextField`, `KeyHint`, `EmptyState`, `useHotkey`, and `tokens.ts` (move/workout labels, colours, icons). |
 | `screens/` | Pure presentational screens: props in, callbacks out. No fetching, no global state. |
 | `lib/` | `cn()` (tailwind-merge taught our type-scale tokens) and `format.ts`. |
@@ -39,7 +39,7 @@ only `src/app/` wires screens to modules.
   still work without a visible cap.
 - Game HUD: a race progress bar (runner marker → finish flag) is derived from
   `elapsedSec / durationSec`, so `PlayScreen` must pass the duration that is actually being played
-  (`level.config.durationSec`, see docs/AUDIT.md #5). Reach cues read "REACH" for both arms.
+  (`level.config.durationSec`). Reach cues read "REACH" for both arms.
   The live rep ticker was removed (reps are on Results).
 - Results headline: from `summary.levelReached` / `summary.outOfLives` ("OUT OF LIVES · LEVEL 3",
   "ALL 6 LEVELS CLEARED"; neither = "ROUND COMPLETE"), so there is nothing to wire once the tracker

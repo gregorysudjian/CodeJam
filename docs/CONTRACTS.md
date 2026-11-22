@@ -271,7 +271,9 @@ The profile step only calls `saveProfile` with what the player entered. If `sign
 
 ## Database (C)
 
-Two tables and one view, in `supabase/migrations/`. Column names are snake_case in SQL and mapped to the camelCase types above inside `src/data/` only.
+**Migrations on `main`: `0001` to `0004` and `0006` to `0008`.** There is no `0005` on `main`: it lets visitors who are not signed in read the leaderboard, and it is on hold in PR #58 (branch `j2-board`). The number is skipped on purpose; do not renumber the others.
+
+The core is two tables and one view, in `supabase/migrations/`; later migrations add the coach's rate-limit table (`0002`), session limits (`0004`), age and height on the profile (`0006`) and friends (`0007`, `0008`). Column names are snake_case in SQL and mapped to the camelCase types above inside `src/data/` only.
 
 | Table | Columns |
 | --- | --- |
@@ -306,13 +308,13 @@ Add check constraints for the enum-like text columns and for sane ranges (`score
 `POST /api/coach`, in `api/coach.ts`.
 
 - **Request:** header `Authorization: Bearer <Supabase access token>`, body `{ "sessionId": "<uuid>" }`.
-- **Steps:** reject without a valid token (401). Create a Supabase client that carries the user's token, so row-level security applies on the server too and no service key is needed. Load the profile and the last ten sessions. Ask Claude for JSON matching `CoachAdvice` through the official `@anthropic-ai/sdk` (structured output with a JSON schema, server-side refusal fallback), with a 7-second timeout and no retries. Validate it: known workout, `durationSec` one of 45, 90, 180, `difficulty` clamped to 0 to 1, text lengths capped. Return it with `source: 'ai'`.
+- **Steps:** reject without a valid token (401). Create a Supabase client that carries the user's token, so row-level security applies on the server too and no service key is needed. Load the profile and the last ten sessions. Ask Claude for JSON matching `CoachAdvice` through the official `@anthropic-ai/sdk` (structured output with a JSON schema, server-side refusal fallback), with a 7-second timeout and no retries. Validate it: known workout, `durationSec` always 180 (a round is every level), `difficulty` snapped to a tier (0, 0.5 or 1), text lengths capped. Return it with `source: 'ai'`.
 - **Response:** 200 with `CoachAdvice`, or an error status. The client waits at most 8 seconds, then calls the rule-based coach.
 - **Limits:** at most **one call per user per 10 s**. Right after the token check the endpoint calls `claim_coach_slot(10)` (migration `0002_coach_rate_limit.sql`: a `coach_calls` table with RLS and no policies, plus an atomic security-definer function). It answers 429 with `Retry-After: 10` when refused, and 503 (fail closed, no Claude call) if the check errors. Plus `claude-opus-5-5` at `effort: "low"`, `max_tokens` 2000, and a spend limit on the product's API key.
 - **Where it runs:** only on Vercel (production, a preview deployment, or `vercel dev`). The client calls the relative path `/api/coach`. `npm run dev` and `npm run preview` do not serve `/api`, so there every coach call falls back to the rules. This is why the demo runs from the Vercel URL (DEMO.md).
 - **Prompt rules:** general fitness encouragement only, no medical or diet advice, no comments on the body, plain friendly language, and the numbers must come from the data provided.
 
-The rule-based coach lives in `src/data/` as a pure function `ruleBasedAdvice(profile, sessions): CoachAdvice`. Starting rules: recommend the workout played least this week; raise `difficulty` by 0.1 after accuracy above 85%, lower it by 0.1 after accuracy below 60%; point the tip at the move with the highest `missed` count.
+The rule-based coach lives in `src/data/` as a pure function `ruleBasedAdvice(profile, sessions): CoachAdvice`. Its rules: recommend the workout played least this week; move `difficulty` one tier up after accuracy above 85% and one tier down after accuracy below 60%; point the tip at the move with the highest `missed` count; and from `COACH_LOW_IMPACT_AGE` (60, `src/data/tuning.ts`), when the profile has an age, set `next.lowImpact` and add one sentence to `reason`.
 
 Environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (client and server; set them in Vercel too, the function reads them from `process.env`), `ANTHROPIC_API_KEY` (server only, set in Vercel, never prefixed with `VITE_`).
 

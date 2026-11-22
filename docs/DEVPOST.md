@@ -1,4 +1,6 @@
-# Neon Arena: Devpost draft
+# Neon Arena: Devpost story
+
+The text for Devpost's "About the project" field. It matches `main` 28725de (PR #121). The form checklist and the screenshots are in [SUBMISSION.md](SUBMISSION.md).
 
 ## Inspiration
 
@@ -6,9 +8,9 @@ Working out at home is boring, so people stop. Games are not boring, and every l
 
 ## What it does
 
-Neon Arena is a 3-lane runner in Chrome, controlled by your body through the webcam. Sidestep to change lane, jump hurdles, squat under beams, raise both arms to smash crates and one arm to grab orbs. You pick a workout (legs, arms, shoulders or full body) and the level is generated for it. A round is six 30-second levels, each faster than the last, inside AI-generated clips of real Montreal streets: Old Montreal, the Jacques Cartier Bridge and the Old Port at blue hour. You have three lives. Cross your arms in an X to pause, hands-free.
+Neon Arena is a 3-lane runner in Chrome: your body, through the webcam, steers a neon robot. Sidestep to change lane, jump hurdles, squat under beams, raise both arms to smash crates and one arm to grab orbs. You pick a workout (legs, arms, shoulders or full body) and the level is generated for it. A round is six 30-second levels, each faster than the last, inside AI-generated clips of real Montreal streets: Old Montreal, the Jacques Cartier Bridge and the Old Port at blue hour. You have three lives. Cross your arms in an X to pause, hands-free.
 
-After each round: your score, reps per move, estimated calories and a coach card with a recap, a tip for the move you missed most and a recommended next session. A dashboard tracks your week, and a friends leaderboard puts your best next to theirs. Treadmill mode uses upper-body moves only; low impact removes the jumps.
+After each round: your score, reps per move, estimated calories and a coach card with a recap, a tip for the move you missed most and a recommended next session. You sign up with a unique username, with no email and no password, or play as a guest. A dashboard tracks your week, and a friends leaderboard puts your best next to theirs. Treadmill mode uses upper-body moves only; low impact removes the jumps, and the coach recommends it to players who entered an age of 60 or more.
 
 ## How we built it
 

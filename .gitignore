@@ -23,11 +23,29 @@ dist-ssr
 *.sln
 *.sw?
 
-# Local env and Vercel
+Thumbs.db
+desktop.ini
+
+# Local env and Vercel (.env.example is the only env file in the repo)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 .vercel
+
+# Raw media and source assets: never in the repo (the raw clips are in the GitHub releases;
+# Mixamo files may not be shared at all)
+*.fbx
+*.blend
+*.psd
+raw/
+raw-clips/
+
+# Local scratch and tool output
+tmp/
+scratch/
+coverage/
+real-qa/
+sweep-out/
 
 # Supabase CLI local state
 supabase/.temp
