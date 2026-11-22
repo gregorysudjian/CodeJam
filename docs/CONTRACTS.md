@@ -353,7 +353,7 @@ Calibration records, over about 1.5 s of standing still: the hip centre (`x`, `y
 - Treadmill mode measures everything from the shoulder centre and ignores the hips and legs.
 - Calibration messages: `tooFar` when `T` is under about 0.15 of the frame height, `tooClose` when the ankles or head leave the frame (floor mode only).
 
-MediaPipe setup: `FilesetResolver.forVisionTasks('/mediapipe/wasm')`, then `PoseLandmarker.createFromOptions` with `runningMode: 'VIDEO'`, `numPoses: 1`, `delegate: 'GPU'`, and call `detectForVideo(video, performance.now())` once per new video frame. Copy the WASM folder out of `node_modules/@mediapipe/tasks-vision/wasm` and download `pose_landmarker_lite.task` from the MediaPipe Pose Landmarker documentation page into `public/models/`.
+MediaPipe setup: `FilesetResolver.forVisionTasks('/mediapipe/wasm')`, then `PoseLandmarker.createFromOptions` with `runningMode: 'VIDEO'`, `numPoses: 2` (`MAX_POSES` in `src/pose/tuning.ts`: the player plus anyone else in the play area), `delegate: 'GPU'`, and call `detectForVideo(video, performance.now())` once per new video frame. Copy the WASM folder out of `node_modules/@mediapipe/tasks-vision/wasm` and download `pose_landmarker_lite.task` from the MediaPipe Pose Landmarker documentation page into `public/models/`.
 
 ## Keyboard mapping (B)
 
