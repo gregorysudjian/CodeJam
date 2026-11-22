@@ -39,7 +39,7 @@ export function validateRange(field: RangedField, raw: string): string | null {
   return null;
 }
 
-/** The optional numbers to save: only the filled, valid ones (an age is a whole number). */
+/** The optional numbers to save: only the filled, valid ones, rounded as the database stores them. */
 export function optionalNumbers(raw: Record<RangedField, string>): {
   age?: number;
   weightKg?: number;
@@ -50,7 +50,9 @@ export function optionalNumbers(raw: Record<RangedField, string>): {
     const value = raw[field];
     if (value.trim() === '' || validateRange(field, value)) continue;
     const n = Number(value);
-    out[field] = field === 'age' ? Math.round(n) : n;
+    // The database stores age as a whole number and height to 0.1 cm (migration 0006).
+    out[field] =
+      field === 'age' ? Math.round(n) : field === 'heightCm' ? Math.round(n * 10) / 10 : n;
   }
   return out;
 }
