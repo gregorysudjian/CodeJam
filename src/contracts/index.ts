@@ -181,6 +181,8 @@ export interface Profile {
   goal: Goal;
   level: FitnessLevel;
   weightKg?: number; // optional; 70 is assumed for calories when missing
+  age?: number; // optional, years (10 to 100); for the coach only, never on the board
+  heightCm?: number; // optional, cm (100 to 250); for the coach only, never on the board
   weeklyGoalMin: number; // active minutes per week, default 60
 }
 
