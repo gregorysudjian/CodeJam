@@ -359,7 +359,10 @@ export const REAL_CAMERA = {
   // [rateMin, rateMax], so the road keeps pace with the obstacles. Measured by block matching the
   // clip's road (or kerb) over 4-frame steps, carried to the runner's row on screen through the
   // chase camera at about 65 degrees of field of view; check or adjust live with `?dev=calib`.
-  roadSpeed: { 2: 5.0, 3: 5.7, 5: 2.6 } as Readonly<Partial<Record<number, number>>>,
+  // By level: 1 and 4 old town, 2 and 5 bridge, 3 and 6 blue hour (backdrop.ts; g2 reordered).
+  roadSpeed: { 1: 5.0, 2: 5.7, 3: 2.6, 4: 5.0, 5: 5.7, 6: 2.6 } as Readonly<
+    Partial<Record<number, number>>
+  >,
   rateMin: 0.5,
   rateMax: 1.5,
   // Intro and outro on a real level: no orbit (a flat clip can't turn with the camera), a straight
@@ -400,7 +403,7 @@ export const REAL_ROAD = {
   sideFade: 0.18, // each side's share of the width that fades out
   tile: 3, // world units per texture repeat (along and across)
   /** Which pattern per level; anything else is asphalt. */
-  cobble: [2] as readonly number[],
+  cobble: [1, 4] as readonly number[], // the old-town levels (backdrop.ts; g2 reordered)
   /** The video patch sampled for the road colour: share of the frame (bottom centre). */
   sample: { x0: 0.38, x1: 0.62, y0: 0.86, y1: 0.98 },
   resampleSec: [0.4, 1.5] as readonly number[], // after a level starts (the clip has switched)
