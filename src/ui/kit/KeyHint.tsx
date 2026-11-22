@@ -16,7 +16,9 @@ export const KeyHint = React.forwardRef<HTMLElement, KeyHintProps>(
         "inline-flex pointer-coarse:hidden h-7 min-w-7 items-center justify-center rounded-md border px-2 font-sans text-[13px] font-semibold not-italic leading-none tracking-[0.08em]",
         tone === "default"
           ? "border-text/20 bg-text/[0.05] text-text-muted shadow-[inset_0_-2px_0_color-mix(in_srgb,var(--na-text)_12%,transparent)]"
-          : "border-bg/25 bg-bg/10 text-bg shadow-[inset_0_-2px_0_rgba(7,9,13,0.18)]",
+          : // On the lime (maple red) button: a darker cap, not a lighter one, so the cream label
+            // keeps >= 4.5:1 on the red even when the button brightens on hover.
+            "border-bg/25 bg-text/15 text-bg shadow-[inset_0_-2px_0_rgba(7,9,13,0.18)]",
         className,
       )}
       {...props}

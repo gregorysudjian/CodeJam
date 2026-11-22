@@ -23,6 +23,8 @@ export const COACH_WEEK_MS = 7 * 24 * 3600 * 1000;
 /** A round is every level in a row: 6 levels of 30 s. */
 export const COACH_ROUND_SEC = 180;
 export const LEVEL_SEC = 30;
+/** From this age (Profile.age) the next session is low impact (no jumps); the coach never says the age. */
+export const COACH_LOW_IMPACT_AGE = 60;
 
 /** Display names (names.ts): the profile screen's limit; the database allows 40. */
 export const NAME_MAX_LENGTH = 20;

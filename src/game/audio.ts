@@ -85,11 +85,45 @@ const silent: GameAudio = {
   dispose() {},
 };
 
+/**
+ * ONE AudioContext per page, made ahead of the round: the first `new AudioContext()` on a page
+ * opens the audio output, which took 280 ms on a Windows PC (8 ms for every one after), and it
+ * landed in the round's first frame. This module is prefetched on the profile and select screens
+ * (#87), so the context is made when the page is idle, or at the first click or key if the page
+ * has had no gesture yet (made earlier, Chrome would log an autoplay warning). Each round still
+ * builds its own chain on it (createGameAudio) and resumes it on START as before.
+ */
+let shared: AudioContext | null = null;
+function sharedContext(): AudioContext {
+  if (!shared || shared.state === 'closed') shared = new AudioContext();
+  return shared;
+}
+if (typeof window !== 'undefined' && typeof AudioContext !== 'undefined') {
+  const make = (): void => {
+    try {
+      if (!isMuted()) sharedContext();
+    } catch {
+      // no audio: createGameAudio falls back to silence as before
+    }
+  };
+  const early = (): void => {
+    if (navigator.userActivation?.hasBeenActive ?? true) return make();
+    const onFirst = (): void => {
+      for (const g of ['pointerdown', 'keydown'] as const)
+        window.removeEventListener(g, onFirst, true);
+      make();
+    };
+    for (const g of ['pointerdown', 'keydown'] as const) window.addEventListener(g, onFirst, true);
+  };
+  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(early);
+  else setTimeout(early, 200);
+}
+
 export function createGameAudio(): GameAudio {
   if (isMuted() || typeof AudioContext === 'undefined') return silent;
   let ctx: AudioContext;
   try {
-    ctx = new AudioContext();
+    ctx = sharedContext();
   } catch {
     return silent;
   }
@@ -292,10 +326,16 @@ export function createGameAudio(): GameAudio {
       for (const g of GESTURES) window.removeEventListener(g, onGesture, true);
       // A round left mid-beat (K, END ROUND) fades the music out instead of cutting it.
       guard(() => beat?.stop());
-      // Close after the tail of the last sounds: the app unmounts the game on 'finished',
-      // and closing at once would cut the finish fanfare.
+      // Disconnect this round's chain after the tail of the last sounds (the app unmounts the
+      // game on 'finished', and cutting at once would cut the finish fanfare). The context is
+      // the page's shared one: it stays open for the next round.
       setTimeout(() => {
-        if (ctx.state !== 'closed') void ctx.close().catch(() => {});
+        try {
+          master.disconnect();
+          limiter.disconnect();
+        } catch {
+          // already disconnected
+        }
       }, T.AUDIO_CLOSE_DELAY_MS);
     },
   };

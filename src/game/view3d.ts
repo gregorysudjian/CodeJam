@@ -5,7 +5,7 @@ import { comboLabel, GRADE_LABEL, type Grade } from './feedback';
 import { OUTCOME_LABEL, raceLabel, racePulse, type GhostOutcome, type GhostPose } from './ghost';
 import { countdownAt, flyProgress, resumeCountAt } from './intro';
 import { requirementMet, type Verdict } from './judge';
-import { backdropFor } from './backdrop';
+import { backdropFor, isReal } from './backdrop';
 import { colorKeyFor, createObstacles, variantFor, type ObstacleView } from './obstacles';
 import { createPlayer } from './player';
 import type { Quality } from './quality';
@@ -92,6 +92,14 @@ export function create3DView(
   const finishDistance = track.distanceAt(durationSec);
 
   const views = new Map<Item, ObstacleView>();
+  // The level an object belongs to (its obstacle skin), in a round of levels; else none.
+  const stageList = level.stages ?? [];
+  const levelAt = (t: number): number | undefined => {
+    if (stageList.length < 2) return undefined;
+    let index = stageList[0]!.index;
+    for (const s of stageList) if (s.startSec <= t) index = s.index;
+    return index;
+  };
   // The live race chip and the end banner: built now, hidden, so their shader is precompiled.
   const raceChip = createLabel(stage.scene, T.RACE_WIDTH, 512, T.RACE_POS, 999);
   const banner = createLabel(stage.scene, T.BANNER_WIDTH, 1024, T.BANNER_POS, 1000);
@@ -174,7 +182,14 @@ export function create3DView(
   const boundaries = (level.stages ?? []).slice(1).map((s) => ({
     d: track.distanceAt(s.startSec),
     veil: backdropFor(s.index).look.horizon,
+    real: isReal(s.index), // into a realistic level: a white fade, no neon ring (look.ts REAL_MODE)
   }));
+  const realFade = createScreenFlash(
+    stage.camera,
+    0xffffff,
+    reduceMotion ? LK.PORTAL.reducedFlash : LK.REAL_MODE.fadePeak,
+    LK.REAL_MODE.fadeSec,
+  );
   const portal = createPortal();
   stage.scene.add(portal.group);
   let passed = 0; // boundaries the runner has passed through
@@ -188,6 +203,15 @@ export function create3DView(
   stage.camera.add(levelLabel.sprite);
   let levelShown = 0;
   let levelT = Infinity; // seconds since "LEVEL n" appeared (< 0: waits for the intro's GO)
+  /** "LEVEL n" on a real level: its top just under the cue band, a small share of the height. */
+  const realLevelBox = (w: number, h: number, grow: number, out: PixelBox): PixelBox => {
+    const B = LK.REAL_MODE.levelBanner;
+    const bh = Math.min(B.max, Math.max(B.min, h * B.share));
+    out.cx = w / 2;
+    out.cy = B.top + bh / 2;
+    out.h = bh * grow;
+    return out;
+  };
   let outroT = 0; // seconds since the finish
   // Each level's Montreal clip as the sky (videoBackdrop.ts), switched as the runner passes
   // through a portal (under its white flash); none at quality 2 ("Low graphics").
@@ -311,7 +335,12 @@ export function create3DView(
         const view = obstacles.acquire(item.spawn.kind);
         const length = lengthOf(item, lead[item.spawn.requires]);
         lengths.set(item, length);
-        view.show(item.spawn, length, variantFor(item.wave.t, item.spawn.kind));
+        view.show(
+          item.spawn,
+          length,
+          variantFor(item.wave.t, item.spawn.kind),
+          levelAt(item.wave.t),
+        );
         if (item.judge.verdict !== 'pending') view.setVerdict(item.judge.verdict);
         views.set(item, view);
       }
@@ -354,8 +383,11 @@ export function create3DView(
       // The portal: the one just passed while it fades behind the runner, else the next one.
       while (passed < boundaries.length && distance >= boundaries[passed]!.d) {
         passed++;
-        portalFlash.flash();
-        stage.milestone();
+        if (boundaries[passed - 1]!.real && quality < 2) realFade.flash();
+        else {
+          portalFlash.flash();
+          stage.milestone();
+        }
       }
       const behind = boundaries[passed - 1];
       const shown = behind && distance - behind.d < T.FINISH_FADE_END ? behind : boundaries[passed];
@@ -364,9 +396,11 @@ export function create3DView(
         const k = (T.FINISH_FADE_END - z) / (T.FINISH_FADE_END - T.FINISH_FADE_START);
         const portalFade = Math.min(1, Math.max(0, k));
         portal.set(z, shown.veil, portalFade);
-        portal.group.visible = -z < T.VIEW_DISTANCE && portalFade > 0.01;
+        portal.group.visible =
+          -z < T.VIEW_DISTANCE && portalFade > 0.01 && !(shown.real && quality < 2);
       } else portal.group.visible = false;
       portalFlash.update(realDt);
+      realFade.update(realDt);
       stage.setBackdrop(
         videoBackdrop.update(
           level.stages?.[passed]?.index ?? 1,
@@ -382,13 +416,20 @@ export function create3DView(
         levelT = f.stage === 1 ? -T.INTRO_GO_SEC : 0;
       }
       levelT += realDt;
-      levelLabel.sprite.visible =
-        phase !== 'finished' && levelT >= 0 && levelT < LK.LEVEL_LABEL_SEC;
+      // A real level: smaller, under the cue band, above the horizon (REAL_MODE.levelBanner).
+      const realBanner = quality < 2 && isReal(Math.max(1, f.stage));
+      const labelSec = realBanner ? LK.REAL_MODE.levelBanner.sec : LK.LEVEL_LABEL_SEC;
+      levelLabel.sprite.visible = phase !== 'finished' && levelT >= 0 && levelT < labelSec;
       if (levelLabel.sprite.visible) {
         const k = reduceMotion ? 1 : Math.min(1, levelT / T.BANNER_POP_SEC);
-        placeOnScreen(levelLabel.sprite, endBannerBox, 1 - (1 - k) ** 3);
-        const u = levelT / LK.LEVEL_LABEL_SEC;
-        levelLabel.sprite.material.opacity = u < 0.7 ? 1 : 1 - (u - 0.7) / 0.3;
+        placeOnScreen(
+          levelLabel.sprite,
+          realBanner ? realLevelBox : endBannerBox,
+          1 - (1 - k) ** 3,
+        );
+        const u = levelT / labelSec;
+        const hold = realBanner ? 0.85 : 0.7; // a real level's banner stays solid longer
+        levelLabel.sprite.material.opacity = u < hold ? 1 : 1 - (u - hold) / (1 - hold);
       }
 
       obstacles.tick(visDt);
@@ -401,6 +442,7 @@ export function create3DView(
       player.update(visDt, state, runSpeed, phase === 'finished' && !outOfLives);
 
       // Trail motes: drawn ahead like the object they lead to; the runner pops them in passing.
+      moteMesh.visible = quality >= 2 || !isReal(f.stage || 1); // neon only (package B, Jiscar 2)
       while (firstMote < motes.length && motes[firstMote]!.d < distance - 12) {
         moteMesh.setMatrixAt(firstMote, hidden);
         firstMote++;
@@ -603,6 +645,7 @@ export function create3DView(
     setQuality(q) {
       quality = q;
       stage.setQuality(q);
+      obstacles.setLowGraphics(q >= 2); // Low graphics: neon obstacles (package B)
     },
     dispose() {
       videoBackdrop.dispose();

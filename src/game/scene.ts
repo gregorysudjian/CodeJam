@@ -3,7 +3,9 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { LEVEL_BACKDROPS } from './backdrop';
 import { introCamera, type CameraPose } from './intro';
+import { createRealRoad } from './realRoad';
 import * as L from './look';
 import type { Quality } from './quality';
 import * as T from './tuning';
@@ -16,6 +18,7 @@ import {
   type ZoneMix,
   type ZonePlan,
 } from './world';
+import { backdropRate } from './videoBackdrop';
 
 /** A neon colour pushed above 1.0 so only neon parts pass the bloom threshold. */
 export function neon(hex: number, boost = T.NEON_BOOST): THREE.Color {
@@ -156,10 +159,35 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   camera.add(dimSheet);
   const look = new THREE.Vector3(T.CAMERA_LOOK.x, T.CAMERA_LOOK.y, T.CAMERA_LOOK.z);
 
-  scene.add(new THREE.HemisphereLight(0x9fb3cc, 0x05070b, 1.1));
+  const hemi = new THREE.HemisphereLight(0x9fb3cc, 0x05070b, 1.1);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
   sun.position.set(3, 9, 7);
-  scene.add(sun);
+  scene.add(sun, sun.target);
+  // Realistic mode (step d): the sun casts shadows onto an invisible road plane (a shadow
+  // catcher), so a runner whose meshes have castShadow = true casts a real shadow on the clip's
+  // road. On from the start, so no material recompiles when a real level begins; with nothing
+  // casting (every neon level), the shadow pass draws nothing and the catcher is hidden.
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is gone in three r187 (it warns)
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(L.REAL_MODE.shadowMap, L.REAL_MODE.shadowMap);
+  const sc = sun.shadow.camera;
+  sc.left = sc.bottom = -L.REAL_MODE.shadowBox;
+  sc.right = sc.top = L.REAL_MODE.shadowBox;
+  sc.near = 1;
+  sc.far = 60;
+  sun.shadow.bias = -0.0005;
+  const catcherMat = new THREE.ShadowMaterial({ opacity: 0.35 });
+  const catcher = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), catcherMat);
+  catcher.rotation.x = -Math.PI / 2;
+  catcher.position.y = 0.003;
+  catcher.receiveShadow = true;
+  catcher.visible = false;
+  scene.add(catcher);
+  const realRoad = createRealRoad(scene);
+  const NEON_LIGHT = { sun: sun.color.getHex(), sunI: sun.intensity, sky: hemi.color.getHex() };
+  const NEON_SKY_I = hemi.intensity;
 
   /* Floor: a scrolling grid. */
   const halfTrack = (3 * T.LANE_WIDTH) / 2;
@@ -195,11 +223,31 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   const limeMat = new THREE.MeshBasicMaterial({ color: neon(T.COLOR_LIME, T.NEON_BOOST * 0.8) });
   const limeBase = new THREE.Color(T.COLOR_LIME);
   const edgeGeo = new THREE.BoxGeometry(0.06, 0.03, T.TRACK_LENGTH);
+  const neonEdges: THREE.Mesh[] = [];
   for (const x of [-halfTrack, halfTrack]) {
     const edge = new THREE.Mesh(edgeGeo, limeMat);
     edge.position.set(x, 0.015, floor.position.z);
     scene.add(edge);
+    neonEdges.push(edge);
   }
+  // Realistic mode (look.ts REAL_MODE): the lanes are faint solid white road paint, all four
+  // lines, not scrolling (scrolling dashes would show any mismatch with the clip's road).
+  const paintMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: L.REAL_MODE.paintOpacity,
+    depthWrite: false,
+    fog: false,
+  });
+  const paintGeo = new THREE.PlaneGeometry(L.REAL_MODE.paintWidth, T.TRACK_LENGTH);
+  const paint = [-halfTrack, -T.LANE_WIDTH / 2, T.LANE_WIDTH / 2, halfTrack].map((x) => {
+    const m = new THREE.Mesh(paintGeo, paintMat);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(x, 0.006, floor.position.z);
+    m.visible = false;
+    scene.add(m);
+    return m;
+  });
   const dashGeo = new THREE.BoxGeometry(0.06, 0.02, T.DASH_SPACING * 0.45);
   const dashMat = new THREE.MeshBasicMaterial({ color: neon(T.COLOR_LIME, T.NEON_BOOST * 0.45) });
   const dashesPerLine = Math.ceil(T.TRACK_LENGTH / T.DASH_SPACING);
@@ -490,6 +538,14 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   const cam: CameraPose = { px: 0, py: 0, pz: 0, lx: 0, ly: 0, lz: 0 };
   const extras = (): boolean => quality < 2; // the quality ladder drops these at level 2
   let backdrop: THREE.VideoTexture | null = null;
+  let real = false; // realistic mode: a 'real' level's clip is showing (look.ts REAL_MODE)
+  /** The level (1-based) whose clip is playing if that level is 'real' (videoBackdrop.ts tags
+   *  each clip with its level), else 0. A clip can play on two levels, so not by file. */
+  const realLevelOf = (tex: THREE.VideoTexture): number => {
+    const lv = tex.userData.level as number | undefined;
+    return lv !== undefined && LEVEL_BACKDROPS[lv - 1]?.style === 'real' ? lv : 0;
+  };
+  const isRealClip = (tex: THREE.VideoTexture): boolean => realLevelOf(tex) > 0;
   // With a clip the runner runs inside it: the clip fills the screen, its street lined up with
   // the track, and the grid floor, horizon glow and side scenery step aside (they stay built:
   // no clip, a failed clip or low graphics show them exactly as before).
@@ -538,6 +594,18 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
   camera.add(topShade);
   const vanish = new THREE.Vector3();
   let vanishY = V.trackHorizon; // the track's vanishing point, 0 top to 1 bottom of the screen
+  let vanishX = 0.5; // ... and across, 0 left to 1 right
+  let camH = T.CAMERA_POS.y; // the chase camera's height now (lower on real levels: camHeight)
+  /**
+   * ?dev=align: draws the clip's road edges (backdrop.ts `edges`, red) and the track's outer lanes
+   * (cyan) over the game, with the numbers; window.__align = { camHeight, horizon, vanishX }
+   * overrides them live (in the console), to copy into backdrop.ts.
+   */
+  const alignOn =
+    typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'align';
+  const align: { camHeight?: number; horizon?: number; vanishX?: number } | null = alignOn
+    ? ((window as unknown as { __align: object }).__align = {})
+    : null;
   /**
    * Fills the canvas with the clip ("cover") and lines its street up with the track: the clip's
    * own vanishing point (backdrop.ts `horizon`, kept on texture.userData) goes where the track's
@@ -551,16 +619,89 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
     const screen = camera.aspect;
     const cx = screen < clip ? screen / clip : 1;
     const cy = screen > clip ? clip / screen : 1;
-    const h = (tex.userData.horizon as number | undefined) ?? 0.5; // in the clip, 0 top
+    const lvBd = realLevelOf(tex) > 0 ? LEVEL_BACKDROPS[realLevelOf(tex) - 1] : undefined;
+    const h = align?.horizon ?? (tex.userData.horizon as number | undefined) ?? 0.5; // clip, 0 top
     const s = vanishY;
-    const zoom = Math.min(V.zoomMax, Math.max(1, (cy * (1 - s)) / (1 - h), (cy * s) / h));
+    // Real levels: the clip's vanishing point across (vanishX) goes on the track's too.
+    const u = lvBd ? (align?.vanishX ?? lvBd.vanishX ?? 0.5) : 0.5;
+    const sx = lvBd ? vanishX : 0.5;
+    const zoom = Math.min(
+      V.zoomMax,
+      Math.max(
+        1,
+        (cy * (1 - s)) / (1 - h),
+        (cy * s) / h,
+        lvBd ? (cx * sx) / u : 1,
+        lvBd ? (cx * (1 - sx)) / (1 - u) : 1,
+      ),
+    );
     const rx = cx / zoom;
     const ry = cy / zoom;
     const clamp = (x: number, hi: number): number => Math.min(hi, Math.max(0, x));
     tex.repeat.set(rx, ry);
     tex.offset.set(
-      clamp((1 - rx) / 2 + camX * V.parallax, 1 - rx),
+      lvBd ? clamp(u - sx * rx, 1 - rx) : clamp((1 - rx) / 2 + camX * V.parallax, 1 - rx),
       clamp(1 - h - (1 - s) * ry, 1 - ry),
+    );
+  };
+
+  let alignCanvas: HTMLCanvasElement | null = null;
+  const p3 = new THREE.Vector3();
+  /** ?dev=align: the clip's road edges (red), the track's outer lanes (cyan) and the numbers. */
+  const drawAlign = (): void => {
+    if (!alignCanvas) {
+      alignCanvas = document.createElement('canvas');
+      alignCanvas.style.cssText =
+        'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999';
+      document.body.appendChild(alignCanvas);
+    }
+    const c = alignCanvas;
+    if (c.width !== window.innerWidth || c.height !== window.innerHeight) {
+      c.width = window.innerWidth;
+      c.height = window.innerHeight;
+    }
+    const g = c.getContext('2d')!;
+    g.clearRect(0, 0, c.width, c.height);
+    const r = canvas.getBoundingClientRect();
+    const px = (sx: number, sy: number): [number, number] => [
+      r.left + sx * r.width,
+      r.top + sy * r.height,
+    ];
+    g.lineWidth = 2;
+    g.strokeStyle = '#22d3ee';
+    for (const x of [-halfTrack, halfTrack]) {
+      g.beginPath();
+      p3.set(x, 0, 6).project(camera);
+      g.moveTo(...px((1 + p3.x) / 2, (1 - p3.y) / 2));
+      p3.set(x, 0, -300).project(camera);
+      g.lineTo(...px((1 + p3.x) / 2, (1 - p3.y) / 2));
+      g.stroke();
+    }
+    const lv = backdrop ? realLevelOf(backdrop) : 0;
+    const bd = lv ? LEVEL_BACKDROPS[lv - 1] : undefined;
+    const tex = backdrop;
+    if (tex && bd?.edges) {
+      // A point (x, y from the top) of the clip, on screen through the clip's current fit.
+      const onScreen = (u: number, y: number): [number, number] =>
+        px((u - tex.offset.x) / tex.repeat.x, 1 - (1 - y - tex.offset.y) / tex.repeat.y);
+      const vp = onScreen(align?.vanishX ?? bd.vanishX ?? 0.5, align?.horizon ?? bd.horizon ?? 0.5);
+      g.strokeStyle = '#ff3b3b';
+      for (const e of [bd.edges.left, bd.edges.right]) {
+        const p = onScreen(e[0], e[1]);
+        g.beginPath();
+        g.moveTo(...vp);
+        g.lineTo(vp[0] + (p[0] - vp[0]) * 3, vp[1] + (p[1] - vp[1]) * 3);
+        g.stroke();
+      }
+    }
+    g.fillStyle = '#fff';
+    g.font = '14px monospace';
+    g.fillText(
+      `dev=align  level ${lv || '-'} ${real ? 'real' : 'neon'}  camHeight ${camH.toFixed(2)}  ` +
+        `track vanish ${vanishX.toFixed(3)}, ${vanishY.toFixed(3)}  red: clip road edges, ` +
+        `cyan: outer lanes  (window.__align = { camHeight, horizon, vanishX })`,
+      r.left + 12,
+      r.bottom - 14,
     );
   };
 
@@ -608,14 +749,44 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       contactShadow.visible = inClip;
       contactShadow.position.set(playerX, 0.02, 0);
       if (backdrop) {
-        // The street runs at the track's pace: slower levels play the clip slower (never faster
-        // than 1x, so a 30 s clip lasts its 30 s level without looping).
-        const k = Math.min(1, Math.max(0, (speed - T.SPEED_MIN) / (T.SPEED_MAX - T.SPEED_MIN)));
-        const rate = V.rateMin + (1 - V.rateMin) * k;
+        // The street runs at the track's pace (videoBackdrop.ts backdropRate).
+        const rate = backdropRate(backdrop, speed);
         const v = backdrop.image as HTMLVideoElement;
         if (Math.abs(v.playbackRate - rate) > 0.02) v.playbackRate = rate;
       }
       archPosts.visible = archPlinths.visible = archBars.visible = !inClip;
+      // Realistic mode: on while a 'real' level's clip shows (no clip, no realistic mode).
+      const realLevel = backdrop === null ? 0 : realLevelOf(backdrop);
+      real = realLevel > 0;
+      realRoad.update(dt, speed, realLevel);
+      // The chase camera's height: ONE for every real level (REAL_MODE.camera; ?dev=align can
+      // override it live), each clip fitted to it; eased so a neon/real change never jumps.
+      const wantH = real ? (align?.camHeight ?? L.REAL_MODE.camera.height) : T.CAMERA_POS.y;
+      camH += (wantH - camH) * (1 - Math.exp(-L.REAL_MODE.camEase * realDt));
+      // Step d: one sun and shadow on every real level, tinted per clip (REAL_MODE.sun, tint).
+      catcher.visible = real;
+      if (real) {
+        const S = L.REAL_MODE.sun;
+        const tint = L.REAL_MODE.tint[realLevel] ?? L.REAL_MODE.defaultTint;
+        sun.color.setHex(tint.sunColor);
+        sun.intensity = S.intensity;
+        sun.target.position.set(playerX, 0, 0);
+        sun.position.set(playerX + S.dir.x * 20, S.dir.y * 20, S.dir.z * 20);
+        hemi.color.setHex(tint.sky);
+        hemi.intensity = S.skyIntensity;
+        catcherMat.opacity = S.shadow;
+        catcher.position.x = playerX;
+      } else {
+        sun.color.setHex(NEON_LIGHT.sun);
+        sun.intensity = NEON_LIGHT.sunI;
+        sun.position.set(3, 9, 7);
+        sun.target.position.set(0, 0, 0);
+        hemi.color.setHex(NEON_LIGHT.sky);
+        hemi.intensity = NEON_SKY_I;
+      }
+      trackStrip.visible = dashes.visible = !real;
+      for (const e of neonEdges) e.visible = !real;
+      for (const p of paint) p.visible = real;
 
       /* City and finale gates. */
       for (let i = 0; i < T.ARCH_COUNT; i++) {
@@ -824,7 +995,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       }
 
       /* Particles drift past at the zone's rate. Dropped at quality 2, halved at 1. */
-      particles.visible = extras();
+      particles.visible = extras() && !real;
       if (particles.visible) {
         particleTravel += dt * speed * blendNum((l) => l.particleRate);
         const n = quality >= 1 ? Math.floor(pCount / 2) : pCount;
@@ -849,7 +1020,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       // Milestone shockwave from the runner's feet.
       shockT += dt;
       const sk = shockT / T.SHOCKWAVE_SEC;
-      shock.visible = sk < 1;
+      shock.visible = sk < 1 && !real;
       if (shock.visible) {
         shock.position.set(playerX, 0.06, 0);
         shock.scale.setScalar(reduceMotion ? T.SHOCKWAVE_SCALE * 0.5 : 1 + sk * T.SHOCKWAVE_SCALE);
@@ -859,7 +1030,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       // Speed lines from the second tier (streak 10).
       const lineTarget = reduceMotion || fever < 2 ? 0 : fever === 2 ? 0.55 : 0.9;
       lineMat.opacity += (lineTarget - lineMat.opacity) * (1 - Math.exp(-3 * dt));
-      speedLines.visible = lineMat.opacity > 0.01;
+      speedLines.visible = lineMat.opacity > 0.01 && !real;
       if (speedLines.visible) {
         const travel = distance * T.SPEED_LINE_RATE;
         for (let i = 0; i < lineInfo.length; i++) {
@@ -883,7 +1054,7 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
 
       // With bloom the sheet blends in linear light, before the sRGB conversion, so the same
       // perceived darkening needs a stronger sheet: 1 - (1 - d)^2.2.
-      const bloomOn = composer !== null && quality < 2;
+      const bloomOn = composer !== null && quality < 2 && !real;
       const dimTarget = !dim ? 0 : bloomOn ? 1 - (1 - T.PAUSE_DIM) ** 2.2 : T.PAUSE_DIM;
       dimMat.opacity += (dimTarget - dimMat.opacity) * (1 - Math.exp(-8 * realDt));
       dimSheet.visible = dimMat.opacity > 0.01;
@@ -894,28 +1065,36 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       const sy = (Math.random() - 0.5) * shakeAmount;
       // The outro runs the intro's path part way back, toward the celebrating runner's front.
       const fly = intro < 1 ? intro : 1 - (1 - L.OUTRO_TO) * outro;
+      // A real level's clip is flat: a straight dolly instead of the orbit (intro.ts), no turn
+      // onto the runner in the outro, and the clip stays lined up throughout.
+      const flat = real; // a 'real' level's clip is showing (Low graphics: none, so neon)
+      const dh = camH - T.CAMERA_POS.y; // real levels: REAL_MODE.camera.height
       if (fly < 1) {
         // Intro fly-in around the runner, landing exactly on the chase camera.
-        introCamera(fly, cam);
+        introCamera(fly, cam, flat);
         const follow = camX * fly + playerX * (1 - fly);
-        camera.position.set(cam.px + follow, cam.py, cam.pz);
+        camera.position.set(cam.px + follow, cam.py + dh, cam.pz);
         // In the outro the look target moves onto the runner (OUTRO_LOOK), not down the track.
-        const o = intro < 1 ? 0 : outro;
+        const o = intro < 1 || flat ? 0 : outro;
         camera.lookAt(
           cam.lx + follow + (playerX - cam.lx - follow) * o,
           cam.ly + (L.OUTRO_LOOK.y - cam.ly) * o,
           cam.lz + (L.OUTRO_LOOK.z - cam.lz) * o,
         );
       } else {
-        camera.position.set(T.CAMERA_POS.x + camX + sx, T.CAMERA_POS.y + sy, T.CAMERA_POS.z);
+        camera.position.set(T.CAMERA_POS.x + camX + sx, T.CAMERA_POS.y + dh + sy, T.CAMERA_POS.z);
         camera.lookAt(look.x + camX * 0.5, look.y, look.z);
-        // The track's vanishing point on screen, for lining up the clip (chase camera only:
-        // the intro and outro orbit the runner, and the clip holds its last fit meanwhile).
+      }
+      if (fly >= 1 || flat) {
+        // The track's vanishing point on screen, for lining up the clip (chase camera and dolly
+        // only: the orbit turns the camera, and the clip holds its last fit meanwhile).
         camera.updateMatrixWorld();
         vanish.set(camera.position.x, 0, camera.position.z - 1e4).project(camera);
         if (Number.isFinite(vanish.y)) vanishY = (1 - vanish.y) / 2;
+        if (Number.isFinite(vanish.x)) vanishX = (1 + vanish.x) / 2;
       }
       if (backdrop) fitBackdrop(backdrop);
+      if (alignOn) drawAlign();
       topShade.visible = backdrop !== null;
       if (topShade.visible) {
         const h = 2 * -topShade.position.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
@@ -939,7 +1118,9 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       backdrop = video;
       scene.background = video ?? bgColor;
       // Applied in linear light, before the sRGB output: the same 2.2 as the pause dimmer.
-      scene.backgroundIntensity = video ? L.VIDEO_BACKDROP.brightness ** 2.2 : 1;
+      // Realistic mode shows the clip nearly as filmed.
+      const b = video && isRealClip(video) ? L.REAL_MODE.brightness : L.VIDEO_BACKDROP.brightness;
+      scene.backgroundIntensity = video ? b ** 2.2 : 1;
     },
     precompile() {
       // renderer.compile walks the whole scene, hidden objects included (three r187), so the
@@ -950,7 +1131,10 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
           renderer.compile(scene, camera);
           renderer.setRenderTarget(null);
         }
-        renderer.compile(scene, camera); // straight to the screen (quality 2)
+        renderer.compile(scene, camera); // straight to the screen (quality 2, every real level)
+        // (A warm-up draw and compileAsync were tried here for the first-frame stall: no change
+        // on the lab PC; the round's first frame still links what it draws. Measured: the
+        // 450 ms frame at round start is 280 ms first AudioContext, ~170 ms first-frame link.)
       } catch (err) {
         console.warn('[game] shader precompile failed: only first-use stalls', err);
       } finally {
@@ -961,11 +1145,13 @@ export function createStage(canvas: HTMLCanvasElement, plan: ZonePlan): Stage {
       // A ResizeObserver misses a pixel-ratio change with the same CSS size (window dragged
       // from the laptop screen to a projector), so check it here: one comparison per frame.
       if ((window.devicePixelRatio || 1) !== lastDpr) resize();
-      if (composer && quality < 2) composer.render();
+      // Realistic mode: no bloom (straight to the screen, precompiled for quality 2 anyway).
+      if (composer && quality < 2 && !real) composer.render();
       else renderer.render(scene, camera);
     },
     dispose() {
       ro.disconnect();
+      realRoad.dispose();
       scene.traverse((o) => {
         if (o instanceof THREE.Sprite) {
           o.material.map?.dispose();

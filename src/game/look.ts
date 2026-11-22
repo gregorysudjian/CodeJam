@@ -116,6 +116,69 @@ export const VIDEO_BACKDROP = {
   topShadeTo: 0.36,
 };
 
+/* ── Realistic mode (backdrop.ts style 'real'; scene.ts, view3d.ts) ── */
+// On while a 'real' level's clip shows. No bloom, particles, speed lines or shockwave; the clip
+// at `brightness` (VIDEO_BACKDROP's top shade stays for the HUD cue); lanes as faint solid
+// white road paint (`paintOpacity`, `paintWidth` in world units). A level change into a real
+// level is a white fade (`fadePeak` over `fadeSec`) instead of the neon portal. (Road speed and
+// the straight intro/outro camera are package C steps b and c: videoBackdrop.ts, intro.ts.)
+// Every real level looks the same way (Greg: consistent): ONE chase camera (`camera.height`; FOV and
+// distance are the neon chase camera's, tuning.ts CAMERA_FOV and CAMERA_POS.z), each clip fitted to
+// it (backdrop.ts); ONE sun direction and shadow (`sun`: `dir` toward the light, +z toward the
+// camera; `shadow` the catcher's opacity), so every runner and object is lit and grounded alike.
+// Per clip only a small colour tint (`tint`: sun and sky colours, by level). `camEase`: how fast
+// the camera moves between the neon and real heights, per second (exponential, about 1 s). The
+// shadow map is `shadowMap` px over a box `shadowBox` world units around the runner.
+export interface RealTint {
+  sunColor: number;
+  sky: number;
+}
+const TINT_OLD_TOWN: RealTint = { sunColor: 0xfff4e6, sky: 0xc9d3e0 }; // overcast stone street
+const TINT_BRIDGE: RealTint = { sunColor: 0xfff1d6, sky: 0xbcd4f0 }; // sunny afternoon
+const TINT_BLUE_HOUR: RealTint = { sunColor: 0xffd29a, sky: 0x8a9fd6 }; // street lamps, blue sky
+export const REAL_MODE = {
+  brightness: 0.95,
+  paintOpacity: 0.2,
+  paintWidth: 0.1,
+  fadePeak: 0.85,
+  fadeSec: 0.5,
+  camera: { height: 2.8 },
+  // "LEVEL n" on a real level: smaller, just under GameHud's cue band (124 to ~214 CSS px from
+  // the top), so it sits over the sky above the track's horizon, never across the track or the
+  // first move cue; `top` its top edge in CSS px, height a share of the canvas within limits;
+  // shown `sec` (neon: LEVEL_LABEL_SEC). Jiscar 1's sweep: centred at 42 % it lay across the track.
+  levelBanner: { top: 226, share: 0.07, min: 44, max: 76, sec: 1.4 }, // solid until 85 %
+  camEase: 3,
+  sun: { dir: { x: 0.2, y: 1, z: 0.5 }, intensity: 1.4, skyIntensity: 1.2, shadow: 0.35 },
+  shadowMap: 1024,
+  shadowBox: 4,
+  // By level, matching backdrop.ts's clip order; anything else gets TINT_OLD_TOWN.
+  tint: {
+    1: TINT_OLD_TOWN,
+    2: TINT_BRIDGE,
+    3: TINT_BLUE_HOUR,
+    4: TINT_OLD_TOWN,
+    5: TINT_BRIDGE,
+    6: TINT_BLUE_HOUR,
+  } as Readonly<Record<number, RealTint>>,
+  defaultTint: TINT_OLD_TOWN,
+};
+/* ── Obstacle skins (obstacles.ts) ── */
+// Each level's themed obstacle textures (Higgsfield, public/media/obstacles/tex-{level}-{kind}.jpg)
+// on the main faces: block walls, the hurdle's low wall, the beam's slab, the six crates, and an
+// emblem sprite for the orb. `repeat`: how many times wider than high each face is, so a square
+// strip repeats along it (a wider image repeats less). `glow`: the texture lights itself this
+// much (emissive), so it reads on a dark street; under the bloom threshold, so only the neon
+// edges bloom. `emblemGlow` and `emblemSize`: the orb emblem's brightness and size (world units).
+export const OBSTACLE_SKIN = {
+  dir: '/media/obstacles/',
+  levels: 6,
+  repeat: { block: 1, hurdle: 12, beam: 16, crate: 1 },
+  glow: 0.55,
+  emblemGlow: 1.6,
+  emblemSize: 2.2, // 1.5 left the emblem hard to make out until the orb was close
+};
+
 /* ── Reduced motion (scene.ts) ── */
 // A milestone brightens the lane lines and horizon; with prefers-reduced-motion, this much of it.
 export const REDUCED_FLASH = 0.4;

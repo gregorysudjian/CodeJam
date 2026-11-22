@@ -350,3 +350,104 @@ export const MUSIC_LOOKAHEAD_SEC = 0.15; // notes are scheduled this far ahead o
 export const MUSIC_FILTER_HZ = [1400, 2600, 5000, 9000] as const; // master low-pass by streak tier
 export const MUSIC_DUCK_SEC = 0.35; // a hit muffles the music this long
 export const MUSIC_FADE_SEC = 0.25; // pause, resume and finish fades
+
+/* Realistic mode camera (backdrop.ts style 'real'; videoBackdrop.ts, intro.ts). Gameplay never
+   reads these. */
+export const REAL_CAMERA = {
+  // How fast each real clip's road moves under the runner at 1x, in world units per second (the
+  // game's speed unit), by clip file name (backdrop.ts `video`), so a clip reused on several
+  // levels keeps its value on each. The clip plays at gameSpeed / roadSpeed, clamped to
+  // [rateMin, rateMax], so the road keeps pace with the obstacles. Measured by block matching the
+  // clip's road (or kerb) over 4-frame steps, carried to the runner's row on screen through the
+  // chase camera at about 65 degrees of field of view; check or adjust live with `?dev=calib`.
+  roadSpeed: {
+    'level-2-london.mp4': 5.0, // Old Montreal, Rue Saint-Paul (cobbles)
+    'level-3-paris.mp4': 5.7, // Jacques Cartier Bridge deck
+    'level-5-barcelona.mp4': 2.6, // Old Port at blue hour
+  } as Readonly<Partial<Record<string, number>>>,
+  rateMin: 0.5,
+  rateMax: 1.5,
+  // Intro and outro on a real level: no orbit (a flat clip can't turn with the camera), a straight
+  // dolly along the chase camera's line of sight, from this many world units further back.
+  dolly: 6,
+  calibStep: 0.1, // `?dev=calib`: road speed change per [ or ] press
+} as const;
+
+/* ── Realistic obstacles (props.ts, obstacles.ts), on levels with backdrop style 'real' ── */
+// Gameplay is identical to the neon look: same hitboxes, sizes, positions and timing. Only the
+// materials change (a lit texture, no glow, no neon edges) and a soft contact shadow is laid on
+// the road under every grounded object, so nothing floats over the video.
+export const REAL_PROPS = {
+  /** Contact shadow: darkness at its centre (0 to 1), and how far it spreads past the footprint
+   *  (world units on each side; along the track, the front and back). */
+  shadowOpacity: 0.55,
+  shadowSpread: 0.35,
+  /** Just above the track strip (0.004) and under the floor markers (0.02). */
+  shadowY: 0.012,
+  /** Bodies (posts, frames) are painted steel; the neon bars are paint in the move colour. */
+  steel: 0x5b636e,
+  /** Floor markers are road paint like the lane lines (look.ts REAL_MODE paint, 0.2 / 0.1 m):
+   *  normal blending at this opacity, never a glowing slab. The neon floor slabs are hidden and
+   *  each object gets one thin line `lineWidth` wide, `lineAhead` in front of it (orbs: under). */
+  paintOpacity: 0.24,
+  lineWidth: 0.12,
+  lineAhead: 0.6,
+  /** How far the move colour is mixed toward white: floor marks (and bursts), and the paint on
+   *  the objects. The move icon above each object carries the full colour. */
+  markMute: 0.6,
+  paintMute: 0.45,
+  /** A smashed crate on a real level: lower and slower than the neon burst (multipliers on its
+   *  launch velocity and spin), then gravity, a small bounce and friction on the road; the
+   *  pieces lie `lieSec` and fade over `fadeSec`. */
+  debris: {
+    lift: 0.55,
+    sideways: 0.75,
+    forward: 0.6,
+    spin: 0.6,
+    gravity: 9.8,
+    bounce: 0.3,
+    friction: 0.82,
+    lieSec: 1.2,
+    fadeSec: 0.35,
+  },
+  /** A collected orb on a real level keeps its size to the hand, then pops in this last share. */
+  catchPop: 0.3,
+  /** The orb badge: disc opacity, white rim (px of 256), emblem size (share), stamp radius (px). */
+  badge: { disc: 0.78, rim: 10, emblem: 0.78, stroke: 3 },
+  /** A hit: the texture and paint tinted red (multiplied), still lit. */
+  hitTint: 0xff6a5a,
+} as const;
+
+/* ── Realistic road strip (realRoad.ts), on 'real' levels only ── */
+// The clips' road moves 3-7x slower than the game, so objects slid over it. A road surface under
+// the track scrolls at exactly the game's speed (the floor grid's units) and fades into the clip
+// toward the vanishing point: objects and the runner sit on it; the clip keeps the street,
+// buildings, sky and far road. Tinted to the clip's road (sampled from the video at each level).
+export const REAL_ROAD = {
+  width: 14, // across, centred on the track (3 lanes are 6.6): its sides stay off-screen near the camera
+  near: 9, // world z of the near end: behind the camera (7.4)
+  far: -36, // world z of the far end: ~90% of the way up the screen to the horizon
+  fade: 0.6, // the far share of the length that fades to nothing
+  sideFade: 0.3, // each side's share of the width that fades out
+  tile: { asphalt: 3, cobble: 4.5 }, // world units per texture repeat; cobbles sized to the old-town clip's stones
+  /** The video patch sampled for the road colour: share of the frame (bottom centre). */
+  sample: { x0: 0.38, x1: 0.62, y0: 0.86, y1: 0.98 },
+  resampleSec: [0.4, 1.5] as readonly number[], // after a level starts (the clip has switched)
+  y: 0.002, // under the shadow catcher (0.003), the lane paint (0.006) and the contact shadows
+} as const;
+
+/* ── Realistic clips (props.ts clipOf): the look follows the CLIP, not the level ── */
+// The real levels reuse the three Montreal clips (any order, backdrop.ts). Each clip is matched
+// by its file name (a level's `video`; any `match` substring) and sets the road strip's pattern
+// and the obstacle skin set (public/media/obstacles/tex-{skin}-{kind}.jpg, made for that clip).
+// A clip that matches nothing: asphalt, and the level's own skin set.
+export const REAL_CLIPS = [
+  { id: 'oldtown', match: ['oldtown', 'old-town', 'level-2-london'], road: 'cobble', skin: 2 },
+  { id: 'bridge', match: ['bridge', 'level-3-paris'], road: 'asphalt', skin: 3 },
+  {
+    id: 'bluehour',
+    match: ['bluehour', 'blue-hour', 'level-5-barcelona'],
+    road: 'asphalt',
+    skin: 5,
+  },
+] as const;

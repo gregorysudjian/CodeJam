@@ -1,5 +1,6 @@
 // Minimal Chrome DevTools Protocol driver for the QA sweep. Node 22+ (built-in WebSocket), no packages.
-// The page's camera permission is denied, so no webcam ever turns on.
+// The page's camera permission is denied, so no webcam ever turns on (launch's `camera` option uses
+// Chrome's fake camera instead, never a real one).
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -21,19 +22,22 @@ export function timebox(ms, label) {
   }, ms).unref();
 }
 
-export async function launch({ port, profile, base }) {
+/** `camera: true`: Chrome's fake camera (a test pattern, no person) with permission granted, for
+ *  the calibration screen. Otherwise the camera is denied. */
+export async function launch({ port, profile, base, camera = false }) {
   mkdirSync(profile, { recursive: true });
   const proc = spawn(
     CHROME,
     [
       '--headless=new',
+      ...(camera ? ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] : []),
       `--remote-debugging-port=${port}`,
       `--user-data-dir=${profile}`,
       '--no-first-run',
       '--no-default-browser-check',
       '--disable-extensions',
       '--mute-audio',
-      '--deny-permission-prompts',
+      ...(camera ? [] : ['--deny-permission-prompts']),
       'about:blank',
     ],
     { stdio: 'ignore' },
@@ -86,7 +90,7 @@ export async function launch({ port, profile, base }) {
   await send('Browser.setPermission', {
     origin: new URL(base).origin,
     permission: { name: 'videoCapture' },
-    setting: 'denied',
+    setting: camera ? 'granted' : 'denied',
   }).catch(() => {});
 
   const KEYS = {
@@ -104,6 +108,136 @@ export async function launch({ port, profile, base }) {
     logs,
     async size(width, height, deviceScaleFactor = 1) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor, mobile: false });
+    },
+    async reducedMotion() {
+      await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    },
+    /** WCAG AA text contrast on what is on screen now. Each visible text run is compared with the
+     *  pixels behind it (a second screenshot with all text made transparent), so glass, gradients,
+     *  images and video count. Returns the runs under 4.5:1 (3:1 for large text: 24 px, or 18.66 px
+     *  bold), worst first. Skips aria-hidden and disabled text (WCAG exempts inactive controls).
+     *  Options, for the in-game HUD: `root` limits it to one element; `cover: false` skips the
+     *  covered-text test (the HUD is pointer-events: none, so elementFromPoint never returns it);
+     *  `graphics` is a selector of icons (hearts) checked at 3:1 against what is behind their box,
+     *  hidden in the second screenshot like the text. */
+    async contrast({ root = 'body', cover = true, graphics = '', minAlpha = 0.05 } = {}) {
+      const runs = await b.eval(`(() => {
+        const out = [];
+        const rootEl = document.querySelector(${JSON.stringify(root)});
+        if (!rootEl) return out;
+        const cover = ${cover ? 'true' : 'false'}, graphics = ${JSON.stringify(graphics)};
+        const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          const el = n.parentElement;
+          if (!n.textContent.trim() || !el || el.closest('[aria-hidden="true"], :disabled, [aria-disabled="true"], script, style, noscript')) continue;
+          const cs = getComputedStyle(el);
+          if (cs.visibility !== 'visible') continue;
+          let op = 1;
+          for (let a = el; a; a = a.parentElement) op *= Number(getComputedStyle(a).opacity);
+          // SVG text (chart ticks) is painted with fill, not color.
+          const paint = el instanceof SVGElement ? cs.fill : cs.color;
+          if (!/^rgba?\\(/.test(paint)) continue;
+          const c = paint.match(/[\\d.]+/g).map(Number);
+          const alpha = (c[3] ?? 1) * op;
+          if (alpha < 0.05) continue; // gradient-clipped or faded-out text
+          if (op < ${minAlpha}) continue; // HUD: a cue or popup fading in or out, not the steady state
+          const range = document.createRange(); range.selectNodeContents(n);
+          for (const r of range.getClientRects()) {
+            const x = Math.max(0, r.left), y = Math.max(0, r.top), x2 = Math.min(innerWidth, r.right), y2 = Math.min(innerHeight, r.bottom);
+            if (x2 - x < 2 || y2 - y < 2) continue;
+            // Covered by something else (the pause overlay over the HUD, a sticky footer): not visible.
+            const top = cover && document.elementFromPoint((x + x2) / 2, (y + y2) / 2);
+            if (cover && (!top || !(top === el || el.contains(top) || top.contains(el)))) continue;
+            const size = parseFloat(cs.fontSize), weight = Number(cs.fontWeight) || 400;
+            out.push({ text: n.textContent.trim().slice(0, 30), x, y, w: x2 - x, h: y2 - y, rgb: c.slice(0, 3), alpha, large: size >= 24 || (size >= 18.66 && weight >= 700), size });
+          }
+        }
+        // Text fields: the typed value, or the placeholder when empty (neither is a text node).
+        // Icons: a graphic needs 3:1 (WCAG 1.4.11). Its fill (or stroke colour) against its whole box.
+        if (graphics) for (const el of rootEl.querySelectorAll(graphics)) {
+          const cs = getComputedStyle(el);
+          if (cs.visibility !== 'visible') continue;
+          const paint = /^rgba?\\(/.test(cs.fill) ? cs.fill : cs.color;
+          if (!/^rgba?\\(/.test(paint)) continue;
+          const c = paint.match(/[\\d.]+/g).map(Number);
+          let op = 1;
+          for (let a = el; a; a = a.parentElement) op *= Number(getComputedStyle(a).opacity);
+          const alpha = (c[3] ?? 1) * op;
+          const r = el.getBoundingClientRect();
+          const x = Math.max(0, r.left), y = Math.max(0, r.top), x2 = Math.min(innerWidth, r.right), y2 = Math.min(innerHeight, r.bottom);
+          if (x2 - x < 2 || y2 - y < 2 || alpha < 0.05) continue;
+          const name = [...el.classList].find((k) => /^lucide-/.test(k))?.replace('lucide-', '') || el.tagName.toLowerCase();
+          out.push({ text: 'icon: ' + name, x, y, w: x2 - x, h: y2 - y, rgb: c.slice(0, 3), alpha, need: 3, size: Math.round(r.height) });
+        }
+        if (rootEl === document.body) for (const el of document.querySelectorAll('input, textarea')) {
+          if (el.closest('[aria-hidden="true"]') || el.disabled || /^(hidden|checkbox|radio|range|color|file)$/.test(el.type)) continue;
+          const text = el.value || el.placeholder;
+          if (!text) continue;
+          const cs = getComputedStyle(el);
+          if (cs.visibility !== 'visible') continue;
+          const paint = el.value ? cs.color : getComputedStyle(el, '::placeholder').color;
+          if (!/^rgba?\\(/.test(paint)) continue;
+          const c = paint.match(/[\\d.]+/g).map(Number);
+          let op = 1;
+          for (let a = el; a; a = a.parentElement) op *= Number(getComputedStyle(a).opacity);
+          const alpha = (c[3] ?? 1) * op;
+          if (alpha < 0.05) continue;
+          const r = el.getBoundingClientRect();
+          const px = (p) => parseFloat(cs[p]) || 0;
+          const x = Math.max(0, r.left + px('borderLeftWidth') + px('paddingLeft')), x2 = Math.min(innerWidth, r.right - px('borderRightWidth') - px('paddingRight'));
+          const y = Math.max(0, r.top + px('borderTopWidth') + px('paddingTop')), y2 = Math.min(innerHeight, r.bottom - px('borderBottomWidth') - px('paddingBottom'));
+          if (x2 - x < 2 || y2 - y < 2) continue;
+          const top = document.elementFromPoint((x + x2) / 2, (y + y2) / 2);
+          if (top !== el && !el.contains(top)) continue;
+          const size = parseFloat(cs.fontSize), weight = Number(cs.fontWeight) || 400;
+          out.push({ text: (el.value ? '' : 'placeholder: ') + text.slice(0, 30), x, y, w: x2 - x, h: y2 - y, rgb: c.slice(0, 3), alpha, large: size >= 24 || (size >= 18.66 && weight >= 700), size });
+        }
+        const s = document.createElement('style'); s.id = '__qa_hide_text';
+        // transition: none, or transition-colors elements fade out instead of hiding before the shot.
+        s.textContent = '*, *::before, *::after, ::placeholder { color: transparent !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important; caret-color: transparent !important; transition: none !important; } svg text, svg tspan { fill: transparent !important; stroke: transparent !important; }'
+          + (graphics ? graphics + ' { visibility: hidden !important; }' : '');
+        document.head.appendChild(s);
+        return out;
+      })()`);
+      let data;
+      try {
+        await sleep(120);
+        ({ data } = await send('Page.captureScreenshot', { format: 'png' }));
+      } finally {
+        // Always show the text again, or every later shot in this browser would be blank. Colours come
+        // back with transitions still off (flushed), so nothing fades back in during the next shot.
+        await b.eval(`(() => {
+          const s = document.getElementById('__qa_hide_text');
+          if (!s) return;
+          s.textContent = '*, *::before, *::after { transition: none !important; }';
+          void document.body.offsetHeight;
+          for (const el of document.querySelectorAll('*')) getComputedStyle(el).color;
+          s.remove();
+        })()`);
+      }
+      return b.eval(`(async (b64, runs) => {
+        const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+        const k = img.width / innerWidth;
+        const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+        const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0);
+        const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+        const lum = (r, gg, bb) => 0.2126 * lin(r) + 0.7152 * lin(gg) + 0.0722 * lin(bb);
+        const fails = [];
+        for (const t of runs) {
+          const d = g.getImageData(Math.round(t.x * k), Math.round(t.y * k), Math.max(1, Math.round(t.w * k)), Math.max(1, Math.round(t.h * k))).data;
+          const ratios = [];
+          for (let i = 0; i < d.length; i += 12) {
+            const fg = t.rgb.map((v, j) => v * t.alpha + d[i + j] * (1 - t.alpha));
+            const a = lum(...fg), bg = lum(d[i], d[i + 1], d[i + 2]);
+            ratios.push((Math.max(a, bg) + 0.05) / (Math.min(a, bg) + 0.05));
+          }
+          ratios.sort((p, q) => p - q);
+          const ratio = ratios[Math.floor(ratios.length * 0.1)]; // 10th percentile: ignores grain, keeps real hot spots
+          const need = t.need ?? (t.large ? 3 : 4.5);
+          if (ratio < need) fails.push({ text: t.text, ratio: +ratio.toFixed(2), need, size: t.size });
+        }
+        return fails.sort((p, q) => p.ratio / p.need - q.ratio / q.need);
+      })(${JSON.stringify(data)}, ${JSON.stringify(runs)})`);
     },
     async go(url, waitMs = 1500) {
       const loaded = new Promise((r) => on('Page.loadEventFired', r));

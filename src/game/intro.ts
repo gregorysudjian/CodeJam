@@ -42,8 +42,26 @@ export interface CameraPose {
  * orbits from in front of the runner (INTRO_FROM) to behind it, rising and pulling back, while
  * its target slides from the runner's chest to the chase look point. At k = 1 it is exactly the
  * chase camera (CAMERA_POS, CAMERA_LOOK).
+ *
+ * `flat` (a 'real' level, its clip behind the track): no orbit, since a flat clip can't turn with
+ * the camera. The camera moves straight in along the chase camera's line of sight, from
+ * REAL_CAMERA.dolly units further back, and its target moves with it. It never turns, so the
+ * clip's vanishing point stays on the track's.
  */
-export function introCamera(k: number, out: CameraPose): CameraPose {
+export function introCamera(k: number, out: CameraPose, flat = false): CameraPose {
+  if (flat) {
+    const dx = T.CAMERA_LOOK.x - T.CAMERA_POS.x;
+    const dy = T.CAMERA_LOOK.y - T.CAMERA_POS.y;
+    const dz = T.CAMERA_LOOK.z - T.CAMERA_POS.z;
+    const back = (T.REAL_CAMERA.dolly * (1 - k)) / Math.hypot(dx, dy, dz);
+    out.px = T.CAMERA_POS.x - dx * back;
+    out.py = T.CAMERA_POS.y - dy * back;
+    out.pz = T.CAMERA_POS.z - dz * back;
+    out.lx = T.CAMERA_LOOK.x - dx * back;
+    out.ly = T.CAMERA_LOOK.y - dy * back;
+    out.lz = T.CAMERA_LOOK.z - dz * back;
+    return out;
+  }
   const chaseR = Math.hypot(T.CAMERA_POS.x, T.CAMERA_POS.z);
   const angle = T.INTRO_FROM.angle * (1 - k);
   const radius = T.INTRO_FROM.radius + (chaseR - T.INTRO_FROM.radius) * k;

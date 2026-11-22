@@ -43,7 +43,10 @@ test.each(['WASM', 'model'])(
     expect(getLandmarker()).toBe(pending);
     await expect(pending).rejects.toBe(failure);
     expect((await getLandmarker()).delegate).toBe('GPU');
-    expect(files).toHaveBeenCalledTimes(2);
+    // A failed WASM load retries from scratch; a failed model start reuses the files already
+    // downloaded (download.ts) and only builds the model again.
+    expect(files).toHaveBeenCalledTimes(asset === 'WASM' ? 2 : 1);
+    expect(make).toHaveBeenCalledTimes(asset === 'WASM' ? 1 : 3);
   },
 );
 

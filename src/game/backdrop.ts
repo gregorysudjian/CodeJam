@@ -22,55 +22,62 @@ export interface Backdrop {
   video?: string;
   /** The clip's vanishing point, 0 top to 1 bottom of the frame (default 0.5). */
   horizon?: number;
+  /** The clip's vanishing point across, 0 left to 1 right (default 0.5; real levels line it up). */
+  vanishX?: number;
+  /**
+   * ?dev=align: one point on each road edge (curb or deck edge) in the clip, x and y from 0 to 1;
+   * drawn with the vanishing point as the clip's two road edges.
+   */
+  edges?: { left: readonly [number, number]; right: readonly [number, number] };
+  /**
+   * 'real': realistic mode on this level (human runner, real obstacles, no neon: look.ts REAL_MODE,
+   * scene.ts, human.ts, props.ts). 'neon' (the default): today's look. A real level still falls
+   * back to neon without its clip, with a missing asset, or in Low graphics.
+   */
+  style?: 'real' | 'neon';
 }
 
-// Clips: release higgsfield-raw (sources in the g2-media commit), 1280x720, 30 s, no sound.
-// Horizons measured on a frame 8 s in.
-export const LEVEL_BACKDROPS: readonly Backdrop[] = [
-  {
-    name: 'City',
-    scenery: 'city',
-    look: ZONE_LOOK.city,
-    video: '/media/level-1-montreal.mp4',
-    horizon: 0.52,
-  },
-  {
-    name: 'Tunnel',
-    scenery: 'tunnel',
-    look: ZONE_LOOK.tunnel,
-    video: '/media/level-2-london.mp4',
-    horizon: 0.67,
-  },
-  {
-    name: 'Bridge',
-    scenery: 'bridge',
-    look: ZONE_LOOK.bridge,
-    video: '/media/level-3-paris.mp4',
-    horizon: 0.33,
-  },
-  {
-    name: 'City at dawn',
-    scenery: 'city',
-    look: ZONE_LOOK.cityDawn,
-    video: '/media/level-4-rome.mp4',
-    horizon: 0.46,
-  },
-  {
-    name: 'Bridge at night',
-    scenery: 'bridge',
-    look: ZONE_LOOK.bridgeNight,
-    video: '/media/level-5-barcelona.mp4',
-    horizon: 0.56,
-  },
-  {
-    name: 'Finale',
-    scenery: 'finale',
-    look: ZONE_LOOK.finale,
-    video: '/media/level-6-dubai.mp4',
-    horizon: 0.63,
-  },
-];
+/** True if level `index`'s style is 'real' (packages A, B and C read it through this). */
+export function isReal(index: number): boolean {
+  return backdropFor(index).style === 'real';
+}
 
+// The Montreal Runner clips (1280x720, 30 s, no sound; sources in release montreal-runner-raw;
+// file names kept from the first set). All six levels are real: the three finished clips play
+// twice until clips for 1, 4 and 6 arrive. Every real level uses the same camera (look.ts
+// REAL_MODE.camera); each clip is fitted to it by its measured vanishing point (horizon, vanishX)
+// and checked against its measured road edges with ?dev=align.
+const OLD_TOWN = {
+  video: '/media/level-2-london.mp4', // Rue Saint-Paul, Old Montreal (cobblestones)
+  horizon: 0.34,
+  vanishX: 0.5,
+  edges: { left: [0, 0.535], right: [1, 0.549] },
+  style: 'real',
+} as const;
+const BRIDGE = {
+  video: '/media/level-3-paris.mp4', // Jacques Cartier Bridge deck
+  horizon: 0.32,
+  vanishX: 0.5,
+  edges: { left: [0, 0.597], right: [1, 0.604] },
+  style: 'real',
+} as const;
+const BLUE_HOUR = {
+  video: '/media/level-5-barcelona.mp4', // Old Port at blue hour, the Clock Tower
+  horizon: 0.33,
+  vanishX: 0.5,
+  edges: { left: [0, 0.59], right: [1, 0.611] },
+  style: 'real',
+} as const;
+
+// `scenery` and `look` are the neon fallback (no clip, Low graphics): the same per level as before.
+export const LEVEL_BACKDROPS: readonly Backdrop[] = [
+  { name: 'City', scenery: 'city', look: ZONE_LOOK.city, ...OLD_TOWN },
+  { name: 'Tunnel', scenery: 'tunnel', look: ZONE_LOOK.tunnel, ...BRIDGE },
+  { name: 'Bridge', scenery: 'bridge', look: ZONE_LOOK.bridge, ...BLUE_HOUR },
+  { name: 'City at dawn', scenery: 'city', look: ZONE_LOOK.cityDawn, ...OLD_TOWN },
+  { name: 'Bridge at night', scenery: 'bridge', look: ZONE_LOOK.bridgeNight, ...BRIDGE },
+  { name: 'Finale', scenery: 'finale', look: ZONE_LOOK.finale, ...BLUE_HOUR },
+];
 /** The backdrop of level `index` (1-based); past the table, the last one. */
 export function backdropFor(index: number): Backdrop {
   const i = Math.min(LEVEL_BACKDROPS.length, Math.max(1, Math.round(index))) - 1;
