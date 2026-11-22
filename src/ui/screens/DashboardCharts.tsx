@@ -70,7 +70,7 @@ export function DashboardCharts({
     <div className="grid min-w-0 gap-8 xl:grid-cols-[1.2fr_1fr]">
       <section className="min-w-0" aria-label="Active minutes chart">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <Eyebrow>ACTIVE MINUTES · LAST 7 DAYS</Eyebrow>
+          <Eyebrow>ACTIVE MINUTES · THIS WEEK</Eyebrow>
           <span className="text-caption text-text-muted">
             Goal pace {Math.round((weeklyGoalMin / 7) * 10) / 10} min / day
           </span>
@@ -139,7 +139,7 @@ export function DashboardCharts({
         </div>
       </section>
       <section className="min-w-0" aria-label="Reps by move chart">
-        <Eyebrow className="mb-5">REPS BY MOVE</Eyebrow>
+        <Eyebrow className="mb-5">REPS BY MOVE · THIS WEEK</Eyebrow>
         <div
           className="arena-chart h-[260px] w-full"
           role="img"

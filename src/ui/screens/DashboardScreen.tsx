@@ -34,12 +34,13 @@ import {
   DAY_LABELS,
   DAY_NAMES,
   dayStreak,
-  last7Days,
   localDay,
   repsByMove,
   sessionTime,
   shiftDay,
+  thisWeek,
   totals,
+  weekDays,
   weeklyActiveMinutes,
   weekStart,
 } from '@/ui/screens/dashboardStats';
@@ -82,8 +83,10 @@ export function DashboardScreen({
   const goal = profile.weeklyGoalMin;
   const remaining = Math.max(0, goal - min);
   const streak = dayStreak(sessions, now);
+  // Everything under "YOUR WEEK" is Monday to now; only RECENT ROUNDS counts all time.
   const total = totals(sessions);
-  const roundsThisWeek = sessions.filter((s) => s.at >= weekStart(now) && s.at <= now).length;
+  const week = thisWeek(sessions, now);
+  const weekTotal = totals(week);
   const playedDays = new Set(sessions.filter((s) => s.at <= now).map((s) => localDay(s.at)));
   const GoalIcon = GOALS[profile.goal].icon;
   const history = sessions.slice(0, 8);
@@ -236,21 +239,21 @@ export function DashboardScreen({
             <div className="grid gap-3 md:col-span-2 md:grid-cols-3 xl:col-span-1">
               <StatTile
                 label="ROUNDS THIS WEEK"
-                value={roundsThisWeek}
+                value={weekTotal.sessions}
                 animate
                 accent="cyan"
                 className="p-5"
               />
               <StatTile
-                label="TOTAL REPS"
-                value={total.reps}
+                label="REPS THIS WEEK"
+                value={weekTotal.reps}
                 animate
                 accent="lime"
                 className="p-5"
               />
               <StatTile
-                label="CALORIES"
-                value={total.kcal}
+                label="CALORIES THIS WEEK"
+                value={weekTotal.kcal}
                 format={(n) => `≈ ${Math.round(n)}`}
                 hint="KCAL · ESTIMATE"
                 animate
@@ -260,8 +263,8 @@ export function DashboardScreen({
             </div>
           </div>
           <DashboardCharts
-            days={last7Days(sessions, now)}
-            reps={repsByMove(sessions)}
+            days={weekDays(sessions, now)}
+            reps={repsByMove(week)}
             weeklyGoalMin={goal}
             now={now}
           />
@@ -271,7 +274,7 @@ export function DashboardScreen({
               {...(onPlayCoachPick ? { onPlay: onPlayCoachPick } : {})}
             />
           )}
-          <section aria-label="Session history">
+          <section aria-label="Session history" className="pt-4">
             <div className="mb-6 flex items-center justify-between gap-4">
               <SectionTitle title="RECENT ROUNDS" size="sm" />
               <span className="text-caption text-text-muted">

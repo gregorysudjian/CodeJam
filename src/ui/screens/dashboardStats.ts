@@ -25,6 +25,23 @@ export function shiftDay(timestamp: number, days: number): number {
 export function weekStart(now: number): number {
   return shiftDay(now, -((new Date(now).getDay() + 6) % 7));
 }
+/** Rounds since Monday 00:00 (local), up to now: the dashboard's "this week". */
+export function thisWeek(sessions: readonly SavedSession[], now: number): SavedSession[] {
+  return sessions.filter((s) => s.at >= weekStart(now) && s.at <= now);
+}
+/** Monday to Sunday of the current week, the same days as the streak dots. Later days are empty. */
+export function weekDays(sessions: readonly SavedSession[], now: number): ActivityDay[] {
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = shiftDay(weekStart(now), i);
+    const rows = sessions.filter((s) => s.at <= now && localDay(s.at) === date);
+    return {
+      label: DAY_LABELS[new Date(date).getDay()] ?? "MON",
+      date,
+      activeMin: rows.reduce((sum, s) => sum + s.activeSec, 0) / 60,
+      played: rows.length > 0,
+    };
+  });
+}
 export function weeklyActiveMinutes(sessions: readonly SavedSession[], now: number): number {
   return Math.round(
     sessions
