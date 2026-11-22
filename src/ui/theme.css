@@ -439,7 +439,8 @@
   --na-glass-border: rgba(255, 255, 255, 0.08);
   --na-text: #f5f7fa;
   --na-text-muted: #8a94a6;
-  --na-text-dim: #5b6475;
+  /* AA on the dark HUD plates (5.3:1); the old #5b6475 was 3.1:1 (j1-a11y-dim). */
+  --na-text-dim: #7a8497;
   --na-lime: #c6ff3d;
   --na-cyan: #22d3ee;
   --na-magenta: #ff3dcb;
@@ -670,6 +671,31 @@
   min-height: 100dvh;
   justify-content: center;
 }
+/* Landing stage: the Montreal clip behind the title on dark slate, so the text inside uses light
+   tokens. The clip is darkened and the scrim is heaviest on the left: over a white frame muted
+   text stays >= 5:1 and the light maple title about 3:1 (large text), plus a soft shadow. */
+.landing-stage {
+  --na-text: #f6f1e7;
+  --na-text-muted: #e2dbcd;
+  --na-lime: #ff7a63;
+  color: var(--na-text);
+  min-height: 300px;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45);
+}
+.landing-stage video {
+  filter: brightness(0.6) saturate(0.9);
+}
+.landing-stage-scrim {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--na-slate) 84%, transparent) 35%,
+    color-mix(in srgb, var(--na-slate) 62%, transparent)
+  );
+}
+.landing-stage .landing-photo {
+  position: absolute;
+  inset: 0;
+}
 /* The prop-pack crops have their own dark studio background: fade their edges into the slate. */
 .landing-photo-fade {
   mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, black 62%, transparent 100%);
@@ -695,9 +721,12 @@
 }
 /* 125-150 % scaling (1093×614 … 853×480): the photo and pitch line give way to the card. */
 @media (max-height: 640px) {
-  .landing-photo,
-  .landing-hero .text-body {
+  .landing-hero .text-body,
+  .landing-stage-levels {
     display: none;
+  }
+  .landing-stage {
+    min-height: 0;
   }
   .landing-screen main {
     gap: 10px;

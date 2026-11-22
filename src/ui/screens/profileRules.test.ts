@@ -52,5 +52,8 @@ describe('sign-up fields', () => {
       age: 25,
       weightKg: 70.5,
     });
+    expect(optionalNumbers({ age: '', weightKg: '', heightCm: '175.46' })).toEqual({
+      heightCm: 175.5,
+    });
   });
 });

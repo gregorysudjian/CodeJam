@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useReducedMotion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Dices, Loader2, Lock, Play, Trophy, UserPlus } from 'lucide-react';
 import type { FitnessLevel, Goal, LeaderboardEntry } from '@/contracts';
 import {
@@ -61,6 +62,47 @@ const NUMBER_FIELDS: { field: RangedField; label: string; unit: string }[] = [
   { field: 'weightKg', label: 'Weight', unit: 'kg' },
   { field: 'heightCm', label: 'Height', unit: 'cm' },
 ];
+
+/** The landing clip (Greg's g2-media). Served from public/, so the demo works offline. */
+const HERO_VIDEO = '/media/landing-montreal.mp4';
+
+/** Muted looping clip behind the hero. Invisible until it really plays, so a missing file, a
+ *  decode error or a blocked autoplay leaves the plain panel underneath; never mounted under
+ *  prefers-reduced-motion. */
+function HeroVideo({ src }: { src: string }) {
+  const reduce = useReducedMotion();
+  const ref = React.useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
+  React.useEffect(() => {
+    const video = ref.current;
+    if (!video) return;
+    // The property too: React does not always reflect `muted`, and Chrome autoplays only muted.
+    video.muted = true;
+    video.play().catch(() => setFailed(true));
+  }, [src, reduce]);
+  if (reduce || failed) return null;
+  return (
+    <video
+      ref={ref}
+      src={src}
+      muted
+      autoPlay
+      loop
+      playsInline
+      preload="auto"
+      disablePictureInPicture
+      aria-hidden="true"
+      tabIndex={-1}
+      onPlaying={() => setPlaying(true)}
+      onError={() => setFailed(true)}
+      className={cn(
+        'absolute inset-0 size-full object-cover transition-opacity duration-1000',
+        playing ? 'opacity-100' : 'opacity-0',
+      )}
+    />
+  );
+}
 
 /** The sign-up card: username, optional age/weight/height, goal and level, one START. */
 function SignUpCard({
@@ -298,45 +340,37 @@ export function LandingScreen({
 
       <section className="landing-grid grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,540px)]">
         {/* Hero */}
-        <div className="landing-hero flex min-w-0 flex-col gap-6">
-          <div className="flex flex-col gap-3">
-            <Eyebrow>Webcam fitness game · Montréal</Eyebrow>
-            <h1 className="font-display-italic text-display-md leading-[0.9] sm:text-display-lg short:text-display-md">
-              Run Montréal <span className="text-lime">with your body</span>
-            </h1>
-            <p className="max-w-xl text-body text-text-muted">
-              Sidestep, jump, squat and reach through the city. Your webcam is the controller.
-            </p>
-          </div>
-
-          <figure className="landing-photo relative h-36 overflow-hidden rounded-[24px] bg-[var(--na-slate)] shadow-[var(--na-shadow)]">
-            <img
-              src="/media/ui/fleurdelis.webp"
-              alt=""
-              className="landing-photo-fade absolute right-[225px] top-0 h-full w-auto max-sm:hidden"
-            />
-            <img
-              src="/media/ui/awning.webp"
-              alt=""
-              className="landing-photo-fade absolute right-0 top-0 h-[85%] w-auto"
-            />
-            <div
-              aria-hidden="true"
-              className="absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(90deg, var(--na-slate) 28%, color-mix(in srgb, var(--na-slate) 40%, transparent) 50%, transparent 62%)',
-              }}
-            />
-            <figcaption className="relative flex h-full max-w-[52%] flex-col justify-center gap-2 px-7 text-[#f2ece1]">
-              <span className="font-display-italic text-title leading-none">
+        <div className="landing-hero flex min-w-0 flex-col gap-5">
+          {/* The stage: the Montreal clip behind the title, on a dark slate panel. The awning and
+              fleur-de-lis show while the clip loads, if it fails and under reduced motion. */}
+          <div className="landing-stage relative overflow-hidden rounded-[28px] bg-[var(--na-slate)] shadow-[var(--na-shadow)]">
+            <div aria-hidden="true" className="landing-photo">
+              <img
+                src="/media/ui/fleurdelis.webp"
+                alt=""
+                className="landing-photo-fade absolute bottom-0 right-[225px] h-40 w-auto max-sm:hidden"
+              />
+              <img
+                src="/media/ui/awning.webp"
+                alt=""
+                className="landing-photo-fade absolute right-0 top-0 h-36 w-auto"
+              />
+            </div>
+            <HeroVideo src={HERO_VIDEO} />
+            <div aria-hidden="true" className="landing-stage-scrim absolute inset-0" />
+            <div className="relative flex flex-col gap-3 p-7 short:p-6">
+              <Eyebrow>Webcam fitness game · Montréal</Eyebrow>
+              <h1 className="font-display-italic text-display-md leading-[0.9] text-text sm:text-display-lg short:text-display-md">
+                Run Montréal <span className="text-lime">with your body</span>
+              </h1>
+              <p className="max-w-xl text-body text-text-muted">
+                Sidestep, jump, squat and reach through the city. Your webcam is the controller.
+              </p>
+              <p className="landing-stage-levels font-display-italic text-title leading-none text-text">
                 6 levels · 3 lives
-              </span>
-              <span className="text-caption text-[#e3dccf]">
-                Downtown, the metro tunnel, the bridge and the finish line.
-              </span>
-            </figcaption>
-          </figure>
+              </p>
+            </div>
+          </div>
 
           <p className="flex items-center gap-2 text-caption text-text-muted">
             <Lock aria-hidden="true" className="size-4 text-cyan" />
