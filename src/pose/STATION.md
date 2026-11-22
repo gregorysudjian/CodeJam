@@ -44,6 +44,10 @@ anywhere; the model is served from the app itself, so it also works offline.
 
 ## Before the demo (A or Patrick, 5 minutes)
 
+Measured on the demo Mac (Patrick, Sat night, 2 poses): pose 30 fps, render ~120 fps, no
+`?gfx=low` needed. Two people side by side at 1.5 m can confuse the model (it often sees one):
+keep spectators beside the laptop.
+
 1. Open `/?dev=pose` (close it before playing the app: on Windows only one tab can hold the camera).
    Overlay top line: FPS ≥ 25 and `GPU`. Line 2 shows the camera's own fps: if both are low, add
    light; if the camera is ~30 but FPS is low, close tabs and plug in, or use `?gfx=low` in the app.
