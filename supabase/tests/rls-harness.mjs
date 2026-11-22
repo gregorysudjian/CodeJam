@@ -250,9 +250,9 @@ if (last >= 7) {
     t1.rows?.[0]?.t === true && t2.rows?.[0]?.t === false,
   );
   expect(
-    'anon calls username_taken',
+    'anon calls username_taken (0008: the sign-up form asks before sign-in)',
     await rpc(null, `select public.username_taken('x')`),
-    'denied',
+    last >= 8 ? 'ok' : 'denied',
   );
   const add = async (uid, name) =>
     (await rpc(uid, `select * from public.add_friend($1)`, [name])).rows?.[0]?.status;

@@ -366,6 +366,9 @@ export function createSupabaseStore(
     async listSessions(limit = 50) {
       const fromCache = () => mergeQueued(cachedSessions()).slice(0, limit);
       const fromServer = (async () => {
+        // No guest yet (a fresh landing): only a round's owner can read it, so asking would be a
+        // 401 in the console. The cache and the queue are all there is.
+        if (!(await userId())) return fromCache();
         await flush();
         try {
           const { data, error } = await withTimeout(
@@ -421,7 +424,7 @@ export function createSupabaseStore(
       const name = cleanDisplayName(raw);
       if (!name) return null;
       try {
-        if (!(await userId())) return null;
+        // Also before sign-in (migration 0008): the landing's sign-up form asks first.
         const { data, error } = await withTimeout(sb.rpc('username_taken', { p_name: name }));
         return error ? null : data === true;
       } catch {

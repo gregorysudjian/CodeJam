@@ -1,7 +1,12 @@
 // In-page keyboard autopilot for src/game/e2e (injected before START; dev server only).
-// The round clock starts INTRO_SEC after <body data-game="running"> turns on (the 3-2-1), and
-// stops while it is off (pauses). The level is read from React's fiber tree, because the select
-// screen picks a random seed for every workout but the demo.
+// The round clock is the game's own: Game.getElapsedSec(), found like the level through React's
+// fiber tree. It is 0 through the intro, stands still while paused or counting down, and only
+// moves as the game judges, so long frames (each counts at most MAX_DT_SEC of game time) can't
+// put the autopilot ahead of the judge: timed by the wall clock, a 300-400 ms frame as the intro
+// started was enough to miss objects on slower PCs. If the Game can't be found, the old wall
+// clock (INTRO_SEC after <body data-game="running"> turns on, minus pauses) is the fallback.
+// The level is read from React's fiber tree, because the select screen picks a random seed for
+// every workout but the demo.
 // Modes: 'perfect' does what core.test.ts's perfect() player does, with the real key codes;
 // 'idle' presses nothing; 'spam' taps the game's keys about 30 times a second.
 window.__findLevel = () => {
@@ -12,6 +17,27 @@ window.__findLevel = () => {
       for (let h = f.memoizedState; h && typeof h === 'object' && 'next' in h; h = h.next) {
         const v = Array.isArray(h.memoizedState) ? h.memoizedState[0] : h.memoizedState;
         if (v && v.waves && v.config) return v;
+      }
+    }
+  }
+  return null;
+};
+
+// The Game object (onEvent, getElapsedSec), as scripts/levels-qa.mjs finds it.
+window.__findGame = () => {
+  const isGame = (v) =>
+    v && typeof v === 'object' && typeof v.onEvent === 'function' && typeof v.getElapsedSec === 'function';
+  const pick = (v) => (isGame(v) ? v : isGame(v?.current) ? v.current : null);
+  for (const el of [...document.querySelectorAll('canvas, [data-game], main, body *')].slice(0, 400)) {
+    const k = Object.keys(el).find((x) => x.startsWith('__reactFiber$'));
+    for (let f = k && el[k]; f; f = f.return) {
+      for (const v of Object.values(f.memoizedProps ?? {})) {
+        const g = pick(v);
+        if (g) return g;
+      }
+      for (let h = f.memoizedState; h && typeof h === 'object' && 'next' in h; h = h.next) {
+        const g = pick(h.memoizedState) ?? (Array.isArray(h.memoizedState) ? pick(h.memoizedState[0]) : null);
+        if (g) return g;
       }
     }
   }
@@ -71,6 +97,8 @@ window.__startAutopilot = (mode, introSec) => {
   let t0 = null;
   let pausedAt = null;
   let pausedMs = 0;
+  let game = null;
+  let findTick = 0;
   const id = setInterval(() => {
     const now = performance.now();
     if (document.body.dataset.game !== 'running') {
@@ -80,11 +108,20 @@ window.__startAutopilot = (mode, introSec) => {
     if (t0 === null) {
       t0 = now + introSec * 1000;
       level = window.__findLevel();
+      game = window.__findGame();
+      window.__e2eClock = game ? 'game' : 'wall'; // which clock this round used
       window.__e2eLevel = level && { config: level.config, stages: level.stages, objects: level.waves.reduce((n, w) => n + w.spawns.length, 0) };
     }
     if (pausedAt !== null) (pausedMs += now - pausedAt), (pausedAt = null);
-    if (now < t0) return;
-    const e = (now - t0 - pausedMs) / 1000;
+    // Looked up again now and then: the app may replace the Game (K swapping the input).
+    if (game && ++findTick % 30 === 0) game = window.__findGame() ?? game;
+    let e;
+    if (game) {
+      e = game.getElapsedSec(); // 0 until the intro's GO
+    } else {
+      if (now < t0) return;
+      e = (now - t0 - pausedMs) / 1000;
+    }
     window.__e2eTime = e;
     if (mode === 'idle' || !level) return;
     if (mode === 'spam') {
