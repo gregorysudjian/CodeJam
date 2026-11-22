@@ -3,7 +3,6 @@ import type { SavedSession } from "@/contracts";
 import {
   weeklyActiveMinutes,
   dayStreak,
-  last7Days,
   repsByMove,
   totals,
   localDay,
@@ -75,18 +74,6 @@ describe("dashboard local-calendar statistics", () => {
     expect(dayStreak([session(21), session(19), session(18)], at(21, 23))).toBe(1);
     expect(dayStreak([session(19)], at(21, 23))).toBe(0);
   });
-  it("returns seven days oldest first, ending today, with unrounded activity", () => {
-    const days = last7Days([session(15, 90), session(21, 45)], at(21, 23));
-    expect(days).toHaveLength(7);
-    expect(days[0]).toEqual({ label: "SUN", date: localDay(at(15)), activeMin: 1.5, played: true });
-    expect(days[6]).toEqual({
-      label: "SAT",
-      date: localDay(at(21)),
-      activeMin: 0.75,
-      played: true,
-    });
-    expect(days[1]?.played).toBe(false);
-  });
   it("sums every move, calories and rounds, and finds the best score", () => {
     const rows = [session(20), { ...session(21), score: 2000 }];
     expect(repsByMove(rows)).toEqual({
@@ -99,7 +86,7 @@ describe("dashboard local-calendar statistics", () => {
     });
     expect(totals(rows)).toEqual({ sessions: 2, reps: 42, kcal: 16, bestScore: 2000 });
   });
-  it("returns zeros and seven unplayed days for empty input", () => {
+  it("returns zeros for empty input", () => {
     expect(weeklyActiveMinutes([], at(21))).toBe(0);
     expect(dayStreak([], at(21))).toBe(0);
     expect(totals([])).toEqual({ sessions: 0, reps: 0, kcal: 0, bestScore: 0 });
@@ -111,7 +98,6 @@ describe("dashboard local-calendar statistics", () => {
       reachLeft: 0,
       reachRight: 0,
     });
-    expect(last7Days([], at(21)).every((d) => !d.played && d.activeMin === 0)).toBe(true);
   });
   it("calendar shifting preserves midnight across daylight-saving changes", () => {
     const before = new Date(2026, 2, 8, 12).getTime();

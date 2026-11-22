@@ -60,18 +60,6 @@ export function dayStreak(sessions: readonly SavedSession[], now: number): numbe
   }
   return count;
 }
-export function last7Days(sessions: readonly SavedSession[], now: number): ActivityDay[] {
-  return Array.from({ length: 7 }, (_, i) => {
-    const date = shiftDay(now, i - 6);
-    const rows = sessions.filter((s) => s.at <= now && localDay(s.at) === date);
-    return {
-      label: DAY_LABELS[new Date(date).getDay()] ?? "MON",
-      date,
-      activeMin: rows.reduce((sum, s) => sum + s.activeSec, 0) / 60,
-      played: rows.length > 0,
-    };
-  });
-}
 export function repsByMove(sessions: readonly SavedSession[]): Record<MoveType, number> {
   const result: Record<MoveType, number> = {
     sidestep: 0,
