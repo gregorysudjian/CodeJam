@@ -88,6 +88,7 @@ engine.ts      source: getState() (the game polls it), onMove, onGesture, drawSk
 7. ~~A player more than 40% closer or further is a stranger~~: fixed Sat ~6 PM (DECISIONS 44, synthetic + `near/mixed`); confirm on A's `● drift` and `● turnStep` clips. Remaining: a player who walks closer while standing in a **side lane** keeps the old size until back in the centre lane.
 8. Treadmill mode is only simulated (scaled clips). If the runner drifts on the belt, press R.
 9. Known noise limits: a half press on a camera tilted 3° can read as a reach; Greg's fastest reach swaps can lose a rep or read as a jump at ±1% noise.
+10. **For A (from Patrick's camera session 3, Sat night): walking onto the mark from behind reads as jumps.** A player taken back about a step behind the mark (W 0.104, ×0.83 of the calibration) who then walked onto it (W 0.14–0.16, ×1.4) gave 3 `jump` events in 3 s at `dropT` −0.17 to −0.18 (the hips rise in the frame as the body grows). The drift re-baseline (DECISIONS 44/48) waits for stillness, so it only catches up after. Before DECISIONS 49 the player was usually not tracked yet at that point, which hid it. Recording: Patrick's Mac, scratch `capture-1795319347861.json`, steps `backFurther` → `onMark`. Not changed (detection logic).
 
 ## 6. Needs real-camera test (10 minutes, A's laptop)
 
