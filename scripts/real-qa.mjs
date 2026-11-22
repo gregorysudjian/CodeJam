@@ -7,16 +7,22 @@
 //   node scripts/real-qa.mjs --out <dir> --headless           # default out: <tmp>/real-qa
 //
 // 1. Main run, ?demo=1&store=local&music=off, perfect autopilot, the full 180 s round, 1280x720:
-//    per level the fps (frames where game time moves), lives lost and the backdrop's style
-//    (backdropFor(n).style from the dev server; unset counts as neon; "?" if it can't be read);
-//    screenshots 15 s into each level and 0.5 s after each portal; the finished reason; console
+//    per level the fps (frames where game time moves), lives lost, the backdrop's style
+//    (backdropFor(n).style from the dev server; unset counts as neon; "?" if it can't be read)
+//    and what is ON SCREEN: every frame, the main scene (the one with fog) as three.js renders it,
+//    read through Object3D.onBeforeRender: realistic mode is a clip as the background with no
+//    bloom (scene.ts turns bloom off only on a real level; at Low graphics there is no clip).
+//    "real" if at least 90% of the level's frames are, "neon" if at most 10%, else "mixed".
+//    Screenshots 15 s into each level and 0.5 s after each portal; the finished reason; console
 //    errors (a 404 on /api/coach is ignored: the dev server has no /api).
-//    FAIL if it does not finish 'complete', loses a life, misses a screenshot or logs an error.
+//    FAIL if it does not finish 'complete', loses a life, misses a screenshot, logs an error, or a
+//    level marked real is not real on screen (or its render state can't be read).
 // 2. Fallback runs, the first 40 s (levels 1 and 2):
 //    ?gfx=low                 FAIL on an exception, or if the round does not reach 40 s;
 //    assets blocked           (runner model, obstacle textures, level clips) FAIL on an exception,
 //                             a lost life, nothing blocked, or not reaching 40 s.
-// 3. Prints a table, the fallback results and PASS/FAIL, and writes the same to <out>/summary.md.
+// 3. Prints a table, the fallback results and PASS/FAIL, and writes the same to <out>/summary.md,
+//    with <out>/contact-sheet.png (the six mid-level screenshots, labelled).
 // Exit 0 on PASS. Runs in a throwaway Chrome profile.
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -98,17 +104,55 @@ const HOOK = `(() => {
   return true;
 })()`;
 
+// What three.js draws: each object's onBeforeRender gets the scene being rendered, so the main
+// scene (the one with fog) is seen every frame with its background and the render target (bloom
+// renders the scene into one; without bloom it goes straight to the screen). Uses the app's own
+// three module (Vite's pre-bundled dependency, found among the loaded resources).
+const RENDER_HOOK = `(async () => {
+  const url = performance.getEntriesByType('resource').map((e) => e.name).find((n) => /\\/deps\\/three\\.js/.test(n));
+  if (!url) return false;
+  const THREE = await import(url);
+  const P = THREE.Object3D.prototype;
+  const orig = P.onBeforeRender;
+  P.onBeforeRender = function (renderer, scene, ...rest) {
+    if (scene?.isScene && scene.fog)
+      window.__qaRender = { real: !!scene.background?.isVideoTexture && renderer.getRenderTarget() === null, at: performance.now() };
+    return orig.call(this, renderer, scene, ...rest);
+  };
+  return true;
+})()`;
+
 // Every animation frame records the game time, so frames are grouped by level and frozen time
-// (intro, pauses) is left out.
+// (intro, pauses) is left out, and whether that frame drew realistic mode (1), neon (0) or
+// nothing readable (-1).
 const FRAME_SAMPLER = `(() => {
   window.__qaFrames = [];
   const loop = () => {
     const g = window.__qaGame;
-    if (g) window.__qaFrames.push([performance.now(), g.getElapsedSec()]);
+    const r = window.__qaRender;
+    const now = performance.now();
+    if (g) window.__qaFrames.push([now, g.getElapsedSec(), r && now - r.at < 200 ? (r.real ? 1 : 0) : -1]);
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
 })()`;
+/** Per level: 'real', 'neon', 'mixed (n% real)', or '?' when no frame could be read. */
+function screenByLevel(frames) {
+  const out = [];
+  for (let lv = 1; lv <= LEVELS; lv++) {
+    const lo = (lv - 1) * LEVEL_SEC;
+    const known = frames.filter(([, sec, r]) => sec >= lo && sec < lv * LEVEL_SEC && r >= 0);
+    if (!known.length) {
+      out.push('?');
+      continue;
+    }
+    const share = known.filter((f) => f[2] === 1).length / known.length;
+    out.push(
+      share >= 0.9 ? 'real' : share <= 0.1 ? 'neon' : `mixed (${Math.round(share * 100)}% real)`,
+    );
+  }
+  return out;
+}
 function fpsByLevel(frames) {
   const out = [];
   for (let lv = 1; lv <= LEVELS; lv++) {
@@ -200,6 +244,7 @@ async function mainRun(page, w) {
   w.reset();
   await toSelect(page, QUERY);
   await startRound(page);
+  const hooked = await page.eval(RENDER_HOOK).catch(() => false);
   await page.eval(FRAME_SAMPLER);
   const styles = await page
     .eval(
@@ -229,7 +274,15 @@ async function mainRun(page, w) {
   const lost = Array(LEVELS).fill(0);
   for (const e of ev.filter((x) => x.type === 'lifeLost'))
     lost[Math.min(LEVELS, Math.floor(e.sec / LEVEL_SEC) + 1) - 1]++;
-  const fps = fpsByLevel(await page.eval('window.__qaFrames ?? []'));
+  const frames = await page.eval('window.__qaFrames ?? []');
+  const fps = fpsByLevel(frames);
+  const screen = screenByLevel(frames);
+  if (!hooked)
+    fails.push("could not read what three.js renders (the app's three module not found)");
+  styles?.forEach((st, i) => {
+    if (st === 'real' && screen[i] !== 'real')
+      fails.push(`level ${i + 1} is marked real but renders ${screen[i]} on screen`);
+  });
   const clock = await page.eval('window.__e2eClock ?? "?"');
   if (fin?.reason !== 'complete')
     fails.push(
@@ -249,6 +302,7 @@ async function mainRun(page, w) {
   const rows = Array.from({ length: LEVELS }, (_, i) => ({
     level: i + 1,
     style: styles?.[i] ?? '?',
+    screen: screen[i],
     fps: fps[i] ?? '-',
     lost: lost[i],
     shots: (taken[i + 1] ?? []).join(', ') || '-',
@@ -258,6 +312,40 @@ async function mainRun(page, w) {
     rows,
     note: `finished ${fin?.reason ?? 'never'} at ${fin?.sec?.toFixed(1) ?? '?'} s, autopilot clock ${clock}, console errors ${w.errors.length + w.exceptions.length}`,
   };
+}
+
+/** contact-sheet.png: the six mid-level screenshots in a 3x2 grid, labelled, drawn in Chrome. */
+async function contactSheet(page, rows) {
+  const tiles = rows.map((r) => {
+    const f = join(OUT, `level-${r.level}-mid.png`);
+    let src = '';
+    try {
+      src = `data:image/png;base64,${readFileSync(f).toString('base64')}`;
+    } catch {
+      /* not taken */
+    }
+    return { src, label: `Level ${r.level}: ${r.style}, on screen ${r.screen}` };
+  });
+  const url = await page.eval(`(async () => {
+    const tiles = ${JSON.stringify(tiles)};
+    const W = 640, H = 360, c = document.createElement('canvas');
+    c.width = 3 * W; c.height = 2 * H;
+    const g = c.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height);
+    for (let i = 0; i < tiles.length; i++) {
+      const x = (i % 3) * W, y = Math.floor(i / 3) * H;
+      if (tiles[i].src) {
+        const img = new Image();
+        img.src = tiles[i].src;
+        await img.decode();
+        g.drawImage(img, x, y, W, H);
+      }
+      g.fillStyle = 'rgba(0,0,0,0.75)'; g.fillRect(x, y + H - 30, W, 30);
+      g.fillStyle = '#ffe14d'; g.font = 'bold 18px sans-serif'; g.fillText(tiles[i].label, x + 8, y + H - 9);
+    }
+    return c.toDataURL('image/png');
+  })()`);
+  writeFileSync(join(OUT, 'contact-sheet.png'), Buffer.from(url.split(',')[1], 'base64'));
 }
 
 async function shortRun(page, w, label, query, block) {
@@ -321,6 +409,7 @@ try {
       fallbacks.push({ label, fails: [`crashed: ${firstLine(e.message)}`], note: '' });
     }
   }
+  await contactSheet(page, main.rows).catch((e) => console.log(`no contact sheet: ${e.message}`));
 } finally {
   page.close();
   stop();
@@ -332,9 +421,11 @@ const lines = [
   '',
   `Main run (${QUERY}, perfect autopilot, ${ROUND_SEC} s, 1280x720): ${main.fails.length ? 'FAIL' : 'PASS'}. ${main.note}`,
   '',
-  '| level | style | fps | lives lost | screenshot |',
-  '| --- | --- | --- | --- | --- |',
-  ...main.rows.map((r) => `| ${r.level} | ${r.style} | ${r.fps} | ${r.lost} | ${r.shots} |`),
+  '| level | style (backdrop.ts) | on screen | fps | lives lost | screenshot |',
+  '| --- | --- | --- | --- | --- | --- |',
+  ...main.rows.map(
+    (r) => `| ${r.level} | ${r.style} | ${r.screen} | ${r.fps} | ${r.lost} | ${r.shots} |`,
+  ),
   ...main.fails.map((f) => `- ${f}`),
   '',
   `Fallback runs (first ${SHORT_SEC} s):`,
@@ -344,7 +435,7 @@ const lines = [
     ...f.fails.map((x) => `  - ${x}`),
   ]),
   '',
-  `Screenshots: ${OUT}`,
+  `Screenshots and contact-sheet.png (the six levels, 15 s in): ${OUT}`,
   '',
   pass ? 'PASS' : 'FAIL',
 ];
