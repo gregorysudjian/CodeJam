@@ -143,6 +143,11 @@ export const REAL_MODE = {
   fadePeak: 0.85,
   fadeSec: 0.5,
   camera: { height: 2.8 },
+  // "LEVEL n" on a real level: smaller, just under GameHud's cue band (124 to ~214 CSS px from
+  // the top), so it sits over the sky above the track's horizon, never across the track or the
+  // first move cue; `top` its top edge in CSS px, height a share of the canvas within limits;
+  // shown `sec` (neon: LEVEL_LABEL_SEC). Jiscar 1's sweep: centred at 42 % it lay across the track.
+  levelBanner: { top: 226, share: 0.07, min: 44, max: 76, sec: 1.4 }, // solid until 85 %
   camEase: 3,
   sun: { dir: { x: 0.2, y: 1, z: 0.5 }, intensity: 1.4, skyIntensity: 1.2, shadow: 0.35 },
   shadowMap: 1024,

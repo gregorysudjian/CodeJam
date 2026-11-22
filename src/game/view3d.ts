@@ -203,6 +203,15 @@ export function create3DView(
   stage.camera.add(levelLabel.sprite);
   let levelShown = 0;
   let levelT = Infinity; // seconds since "LEVEL n" appeared (< 0: waits for the intro's GO)
+  /** "LEVEL n" on a real level: its top just under the cue band, a small share of the height. */
+  const realLevelBox = (w: number, h: number, grow: number, out: PixelBox): PixelBox => {
+    const B = LK.REAL_MODE.levelBanner;
+    const bh = Math.min(B.max, Math.max(B.min, h * B.share));
+    out.cx = w / 2;
+    out.cy = B.top + bh / 2;
+    out.h = bh * grow;
+    return out;
+  };
   let outroT = 0; // seconds since the finish
   // Each level's Montreal clip as the sky (videoBackdrop.ts), switched as the runner passes
   // through a portal (under its white flash); none at quality 2 ("Low graphics").
@@ -407,13 +416,20 @@ export function create3DView(
         levelT = f.stage === 1 ? -T.INTRO_GO_SEC : 0;
       }
       levelT += realDt;
-      levelLabel.sprite.visible =
-        phase !== 'finished' && levelT >= 0 && levelT < LK.LEVEL_LABEL_SEC;
+      // A real level: smaller, under the cue band, above the horizon (REAL_MODE.levelBanner).
+      const realBanner = quality < 2 && isReal(Math.max(1, f.stage));
+      const labelSec = realBanner ? LK.REAL_MODE.levelBanner.sec : LK.LEVEL_LABEL_SEC;
+      levelLabel.sprite.visible = phase !== 'finished' && levelT >= 0 && levelT < labelSec;
       if (levelLabel.sprite.visible) {
         const k = reduceMotion ? 1 : Math.min(1, levelT / T.BANNER_POP_SEC);
-        placeOnScreen(levelLabel.sprite, endBannerBox, 1 - (1 - k) ** 3);
-        const u = levelT / LK.LEVEL_LABEL_SEC;
-        levelLabel.sprite.material.opacity = u < 0.7 ? 1 : 1 - (u - 0.7) / 0.3;
+        placeOnScreen(
+          levelLabel.sprite,
+          realBanner ? realLevelBox : endBannerBox,
+          1 - (1 - k) ** 3,
+        );
+        const u = levelT / labelSec;
+        const hold = realBanner ? 0.85 : 0.7; // a real level's banner stays solid longer
+        levelLabel.sprite.material.opacity = u < hold ? 1 : 1 - (u - hold) / (1 - hold);
       }
 
       obstacles.tick(visDt);
