@@ -4,6 +4,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { QRCodeSVG } from 'qrcode.react';
 import type {
   CoachAdvice,
+  FriendBoardEntry,
   Game,
   InputSource,
   LeaderboardEntry,
@@ -58,6 +59,7 @@ type Screen =
   | 'leaderboard';
 
 const APP_NAME = 'Neon Arena';
+const NO_FRIENDS = { entries: [], names: [] };
 const NOTICE_MS = 4000;
 
 // Heavy parts load only when needed (audit #8): the game (Three.js) when a round starts, the
@@ -291,11 +293,28 @@ function MainApp() {
     setSessions(await store.listSessions(50));
   }, []);
 
-  const loadBoard = useCallback(async (workout: WorkoutId, mode: PlayMode, durationSec: number) => {
-    setBoard((b) => ({ ...b, workout, mode, durationSec, loading: true }));
-    const entries = await store.getLeaderboard(workout, mode, durationSec, LEADERBOARD_SIZE);
-    setBoard({ workout, mode, durationSec, entries, loading: false });
+  // Friends (migration 0007): the board of you and the players you added, for the leaderboard's
+  // FRIENDS view, on the same workout and mode as the public board. The local store has none.
+  const [friendsBoard, setFriendsBoard] = useState<{
+    entries: FriendBoardEntry[];
+    names: string[];
+  }>(NO_FRIENDS);
+  const loadFriends = useCallback(async (workout: WorkoutId, mode: PlayMode) => {
+    const [entries, names] = await Promise.all([
+      store.getFriendsBoard(workout, mode, BOARD_DEFAULT_DURATION_SEC, LEADERBOARD_SIZE),
+      store.listFriends(),
+    ]);
+    setFriendsBoard({ entries, names });
   }, []);
+  const loadBoard = useCallback(
+    async (workout: WorkoutId, mode: PlayMode, durationSec: number) => {
+      setBoard((b) => ({ ...b, workout, mode, durationSec, loading: true }));
+      if (profile) void loadFriends(workout, mode);
+      const entries = await store.getLeaderboard(workout, mode, durationSec, LEADERBOARD_SIZE);
+      setBoard({ workout, mode, durationSec, entries, loading: false });
+    },
+    [profile, loadFriends],
+  );
   const openLeaderboard = useCallback(() => {
     setScreen('leaderboard');
     void loadBoard(board.workout, board.mode, board.durationSec);
@@ -359,6 +378,7 @@ function MainApp() {
       setSummary(null);
       setAdvice(null);
       setConfig(null);
+      setFriendsBoard(NO_FRIENDS);
     }
   };
   const savePlayerProfile = async (p: ProfileInput) => {
@@ -653,6 +673,18 @@ function MainApp() {
           onBack={() => setScreen(profile ? 'dashboard' : 'landing')}
           onPlay={() => setScreen(profile ? 'select' : 'landing')}
           nav={navFor('leaderboard')}
+          friends={
+            profile
+              ? {
+                  ...friendsBoard,
+                  onAdd: async (username) => {
+                    const result = await store.addFriend(username);
+                    void loadFriends(board.workout, board.mode); // the new friend's rows
+                    return result;
+                  },
+                }
+              : undefined
+          }
         />
       )}
 
