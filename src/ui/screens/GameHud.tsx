@@ -321,9 +321,8 @@ export function GameHud({
                 )}
                 <div className="mt-5 flex flex-wrap justify-center gap-6 text-caption text-text-muted">
                   {[
-                    ['K', 'keyboard / camera'],
+                    ['K', 'camera ↔ keyboard'],
                     ['R', 'recalibrate'],
-                    ['D', 'debug'],
                   ].map(([key, label]) => (
                     <span key={key} className="flex items-center gap-2">
                       <span className="font-display text-text">{key}</span>

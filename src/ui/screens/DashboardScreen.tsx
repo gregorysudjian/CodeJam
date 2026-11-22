@@ -32,6 +32,7 @@ import { cn } from '@/ui/lib/utils';
 import { DashboardCharts } from '@/ui/screens/DashboardCharts';
 import {
   DAY_LABELS,
+  DAY_NAMES,
   dayStreak,
   last7Days,
   localDay,
@@ -213,7 +214,7 @@ export function DashboardScreen({
                     <div
                       key={date}
                       className="flex flex-col items-center gap-2"
-                      aria-label={`${DAY_LABELS[new Date(date).getDay()]}${played ? ', played' : ', no round'}${today ? ', today' : ''}`}
+                      aria-label={`${DAY_NAMES[new Date(date).getDay()]}${played ? ', played' : ', no round'}${today ? ', today' : ''}`}
                     >
                       <span
                         className={cn(

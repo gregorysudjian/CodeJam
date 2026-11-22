@@ -2,6 +2,8 @@ import type { MoveType, SavedSession } from "@/contracts";
 import { MOVE_ORDER } from "@/ui/kit/tokens";
 
 export const DAY_LABELS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
+/** For screen readers: some read "MON" as a word (QA C10). */
+export const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 export interface ActivityDay {
   label: (typeof DAY_LABELS)[number];
   date: number;
