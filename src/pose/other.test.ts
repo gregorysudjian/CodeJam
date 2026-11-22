@@ -138,7 +138,7 @@ describe('someone else in the play area', () => {
 });
 
 describe('the player away, someone on the mark', () => {
-  test.each([0.7, 1.4])('a %s× stranger on the mark is someone else, never the player', (scale) => {
+  test.each([1.8, 2.2])('a %s× stranger on the mark is someone else, never the player', (scale) => {
     const { s, t } = calibrated();
     const away = hold(s, t, 1000, []);
     expect(away.log.at(-1)!.tracking).toBe(false);
@@ -155,6 +155,35 @@ describe('the player away, someone on the mark', () => {
     const found = back.log.find((l) => l.isPlayer)!.t;
     expect(found).toBeGreaterThanOrEqual(REFIND_STILL_MS);
     expect(back.log.at(-1)).toMatchObject({ other: false, tracking: true, isPlayer: true });
+  });
+
+  test.each([
+    ['a step closer', 1.5],
+    ['a step further', 0.7],
+    ['half a step closer', 1.25],
+  ])('the player coming back %s (%s×), alone, is taken back, never flagged', (_n, scale) => {
+    const { s, t } = calibrated();
+    const away = hold(s, t, 1000, []);
+    const player = body(0.2, scale);
+    const back = hold(s, away.t, 1500, [player]);
+    expect(back.log.find((l) => l.isPlayer)!.t).toBeGreaterThanOrEqual(REFIND_STILL_MS);
+    expect(back.log.some((l) => l.other)).toBe(false);
+    expect(back.log.at(-1)).toMatchObject({ other: false, tracking: true, isPlayer: true });
+    // ... and followed from there: a sidestep a moment later stays the player.
+    let now = back.t;
+    for (let i = 1; i <= 9; i++, now += FRAME_MS) {
+      const p = body(0.2 + 0.1 * i * scale, scale); // 0.9 of their own W in 0.3 s
+      s.frame([p], now);
+      expect(s.player).toBe(p);
+    }
+  });
+
+  test('a body a step closer is not taken back while someone else stands in the play area', () => {
+    const { s, t } = calibrated();
+    const away = hold(s, t, 1000, []);
+    const { log } = hold(s, away.t, 2000, [body(0, 1.5), body(1.2, 0.9)]);
+    expect(log.some((l) => l.isPlayer)).toBe(false);
+    expect(log.at(-1)).toMatchObject({ other: true, tracking: false });
   });
 
   test('the player walking back to the mark is not flagged as someone else', () => {
@@ -178,7 +207,7 @@ describe('the player away, someone on the mark', () => {
   });
 
   test.fails(
-    'known limit: a stranger of the player’s size on the mark is taken as the player',
+    'known limit: a stranger alone on the mark, x0.6-1.67 the player, is taken as the player',
     () => {
       const { s, t } = calibrated();
       const away = hold(s, t, 1000, []);

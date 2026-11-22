@@ -107,15 +107,17 @@ function spectatorX(scale: number) {
   }
   return pauses;
 }
-test.each([0.4, 0.55, 0.6, 0.65])(
+test.each([0.4, 0.55, 0.6])(
   'a spectator at %s× demonstrating X does not pause the player',
   (scale) => {
     expect(spectatorX(scale)).toEqual([]);
   },
 );
-// Known limit: a spectator near the player's size, under 1 W from where the player stood, right as
-// the player vanishes, is followed (FOLLOW_*). With 2 poses the player stays in the model's output.
-test.fails.each([0.8, 1])(
+// Known limits, with the player gone from the frame: a spectator alone near the mark at x0.6-1.67
+// the player's size may be the player coming back a step closer or further, so standing still
+// they are taken (REFIND_ALONE_SIZE_TOLERANCE); one under 1 W from where the player stood right
+// as the player vanishes is followed (FOLLOW_*). With 2 poses the player stays in the model's output.
+test.fails.each([0.65, 0.8, 1])(
   'Abdo: a spectator at %s× demonstrating X must not pause the player',
   (scale) => {
     expect(spectatorX(scale)).toEqual([]);

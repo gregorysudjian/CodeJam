@@ -50,9 +50,15 @@ export const FOLLOW_MAX_STEP_W = 1.2;
 export const FOLLOW_GAP_MS = 400;
 /**
  * Found again: a body standing still near the mark with the player's size (W and, on the floor,
- * torso T, each within this fraction). Anyone else stepping onto the mark is someone else.
+ * torso T, each within this fraction) ...
  */
 export const REFIND_SIZE_TOLERANCE = 0.25;
+/**
+ * ... or, alone in the play area, within this one (x0.6-1.67): a player coming back a step
+ * closer (1.5 m -> 1 m: x1.5) or further (-> 2.1 m: x0.7). With someone else in the play area,
+ * only the first. A body outside it on the mark is someone else.
+ */
+export const REFIND_ALONE_SIZE_TOLERANCE = 0.4;
 /** Near the mark: shoulder centre within this many W of the calibrated centre. */
 export const REFIND_AREA_W = 1;
 /** Still: the shoulder centre stays within this many W ... */

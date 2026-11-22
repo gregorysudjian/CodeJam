@@ -24,7 +24,8 @@ or the named file.
 8. **Detection thresholds live in one mutable `DETECTION` object** in `tuning.ts`, so the debug
    overlay's sliders change them live. `DETECTION_DEFAULTS` holds the committed values.
 9. **`MAX_POSES = 1`** (A's call). `pickBody` (largest and closest to the player's last position) is
-   built and tested; raise `MAX_POSES` to 2 after measuring FPS.
+   built and tested; raise `MAX_POSES` to 2 after measuring FPS. **Superseded by 49** (2 bodies,
+   follow the calibrated player; `pickBody` now only picks during calibration).
 10. **Calibration edge margin 0:** A's feet sit at 0.97 of the frame height at playing distance, so
     any margin would say "step back" for no reason.
 11. **Treadmill T without visible hips is estimated as 1.5 × W in pixels** (A's clips: W 64 px,
@@ -273,3 +274,27 @@ or the named file.
     (every real clip, 2 calibrations, 30/15/10 FPS) the only change is those two false sidesteps
     gone. Codex's matrix passes against this tree (875 + 17 expected failures); its known entries
     `extra sidestep 155/184` for `fps 10|greg/leaveFrame` can be removed.
+49. **Two bodies; follow the calibrated player; `otherPerson` (Greg's call, Sat night, Patrick 1,
+    `p5-camera`).** `MAX_POSES = 2`, so a second person is reported next to the player instead of
+    replacing them (the "lone passerby" of 47 no longer needs the model to drop the player).
+    After calibration `session.ts` never picks the largest or newest body:
+    - **Follow:** the body nearest the player's last pose (mean distance of nose, shoulders, hips),
+      within `FOLLOW_MAX_SPEED_W` = 10 W/s of it (at least 0.4 W, at most 1.2 W, in the last frame's
+      own width), shoulder width within ×0.6–1.67 of the last frame. From the recorded clips: jumps
+      peak at 8–10 W/s between frames, moves cover at most 1.6 W in 100 ms, width changes at most
+      ×1.3 in 100 ms.
+    - **Found again** after `FOLLOW_GAP_MS` = 400 ms: a body standing still (0.3 W) for 400 ms within
+      1 calibrated W of the mark, with the player's W and torso within 25%, or within 40% when it is
+      alone in the play area (players come back a step closer or further: ×1.5 / ×0.7).
+    - **`otherPerson`** (and `tracking: false`): another body with both shoulders seen, at least 0.6×
+      the player's width (smaller = the crowd far behind), shoulder centre within 1.5 calibrated W of
+      the mark (outside = at the side or the edge of the image). On after 300 ms, off after 500 ms.
+      A second pose under 0.5 W from the player is the same body twice. With the player away, a
+      body that may be them coming back is not flagged. No moves and no X fire while it is on.
+    - The play area uses the calibrated W and centre, so a player who steps closer does not widen it.
+    Evidence: `other.test.ts` (beside at 0.65–1.2×, far behind, edge, duplicate, a passer-by crossing,
+    a stranger on the mark while away, coming back closer/further, every clip at 30/15/10 FPS never
+    drops the player, a crowd leaves every clip's moves unchanged); `crowd.robust.test.ts`: the lone
+    passer-by at 0.6–1× now passes. Known limits (kept as `test.fails`): with the player out of the
+    frame, someone alone and standing still on the mark at ×0.6–1.67 their size is taken as them; a
+    0.8–1× spectator under 1 W from where the player stood, right as the player vanishes, is followed.

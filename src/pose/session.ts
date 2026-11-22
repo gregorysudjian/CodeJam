@@ -33,6 +33,7 @@ import {
   OTHER_ON_MS,
   PICK_SIZE_TOLERANCE,
   RECENT_EVENTS,
+  REFIND_ALONE_SIZE_TOLERANCE,
   REFIND_AREA_W,
   REFIND_SIZE_TOLERANCE,
   REFIND_STILL_MS,
@@ -111,16 +112,15 @@ function poseDistance(a: Point[], b: Point[], aspect: number): number {
 }
 
 /**
- * The player's size, close enough to take them back after they were away: shoulder width and,
- * on the floor, torso length, against the detector's current baselines (they follow the player).
+ * The player's size within `tolerance`: shoulder width and, on the floor, torso length, against
+ * the detector's current baselines (they follow the player).
  */
-function isPlayerSize(pose: Point[], d: Detector): boolean {
-  if (!hasShoulders(pose) || !within(widthOf(pose) / d.readout.W, REFIND_SIZE_TOLERANCE))
-    return false;
+function isPlayerSize(pose: Point[], d: Detector, tolerance: number): boolean {
+  if (!hasShoulders(pose) || !within(widthOf(pose) / d.readout.W, tolerance)) return false;
   if (d.mode !== 'floor') return true;
   if (!pose[L_HIP] || !pose[R_HIP]) return false;
   const torso = Math.abs(mid(pose[L_HIP], pose[R_HIP]).y - shoulderCentre(pose).y);
-  return within(torso / d.readout.T, REFIND_SIZE_TOLERANCE);
+  return within(torso / d.readout.T, tolerance);
 }
 
 export function createSession(): Session {
@@ -154,18 +154,38 @@ export function createSession(): Session {
       ? Math.abs(toPlayerX(shoulderCentre(pose).x) - calibration.centreX) / calibration.W
       : Infinity;
 
+  const seen = (q: Point) => (q.visibility ?? 1) >= DETECTION.TRACKING_MIN_VISIBILITY;
+  /** A body in the play area, big enough to be standing in it (not the crowd far behind). */
+  const inArea = (pose: Point[], W: number) =>
+    hasShoulders(pose) &&
+    seen(pose[L_SHOULDER]) &&
+    seen(pose[R_SHOULDER]) &&
+    widthOf(pose) >= OTHER_MIN_SIZE * W &&
+    offMark(pose) <= OTHER_AREA_W;
+
+  /**
+   * With the player away, may this body be them coming back? Their size, or, when it is alone in
+   * the play area, roughly their size: players come back a step closer or further.
+   */
+  const mayBePlayer = (pose: Point[], poses: Point[][], d: Detector) =>
+    isPlayerSize(pose, d, REFIND_SIZE_TOLERANCE) ||
+    (poses.every((p) => p === pose || !inArea(p, d.readout.W)) &&
+      isPlayerSize(pose, d, REFIND_ALONE_SIZE_TOLERANCE));
+
   /**
    * The calibrated player among the bodies, or null. Never the largest or the newest body: the
-   * one nearest the player's last pose; after a gap, only a body of the player's size standing
-   * still near the mark.
+   * one nearest the player's last pose; after a gap, only a body that may be the player
+   * (mayBePlayer) standing still near the mark.
    */
   function follow(poses: Point[][], t: number, d: Detector): Point[] | null {
     const W = d.readout.W;
     const usable = poses.filter(hasShoulders);
     if (last && t - lastSeenAt <= FOLLOW_GAP_MS) {
       const prev = last;
+      // In the last frame's own width: right after coming back a step closer, the baselines
+      // still have the old size.
       const step = (FOLLOW_MAX_SPEED_W * (t - lastSeenAt)) / 1000;
-      const reach = W * Math.min(FOLLOW_MAX_STEP_W, Math.max(FOLLOW_MIN_STEP_W, step));
+      const reach = widthOf(prev) * Math.min(FOLLOW_MAX_STEP_W, Math.max(FOLLOW_MIN_STEP_W, step));
       let best: Point[] | null = null;
       let bestDist = reach;
       for (const pose of usable) {
@@ -183,7 +203,7 @@ export function createSession(): Session {
     let best: Point[] | null = null;
     let bestDist = REFIND_AREA_W;
     for (const pose of usable) {
-      if (!isPlayerSize(pose, d)) continue;
+      if (!mayBePlayer(pose, usable, d)) continue;
       const dist = offMark(pose);
       if (dist <= bestDist) {
         best = pose;
@@ -204,20 +224,18 @@ export function createSession(): Session {
     return best;
   }
 
-  /** Someone else in the play area, near the player's size: on after OTHER_ON_MS, off after OTHER_OFF_MS. */
+  /** Someone else in the play area: on after OTHER_ON_MS, off after OTHER_OFF_MS. */
   function updateOther(poses: Point[][], t: number, d: Detector) {
     const W = d.readout.W;
-    const seen = (q: Point) => (q.visibility ?? 1) >= DETECTION.TRACKING_MIN_VISIBILITY;
     const pc = player ? shoulderCentre(player) : null;
     const found = poses.some((pose) => {
-      if (pose === player || !hasShoulders(pose)) return false;
-      if (!seen(pose[L_SHOULDER]) || !seen(pose[R_SHOULDER])) return false;
-      if (widthOf(pose) < OTHER_MIN_SIZE * W) return false; // far behind
-      const c = shoulderCentre(pose);
-      if (offMark(pose) > OTHER_AREA_W) return false; // aside
-      if (pc) return Math.hypot(c.x - pc.x, (c.y - pc.y) / aspect) >= OTHER_MIN_GAP_W * W;
-      // With the player away, a body of their size may be them coming back (follow decides).
-      return !isPlayerSize(pose, d);
+      if (pose === player || !inArea(pose, W)) return false;
+      if (pc) {
+        const c = shoulderCentre(pose);
+        return Math.hypot(c.x - pc.x, (c.y - pc.y) / aspect) >= OTHER_MIN_GAP_W * W;
+      }
+      // With the player away, a body that may be them coming back is not flagged (follow decides).
+      return !mayBePlayer(pose, poses, d);
     });
     if (found) {
       if (otherSince < 0) otherSince = t;
