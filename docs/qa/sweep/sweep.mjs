@@ -28,6 +28,7 @@ timebox(25 * 60 * 1000, 'sweep'); // the demo round is 180 s (6 levels), plus fo
 async function sweep([w, h, dsf], port) {
   const dir = join(OUT, `${w}x${h}@${dsf}`);
   const checks = [];
+  const perf = [];
   const check = (name, ok, detail = '') => checks.push({ name, ok: Boolean(ok), detail });
   const b = await launch({ port, profile: join(OUT, 'profiles', `${w}x${h}@${dsf}`), base: BASE });
   await b.size(w, h, dsf);
@@ -101,6 +102,13 @@ async function sweep([w, h, dsf], port) {
         await sleep(30);
       }
       await step(name);
+      // Stutter, info only: 2 s of frame times (the game catches up at most 50 ms a frame).
+      const f = await b.eval(`new Promise((done) => {
+        const t = []; let last = performance.now(); const end = last + 2000;
+        const tick = (now) => { t.push(now - last); last = now; if (now < end) requestAnimationFrame(tick); else done(t); };
+        requestAnimationFrame(tick);
+      })`);
+      perf.push(`${name}: ${Math.round((f.length / f.reduce((a, x) => a + x, 0)) * 1000)} fps, worst ${Math.round(Math.max(...f))} ms, ${f.filter((x) => x > 50).length} frames > 50 ms`);
     }
     check('round ends on results', await b.waitFor(/ROUND COMPLETE|CLEARED|OUT OF LIVES/i, 30000));
     await sleep(3000);
@@ -228,7 +236,7 @@ async function sweep([w, h, dsf], port) {
   const logs = b.logs.filter((l) => !(process.env.REDUCED_MOTION && /reduced-motion-disabled/.test(l)));
   check('no console errors or warnings', logs.length === 0, logs.slice(0, 5).join(' | '));
   await b.close();
-  return { size: `${w}x${h}@${dsf}`, passed: checks.filter((c) => c.ok).length, failed: checks.filter((c) => !c.ok), checks };
+  return { size: `${w}x${h}@${dsf}`, passed: checks.filter((c) => c.ok).length, failed: checks.filter((c) => !c.ok), perf, checks };
 }
 
 mkdirSync(OUT, { recursive: true });
@@ -238,6 +246,7 @@ writeFileSync(join(OUT, 'summary.json'), JSON.stringify(results, null, 2));
 for (const r of results) {
   console.log(`${r.size}: ${r.passed} passed, ${r.failed.length} failed`);
   for (const f of r.failed) console.log(`  FAIL ${f.name}${f.detail ? ` (${f.detail})` : ''}`);
+  for (const p of r.perf) console.log(`  perf ${p}`);
 }
 console.log(`Screenshots and summary.json in ${OUT}`);
 process.exit(results.every((r) => r.failed.length === 0) ? 0 : 1);
