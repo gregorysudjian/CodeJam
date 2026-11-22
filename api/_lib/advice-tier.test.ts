@@ -40,6 +40,16 @@ describe("planNumbers: today's plan, decided by the game", () => {
       weeklyShare: 20,
     });
   });
+  it('a round that ended early counts for the seconds it lasted', () => {
+    // 2 kcal in 12 s is the same rate as 30 kcal in a full 180 s round.
+    expect(planNumbers('regular', 60, [{ kcal: 2, active_sec: 12 }]).kcal).toBe(90);
+    expect(
+      planNumbers('regular', 60, [
+        { kcal: 2, active_sec: 12 },
+        { kcal: 30, active_sec: 180 },
+      ]).kcal,
+    ).toBe(90);
+  });
   it('no usable history or goal: no calories, no share', () => {
     expect(planNumbers(undefined, 0, [{ kcal: 'x' }])).toEqual({
       rounds: 2,
