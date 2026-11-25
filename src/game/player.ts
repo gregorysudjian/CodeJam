@@ -264,7 +264,6 @@ export function createPlayer(opts: { ghost?: boolean } = {}): Player {
       input.armR += ((s.rightArmUp || celebrate ? 1 : 0) - input.armR) * lerpRate(T.ARM_RATE, dt);
       runnerPose(input, pose);
 
-      // Celebration hops at the finish.
       celebrateT = celebrate ? celebrateT + dt : 0;
       const hop =
         celebrate && !reduceMotion ? 0.22 * Math.abs(Math.sin(celebrateT * Math.PI * 2)) : 0;

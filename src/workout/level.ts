@@ -180,7 +180,6 @@ export function generateLevel(config: SessionConfig): Level {
     let kind = drawKind();
     if (recent.length >= 2 && recent.every((k) => k === kind)) kind = drawKind();
 
-    // Spacing rules.
     if (!first) {
       t = Math.max(t, prevEnd + (prevHadHold ? T.MIN_GAP_AFTER_HOLD_SEC : T.MIN_GAP_SEC));
       if (t < T.LEVEL_SEC) t = Math.max(t, prevEnd + T.MIN_GAP_WARMUP_SEC);
@@ -188,7 +187,6 @@ export function generateLevel(config: SessionConfig): Level {
     if (kind === 'hurdle') t = Math.max(t, lastBeamEnd + T.MIN_GAP_BEAM_TO_HURDLE_SEC);
     if (kind === 'beam') t = Math.max(t, lastBeamEnd + T.MIN_GAP_SQUAT_TO_SQUAT_SEC);
 
-    // Spawns.
     const spawns: Spawn[] = [];
     let hold = 0;
     if (kind === 'block') {

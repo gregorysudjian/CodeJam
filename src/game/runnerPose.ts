@@ -118,7 +118,6 @@ export function runnerPose(s: PoseInput, out: RunnerPose): RunnerPose {
     out.elbowR = lerp(out.elbowR, 0.3, d);
   }
 
-  // Planted: the lower foot touches the floor.
   const planted = Math.max(legReach(out.thighL, out.kneeL), legReach(out.thighR, out.kneeR));
   // The run cycle floats between steps; standing and ducking stay on the floor.
   out.hipY = planted + T.RUN_BOB * run * (1 - d) * Math.abs(cos);
